@@ -10,8 +10,10 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
+
 # === Try to find serial (optional) ===
 find_package(serial QUIET)
+find_package(SDL2 QUIET)
 
 # === CLIENT TELEOP NODE (only if serial is found) ===
 if(serial_FOUND)
@@ -27,15 +29,20 @@ else()
   message(WARNING "serial not found — skipping client_teleop_serial.cpp")
 endif()
 
-# === HOST TELEOP KEYBOARD NODE (always built) ===
-add_executable(host_teleop src/host_teleop.cpp)
-target_include_directories(host_teleop PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(host_teleop rclcpp geometry_msgs)
+if(SDL2_FOUND)
+  add_executable(host_teleop src/host_teleop.cpp)
+  target_include_directories(host_teleop PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+  target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
+  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs)
+  target_link_libraries(host_teleop SDL2)
 
-install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
+  install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
+endif()
+
 
 # === Lint/Tests ===
 if(BUILD_TESTING)
