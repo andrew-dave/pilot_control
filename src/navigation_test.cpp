@@ -74,7 +74,7 @@ private:
                     state_ = State::STOPPING_1;
                     RCLCPP_INFO(get_logger(), "Reached 1m, stopping...");
                 } else {
-                    cmd_vel_msg.linear.x = 0.5; // 0.5 m/s forward
+                    cmd_vel_msg.linear.x = 10; // 0.5 m/s forward
                     RCLCPP_INFO(get_logger(), "Going straight: %.2f/1.00m", distance_traveled);
                 }
                 break;
@@ -116,7 +116,7 @@ private:
                     state_ = State::STOPPING_2;
                     RCLCPP_INFO(get_logger(), "Reached 0.5m, stopping...");
                 } else {
-                    cmd_vel_msg.linear.x = 0.5; // 0.5 m/s forward
+                    cmd_vel_msg.linear.x = 10; // 0.5 m/s forward
                     RCLCPP_INFO(get_logger(), "Going straight: %.2f/0.50m", distance_traveled);
                 }
                 break;
@@ -146,7 +146,7 @@ private:
                     start_y_ = current_y_;
                     RCLCPP_INFO(get_logger(), "Turn 2 complete, going final 1m...");
                 } else {
-                    cmd_vel_msg.angular.z = 1.0; // 1 rad/s left turn
+                    cmd_vel_msg.angular.z = 25.0; // 1 rad/s left turn
                     RCLCPP_INFO(get_logger(), "Turning left 2: %.1f/90 degrees", angle_turned * 180 / M_PI);
                 }
                 break;
@@ -158,7 +158,7 @@ private:
                     state_ = State::STOPPING_FINAL;
                     RCLCPP_INFO(get_logger(), "Reached final 1m, stopping...");
                 } else {
-                    cmd_vel_msg.linear.x = 0.5; // 0.5 m/s forward
+                    cmd_vel_msg.linear.x = 10; // 0.5 m/s forward
                     RCLCPP_INFO(get_logger(), "Going straight final: %.2f/1.00m", distance_traveled);
                 }
                 break;

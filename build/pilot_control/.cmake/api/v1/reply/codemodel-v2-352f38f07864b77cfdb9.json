@@ -1,0 +1,115 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-fe61514b98b3d9f4d88a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "pilot_control",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "diff_drive_controller::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-diff_drive_controller-0b4deccc11197e6dec65.json",
+					"name" : "diff_drive_controller",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "host_teleop::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-host_teleop-8abc7d6c03652d80a6f8.json",
+					"name" : "host_teleop",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "navigation_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-navigation_test-93edf19cd65e6770ad65.json",
+					"name" : "navigation_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "pilot_control_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-pilot_control_uninstall-74a957b7cb72eb98217e.json",
+					"name" : "pilot_control_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "torque_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-torque_test-3a8cbe706bc6efb93fb5.json",
+					"name" : "torque_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "turn_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-turn_test-54fa4e181f354b1e8b3f.json",
+					"name" : "turn_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-6a23b2c2810c9ede9584.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control",
+		"source" : "/home/avenblake/pilot_ws/src/roofus_pilot1"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

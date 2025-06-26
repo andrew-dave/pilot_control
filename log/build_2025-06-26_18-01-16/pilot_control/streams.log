@@ -1,0 +1,100 @@
+[0.046s] Invoking command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/avenblake/pilot_ws/src/roofus_pilot1 -DCMAKE_INSTALL_PREFIX=/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control
+[0.377s] -- The C compiler identification is GNU 11.4.0
+[0.605s] -- The CXX compiler identification is GNU 11.4.0
+[0.639s] -- Detecting C compiler ABI info
+[0.982s] -- Detecting C compiler ABI info - done
+[0.992s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.998s] -- Detecting C compile features
+[0.998s] -- Detecting C compile features - done
+[1.004s] -- Detecting CXX compiler ABI info
+[1.333s] -- Detecting CXX compiler ABI info - done
+[1.345s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[1.345s] -- Detecting CXX compile features
+[1.346s] -- Detecting CXX compile features - done
+[1.363s] -- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.851s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[2.140s] -- Found rclcpp: 16.0.12 (/opt/ros/humble/share/rclcpp/cmake)
+[2.228s] -- Found rosidl_generator_c: 3.1.6 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[2.240s] -- Found rosidl_adapter: 3.1.6 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[2.261s] -- Found rosidl_generator_cpp: 3.1.6 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[2.291s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.326s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.437s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[2.445s] -- Found rmw_cyclonedds_cpp: 1.3.4 (/opt/ros/humble/share/rmw_cyclonedds_cpp/cmake)
+[2.526s] -- Using RMW implementation 'rmw_cyclonedds_cpp' as default
+[2.558s] -- Looking for pthread.h
+[2.881s] -- Looking for pthread.h - found
+[2.881s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[3.174s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[3.176s] -- Found Threads: TRUE  
+[3.318s] -- Found geometry_msgs: 4.8.0 (/opt/ros/humble/share/geometry_msgs/cmake)
+[3.345s] -- Found nav_msgs: 4.8.0 (/opt/ros/humble/share/nav_msgs/cmake)
+[3.380s] -- Found tf2_ros: 0.25.12 (/opt/ros/humble/share/tf2_ros/cmake)
+[3.589s] -- Found odrive_can: 0.0.1 (/home/avenblake/pilot_ws/install/odrive_can/share/odrive_can/cmake)
+[3.634s] [33mCMake Warning at CMakeLists.txt:32 (message):
+[3.634s]   serial not found — skipping client_teleop_serial.cpp
+[3.634s] 
+[3.634s] [0m
+[3.655s] -- Found ament_lint_auto: 0.12.12 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[3.925s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[3.925s] -- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/avenblake/pilot_ws/src/roofus_pilot1/include>
+[3.925s] -- Configured cppcheck exclude dirs and/or files: 
+[3.933s] -- Added test 'flake8' to check Python code syntax and style conventions
+[3.942s] -- Added test 'lint_cmake' to check CMake code style
+[3.948s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[3.982s] -- Added test 'uncrustify' to check C / C++ code style
+[3.982s] -- Configured uncrustify additional arguments: 
+[3.987s] -- Added test 'xmllint' to check XML markup files
+[3.992s] -- Configuring done
+[4.066s] -- Generating done
+[4.097s] -- Build files have been written to: /home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control
+[4.156s] Invoked command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/avenblake/pilot_ws/src/roofus_pilot1 -DCMAKE_INSTALL_PREFIX=/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control
+[4.164s] Invoking command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control -- -j12 -l12
+[4.468s] [ 10%] [32mBuilding CXX object CMakeFiles/navigation_test.dir/src/navigation_test.cpp.o[0m
+[4.468s] [ 40%] [32mBuilding CXX object CMakeFiles/turn_test.dir/src/turn_test.cpp.o[0m
+[4.468s] [ 40%] [32mBuilding CXX object CMakeFiles/diff_drive_controller.dir/src/diff_drive_controller.cpp.o[0m
+[4.468s] [ 40%] [32mBuilding CXX object CMakeFiles/host_teleop.dir/src/host_teleop.cpp.o[0m
+[4.481s] [ 50%] [32mBuilding CXX object CMakeFiles/torque_test.dir/src/torque_test.cpp.o[0m
+[22.291s] [ 60%] [32m[1mLinking CXX executable turn_test[0m
+[22.520s] [ 70%] [32m[1mLinking CXX executable torque_test[0m
+[23.896s] [ 70%] Built target turn_test
+[24.209s] [ 70%] Built target torque_test
+[29.150s] [ 80%] [32m[1mLinking CXX executable host_teleop[0m
+[31.307s] [ 80%] Built target host_teleop
+[38.871s] [ 90%] [32m[1mLinking CXX executable navigation_test[0m
+[41.163s] [ 90%] Built target navigation_test
+[52.838s] [100%] [32m[1mLinking CXX executable diff_drive_controller[0m
+[56.463s] [100%] Built target diff_drive_controller
+[56.510s] Invoked command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control -- -j12 -l12
+[56.552s] Invoking command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control
+[56.588s] -- Install configuration: ""
+[56.589s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/diff_drive_controller
+[56.605s] -- Set runtime path of "/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/diff_drive_controller" to ""
+[56.606s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/turn_test
+[56.609s] -- Set runtime path of "/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/turn_test" to ""
+[56.609s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/torque_test
+[56.612s] -- Set runtime path of "/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/torque_test" to ""
+[56.612s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/navigation_test
+[56.621s] -- Set runtime path of "/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/navigation_test" to ""
+[56.622s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/host_teleop
+[56.625s] -- Set runtime path of "/home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/lib/pilot_control/host_teleop" to ""
+[56.626s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/launch
+[56.626s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/launch/teleop.launch.py
+[56.626s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/launch/laptop_teleop.launch.py
+[56.626s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/launch/robot.launch.py
+[56.627s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/ament_index/resource_index/package_run_dependencies/pilot_control
+[56.627s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/ament_index/resource_index/parent_prefix_path/pilot_control
+[56.627s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/environment/ament_prefix_path.sh
+[56.628s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/environment/ament_prefix_path.dsv
+[56.628s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/environment/path.sh
+[56.628s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/environment/path.dsv
+[56.628s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/local_setup.bash
+[56.628s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/local_setup.sh
+[56.629s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/local_setup.zsh
+[56.629s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/local_setup.dsv
+[56.629s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/package.dsv
+[56.630s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/ament_index/resource_index/packages/pilot_control
+[56.630s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/cmake/pilot_controlConfig.cmake
+[56.630s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/cmake/pilot_controlConfig-version.cmake
+[56.631s] -- Installing: /home/avenblake/pilot_ws/src/roofus_pilot1/install/pilot_control/share/pilot_control/package.xml
+[56.641s] Invoked command in '/home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/avenblake/pilot_ws/src/roofus_pilot1/build/pilot_control
