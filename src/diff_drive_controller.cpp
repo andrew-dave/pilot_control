@@ -30,16 +30,13 @@ public:
         this->declare_parameter<double>("wheel_base", 0.315);
         this->declare_parameter<double>("velocity_multiplier", 1.0);
         this->declare_parameter<double>("turn_speed_multiplier", 1.0);
-        this->declare_parameter<double>("torque_feedforward", 0.5);
         wheel_radius_ = this->get_parameter("wheel_radius").as_double();
         wheel_base_ = this->get_parameter("wheel_base").as_double();
         velocity_multiplier_ = this->get_parameter("velocity_multiplier").as_double();
         turn_speed_multiplier_ = this->get_parameter("turn_speed_multiplier").as_double();
-        torque_feedforward_ = this->get_parameter("torque_feedforward").as_double();
         RCLCPP_INFO(this->get_logger(), "Wheel Radius: %f m, Wheel Base: %f m", wheel_radius_, wheel_base_);
         RCLCPP_INFO(this->get_logger(), "Velocity Multiplier: %f", velocity_multiplier_);
         RCLCPP_INFO(this->get_logger(), "Turn Speed Multiplier: %f", turn_speed_multiplier_);
-        RCLCPP_INFO(this->get_logger(), "Torque Feedforward: %f Nm", torque_feedforward_);
 
         odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
         left_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
@@ -115,25 +112,17 @@ private:
                 angular_vel, left_wheel_mps, right_wheel_mps, left_motor_turns_per_sec, right_motor_turns_per_sec);
         }
         
-        // Calculate torque feedforward for turning
-        double torque_ff = 0.0;
-        if (std::abs(angular_vel) > 0.1) {
-            // Apply torque feedforward proportional to angular velocity magnitude
-            torque_ff = torque_feedforward_ * std::abs(angular_vel);
-            RCLCPP_INFO(this->get_logger(), "Applying torque feedforward: %.3f Nm", torque_ff);
-        }
-        
         auto left_msg = odrive_can::msg::ControlMessage();
         left_msg.control_mode = 2; // VELOCITY_CONTROL
         left_msg.input_mode = 2;   // VEL_RAMP
         left_msg.input_vel = -left_motor_turns_per_sec;  // Left motor inverted
-        left_msg.input_torque = -torque_ff;  // Torque feedforward (negative for left motor)
+        left_msg.input_torque = 0.0;  // Torque feedforward (negative for left motor)
         
         auto right_msg = odrive_can::msg::ControlMessage();
         right_msg.control_mode = 2; // VELOCITY_CONTROL
         right_msg.input_mode = 2;   // VEL_RAMP
         right_msg.input_vel = right_motor_turns_per_sec;
-        right_msg.input_torque = torque_ff;  // Torque feedforward
+        right_msg.input_torque = 0.0;  // Torque feedforward
         
         left_motor_pub_->publish(left_msg);
         right_motor_pub_->publish(right_msg);
@@ -193,7 +182,7 @@ private:
         last_time_ = current_time;
     }
 
-    double wheel_radius_, wheel_base_, velocity_multiplier_, turn_speed_multiplier_, torque_feedforward_;
+    double wheel_radius_, wheel_base_, velocity_multiplier_, turn_speed_multiplier_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_;
