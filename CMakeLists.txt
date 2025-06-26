@@ -44,6 +44,10 @@ add_executable(torque_test src/torque_test.cpp)
 ament_target_dependencies(torque_test rclcpp geometry_msgs)
 install(TARGETS torque_test DESTINATION lib/${PROJECT_NAME})
 
+add_executable(navigation_test src/navigation_test.cpp)
+ament_target_dependencies(navigation_test rclcpp geometry_msgs nav_msgs)
+install(TARGETS navigation_test DESTINATION lib/${PROJECT_NAME})
+
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
   target_include_directories(host_teleop PUBLIC
