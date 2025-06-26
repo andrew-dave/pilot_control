@@ -1,4 +1,0 @@
-source;share/pilot_control/local_setup.bash
-source;share/pilot_control/local_setup.dsv
-source;share/pilot_control/local_setup.sh
-source;share/pilot_control/local_setup.zsh

@@ -1,4 +1,0 @@
-[33mCMake Warning at CMakeLists.txt:32 (message):
-  serial not found — skipping client_teleop_serial.cpp
-
-[0m
