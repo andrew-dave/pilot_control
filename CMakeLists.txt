@@ -36,6 +36,10 @@ add_executable(diff_drive_controller src/diff_drive_controller.cpp)
 ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
 install(TARGETS diff_drive_controller DESTINATION lib/${PROJECT_NAME})
 
+add_executable(turn_test src/turn_test.cpp)
+ament_target_dependencies(turn_test rclcpp geometry_msgs)
+install(TARGETS turn_test DESTINATION lib/${PROJECT_NAME})
+
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
   target_include_directories(host_teleop PUBLIC

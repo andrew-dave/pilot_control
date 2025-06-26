@@ -83,19 +83,45 @@ private:
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
         double linear_vel = msg->linear.x;
         double angular_vel = msg->angular.z;
-        double right_wheel_mps = linear_vel + (angular_vel * wheel_base_ / 2.0 * turn_speed_multiplier_);
-        double left_wheel_mps = linear_vel - (angular_vel * wheel_base_ / 2.0 * turn_speed_multiplier_);
+        
+        // Calculate wheel velocities in m/s
+        double right_wheel_mps = linear_vel + (angular_vel * wheel_base_ / 2.0);
+        double left_wheel_mps = linear_vel - (angular_vel * wheel_base_ / 2.0);
+        
+        // Apply turn speed multiplier to the angular component only
+        double angular_component_right = (angular_vel * wheel_base_ / 2.0) * turn_speed_multiplier_;
+        double angular_component_left = -(angular_vel * wheel_base_ / 2.0) * turn_speed_multiplier_;
+        
+        // Recalculate with turn speed multiplier
+        right_wheel_mps = linear_vel + angular_component_right;
+        left_wheel_mps = linear_vel + angular_component_left;
+        
+        // Convert to motor turns per second
         double wheel_circumference = 2.0 * M_PI * wheel_radius_;
         double right_motor_turns_per_sec = right_wheel_mps / wheel_circumference;
         double left_motor_turns_per_sec = left_wheel_mps / wheel_circumference;
+        
+        // Apply overall velocity multiplier
+        right_motor_turns_per_sec *= velocity_multiplier_;
+        left_motor_turns_per_sec *= velocity_multiplier_;
+        
+        // Debug output for turning
+        if (std::abs(angular_vel) > 0.1) {
+            RCLCPP_INFO(this->get_logger(), 
+                "Turn: ang_vel=%.2f, left_mps=%.2f, right_mps=%.2f, left_turns=%.2f, right_turns=%.2f", 
+                angular_vel, left_wheel_mps, right_wheel_mps, left_motor_turns_per_sec, right_motor_turns_per_sec);
+        }
+        
         auto left_msg = odrive_can::msg::ControlMessage();
         left_msg.control_mode = 2; // VELOCITY_CONTROL
         left_msg.input_mode = 2;   // VEL_RAMP
-        left_msg.input_vel = -left_motor_turns_per_sec * velocity_multiplier_;
+        left_msg.input_vel = -left_motor_turns_per_sec;  // Left motor inverted
+        
         auto right_msg = odrive_can::msg::ControlMessage();
         right_msg.control_mode = 2; // VELOCITY_CONTROL
         right_msg.input_mode = 2;   // VEL_RAMP
-        right_msg.input_vel = right_motor_turns_per_sec * velocity_multiplier_;
+        right_msg.input_vel = right_motor_turns_per_sec;
+        
         left_motor_pub_->publish(left_msg);
         right_motor_pub_->publish(right_msg);
     }
@@ -112,13 +138,21 @@ private:
         rclcpp::Time current_time = this->get_clock()->now();
         double dt = (current_time - last_time_).seconds();
         double wheel_circumference = 2.0 * M_PI * wheel_radius_;
-        double left_wheel_mps = (current_left_vel_ / velocity_multiplier_) * wheel_circumference;
-        double right_wheel_mps = (current_right_vel_ / velocity_multiplier_) * wheel_circumference;
+        
+        // Convert motor turns/sec back to wheel m/s
+        // Note: current_left_vel_ and current_right_vel_ are already in turns/sec from the motor feedback
+        double left_wheel_mps = current_left_vel_ * wheel_circumference;
+        double right_wheel_mps = current_right_vel_ * wheel_circumference;
+        
+        // Calculate robot linear and angular velocity
         double linear_vel = (left_wheel_mps + right_wheel_mps) / 2.0;
         double angular_vel = (right_wheel_mps - left_wheel_mps) / wheel_base_;
+        
+        // Update position
         x_ += linear_vel * cos(theta_) * dt;
         y_ += linear_vel * sin(theta_) * dt;
         theta_ += angular_vel * dt;
+        
         nav_msgs::msg::Odometry odom_msg;
         odom_msg.header.stamp = current_time;
         odom_msg.header.frame_id = "odom";
@@ -134,6 +168,7 @@ private:
         odom_msg.twist.twist.linear.x = linear_vel;
         odom_msg.twist.twist.angular.z = angular_vel;
         odom_pub_->publish(odom_msg);
+        
         geometry_msgs::msg::TransformStamped t;
         t.header.stamp = current_time;
         t.header.frame_id = "odom";
