@@ -10,12 +10,11 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- Always required -->
-  <build_depend>rclcpp</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-
-  <exec_depend>rclcpp</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>odrive_can</depend>
 
   <!-- Optional: required only for LattePanda serial bridge -->
   <build_depend>serial</build_depend>

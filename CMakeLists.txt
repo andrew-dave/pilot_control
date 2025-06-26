@@ -9,6 +9,9 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(odrive_can REQUIRED)
 
 
 # === Try to find serial (optional) ===
@@ -29,13 +32,17 @@ else()
   message(WARNING "serial not found — skipping client_teleop_serial.cpp")
 endif()
 
+add_executable(diff_drive_controller src/diff_drive_controller.cpp)
+ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
+install(TARGETS diff_drive_controller DESTINATION lib/${PROJECT_NAME})
+
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
   target_include_directories(host_teleop PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
   target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
-  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs)
+  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs odrive_can)
   target_link_libraries(host_teleop SDL2)
 
   install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
@@ -43,6 +50,10 @@ else()
   message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
 endif()
 
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
 
 # === Lint/Tests ===
 if(BUILD_TESTING)
