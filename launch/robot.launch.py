@@ -30,6 +30,11 @@ def generate_launch_description():
         default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
+    declare_torque_feedforward_arg = DeclareLaunchArgument(
+        'torque_feedforward',
+        default_value='0.5',
+        description='Torque feedforward to help overcome friction when turning (Nm).'
+    )
 
     # Node for the left motor
     left_odrive_node = Node(
@@ -66,7 +71,8 @@ def generate_launch_description():
             'wheel_radius': LaunchConfiguration('wheel_radius'),
             'wheel_base': LaunchConfiguration('wheel_base'),
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
-            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
+            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier'),
+            'torque_feedforward': LaunchConfiguration('torque_feedforward')
         }],
         output='screen'
     )
@@ -77,6 +83,7 @@ def generate_launch_description():
         declare_can_interface_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
+        declare_torque_feedforward_arg,
         left_odrive_node,
         right_odrive_node,
         diff_drive_controller_node,

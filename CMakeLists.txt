@@ -40,6 +40,10 @@ add_executable(turn_test src/turn_test.cpp)
 ament_target_dependencies(turn_test rclcpp geometry_msgs)
 install(TARGETS turn_test DESTINATION lib/${PROJECT_NAME})
 
+add_executable(torque_test src/torque_test.cpp)
+ament_target_dependencies(torque_test rclcpp geometry_msgs)
+install(TARGETS torque_test DESTINATION lib/${PROJECT_NAME})
+
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
   target_include_directories(host_teleop PUBLIC
