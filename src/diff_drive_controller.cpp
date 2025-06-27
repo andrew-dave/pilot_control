@@ -30,13 +30,21 @@ public:
         this->declare_parameter<double>("wheel_base", 0.315);
         this->declare_parameter<double>("velocity_multiplier", 1.0);
         this->declare_parameter<double>("turn_speed_multiplier", 1.0);
+        this->declare_parameter<double>("velocity_deadband", 0.01);  // Minimum velocity to command
+        this->declare_parameter<int>("stop_timeout_ms", 500);  // Time to wait before stopping motors
+        
         wheel_radius_ = this->get_parameter("wheel_radius").as_double();
         wheel_base_ = this->get_parameter("wheel_base").as_double();
         velocity_multiplier_ = this->get_parameter("velocity_multiplier").as_double();
         turn_speed_multiplier_ = this->get_parameter("turn_speed_multiplier").as_double();
+        velocity_deadband_ = this->get_parameter("velocity_deadband").as_double();
+        stop_timeout_ms_ = this->get_parameter("stop_timeout_ms").as_int();
+        
         RCLCPP_INFO(this->get_logger(), "Wheel Radius: %f m, Wheel Base: %f m", wheel_radius_, wheel_base_);
         RCLCPP_INFO(this->get_logger(), "Velocity Multiplier: %f", velocity_multiplier_);
         RCLCPP_INFO(this->get_logger(), "Turn Speed Multiplier: %f", turn_speed_multiplier_);
+        RCLCPP_INFO(this->get_logger(), "Velocity Deadband: %f", velocity_deadband_);
+        RCLCPP_INFO(this->get_logger(), "Stop Timeout: %d ms", stop_timeout_ms_);
 
         odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
         left_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
@@ -55,6 +63,9 @@ public:
             this->arm_motors();
             this->arm_timer_->cancel();
         });
+        
+        // Initialize last command time
+        last_cmd_time_ = this->get_clock()->now();
     }
 
     void arm_motors() {
@@ -84,6 +95,29 @@ private:
         double linear_vel = msg->linear.x;
         double angular_vel = msg->angular.z;
         
+        // Update last command time
+        last_cmd_time_ = this->get_clock()->now();
+        
+        // Check if velocity commands are below deadband - send zero current
+        if (std::abs(linear_vel) < velocity_deadband_ && std::abs(angular_vel) < velocity_deadband_) {
+            // Send torque control with zero current to completely stop motor current
+            auto left_msg = odrive_can::msg::ControlMessage();
+            left_msg.control_mode = 1; // TORQUE_CONTROL
+            left_msg.input_mode = 1;   // PASSTHROUGH
+            left_msg.input_vel = 0.0;
+            left_msg.input_torque = 0.0;  // Zero current = zero torque
+            
+            auto right_msg = odrive_can::msg::ControlMessage();
+            right_msg.control_mode = 1; // TORQUE_CONTROL
+            right_msg.input_mode = 1;   // PASSTHROUGH
+            right_msg.input_vel = 0.0;
+            right_msg.input_torque = 0.0;  // Zero current = zero torque
+            
+            left_motor_pub_->publish(left_msg);
+            right_motor_pub_->publish(right_msg);
+            return;
+        }
+        
         // Calculate wheel velocities in m/s
         double right_wheel_mps = linear_vel + (angular_vel * wheel_base_ / 2.0);
         double left_wheel_mps = linear_vel - (angular_vel * wheel_base_ / 2.0);
@@ -112,11 +146,12 @@ private:
                 angular_vel, left_wheel_mps, right_wheel_mps, left_motor_turns_per_sec, right_motor_turns_per_sec);
         }
         
+        // Use velocity control for movement
         auto left_msg = odrive_can::msg::ControlMessage();
         left_msg.control_mode = 2; // VELOCITY_CONTROL
         left_msg.input_mode = 2;   // VEL_RAMP
         left_msg.input_vel = -left_motor_turns_per_sec;  // Left motor inverted
-        left_msg.input_torque = 0.0;  // Torque feedforward (negative for left motor)
+        left_msg.input_torque = 0.0;  // Torque feedforward
         
         auto right_msg = odrive_can::msg::ControlMessage();
         right_msg.control_mode = 2; // VELOCITY_CONTROL
@@ -182,7 +217,8 @@ private:
         last_time_ = current_time;
     }
 
-    double wheel_radius_, wheel_base_, velocity_multiplier_, turn_speed_multiplier_;
+    double wheel_radius_, wheel_base_, velocity_multiplier_, turn_speed_multiplier_, velocity_deadband_;
+    int stop_timeout_ms_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_;
@@ -190,7 +226,7 @@ private:
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_;
     rclcpp::TimerBase::SharedPtr odom_timer_, arm_timer_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    rclcpp::Time last_time_;
+    rclcpp::Time last_time_, last_cmd_time_;
     double current_left_vel_ = 0.0, current_right_vel_ = 0.0;
     double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
 };
