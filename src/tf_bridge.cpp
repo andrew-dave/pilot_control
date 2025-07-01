@@ -1,5 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
-#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
 class TFBridge : public rclcpp::Node
@@ -7,11 +7,21 @@ class TFBridge : public rclcpp::Node
 public:
     TFBridge() : Node("tf_bridge")
     {
-        // Create static transform broadcaster
-        tf_broadcaster_ = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+        // Create transform broadcaster (not static, so it publishes continuously)
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
         
-        // Publish the transform from camera_init to base_link
-        // This connects the two TF trees
+        // Create timer to publish transform periodically
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(100),  // 10 Hz
+            std::bind(&TFBridge::publish_transform, this)
+        );
+        
+        RCLCPP_INFO(this->get_logger(), "TF Bridge started - publishing transform from camera_init to base_link");
+    }
+
+private:
+    void publish_transform()
+    {
         geometry_msgs::msg::TransformStamped transform;
         transform.header.stamp = this->get_clock()->now();
         transform.header.frame_id = "camera_init";
@@ -28,12 +38,10 @@ public:
         
         // Send the transform
         tf_broadcaster_->sendTransform(transform);
-        
-        RCLCPP_INFO(this->get_logger(), "Published static transform from camera_init to base_link");
     }
 
-private:
-    std::unique_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+    rclcpp::TimerBase::SharedPtr timer_;
 };
 
 int main(int argc, char** argv)
