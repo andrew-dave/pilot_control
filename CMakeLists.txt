@@ -52,6 +52,10 @@ add_executable(tf_bridge src/tf_bridge.cpp)
 ament_target_dependencies(tf_bridge rclcpp tf2_ros geometry_msgs)
 install(TARGETS tf_bridge DESTINATION lib/${PROJECT_NAME})
 
+add_executable(map_relay src/map_relay.cpp)
+ament_target_dependencies(map_relay rclcpp nav_msgs)
+install(TARGETS map_relay DESTINATION lib/${PROJECT_NAME})
+
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
   target_include_directories(host_teleop PUBLIC

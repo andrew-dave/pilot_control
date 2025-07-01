@@ -22,16 +22,21 @@ def generate_launch_description():
             name='tf_bridge'
         ),
         
+        # Launch map relay to bridge QoS mismatch
+        Node(
+            package='pilot_control',
+            executable='map_relay',
+            output='screen',
+            name='map_relay'
+        ),
+        
         # Launch individual Nav2 components instead of full bringup
         Node(
             package='nav2_controller',
             executable='controller_server',
             output='screen',
             parameters=[nav2_params_file],
-            arguments=['--ros-args', '--log-level', 'info'],
-            remappings=[
-                ('/map', '/Laser_map')
-            ]
+            arguments=['--ros-args', '--log-level', 'info']
         ),
         
         Node(
@@ -39,10 +44,7 @@ def generate_launch_description():
             executable='planner_server',
             output='screen',
             parameters=[nav2_params_file],
-            arguments=['--ros-args', '--log-level', 'info'],
-            remappings=[
-                ('/map', '/Laser_map')
-            ]
+            arguments=['--ros-args', '--log-level', 'info']
         ),
         
         Node(
