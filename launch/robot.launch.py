@@ -12,7 +12,7 @@ def generate_launch_description():
     )
     declare_wheel_base_arg = DeclareLaunchArgument(
         'wheel_base',
-        default_value='0.315',
+        default_value='0.32',
         description='Distance between the two wheels in meters.'
     )
     declare_can_interface_arg = DeclareLaunchArgument(
@@ -27,7 +27,7 @@ def generate_launch_description():
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='1.5',
+        default_value='0.5',
         description='A multiplier to tune the robot turning speed.'
     )
 
