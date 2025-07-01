@@ -14,6 +14,14 @@ def generate_launch_description():
     )
     
     return LaunchDescription([
+        # Launch TF bridge to connect camera_init and base_link
+        Node(
+            package='pilot_control',
+            executable='tf_bridge',
+            output='screen',
+            name='tf_bridge'
+        ),
+        
         # Launch individual Nav2 components instead of full bringup
         Node(
             package='nav2_controller',
