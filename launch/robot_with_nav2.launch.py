@@ -23,14 +23,44 @@ def generate_launch_description():
             ])
         ),
         
-        # Launch Nav2 bringup using the launch file directly
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                '/opt/ros/humble/share/nav2_bringup/launch/bringup_launch.py'
-            ]),
-            launch_arguments={
-                'params_file': nav2_params_file,
-                'use_sim_time': 'false'
-            }.items()
+        # Launch individual Nav2 components instead of full bringup
+        Node(
+            package='nav2_controller',
+            executable='controller_server',
+            output='screen',
+            parameters=[nav2_params_file],
+            arguments=['--ros-args', '--log-level', 'info']
+        ),
+        
+        Node(
+            package='nav2_planner',
+            executable='planner_server',
+            output='screen',
+            parameters=[nav2_params_file],
+            arguments=['--ros-args', '--log-level', 'info']
+        ),
+        
+        Node(
+            package='nav2_behaviors',
+            executable='behavior_server',
+            output='screen',
+            parameters=[nav2_params_file],
+            arguments=['--ros-args', '--log-level', 'info']
+        ),
+        
+        Node(
+            package='nav2_bt_navigator',
+            executable='bt_navigator',
+            output='screen',
+            parameters=[nav2_params_file],
+            arguments=['--ros-args', '--log-level', 'info']
+        ),
+        
+        Node(
+            package='nav2_lifecycle_manager',
+            executable='lifecycle_manager',
+            output='screen',
+            parameters=[nav2_params_file],
+            arguments=['--ros-args', '--log-level', 'info']
         ),
     ]) 
