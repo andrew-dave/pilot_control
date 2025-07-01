@@ -109,6 +109,11 @@ private:
         double left_wheel_mps  = linear_vel - (angular_vel * wheel_base_ / 2.0);
 
         // Apply turn speed multiplier to rotational component only
+        // This line computes the additional rotational speed to apply to each wheel
+        // based on the turn_speed_multiplier_. It calculates the rotational component
+        // of the wheel speed (from angular velocity and wheel base), then scales it
+        // by (turn_speed_multiplier_ - 1.0) so that when turn_speed_multiplier_ = 1.0,
+        // there is no effect, but for values >1.0 or <1.0, the turning speed is increased or decreased.
         double rot_term = (angular_vel * wheel_base_ / 2.0) * (turn_speed_multiplier_ - 1.0);
         right_wheel_mps += rot_term;
         left_wheel_mps  -= rot_term;
@@ -153,8 +158,8 @@ private:
         double wheel_circumference = 2.0 * M_PI * wheel_radius_;
 
         // Convert **motor** turns/s to **wheel** m/s
-        double left_wheel_mps  = (-current_left_vel_ / gear_ratio_)  * wheel_circumference;
-        double right_wheel_mps = (current_right_vel_ / gear_ratio_) * wheel_circumference;
+        double left_wheel_mps  = (current_left_vel_ / gear_ratio_)  * wheel_circumference;
+        double right_wheel_mps = (-current_right_vel_ / gear_ratio_) * wheel_circumference;
 
         double linear_vel  = (left_wheel_mps + right_wheel_mps) / 2.0;     // m/s
         double angular_vel = (right_wheel_mps - left_wheel_mps) / wheel_base_; // rad/s

@@ -27,7 +27,7 @@ def generate_launch_description():
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='1.0',
+        default_value='1.5',
         description='A multiplier to tune the robot turning speed.'
     )
 
