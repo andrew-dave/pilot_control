@@ -153,7 +153,7 @@ private:
         double wheel_circumference = 2.0 * M_PI * wheel_radius_;
 
         // Convert **motor** turns/s to **wheel** m/s
-        double left_wheel_mps  = (current_left_vel_ / gear_ratio_)  * wheel_circumference;
+        double left_wheel_mps  = (-current_left_vel_ / gear_ratio_)  * wheel_circumference;
         double right_wheel_mps = (current_right_vel_ / gear_ratio_) * wheel_circumference;
 
         double linear_vel  = (left_wheel_mps + right_wheel_mps) / 2.0;     // m/s
