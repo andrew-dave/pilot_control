@@ -20,7 +20,10 @@ def generate_launch_description():
             executable='controller_server',
             output='screen',
             parameters=[nav2_params_file],
-            arguments=['--ros-args', '--log-level', 'info']
+            arguments=['--ros-args', '--log-level', 'info'],
+            remappings=[
+                ('/map', '/Laser_map')
+            ]
         ),
         
         Node(
@@ -28,7 +31,10 @@ def generate_launch_description():
             executable='planner_server',
             output='screen',
             parameters=[nav2_params_file],
-            arguments=['--ros-args', '--log-level', 'info']
+            arguments=['--ros-args', '--log-level', 'info'],
+            remappings=[
+                ('/map', '/Laser_map')
+            ]
         ),
         
         Node(
