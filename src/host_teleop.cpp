@@ -23,6 +23,14 @@ public:
     }
 
 private:
+    void arm_motors() {
+        RCLCPP_INFO(get_logger(), "Arming motors by keypress (E)...");
+        auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
+        request->axis_requested_state = 8; // AXIS_STATE_CLOSED_LOOP
+        left_axis_client_->async_send_request(request);
+        right_axis_client_->async_send_request(request);
+    }
+
     void disarm_motors() {
         RCLCPP_INFO(get_logger(), "Disarming motors by keypress (Q)...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
@@ -38,7 +46,9 @@ private:
             if (event.type == SDL_QUIT) {
                 rclcpp::shutdown();
             } else if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_q) {
+                if (event.key.keysym.sym == SDLK_e) {
+                    arm_motors();
+                } else if (event.key.keysym.sym == SDLK_q) {
                     disarm_motors();
                 }
             }
@@ -52,9 +62,9 @@ private:
             cmd_vel_msg.linear.x = -1.0; // Backward
         }
         if (keys[SDL_SCANCODE_A]) {
-            cmd_vel_msg.angular.z = -2.0; // Left
+            cmd_vel_msg.angular.z = -4.5; // Left
         } else if (keys[SDL_SCANCODE_D]) {
-            cmd_vel_msg.angular.z = 2.0; // Right
+            cmd_vel_msg.angular.z = 4.5; // Right
         }
 
         cmd_vel_pub_->publish(cmd_vel_msg);
