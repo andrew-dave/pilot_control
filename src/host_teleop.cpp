@@ -11,7 +11,7 @@ public:
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        save_map_client_ = create_client<std_srvs::srv::Trigger>("/pcd_saver/save_map");
+        save_map_client_ = create_client<std_srvs::srv::Trigger>("/save_map");
         shutdown_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
@@ -27,13 +27,13 @@ public:
         
         // Check if services are available
         RCLCPP_INFO(get_logger(), "Checking service availability...");
-        if (save_map_client_->wait_for_service(std::chrono::seconds(3))) {
+        if (save_map_client_->wait_for_service(std::chrono::seconds(1))) {
             RCLCPP_INFO(get_logger(), "✓ Save map service is available");
         } else {
             RCLCPP_ERROR(get_logger(), "✗ Save map service is NOT available");
         }
         
-        if (shutdown_client_->wait_for_service(std::chrono::seconds(3))) {
+        if (shutdown_client_->wait_for_service(std::chrono::seconds(1))) {
             RCLCPP_INFO(get_logger(), "✓ Shutdown service is available");
         } else {
             RCLCPP_ERROR(get_logger(), "✗ Shutdown service is NOT available");
@@ -67,12 +67,12 @@ private:
         
         // Check if services are still available before calling them
         RCLCPP_INFO(get_logger(), "Checking service availability before calling...");
-        if (!save_map_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!save_map_client_->wait_for_service(std::chrono::milliseconds(500))) {
             RCLCPP_ERROR(get_logger(), "✗ Save map service is not available!");
             return;
         }
         
-        if (!shutdown_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!shutdown_client_->wait_for_service(std::chrono::milliseconds(500))) {
             RCLCPP_ERROR(get_logger(), "✗ Shutdown service is not available!");
             return;
         }
@@ -83,8 +83,8 @@ private:
         auto save_future = save_map_client_->async_send_request(save_request);
         
         RCLCPP_INFO(get_logger(), "Waiting for save map response...");
-        // Wait for the save to complete
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future) == rclcpp::FutureReturnCode::SUCCESS) {
+        // Wait for the save to complete with shorter timeout
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto save_response = save_future.get();
             if (save_response->success) {
                 RCLCPP_INFO(get_logger(), "✓ Map saved successfully: %s", save_response->message.c_str());
@@ -101,8 +101,8 @@ private:
         auto shutdown_future = shutdown_client_->async_send_request(shutdown_request);
         
         RCLCPP_INFO(get_logger(), "Waiting for shutdown response...");
-        // Wait for the shutdown to complete
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future) == rclcpp::FutureReturnCode::SUCCESS) {
+        // Wait for the shutdown to complete with shorter timeout
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto shutdown_response = shutdown_future.get();
             if (shutdown_response->success) {
                 RCLCPP_INFO(get_logger(), "✓ Mapping nodes shutdown successfully: %s", shutdown_response->message.c_str());
