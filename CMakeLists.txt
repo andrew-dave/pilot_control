@@ -12,6 +12,16 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(odrive_can REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
 
 
 # === Try to find serial (optional) ===
@@ -36,25 +46,21 @@ add_executable(diff_drive_controller src/diff_drive_controller.cpp)
 ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
 install(TARGETS diff_drive_controller DESTINATION lib/${PROJECT_NAME})
 
-add_executable(turn_test src/turn_test.cpp)
-ament_target_dependencies(turn_test rclcpp geometry_msgs)
-install(TARGETS turn_test DESTINATION lib/${PROJECT_NAME})
 
-add_executable(torque_test src/torque_test.cpp)
-ament_target_dependencies(torque_test rclcpp geometry_msgs)
-install(TARGETS torque_test DESTINATION lib/${PROJECT_NAME})
 
-add_executable(navigation_test src/navigation_test.cpp)
-ament_target_dependencies(navigation_test rclcpp geometry_msgs nav_msgs)
-install(TARGETS navigation_test DESTINATION lib/${PROJECT_NAME})
-
-add_executable(tf_bridge src/tf_bridge.cpp)
-ament_target_dependencies(tf_bridge rclcpp tf2_ros geometry_msgs)
-install(TARGETS tf_bridge DESTINATION lib/${PROJECT_NAME})
 
 add_executable(map_relay src/map_relay.cpp)
 ament_target_dependencies(map_relay rclcpp nav_msgs)
 install(TARGETS map_relay DESTINATION lib/${PROJECT_NAME})
+
+add_executable(pcd_saver src/pcd_saver.cpp)
+ament_target_dependencies(pcd_saver rclcpp sensor_msgs std_srvs pcl_conversions)
+target_include_directories(pcd_saver PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(pcd_saver ${PCL_LIBRARIES})
+add_definitions(${PCL_DEFINITIONS})
+install(TARGETS pcd_saver DESTINATION lib/${PROJECT_NAME})
+
+
 
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
@@ -62,7 +68,7 @@ if(SDL2_FOUND)
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
   target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
-  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs odrive_can)
+  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs odrive_can std_srvs)
   target_link_libraries(host_teleop SDL2)
 
   install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})

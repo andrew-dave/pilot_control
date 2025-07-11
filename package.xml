@@ -15,6 +15,11 @@
   <depend>nav_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>odrive_can</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_sensor_msgs</depend>
 
   <!-- Optional: required only for LattePanda serial bridge -->
   <build_depend>serial</build_depend>
