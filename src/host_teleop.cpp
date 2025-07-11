@@ -24,6 +24,20 @@ public:
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
         RCLCPP_INFO(get_logger(), "  M - Save map and shutdown mapping");
+        
+        // Check if services are available
+        RCLCPP_INFO(get_logger(), "Checking service availability...");
+        if (save_map_client_->wait_for_service(std::chrono::seconds(3))) {
+            RCLCPP_INFO(get_logger(), "✓ Save map service is available");
+        } else {
+            RCLCPP_ERROR(get_logger(), "✗ Save map service is NOT available");
+        }
+        
+        if (shutdown_client_->wait_for_service(std::chrono::seconds(3))) {
+            RCLCPP_INFO(get_logger(), "✓ Shutdown service is available");
+        } else {
+            RCLCPP_ERROR(get_logger(), "✗ Shutdown service is NOT available");
+        }
     }
 
     ~TeleopNode() {
@@ -51,11 +65,24 @@ private:
     void save_map_and_shutdown() {
         RCLCPP_INFO(get_logger(), "=== M KEY PRESSED: SAVING MAP AND SHUTTING DOWN MAPPING ===");
         
+        // Check if services are still available before calling them
+        RCLCPP_INFO(get_logger(), "Checking service availability before calling...");
+        if (!save_map_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_ERROR(get_logger(), "✗ Save map service is not available!");
+            return;
+        }
+        
+        if (!shutdown_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_ERROR(get_logger(), "✗ Shutdown service is not available!");
+            return;
+        }
+        
         // First, save the map
-        RCLCPP_INFO(get_logger(), "Step 1: Saving map...");
+        RCLCPP_INFO(get_logger(), "Step 1: Calling save map service...");
         auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
         auto save_future = save_map_client_->async_send_request(save_request);
         
+        RCLCPP_INFO(get_logger(), "Waiting for save map response...");
         // Wait for the save to complete
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future) == rclcpp::FutureReturnCode::SUCCESS) {
             auto save_response = save_future.get();
@@ -69,10 +96,11 @@ private:
         }
         
         // Shutdown mapping nodes via service call
-        RCLCPP_INFO(get_logger(), "Step 2: Shutting down mapping nodes and launch process...");
+        RCLCPP_INFO(get_logger(), "Step 2: Calling shutdown service...");
         auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
         auto shutdown_future = shutdown_client_->async_send_request(shutdown_request);
         
+        RCLCPP_INFO(get_logger(), "Waiting for shutdown response...");
         // Wait for the shutdown to complete
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future) == rclcpp::FutureReturnCode::SUCCESS) {
             auto shutdown_response = shutdown_future.get();
