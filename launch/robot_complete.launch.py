@@ -99,7 +99,10 @@ def generate_launch_description():
             'publish_freq': 10.0,
             'output_data_type': 0,
             'frame_id': 'livox_frame',
-            'lvx_file_path': '/home/robot/livox_test.lvx'
+            'lvx_file_path': '/home/robot/livox_test.lvx',
+            'user_config_path': PathJoinSubstitution([
+                FindPackageShare('livox_ros_driver2'), 'config', 'MID360_config.json'
+            ])
         }]
     )
 
