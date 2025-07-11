@@ -133,11 +133,11 @@ def generate_launch_description():
                 'gyr_cov': 0.1,
                 'b_acc_cov': 0.0001,
                 'b_gyr_cov': 0.0001,
-                'fov_degree': 360,
+                'fov_degree': 360.0,
                 'det_range': 100.0,
                 'extrinsic_est_en': False,
                 'extrinsic_T': [0.0, 0.0, 0.0],
-                'extrinsic_R': [1, 0, 0, 0, 1, 0, 0, 0, 1]
+                'extrinsic_R': [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
             },
             'publish': {
                 'path_en': False,
