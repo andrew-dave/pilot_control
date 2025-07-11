@@ -126,26 +126,26 @@ def generate_launch_description():
     #     output='screen'
     # )
 
-    # PCD Saver Node
-    pcd_saver_node = Node(
-        package='pilot_control',
-        executable='pcd_saver',
-        name='pcd_saver',
-        output='screen',
-        parameters=[{
-            'save_directory': LaunchConfiguration('save_directory'),
-            'save_interval': 60,
-            'max_height': 2.0,
-            'min_height': 0.1,
-            'remove_outliers': True,
-            'outlier_std_dev': 1.0,
-            'voxel_size': 0.05,
-            'auto_save': True,
-            'save_on_laptop': True  # Save maps on laptop instead of robot
-        }]
-    )
+    # PCD Saver Node (commented out - now runs on laptop)
+    # pcd_saver_node = Node(
+    #     package='pilot_control',
+    #     executable='pcd_saver',
+    #     name='pcd_saver',
+    #     output='screen',
+    #     parameters=[{
+    #         'save_directory': LaunchConfiguration('save_directory'),
+    #         'save_interval': 60,
+    #         'max_height': 2.0,
+    #         'min_height': 0.1,
+    #         'remove_outliers': True,
+    #         'outlier_std_dev': 1.0,
+    #         'voxel_size': 0.05,
+    #         'auto_save': True,
+    #         'save_on_laptop': True  # Save maps on laptop instead of robot
+    #     }]
+    # )
 
-    # Shutdown Service Node
+    # Shutdown Service Node (for remote shutdown)
     shutdown_service_node = Node(
         package='pilot_control',
         executable='shutdown_service',
@@ -178,7 +178,6 @@ def generate_launch_description():
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
-                pcd_saver_node,
                 shutdown_service_node,
             ]
         ),

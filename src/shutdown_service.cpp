@@ -2,6 +2,8 @@
 #include <std_srvs/srv/trigger.hpp>
 #include <cstdlib>
 #include <chrono>
+#include <signal.h>
+#include <unistd.h>
 
 class ShutdownService : public rclcpp::Node {
 public:
@@ -22,7 +24,7 @@ private:
     {
         (void)request; // Unused parameter
         
-        RCLCPP_INFO(this->get_logger(), "Received shutdown request - killing mapping nodes...");
+        RCLCPP_INFO(this->get_logger(), "Received shutdown request - killing mapping nodes and signaling launch shutdown...");
         
         // Kill Fast-LIO2 node
         int result1 = system("ros2 node kill /laserMapping");
@@ -40,13 +42,41 @@ private:
             RCLCPP_WARN(this->get_logger(), "Failed to kill /livox_lidar_publisher (exit code: %d)", result2);
         }
         
+        // Kill Foxglove bridge
+        int result3 = system("ros2 node kill /foxglove_bridge");
+        if (result3 == 0) {
+            RCLCPP_INFO(this->get_logger(), "Successfully killed /foxglove_bridge");
+        } else {
+            RCLCPP_WARN(this->get_logger(), "Failed to kill /foxglove_bridge (exit code: %d)", result3);
+        }
+        
+        // Kill PCD saver if it's running on robot
+        int result4 = system("ros2 node kill /pcd_saver");
+        if (result4 == 0) {
+            RCLCPP_INFO(this->get_logger(), "Successfully killed /pcd_saver");
+        } else {
+            RCLCPP_DEBUG(this->get_logger(), "PCD saver not running on robot (expected if running on laptop)");
+        }
+        
         // Wait a moment for nodes to shutdown
         std::this_thread::sleep_for(std::chrono::seconds(2));
         
-        response->success = true;
-        response->message = "Mapping nodes shutdown complete";
+        // Signal the launch process to shutdown by sending SIGINT to the parent process
+        // This will gracefully shutdown the entire launch
+        pid_t parent_pid = getppid();
+        if (parent_pid > 1) {
+            RCLCPP_INFO(this->get_logger(), "Signaling launch process (PID: %d) to shutdown...", parent_pid);
+            kill(parent_pid, SIGINT);
+        } else {
+            // Fallback: try to kill the entire process group
+            RCLCPP_INFO(this->get_logger(), "Killing entire process group...");
+            killpg(0, SIGINT);
+        }
         
-        RCLCPP_INFO(this->get_logger(), "Shutdown request completed");
+        response->success = true;
+        response->message = "Mapping nodes killed and launch shutdown signaled. Differential drive controller remains active.";
+        
+        RCLCPP_INFO(this->get_logger(), "Shutdown request completed - only differential drive controller should remain active");
     }
 
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr shutdown_service_;

@@ -49,9 +49,10 @@ private:
     }
 
     void save_map_and_shutdown() {
-        RCLCPP_INFO(get_logger(), "Saving map and shutting down mapping system (M)...");
+        RCLCPP_INFO(get_logger(), "=== M KEY PRESSED: SAVING MAP AND SHUTTING DOWN MAPPING ===");
         
         // First, save the map
+        RCLCPP_INFO(get_logger(), "Step 1: Saving map...");
         auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
         auto save_future = save_map_client_->async_send_request(save_request);
         
@@ -59,16 +60,16 @@ private:
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future) == rclcpp::FutureReturnCode::SUCCESS) {
             auto save_response = save_future.get();
             if (save_response->success) {
-                RCLCPP_INFO(get_logger(), "Map saved successfully: %s", save_response->message.c_str());
+                RCLCPP_INFO(get_logger(), "✓ Map saved successfully: %s", save_response->message.c_str());
             } else {
-                RCLCPP_WARN(get_logger(), "Failed to save map: %s", save_response->message.c_str());
+                RCLCPP_WARN(get_logger(), "✗ Failed to save map: %s", save_response->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "Failed to call save map service");
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call save map service - service may not be available");
         }
         
         // Shutdown mapping nodes via service call
-        RCLCPP_INFO(get_logger(), "Shutting down mapping nodes...");
+        RCLCPP_INFO(get_logger(), "Step 2: Shutting down mapping nodes and launch process...");
         auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
         auto shutdown_future = shutdown_client_->async_send_request(shutdown_request);
         
@@ -76,15 +77,22 @@ private:
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future) == rclcpp::FutureReturnCode::SUCCESS) {
             auto shutdown_response = shutdown_future.get();
             if (shutdown_response->success) {
-                RCLCPP_INFO(get_logger(), "Mapping nodes shutdown successfully: %s", shutdown_response->message.c_str());
+                RCLCPP_INFO(get_logger(), "✓ Mapping nodes shutdown successfully: %s", shutdown_response->message.c_str());
+                RCLCPP_INFO(get_logger(), "✓ Launch process will shutdown. Only differential drive controller will remain active.");
+                RCLCPP_INFO(get_logger(), "✓ To restart mapping, run: ros2 launch pilot_control robot_complete.launch.py");
+                RCLCPP_INFO(get_logger(), "✓ To run only robot control: ros2 launch pilot_control diff_drive_only.launch.py");
             } else {
-                RCLCPP_WARN(get_logger(), "Failed to shutdown mapping nodes: %s", shutdown_response->message.c_str());
+                RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping nodes: %s", shutdown_response->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "Failed to call shutdown service");
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service - service may not be available");
         }
         
-        RCLCPP_INFO(get_logger(), "Mapping system shutdown complete. Map saved to ~/robot_maps/ on laptop");
+        RCLCPP_INFO(get_logger(), "=== MAPPING SHUTDOWN COMPLETE ===");
+        
+        // Close the teleop window after shutdown
+        RCLCPP_INFO(get_logger(), "Closing teleop window...");
+        rclcpp::shutdown();
     }
 
     void update() {
