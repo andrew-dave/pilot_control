@@ -65,13 +65,13 @@ def generate_launch_description():
                 'robot.launch.py'
             ])
         ]),
-        launch_arguments={
-            'wheel_radius': LaunchConfiguration('wheel_radius'),
-            'wheel_base': LaunchConfiguration('wheel_base'),
-            'can_interface': LaunchConfiguration('can_interface'),
-            'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
-            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
-        }.items()
+        launch_arguments=[
+            ('wheel_radius', LaunchConfiguration('wheel_radius')),
+            ('wheel_base', LaunchConfiguration('wheel_base')),
+            ('can_interface', LaunchConfiguration('can_interface')),
+            ('velocity_multiplier', LaunchConfiguration('velocity_multiplier')),
+            ('turn_speed_multiplier', LaunchConfiguration('turn_speed_multiplier'))
+        ]
     )
 
     # Foxglove Bridge
