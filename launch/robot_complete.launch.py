@@ -103,53 +103,16 @@ def generate_launch_description():
         }]
     )
 
-    # Fast-LIO2 Node
+    # Fast-LIO2 Node (exact copy from original launch file)
     fast_lio_node = Node(
         package='fast_lio',
         executable='fastlio_mapping',
-        name='laserMapping',
-        output='screen',
-        parameters=[{
-            'feature_extract_enable': False,
-            'point_filter_num': 2,
-            'max_iteration': 2,
-            'filter_size_surf': 0.3,
-            'filter_size_map': 0.3,
-            'cube_side_length': 500.0,
-            'runtime_pos_log_enable': False,
-            'common': {
-                'lid_topic': '/livox/lidar',
-                'imu_topic': '/livox/imu',
-                'time_sync_en': False,
-                'time_offset_lidar_to_imu': 0.0
-            },
-            'preprocess': {
-                'lidar_type': 1,
-                'scan_line': 4,
-                'blind': 0.5
-            },
-            'mapping': {
-                'acc_cov': 0.1,
-                'gyr_cov': 0.1,
-                'b_acc_cov': 0.0001,
-                'b_gyr_cov': 0.0001,
-                'fov_degree': 360.0,
-                'det_range': 100.0,
-                'extrinsic_est_en': False,
-                'extrinsic_T': [0.0, 0.0, 0.0],
-                'extrinsic_R': [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-            },
-            'publish': {
-                'path_en': False,
-                'scan_publish_en': True,
-                'dense_pub_en': True,
-                'scan_bodyframe_pub_en': True
-            },
-            'pcd_save': {
-                'pcd_save_en': True,
-                'interval': -1
-            }
-        }]
+        parameters=[PathJoinSubstitution([
+            FindPackageShare('fast_lio'), 'config', 'mid360.yaml'
+        ]), {
+            'use_sim_time': False
+        }],
+        output='screen'
     )
 
     # Map Relay Node (commented out - Fast-LIO2 doesn't publish occupancy grids)
