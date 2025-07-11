@@ -134,7 +134,6 @@ def generate_launch_description():
         executable='pcd_saver',
         name='pcd_saver',
         output='screen',
-        condition=LaunchConfiguration('enable_pcd_saver'),
         parameters=[{
             'save_directory': LaunchConfiguration('save_directory'),
             'save_interval': 60,
