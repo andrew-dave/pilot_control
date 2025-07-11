@@ -152,13 +152,13 @@ def generate_launch_description():
         }]
     )
 
-    # Map Relay Node
-    map_relay_node = Node(
-        package='pilot_control',
-        executable='map_relay',
-        name='map_relay',
-        output='screen'
-    )
+    # Map Relay Node (commented out - Fast-LIO2 doesn't publish occupancy grids)
+    # map_relay_node = Node(
+    #     package='pilot_control',
+    #     executable='map_relay',
+    #     name='map_relay',
+    #     output='screen'
+    # )
 
     # PCD Saver Node
     pcd_saver_node = Node(
@@ -204,7 +204,6 @@ def generate_launch_description():
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
-                map_relay_node,
                 pcd_saver_node,
             ]
         ),
