@@ -145,6 +145,14 @@ def generate_launch_description():
         }]
     )
 
+    # Shutdown Service Node
+    shutdown_service_node = Node(
+        package='pilot_control',
+        executable='shutdown_service',
+        name='shutdown_service',
+        output='screen'
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -171,6 +179,7 @@ def generate_launch_description():
                 livox_driver,
                 fast_lio_node,
                 pcd_saver_node,
+                shutdown_service_node,
             ]
         ),
     ]) 

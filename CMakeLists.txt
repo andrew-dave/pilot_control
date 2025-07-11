@@ -60,6 +60,10 @@ target_link_libraries(pcd_saver ${PCL_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS pcd_saver DESTINATION lib/${PROJECT_NAME})
 
+add_executable(shutdown_service src/shutdown_service.cpp)
+ament_target_dependencies(shutdown_service rclcpp std_srvs)
+install(TARGETS shutdown_service DESTINATION lib/${PROJECT_NAME})
+
 
 
 if(SDL2_FOUND)

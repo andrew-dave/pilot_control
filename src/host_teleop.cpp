@@ -12,6 +12,7 @@ public:
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
         save_map_client_ = create_client<std_srvs::srv::Trigger>("/pcd_saver/save_map");
+        shutdown_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
@@ -66,10 +67,22 @@ private:
             RCLCPP_ERROR(get_logger(), "Failed to call save map service");
         }
         
-        // Shutdown mapping nodes
+        // Shutdown mapping nodes via service call
         RCLCPP_INFO(get_logger(), "Shutting down mapping nodes...");
-        system("ros2 node kill /laserMapping");
-        system("ros2 node kill /livox_lidar_publisher");
+        auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto shutdown_future = shutdown_client_->async_send_request(shutdown_request);
+        
+        // Wait for the shutdown to complete
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto shutdown_response = shutdown_future.get();
+            if (shutdown_response->success) {
+                RCLCPP_INFO(get_logger(), "Mapping nodes shutdown successfully: %s", shutdown_response->message.c_str());
+            } else {
+                RCLCPP_WARN(get_logger(), "Failed to shutdown mapping nodes: %s", shutdown_response->message.c_str());
+            }
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to call shutdown service");
+        }
         
         RCLCPP_INFO(get_logger(), "Mapping system shutdown complete. Map saved to ~/robot_maps/ on laptop");
     }
@@ -111,6 +124,7 @@ private:
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_map_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;
 };
