@@ -60,7 +60,7 @@ public:
         right_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
             "/right/controller_status", 10, std::bind(&DiffDriveController::right_status_callback, this, std::placeholders::_1));
 
-        odom_timer_ = this->create_wall_timer(50ms, std::bind(&DiffDriveController::update_odometry, this));
+        odom_timer_ = this->create_wall_timer(100ms, std::bind(&DiffDriveController::update_odometry, this)); // Reduced from 50ms to 100ms
         arm_timer_  = this->create_wall_timer(200ms, [this]() {
             this->arm_motors();
             this->arm_timer_->cancel();

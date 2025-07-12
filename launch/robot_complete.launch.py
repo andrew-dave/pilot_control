@@ -82,7 +82,10 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'port': 8765,
-            'address': '0.0.0.0'
+            'address': '0.0.0.0',
+            'max_q_size': 100,  # Increase buffer size
+            'num_threads': 4,   # Increase thread count
+            'send_buffer_limit': 1000000  # Increase send buffer (1MB)
         }]
     )
 
@@ -96,7 +99,7 @@ def generate_launch_description():
             'xfer_format': 1,
             'multi_topic': 0,
             'data_src': 0,
-            'publish_freq': 10.0,
+            'publish_freq': 10.0,  # Keep at 10Hz for stability
             'output_data_type': 0,
             'frame_id': 'livox_frame',
             'lvx_file_path': '/home/robot/livox_test.lvx',

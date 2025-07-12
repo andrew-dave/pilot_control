@@ -21,10 +21,10 @@ def generate_launch_description():
             'save_directory': '/home/avenblake/robot_maps',  # Save on laptop
             'save_interval': 60,
             'max_height': 2.0,
-            'min_height': -0.1,
+            'min_height': -0.3,  # Changed to include ground points
             'remove_outliers': True,
-            'outlier_std_dev': 1.0,
-            'voxel_size': 0.01,  # Increased to avoid PCL overflow
+            'outlier_std_dev': 2.0,  # Increased to be less aggressive
+            'voxel_size': 0.05,  # Reduced for higher density but still manageable
             'auto_save': False,  # Disable auto-save, only manual save via 'M' key
             'save_on_laptop': True,  # This ensures it saves on laptop
             'apply_rotation_correction': True,  # Re-enable rotation
