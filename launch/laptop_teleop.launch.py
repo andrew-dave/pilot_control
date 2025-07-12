@@ -24,7 +24,7 @@ def generate_launch_description():
             'min_height': 0.0,
             'remove_outliers': True,
             'outlier_std_dev': 1.0,
-            'voxel_size': 0.1,  # Increased to avoid PCL overflow
+            'voxel_size': 0.01,  # Increased to avoid PCL overflow
             'auto_save': False,  # Disable auto-save, only manual save via 'M' key
             'save_on_laptop': True,  # This ensures it saves on laptop
             'apply_rotation_correction': True,  # Re-enable rotation
