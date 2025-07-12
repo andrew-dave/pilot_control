@@ -8,8 +8,11 @@
 class TeleopNode : public rclcpp::Node {
 public:
     TeleopNode() : Node("host_teleop") {
-        // Declare a parameter to prevent Foxglove bridge errors
+        // Declare parameters to prevent Foxglove bridge errors
         this->declare_parameter("teleop_active", true);
+        this->declare_parameter("teleop_mode", "keyboard");
+        this->declare_parameter("max_linear_velocity", 1.0);
+        this->declare_parameter("max_angular_velocity", 4.5);
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
