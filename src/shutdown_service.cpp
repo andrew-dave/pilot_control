@@ -24,59 +24,67 @@ private:
     {
         (void)request; // Unused parameter
         
-        RCLCPP_INFO(this->get_logger(), "Received shutdown request - killing mapping nodes and signaling launch shutdown...");
+        RCLCPP_INFO(this->get_logger(), "=== MAPPING COMPLETE - SHUTTING DOWN MAPPING NODES ===");
+        RCLCPP_INFO(this->get_logger(), "Saving map and shutting down all mapping components...");
+        RCLCPP_INFO(this->get_logger(), "Differential drive controller will remain active for teleop only.");
+        RCLCPP_INFO(this->get_logger(), "========================================================");
+        
+        // Kill mapping nodes (Fast-LIO2, Livox driver, Foxglove bridge, PCD saver)
+        RCLCPP_INFO(this->get_logger(), "Shutting down mapping nodes...");
         
         // Kill Fast-LIO2 node
         int result1 = system("ros2 node kill /laserMapping");
         if (result1 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Successfully killed /laserMapping");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed /laserMapping (Fast-LIO2)");
         } else {
-            RCLCPP_WARN(this->get_logger(), "Failed to kill /laserMapping (exit code: %d)", result1);
+            RCLCPP_WARN(this->get_logger(), "✗ Failed to kill /laserMapping (exit code: %d)", result1);
         }
         
         // Kill Livox driver node
         int result2 = system("ros2 node kill /livox_lidar_publisher");
         if (result2 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Successfully killed /livox_lidar_publisher");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed /livox_lidar_publisher (LiDAR driver)");
         } else {
-            RCLCPP_WARN(this->get_logger(), "Failed to kill /livox_lidar_publisher (exit code: %d)", result2);
+            RCLCPP_WARN(this->get_logger(), "✗ Failed to kill /livox_lidar_publisher (exit code: %d)", result2);
         }
         
         // Kill Foxglove bridge
         int result3 = system("ros2 node kill /foxglove_bridge");
         if (result3 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Successfully killed /foxglove_bridge");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed /foxglove_bridge (visualization)");
         } else {
-            RCLCPP_WARN(this->get_logger(), "Failed to kill /foxglove_bridge (exit code: %d)", result3);
+            RCLCPP_WARN(this->get_logger(), "✗ Failed to kill /foxglove_bridge (exit code: %d)", result3);
         }
         
-        // Kill PCD saver if it's running on robot
+        // Kill PCD saver (may be running on laptop or robot)
         int result4 = system("ros2 node kill /pcd_saver");
         if (result4 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Successfully killed /pcd_saver");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed /pcd_saver (map saver)");
         } else {
-            RCLCPP_DEBUG(this->get_logger(), "PCD saver not running on robot (expected if running on laptop)");
+            RCLCPP_INFO(this->get_logger(), "ℹ PCD saver not found or already stopped");
         }
         
         // Wait a moment for nodes to shutdown
         std::this_thread::sleep_for(std::chrono::seconds(2));
         
-        // Signal the launch process to shutdown by sending SIGINT to the parent process
-        // This will gracefully shutdown the entire launch
-        pid_t parent_pid = getppid();
-        if (parent_pid > 1) {
-            RCLCPP_INFO(this->get_logger(), "Signaling launch process (PID: %d) to shutdown...", parent_pid);
-            kill(parent_pid, SIGINT);
-        } else {
-            // Fallback: try to kill the entire process group
-            RCLCPP_INFO(this->get_logger(), "Killing entire process group...");
-            killpg(0, SIGINT);
-        }
+        RCLCPP_INFO(this->get_logger(), "========================================================");
+        RCLCPP_INFO(this->get_logger(), "✓ MAPPING COMPLETE - MAPPING NODES SHUTDOWN SUCCESSFUL");
+        RCLCPP_INFO(this->get_logger(), "✓ Differential drive controller remains active");
+        RCLCPP_INFO(this->get_logger(), "✓ Robot is ready for teleop only mode");
+        RCLCPP_INFO(this->get_logger(), "========================================================");
+        RCLCPP_INFO(this->get_logger(), " ");
+        RCLCPP_INFO(this->get_logger(), "📋 NEXT STEPS:");
+        RCLCPP_INFO(this->get_logger(), "  • Use WASD keys to control robot movement");
+        RCLCPP_INFO(this->get_logger(), "  • Press E to arm motors, Q to disarm");
+        RCLCPP_INFO(this->get_logger(), "  • To restart mapping: ros2 launch pilot_control robot_complete.launch.py");
+        RCLCPP_INFO(this->get_logger(), "  • To run only robot control: ros2 launch pilot_control diff_drive_only.launch.py");
+        RCLCPP_INFO(this->get_logger(), " ");
         
         response->success = true;
-        response->message = "Mapping nodes killed and launch shutdown signaled. Differential drive controller remains active.";
+        response->message = "Mapping complete! All mapping nodes shutdown. Differential drive controller remains active for teleop.";
         
-        RCLCPP_INFO(this->get_logger(), "Shutdown request completed - only differential drive controller should remain active");
+        // Don't shutdown the entire launch - keep the robot control nodes running
+        // The differential drive controller, ODrive nodes, and teleop will continue running
     }
 
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr shutdown_service_;

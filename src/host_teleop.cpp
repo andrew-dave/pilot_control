@@ -7,7 +7,9 @@
 
 class TeleopNode : public rclcpp::Node {
 public:
-    TeleopNode() : Node("teleop_host") {
+    TeleopNode() : Node("host_teleop") {
+        // Declare a parameter to prevent Foxglove bridge errors
+        this->declare_parameter("teleop_active", true);
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
@@ -105,10 +107,10 @@ private:
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto shutdown_response = shutdown_future.get();
             if (shutdown_response->success) {
-                RCLCPP_INFO(get_logger(), "✓ Mapping nodes shutdown successfully: %s", shutdown_response->message.c_str());
-                RCLCPP_INFO(get_logger(), "✓ Launch process will shutdown. Only differential drive controller will remain active.");
-                RCLCPP_INFO(get_logger(), "✓ To restart mapping, run: ros2 launch pilot_control robot_complete.launch.py");
-                RCLCPP_INFO(get_logger(), "✓ To run only robot control: ros2 launch pilot_control diff_drive_only.launch.py");
+                RCLCPP_INFO(get_logger(), "✓ %s", shutdown_response->message.c_str());
+                RCLCPP_INFO(get_logger(), "✓ Teleop window will remain open for robot control");
+                RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
+                RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
             } else {
                 RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping nodes: %s", shutdown_response->message.c_str());
             }
@@ -116,11 +118,10 @@ private:
             RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service - service may not be available");
         }
         
-        RCLCPP_INFO(get_logger(), "=== MAPPING SHUTDOWN COMPLETE ===");
+        RCLCPP_INFO(get_logger(), "=== MAPPING SHUTDOWN COMPLETE - TELEOP REMAINS ACTIVE ===");
         
-        // Close the teleop window after shutdown
-        RCLCPP_INFO(get_logger(), "Closing teleop window...");
-        rclcpp::shutdown();
+        // Don't close the teleop window - keep it open for robot control
+        RCLCPP_INFO(get_logger(), "Teleop window remains open for robot control...");
     }
 
     void update() {

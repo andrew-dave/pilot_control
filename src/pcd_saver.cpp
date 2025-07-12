@@ -27,7 +27,7 @@ public:
         this->declare_parameter("min_height", 0.1); // Minimum height from ground in meters
         this->declare_parameter("remove_outliers", true); // Remove flying points
         this->declare_parameter("outlier_std_dev", 1.0); // Standard deviation for outlier removal
-        this->declare_parameter("voxel_size", 0.05); // Voxel grid filter size
+        this->declare_parameter("voxel_size", 0.1); // Voxel grid filter size (increased to avoid overflow)
         this->declare_parameter("auto_save", true);
         this->declare_parameter("save_on_laptop", false); // Save on laptop instead of robot
         this->declare_parameter("apply_rotation_correction", true); // Apply 30-degree rotation correction
@@ -78,12 +78,16 @@ public:
             std::bind(&PCDSaver::manual_save_map_service, this, std::placeholders::_1, std::placeholders::_2)
         );
         
-        // Create timer for periodic saving
+        // Create timer for periodic saving (only if auto_save is enabled)
         if (auto_save_) {
             timer_ = this->create_wall_timer(
                 std::chrono::seconds(save_interval_),
                 std::bind(&PCDSaver::timer_callback, this)
             );
+            RCLCPP_INFO(this->get_logger(), "Auto-save enabled with %d second interval", save_interval_);
+        } else {
+            timer_ = nullptr;
+            RCLCPP_INFO(this->get_logger(), "Auto-save disabled - only manual saves");
         }
         
         RCLCPP_INFO(this->get_logger(), "PCD Saver started - saving from /Laser_map");
@@ -114,8 +118,13 @@ private:
         latest_cloud_ = filtered_cloud;
         cloud_received_ = true;
         
-        RCLCPP_INFO(this->get_logger(), "Preprocessed cloud: %lu -> %lu points", 
-                   cloud->size(), filtered_cloud->size());
+        // Only log every 10th cloud to reduce spam
+        static int cloud_counter = 0;
+        cloud_counter++;
+        if (cloud_counter % 10 == 0) {
+            RCLCPP_INFO(this->get_logger(), "Preprocessed cloud %d: %lu -> %lu points", 
+                       cloud_counter, cloud->size(), filtered_cloud->size());
+        }
     }
     
     void save_map_service(
@@ -143,11 +152,12 @@ private:
         (void)request; // Unused parameter
         
         if (cloud_received_ && latest_cloud_ && !latest_cloud_->empty()) {
-            // Disable auto-save timer when manual save is triggered
-            if (timer_) {
-                timer_->cancel();
-                RCLCPP_INFO(this->get_logger(), "Auto-save disabled after manual save");
-            }
+                    // Disable auto-save timer when manual save is triggered
+        if (timer_) {
+            timer_->cancel();
+            timer_ = nullptr;
+            RCLCPP_INFO(this->get_logger(), "Auto-save disabled after manual save");
+        }
             
             // Generate custom filename with date and mapping duration
             std::string custom_filename = generate_manual_filename();
@@ -156,6 +166,10 @@ private:
             response->success = true;
             response->message = "Manual map saved successfully to " + save_directory_ + "/" + custom_filename;
             RCLCPP_INFO(this->get_logger(), "Manual map saved: %s", custom_filename.c_str());
+            
+            // Shutdown this node after manual save
+            RCLCPP_INFO(this->get_logger(), "Shutting down PCD saver after manual save...");
+            rclcpp::shutdown();
         } else {
             response->success = false;
             response->message = "No point cloud data available for saving";
@@ -173,17 +187,25 @@ private:
         
         // Step 1: Apply rotation correction for tilted LiDAR FIRST
         if (apply_rotation_correction_ && !cloud->empty()) {
-            // Create rotation matrix for 30-degree pitch correction
+            // Create rotation matrix for -30° pitch correction around Y-axis
+            // This matches the static transform: 0, -0.5230, 0 (roll, pitch, yaw)
             Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
-            transform(1, 1) = cos(rotation_angle_);  // cos(-30°)
-            transform(1, 2) = -sin(rotation_angle_); // -sin(-30°)
-            transform(2, 1) = sin(rotation_angle_);  // sin(-30°)
-            transform(2, 2) = cos(rotation_angle_);  // cos(-30°)
+            
+            // Y-axis rotation matrix (pitch correction)
+            // rotation_angle_ = -0.5230 (negative 30 degrees)
+            float cos_angle = cos(rotation_angle_);
+            float sin_angle = sin(rotation_angle_);
+            
+            // Y-axis rotation (pitch) - this rotates around Y-axis
+            transform(0, 0) = cos_angle;   // cos(-30°)
+            transform(0, 2) = sin_angle;   // sin(-30°)
+            transform(2, 0) = -sin_angle;  // -sin(-30°)
+            transform(2, 2) = cos_angle;   // cos(-30°)
             
             pcl::transformPointCloud(*cloud, *filtered_cloud, transform);
             
-            RCLCPP_DEBUG(this->get_logger(), "Applied rotation correction (%.1f degrees)", 
-                       rotation_angle_ * 180.0 / M_PI);
+            RCLCPP_INFO(this->get_logger(), "Applied rotation correction: %.1f degrees (cos=%.3f, sin=%.3f)", 
+                       rotation_angle_ * 180.0 / M_PI, cos_angle, sin_angle);
         } else {
             *filtered_cloud = *cloud;  // Copy if no rotation needed
         }
@@ -224,6 +246,10 @@ private:
     
     void timer_callback()
     {
+        if (!timer_) {
+            return; // Timer was disabled
+        }
+        
         if (cloud_received_ && latest_cloud_ && !latest_cloud_->empty()) {
             save_pcd();
         } else {
@@ -240,10 +266,12 @@ private:
         std::stringstream date_ss;
         date_ss << std::put_time(std::localtime(&time_t), "%B_%d"); // e.g., "July_25"
         
-        // Calculate mapping duration (simplified - you might want to track actual start time)
-        auto duration = std::chrono::duration_cast<std::chrono::minutes>(now.time_since_epoch());
-        int minutes = duration.count() % 60;
-        int hours = duration.count() / 60;
+        // Calculate mapping duration from session start time
+        static auto session_start_time = std::chrono::system_clock::now(); // Track when mapping started (only set once)
+        auto session_duration = std::chrono::duration_cast<std::chrono::minutes>(now - session_start_time);
+        int total_minutes = session_duration.count();
+        int hours = total_minutes / 60;
+        int minutes = total_minutes % 60;
         
         std::stringstream filename_ss;
         filename_ss << "map_" << date_ss.str() << "_duration_" << hours << "h_" << minutes << "m.pcd";
