@@ -24,7 +24,7 @@ public:
         this->declare_parameter("save_directory", "/tmp/pcd_maps");
         this->declare_parameter("save_interval", 10); // Save every N seconds
         this->declare_parameter("max_height", 2.0); // Maximum height from ground in meters
-        this->declare_parameter("min_height", 0.1); // Minimum height from ground in meters
+        this->declare_parameter("min_height", 0.0); // Minimum height from ground in meters
         this->declare_parameter("remove_outliers", true); // Remove flying points
         this->declare_parameter("outlier_std_dev", 1.0); // Standard deviation for outlier removal
         this->declare_parameter("voxel_size", 0.1); // Voxel grid filter size (increased to avoid overflow)
@@ -93,13 +93,17 @@ public:
         RCLCPP_INFO(this->get_logger(), "PCD Saver started - saving from /Laser_map");
         RCLCPP_INFO(this->get_logger(), "Save directory: %s", save_directory_.c_str());
         RCLCPP_INFO(this->get_logger(), "Save on laptop: %s", save_on_laptop_ ? "true" : "false");
-        RCLCPP_INFO(this->get_logger(), "Height filter: %.2f to %.2f meters", min_height_, max_height_);
+        RCLCPP_INFO(this->get_logger(), "Height filter: %.1f to %.1f meters", min_height_, max_height_);
         RCLCPP_INFO(this->get_logger(), "Remove outliers: %s", remove_outliers_ ? "true" : "false");
         RCLCPP_INFO(this->get_logger(), "Voxel size: %.3f meters", voxel_size_);
         RCLCPP_INFO(this->get_logger(), "Rotation correction: %s (%.1f degrees)", 
                    apply_rotation_correction_ ? "enabled" : "disabled", rotation_angle_ * 180.0 / M_PI);
         RCLCPP_INFO(this->get_logger(), "Manual save service available at: /save_map");
         RCLCPP_INFO(this->get_logger(), "Manual save with custom filename available at: /manual_save_map");
+        
+        // Initialize session start time for duration tracking
+        session_start_time_ = std::chrono::system_clock::now();
+        RCLCPP_INFO(this->get_logger(), "Session start time recorded for duration tracking");
     }
 
 private:
@@ -267,11 +271,17 @@ private:
         date_ss << std::put_time(std::localtime(&time_t), "%B_%d"); // e.g., "July_25"
         
         // Calculate mapping duration from session start time
-        static auto session_start_time = std::chrono::system_clock::now(); // Track when mapping started (only set once)
-        auto session_duration = std::chrono::duration_cast<std::chrono::minutes>(now - session_start_time);
+        auto session_duration = std::chrono::duration_cast<std::chrono::minutes>(now - session_start_time_);
         int total_minutes = session_duration.count();
         int hours = total_minutes / 60;
         int minutes = total_minutes % 60;
+        
+        // Ensure we don't get negative durations
+        if (total_minutes < 0) {
+            total_minutes = 0;
+            hours = 0;
+            minutes = 0;
+        }
         
         std::stringstream filename_ss;
         filename_ss << "map_" << date_ss.str() << "_duration_" << hours << "h_" << minutes << "m.pcd";
@@ -348,6 +358,7 @@ private:
     bool apply_rotation_correction_;
     double rotation_angle_;
     std::string manual_save_filename_;
+    std::chrono::system_clock::time_point session_start_time_;
 };
 
 int main(int argc, char** argv)

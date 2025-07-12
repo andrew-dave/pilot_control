@@ -33,11 +33,11 @@ private:
         RCLCPP_INFO(this->get_logger(), "Shutting down mapping nodes...");
         
         // Kill Fast-LIO2 node
-        int result1 = system("ros2 node kill /laserMapping");
+        int result1 = system("ros2 node kill /laser_mapping");
         if (result1 == 0) {
-            RCLCPP_INFO(this->get_logger(), "✓ Killed /laserMapping (Fast-LIO2)");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed /laser_mapping (Fast-LIO2)");
         } else {
-            RCLCPP_WARN(this->get_logger(), "✗ Failed to kill /laserMapping (exit code: %d)", result1);
+            RCLCPP_WARN(this->get_logger(), "✗ Failed to kill /laser_mapping (exit code: %d)", result1);
         }
         
         // Kill Livox driver node
