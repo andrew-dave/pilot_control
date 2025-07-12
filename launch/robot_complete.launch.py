@@ -118,32 +118,24 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Map Relay Node (commented out - Fast-LIO2 doesn't publish occupancy grids)
-    # map_relay_node = Node(
-    #     package='pilot_control',
-    #     executable='map_relay',
-    #     name='map_relay',
-    #     output='screen'
-    # )
-
-    # PCD Saver Node (commented out - now runs on laptop)
-    # pcd_saver_node = Node(
-    #     package='pilot_control',
-    #     executable='pcd_saver',
-    #     name='pcd_saver',
-    #     output='screen',
-    #     parameters=[{
-    #         'save_directory': LaunchConfiguration('save_directory'),
-    #         'save_interval': 60,
-    #         'max_height': 2.0,
-    #         'min_height': 0.1,
-    #         'remove_outliers': True,
-    #         'outlier_std_dev': 1.0,
-    #         'voxel_size': 0.05,
-    #         'auto_save': True,
-    #         'save_on_laptop': True  # Save maps on laptop instead of robot
-    #     }]
-    # )
+    # Static Transform Publishers for Tilted LiDAR Setup
+    # Transform from body to foot (corrects the 30-degree tilt)
+    body_to_foot_transform = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='body_to_foot_transform',
+        arguments=['0', '0', '0', '0', '-0.5230', '0', 'body', 'foot'],
+        output='screen'
+    )
+    
+    # Transform from camera_init to foot_init (corrects the global frame for visualization)
+    camera_init_to_foot_init_transform = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='camera_init_to_foot_init_transform',
+        arguments=['0', '0', '0', '0', '-0.5230', '0', 'camera_init', 'foot_init'],
+        output='screen'
+    )
 
     # Shutdown Service Node (for remote shutdown)
     shutdown_service_node = Node(
@@ -178,6 +170,8 @@ def generate_launch_description():
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
+                body_to_foot_transform,
+                camera_init_to_foot_init_transform,
                 shutdown_service_node,
             ]
         ),

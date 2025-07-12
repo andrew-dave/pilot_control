@@ -11,7 +11,7 @@ public:
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        save_map_client_ = create_client<std_srvs::srv::Trigger>("/save_map");
+        save_map_client_ = create_client<std_srvs::srv::Trigger>("/manual_save_map");
         shutdown_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
@@ -23,14 +23,14 @@ public:
         RCLCPP_INFO(get_logger(), "  WASD - Move robot");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
-        RCLCPP_INFO(get_logger(), "  M - Save map and shutdown mapping");
+        RCLCPP_INFO(get_logger(), "  M - Save map once and shutdown mapping");
         
         // Check if services are available
         RCLCPP_INFO(get_logger(), "Checking service availability...");
         if (save_map_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ Save map service is available");
+            RCLCPP_INFO(get_logger(), "✓ Manual save map service is available");
         } else {
-            RCLCPP_ERROR(get_logger(), "✗ Save map service is NOT available");
+            RCLCPP_ERROR(get_logger(), "✗ Manual save map service is NOT available");
         }
         
         if (shutdown_client_->wait_for_service(std::chrono::seconds(1))) {
@@ -63,12 +63,12 @@ private:
     }
 
     void save_map_and_shutdown() {
-        RCLCPP_INFO(get_logger(), "=== M KEY PRESSED: SAVING MAP AND SHUTTING DOWN MAPPING ===");
+        RCLCPP_INFO(get_logger(), "=== M KEY PRESSED: SAVING MAP ONCE AND SHUTTING DOWN MAPPING ===");
         
         // Check if services are still available before calling them
         RCLCPP_INFO(get_logger(), "Checking service availability before calling...");
         if (!save_map_client_->wait_for_service(std::chrono::milliseconds(500))) {
-            RCLCPP_ERROR(get_logger(), "✗ Save map service is not available!");
+            RCLCPP_ERROR(get_logger(), "✗ Manual save map service is not available!");
             return;
         }
         
@@ -77,12 +77,12 @@ private:
             return;
         }
         
-        // First, save the map
-        RCLCPP_INFO(get_logger(), "Step 1: Calling save map service...");
+        // First, save the map with custom filename
+        RCLCPP_INFO(get_logger(), "Step 1: Calling manual save map service...");
         auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
         auto save_future = save_map_client_->async_send_request(save_request);
         
-        RCLCPP_INFO(get_logger(), "Waiting for save map response...");
+        RCLCPP_INFO(get_logger(), "Waiting for manual save map response...");
         // Wait for the save to complete with shorter timeout
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto save_response = save_future.get();
@@ -92,7 +92,7 @@ private:
                 RCLCPP_WARN(get_logger(), "✗ Failed to save map: %s", save_response->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call save map service - service may not be available");
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call manual save map service - service may not be available");
         }
         
         // Shutdown mapping nodes via service call

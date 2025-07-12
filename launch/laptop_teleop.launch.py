@@ -25,8 +25,10 @@ def generate_launch_description():
             'remove_outliers': True,
             'outlier_std_dev': 1.0,
             'voxel_size': 0.05,
-            'auto_save': True,
-            'save_on_laptop': True  # This ensures it saves on laptop
+            'auto_save': False,  # Disable auto-save, only manual save via 'M' key
+            'save_on_laptop': True,  # This ensures it saves on laptop
+            'apply_rotation_correction': True,  # Apply 30-degree rotation correction
+            'rotation_angle': -0.5230  # -30 degrees in radians
         }]
     )
 
