@@ -2,12 +2,8 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
+#include <SDL2/SDL.h>
 #include <chrono>
-#include <iostream>
-#include <thread>
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 class TeleopNode : public rclcpp::Node {
 public:
@@ -26,15 +22,14 @@ public:
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
-        // Setup terminal for non-blocking input
-        setup_terminal();
+        SDL_Init(SDL_INIT_VIDEO);
+        window_ = SDL_CreateWindow("Teleop", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 300, 300, 0);
         
         RCLCPP_INFO(get_logger(), "Teleop started. Controls:");
         RCLCPP_INFO(get_logger(), "  WASD - Move robot");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
-        RCLCPP_INFO(get_logger(), "  Ctrl+C - Exit");
         
         // Check if services are available (non-blocking)
         RCLCPP_INFO(get_logger(), "Checking service availability...");
@@ -63,39 +58,10 @@ public:
     }
 
     ~TeleopNode() {
-        restore_terminal();
-    }
-
-    void setup_terminal() {
-        // Get current terminal settings
-        tcgetattr(STDIN_FILENO, &old_termios_);
-        
-        // Create new terminal settings
-        new_termios_ = old_termios_;
-        new_termios_.c_lflag &= ~(ICANON | ECHO);
-        new_termios_.c_cc[VMIN] = 0;
-        new_termios_.c_cc[VTIME] = 0;
-        
-        // Apply new settings
-        tcsetattr(STDIN_FILENO, TCSANOW, &new_termios_);
-        
-        // Set stdin to non-blocking
-        old_flags_ = fcntl(STDIN_FILENO, F_GETFL, 0);
-        fcntl(STDIN_FILENO, F_SETFL, old_flags_ | O_NONBLOCK);
-    }
-
-    void restore_terminal() {
-        // Restore terminal settings
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_termios_);
-        fcntl(STDIN_FILENO, F_SETFL, old_flags_);
-    }
-
-    char get_key() {
-        char ch;
-        if (read(STDIN_FILENO, &ch, 1) == 1) {
-            return ch;
+        if (window_) {
+            SDL_DestroyWindow(window_);
         }
-        return 0;
+        SDL_Quit();
     }
 
     void arm_motors() {
@@ -176,7 +142,7 @@ public:
         
         // Step 2.5: Copy raw map from robot to laptop
         RCLCPP_INFO(get_logger(), "Step 2.5: Copying raw map from robot to laptop...");
-        system("./src/roofus_pilot1/scripts/copy_latest_map.sh");
+        system("/home/avenblake/pilot_ws/src/roofus_pilot1/scripts/copy_latest_map.sh");
         RCLCPP_INFO(get_logger(), "✓ Raw map copied to laptop");
         
         // Step 3: Process the saved raw map
@@ -205,35 +171,31 @@ public:
 
     void update() {
         geometry_msgs::msg::Twist cmd_vel_msg;
-        
-        // Handle keyboard input
-        char key = get_key();
-        if (key != 0) {
-            switch (key) {
-                case 'e':
-                case 'E':
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                rclcpp::shutdown();
+            } else if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_e) {
                     arm_motors();
-                    break;
-                case 'q':
-                case 'Q':
+                } else if (event.key.keysym.sym == SDLK_q) {
                     disarm_motors();
-                    break;
-                case 'm':
-                case 'M':
+                } else if (event.key.keysym.sym == SDLK_m) {
                     save_map_and_shutdown();
-                    break;
+                }
             }
         }
 
-        // Robot teleoperation (WASD) - check if keys are pressed
-        if (key == 'w' || key == 'W') {
+        const Uint8* keys = SDL_GetKeyboardState(NULL);
+        // Robot teleoperation (WASD)
+        if (keys[SDL_SCANCODE_W]) {
             cmd_vel_msg.linear.x = 0.5;  // Forward
-        } else if (key == 's' || key == 'S') {
+        } else if (keys[SDL_SCANCODE_S]) {
             cmd_vel_msg.linear.x = -0.5; // Backward
         }
-        if (key == 'a' || key == 'A') {
+        if (keys[SDL_SCANCODE_A]) {
             cmd_vel_msg.angular.z = -4.5; // Left
-        } else if (key == 'd' || key == 'D') {
+        } else if (keys[SDL_SCANCODE_D]) {
             cmd_vel_msg.angular.z = 4.5; // Right
         }
 
@@ -247,8 +209,7 @@ public:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
     rclcpp::TimerBase::SharedPtr timer_;
-    struct termios old_termios_, new_termios_;
-    int old_flags_;
+    SDL_Window* window_;
 };
 
 int main(int argc, char *argv[]) {

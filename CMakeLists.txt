@@ -26,6 +26,7 @@ find_package(pcl_conversions REQUIRED)
 
 # === Try to find serial (optional) ===
 find_package(serial QUIET)
+find_package(SDL2 QUIET)
 
 # === CLIENT TELEOP NODE (only if serial is found) ===
 if(serial_FOUND)
@@ -83,14 +84,19 @@ install(TARGETS topic_throttle DESTINATION lib/${PROJECT_NAME})
 
 
 
-add_executable(host_teleop src/host_teleop.cpp)
-target_include_directories(host_teleop PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs odrive_can std_srvs)
+if(SDL2_FOUND)
+  add_executable(host_teleop src/host_teleop.cpp)
+  target_include_directories(host_teleop PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+  target_compile_features(host_teleop PUBLIC c_std_99 cxx_std_17)
+  ament_target_dependencies(host_teleop rclcpp geometry_msgs std_msgs odrive_can std_srvs)
+  target_link_libraries(host_teleop SDL2)
 
-install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
+  install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
+endif()
 
 install(
   DIRECTORY launch config
