@@ -74,7 +74,7 @@ def generate_launch_description():
         ]
     )
 
-    # Foxglove Bridge
+    # Foxglove Bridge - Maximum buffer settings
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
@@ -83,13 +83,14 @@ def generate_launch_description():
         parameters=[{
             'port': 8765,
             'address': '0.0.0.0',
-            'max_q_size': 100,  # Increase buffer size
-            'num_threads': 4,   # Increase thread count
-            'send_buffer_limit': 1000000  # Increase send buffer (1MB)
+            'max_q_size': 5000,  # Maximum buffer size
+            'num_threads': 16,    # Maximum thread count
+            'send_buffer_limit': 100000000,  # Increase send buffer to 100MB
+            'capabilities': ['clientPublish', 'connectionGraph', 'parameters', 'parametersSubscribe', 'services', 'subscribe', 'advertise', 'unadvertise', 'getParameters', 'setParameters', 'subscribeParameterUpdates', 'messageDefinitions', 'fetchAsset', 'unsubscribe', 'subscribeConnectionGraph']
         }]
     )
 
-    # Livox ROS Driver (MID360)
+    # Livox ROS Driver (MID360) - Reduced frequency
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
@@ -99,7 +100,7 @@ def generate_launch_description():
             'xfer_format': 1,
             'multi_topic': 0,
             'data_src': 0,
-            'publish_freq': 10.0,  # Keep at 10Hz for stability
+            'publish_freq': 3.0,  # Reduced from 10Hz to 3Hz to reduce data load
             'output_data_type': 0,
             'frame_id': 'livox_frame',
             'lvx_file_path': '/home/robot/livox_test.lvx',

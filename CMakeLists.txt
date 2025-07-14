@@ -64,6 +64,10 @@ add_executable(shutdown_service src/shutdown_service.cpp)
 ament_target_dependencies(shutdown_service rclcpp std_srvs)
 install(TARGETS shutdown_service DESTINATION lib/${PROJECT_NAME})
 
+add_executable(topic_throttle src/topic_throttle.cpp)
+ament_target_dependencies(topic_throttle rclcpp sensor_msgs nav_msgs)
+install(TARGETS topic_throttle DESTINATION lib/${PROJECT_NAME})
+
 
 
 if(SDL2_FOUND)
@@ -83,6 +87,12 @@ endif()
 install(
   DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Install Python scripts
+install(
+  PROGRAMS scripts/monitor_topics.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # === Lint/Tests ===

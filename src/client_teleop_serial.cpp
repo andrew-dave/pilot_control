@@ -33,7 +33,7 @@ public:
 private:
     void twistCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
         int fwd_pwm = 60;
-        int turn_pwm = 30;
+        int turn_pwm = 50;
         int pwmL = 0;
         int pwmR = 0;
 
