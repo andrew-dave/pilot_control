@@ -24,8 +24,8 @@ public:
     PCDProcessor() : Node("pcd_processor")
     {
         // Declare parameters
-        this->declare_parameter("raw_map_directory", "/home/robot/maps");
-        this->declare_parameter("processed_map_directory", "/home/robot/maps");
+        this->declare_parameter("raw_map_directory", "/home/avenblake/robot_maps");
+        this->declare_parameter("processed_map_directory", "/home/avenblake/robot_maps");
         this->declare_parameter("processing_mode", "high_quality"); // high_quality, fast, minimal
         this->declare_parameter("voxel_size", 0.05);
         this->declare_parameter("remove_outliers", true);
