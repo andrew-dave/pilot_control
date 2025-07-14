@@ -126,7 +126,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'input_topic': '/Laser_map',
-            'save_directory': '/home/robot/maps'
+            'save_directory': '/tmp/robot_maps'
         }]
     )
 

@@ -17,7 +17,7 @@ public:
     {
         // Declare parameters
         this->declare_parameter("input_topic", "/Laser_map");
-        this->declare_parameter("save_directory", "/home/robot/maps");
+        this->declare_parameter("save_directory", "/tmp/robot_maps");  // Use /tmp which has write permissions
         this->declare_parameter("raw_map_filename", "");
         
         // Get parameters

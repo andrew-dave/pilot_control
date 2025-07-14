@@ -5,7 +5,7 @@
 
 ROBOT_IP="172.16.14.113"  # Change this to your robot's IP
 ROBOT_USER="robot"
-ROBOT_MAPS_DIR="/home/robot/maps"
+ROBOT_MAPS_DIR="/tmp/robot_maps"
 LAPTOP_MAPS_DIR="/home/avenblake/robot_maps"
 
 # Create laptop maps directory if it doesn't exist
