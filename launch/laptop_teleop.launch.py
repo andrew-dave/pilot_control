@@ -18,7 +18,7 @@ def generate_launch_description():
         name='pcd_processor',
         output='screen',
         parameters=[{
-            'raw_map_directory': '/home/robot/maps',  # Read raw maps from robot
+            'raw_map_directory': '/home/avenblake/robot_maps',  # Read raw maps from laptop (copied from robot)
             'processed_map_directory': '/home/avenblake/robot_maps',  # Save processed maps on laptop
             'processing_mode': 'high_quality',  # Options: minimal, fast, high_quality
             'voxel_size': 0.05,

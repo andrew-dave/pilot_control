@@ -31,22 +31,37 @@ public:
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
         
-        // Check if services are available
+        // Check if services are available (non-blocking)
         RCLCPP_INFO(get_logger(), "Checking service availability...");
         
-        // Wait for services to be available
-        while (!save_raw_map_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "Waiting for save_raw_map service...");
-        }
-        while (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "Waiting for shutdown_mapping service...");
-        }
-        while (!process_map_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "Waiting for process_and_save_map service...");
+        // Check services without blocking
+        if (save_raw_map_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ save_raw_map service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ save_raw_map service is NOT available (will be checked when M is pressed)");
         }
         
-        RCLCPP_INFO(get_logger(), "✓ All services available");
-        RCLCPP_INFO(get_logger(), "✓ Ready for mapping and control");
+        if (shutdown_mapping_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ shutdown_mapping service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ shutdown_mapping service is NOT available (will be checked when M is pressed)");
+        }
+        
+        if (process_map_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ process_and_save_map service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ process_and_save_map service is NOT available (will be checked when M is pressed)");
+        }
+        
+        RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
+        RCLCPP_INFO(get_logger(), "✓ Press M when ready to save map and shutdown mapping");
+    }
+
+    ~TeleopNode() {
+        if (window_) {
+            SDL_DestroyWindow(window_);
+        }
+        SDL_Quit();
     }
 
     void arm_motors() {
@@ -67,6 +82,29 @@ public:
 
     void save_map_and_shutdown() {
         RCLCPP_INFO(get_logger(), "=== STARTING MAP SAVE AND SHUTDOWN SEQUENCE ===");
+        
+        // Check if services are available before proceeding
+        RCLCPP_INFO(get_logger(), "Checking service availability before proceeding...");
+        
+        if (!save_raw_map_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "✗ save_raw_map service is not available!");
+            RCLCPP_ERROR(get_logger(), "Make sure the robot is running mapping_only.launch.py");
+            return;
+        }
+        
+        if (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "✗ shutdown_mapping service is not available!");
+            RCLCPP_ERROR(get_logger(), "Make sure the robot is running mapping_only.launch.py");
+            return;
+        }
+        
+        if (!process_map_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "✗ process_and_save_map service is not available!");
+            RCLCPP_ERROR(get_logger(), "Make sure the laptop teleop is running with pcd_processor");
+            return;
+        }
+        
+        RCLCPP_INFO(get_logger(), "✓ All services are available, proceeding...");
         
         // Step 1: Save raw map from Fast-LIO2
         RCLCPP_INFO(get_logger(), "Step 1: Saving raw map from Fast-LIO2...");
@@ -101,6 +139,11 @@ public:
         } else {
             RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
         }
+        
+        // Step 2.5: Copy raw map from robot to laptop
+        RCLCPP_INFO(get_logger(), "Step 2.5: Copying raw map from robot to laptop...");
+        system("./src/roofus_pilot1/scripts/copy_latest_map.sh");
+        RCLCPP_INFO(get_logger(), "✓ Raw map copied to laptop");
         
         // Step 3: Process the saved raw map
         RCLCPP_INFO(get_logger(), "Step 3: Processing saved raw map...");
