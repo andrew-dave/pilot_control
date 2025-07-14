@@ -11,28 +11,30 @@ def generate_launch_description():
         output='screen'
     )
 
-    # PCD Saver Node (runs on laptop, saves maps locally) - DISABLED
-    # pcd_saver_node = Node(
-    #     package='pilot_control',
-    #     executable='pcd_saver',
-    #     name='pcd_saver',
-    #     output='screen',
-    #     parameters=[{
-    #         'save_directory': '/home/avenblake/robot_maps',  # Save on laptop
-    #         'save_interval': 60,
-    #         'max_height': 2.0,
-    #         'min_height': -0.3,  # Changed to include ground points
-    #         'remove_outliers': True,
-    #         'outlier_std_dev': 2.0,  # Increased to be less aggressive
-    #         'voxel_size': 0.05,  # Reduced for higher density but still manageable
-    #         'auto_save': False,  # Disable auto-save, only manual save via 'M' key
-    #         'save_on_laptop': False,  # This ensures it saves on laptop
-    #         'apply_rotation_correction': False,  # Re-enable rotation
-    #         'rotation_angle': 0.5230  # Try positive 30 degrees instead
-    #     }]
-    # )
+    # PCD Processor Node (runs on laptop, processes saved raw maps)
+    pcd_processor_node = Node(
+        package='pilot_control',
+        executable='pcd_processor',
+        name='pcd_processor',
+        output='screen',
+        parameters=[{
+            'raw_map_directory': '/home/robot/maps',  # Read raw maps from robot
+            'processed_map_directory': '/home/avenblake/robot_maps',  # Save processed maps on laptop
+            'processing_mode': 'high_quality',  # Options: minimal, fast, high_quality
+            'voxel_size': 0.05,
+            'remove_outliers': True,
+            'outlier_std_dev': 2.0,
+            'apply_rotation_correction': True,
+            'rotation_angle': -0.5230,
+            'save_format': 'pcd',
+            'auto_shutdown': False,  # Keep running after processing
+            'max_height': 2.0,
+            'min_height': 0.1,
+            'find_latest_raw_map': True  # Automatically find the latest raw map
+        }]
+    )
 
     return LaunchDescription([
         host_teleop_node,
-        # pcd_saver_node,  # DISABLED
+        pcd_processor_node,
     ]) 

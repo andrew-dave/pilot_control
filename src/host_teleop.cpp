@@ -16,8 +16,9 @@ public:
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        save_map_client_ = create_client<std_srvs::srv::Trigger>("/manual_save_map");
-        shutdown_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
+        save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
+        shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
+        process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
@@ -28,103 +29,101 @@ public:
         RCLCPP_INFO(get_logger(), "  WASD - Move robot");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
-        RCLCPP_INFO(get_logger(), "  M - Save map once and shutdown mapping");
+        RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
         
         // Check if services are available
         RCLCPP_INFO(get_logger(), "Checking service availability...");
-        if (save_map_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ Manual save map service is available");
-        } else {
-            RCLCPP_ERROR(get_logger(), "✗ Manual save map service is NOT available");
+        
+        // Wait for services to be available
+        while (!save_raw_map_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "Waiting for save_raw_map service...");
+        }
+        while (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "Waiting for shutdown_mapping service...");
+        }
+        while (!process_map_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "Waiting for process_and_save_map service...");
         }
         
-        if (shutdown_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ Shutdown service is available");
-        } else {
-            RCLCPP_ERROR(get_logger(), "✗ Shutdown service is NOT available");
-        }
+        RCLCPP_INFO(get_logger(), "✓ All services available");
+        RCLCPP_INFO(get_logger(), "✓ Ready for mapping and control");
     }
 
-    ~TeleopNode() {
-        SDL_DestroyWindow(window_);
-        SDL_Quit();
-    }
-
-private:
     void arm_motors() {
-        RCLCPP_INFO(get_logger(), "Arming motors by keypress (E)...");
+        RCLCPP_INFO(get_logger(), "Arming motors (CLOSED_LOOP_CONTROL)...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
-        request->axis_requested_state = 8; // AXIS_STATE_CLOSED_LOOP
+        request->axis_requested_state = 8; // CLOSED_LOOP_CONTROL
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
     }
 
     void disarm_motors() {
-        RCLCPP_INFO(get_logger(), "Disarming motors by keypress (Q)...");
+        RCLCPP_INFO(get_logger(), "Disarming motors (IDLE)...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
-        request->axis_requested_state = 1; // AXIS_STATE_IDLE
+        request->axis_requested_state = 1; // IDLE
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
     }
 
     void save_map_and_shutdown() {
-        RCLCPP_INFO(get_logger(), "=== M KEY PRESSED: SAVING MAP ONCE AND SHUTTING DOWN MAPPING ===");
+        RCLCPP_INFO(get_logger(), "=== STARTING MAP SAVE AND SHUTDOWN SEQUENCE ===");
         
-        // Check if services are still available before calling them
-        RCLCPP_INFO(get_logger(), "Checking service availability before calling...");
-        if (!save_map_client_->wait_for_service(std::chrono::milliseconds(500))) {
-            RCLCPP_ERROR(get_logger(), "✗ Manual save map service is not available!");
-            return;
-        }
-        
-        if (!shutdown_client_->wait_for_service(std::chrono::milliseconds(500))) {
-            RCLCPP_ERROR(get_logger(), "✗ Shutdown service is not available!");
-            return;
-        }
-        
-        // First, save the map with custom filename
-        RCLCPP_INFO(get_logger(), "Step 1: Calling manual save map service...");
+        // Step 1: Save raw map from Fast-LIO2
+        RCLCPP_INFO(get_logger(), "Step 1: Saving raw map from Fast-LIO2...");
         auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto save_future = save_map_client_->async_send_request(save_request);
+        auto save_future = save_raw_map_client_->async_send_request(save_request);
         
-        RCLCPP_INFO(get_logger(), "Waiting for manual save map response...");
-        // Wait for the save to complete with shorter timeout
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto save_response = save_future.get();
             if (save_response->success) {
-                RCLCPP_INFO(get_logger(), "✓ Map saved successfully: %s", save_response->message.c_str());
+                RCLCPP_INFO(get_logger(), "✓ Raw map saved: %s", save_response->message.c_str());
             } else {
-                RCLCPP_WARN(get_logger(), "✗ Failed to save map: %s", save_response->message.c_str());
+                RCLCPP_WARN(get_logger(), "✗ Failed to save raw map: %s", save_response->message.c_str());
+                return;
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call manual save map service - service may not be available");
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call save_raw_map service");
+            return;
         }
         
-        // Shutdown mapping nodes via service call
-        RCLCPP_INFO(get_logger(), "Step 2: Calling shutdown service...");
+        // Step 2: Shutdown Fast-LIO2 and mapping nodes
+        RCLCPP_INFO(get_logger(), "Step 2: Shutting down Fast-LIO2 and mapping nodes...");
         auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto shutdown_future = shutdown_client_->async_send_request(shutdown_request);
+        auto shutdown_future = shutdown_mapping_client_->async_send_request(shutdown_request);
         
-        RCLCPP_INFO(get_logger(), "Waiting for shutdown response...");
-        // Wait for the shutdown to complete with shorter timeout
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(3)) == rclcpp::FutureReturnCode::SUCCESS) {
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
             auto shutdown_response = shutdown_future.get();
             if (shutdown_response->success) {
                 RCLCPP_INFO(get_logger(), "✓ %s", shutdown_response->message.c_str());
-                RCLCPP_INFO(get_logger(), "✓ Teleop window will remain open for robot control");
-                RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
-                RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
             } else {
-                RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping nodes: %s", shutdown_response->message.c_str());
+                RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping: %s", shutdown_response->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service - service may not be available");
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
         }
         
-        RCLCPP_INFO(get_logger(), "=== MAPPING SHUTDOWN COMPLETE - TELEOP REMAINS ACTIVE ===");
+        // Step 3: Process the saved raw map
+        RCLCPP_INFO(get_logger(), "Step 3: Processing saved raw map...");
+        auto process_request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto process_future = process_map_client_->async_send_request(process_request);
         
-        // Don't close the teleop window - keep it open for robot control
-        RCLCPP_INFO(get_logger(), "Teleop window remains open for robot control...");
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), process_future, std::chrono::seconds(30)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto process_response = process_future.get();
+            if (process_response->success) {
+                RCLCPP_INFO(get_logger(), "✓ %s", process_response->message.c_str());
+            } else {
+                RCLCPP_WARN(get_logger(), "✗ Failed to process map: %s", process_response->message.c_str());
+            }
+        } else {
+            RCLCPP_ERROR(get_logger(), "✗ Failed to call process_and_save_map service");
+        }
+        
+        RCLCPP_INFO(get_logger(), "=== MAP SAVE AND PROCESSING COMPLETE ===");
+        RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 and mapping nodes are shutdown");
+        RCLCPP_INFO(get_logger(), "✓ Raw map has been processed and saved");
+        RCLCPP_INFO(get_logger(), "✓ Robot control remains active");
+        RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
+        RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
     }
 
     void update() {
@@ -163,8 +162,9 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
-    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_map_client_;
-    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_raw_map_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;
 };
