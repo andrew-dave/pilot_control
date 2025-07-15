@@ -25,11 +25,11 @@ private:
         (void)request; // Unused parameter
         
         RCLCPP_INFO(this->get_logger(), "=== MAPPING COMPLETE - SHUTTING DOWN MAPPING NODES ===");
-        RCLCPP_INFO(this->get_logger(), "Saving map and shutting down all mapping components...");
+        RCLCPP_INFO(this->get_logger(), "Shutting down all mapping components...");
         RCLCPP_INFO(this->get_logger(), "Differential drive controller will remain active for teleop only.");
         RCLCPP_INFO(this->get_logger(), "========================================================");
         
-        // Kill mapping nodes (Fast-LIO2, Livox driver, Foxglove bridge, PCD saver)
+        // Kill mapping nodes (Fast-LIO2, Livox driver, Foxglove bridge, raw map saver)
         RCLCPP_INFO(this->get_logger(), "Shutting down mapping nodes...");
         
         // Use pkill to find and kill processes by executable name
@@ -57,25 +57,25 @@ private:
             RCLCPP_WARN(this->get_logger(), "✗ Failed to kill foxglove_bridge (exit code: %d)", result3);
         }
         
-        // Kill PCD saver (may be running on laptop or robot)
-        int result4 = system("pkill -f pcd_saver");
+        // Kill raw map saver
+        int result4 = system("pkill -f raw_map_saver");
         if (result4 == 0) {
-            RCLCPP_INFO(this->get_logger(), "✓ Killed pcd_saver (map saver)");
+            RCLCPP_INFO(this->get_logger(), "✓ Killed raw_map_saver (raw map saver)");
         } else {
-            RCLCPP_INFO(this->get_logger(), "ℹ PCD saver not found or already stopped");
+            RCLCPP_INFO(this->get_logger(), "ℹ Raw map saver not found or already stopped");
         }
         
         // Also try to kill by process name patterns that might be different
         system("pkill -f 'fast_lio'");
         system("pkill -f 'livox'");
         system("pkill -f 'foxglove'");
-        system("pkill -f 'pcd_saver'");
+        system("pkill -f 'raw_map_saver'");
         
         // Try to kill by PID if we can find them
         system("pgrep -f fastlio_mapping | xargs kill -9 2>/dev/null");
         system("pgrep -f livox_ros_driver2_node | xargs kill -9 2>/dev/null");
         system("pgrep -f foxglove_bridge | xargs kill -9 2>/dev/null");
-        system("pgrep -f pcd_saver | xargs kill -9 2>/dev/null");
+        system("pgrep -f raw_map_saver | xargs kill -9 2>/dev/null");
         
         // Wait a moment for nodes to shutdown
         std::this_thread::sleep_for(std::chrono::seconds(2));

@@ -21,7 +21,7 @@ ros2 launch pilot_control laptop_teleop.launch.py
 ### **Step 1: Robot Setup**
 ```bash
 # SSH into robot
-ssh robot@192.168.1.100  # Replace with your robot's IP
+ssh roofus@172.16.14.113  # Replace with your robot's IP
 
 # Navigate to workspace
 cd ~/pilot_ws
@@ -47,7 +47,7 @@ ros2 launch pilot_control laptop_teleop.launch.py
 - **WASD** - Move robot
 - **E** - Arm motors
 - **Q** - Disarm motors  
-- **M** - Save map and shutdown mapping system
+- **M** - Save map, shutdown mapping, copy to laptop, and process
 
 ## 🔧 What's Included
 
@@ -57,31 +57,26 @@ ros2 launch pilot_control laptop_teleop.launch.py
 - ✅ **Fast-LIO2 Mapping** (MID360 configuration)
 - ✅ **Livox ROS Driver** (MID360)
 - ✅ **Foxglove Bridge** (port 8765)
-- ✅ **Map Relay** (QoS bridge)
-- ✅ **PCD Saver** (filtered point clouds)
+- ✅ **Raw Map Saver** (saves unprocessed maps to /tmp/robot_maps)
+- ✅ **Shutdown Service** (for remote shutdown)
 
-### **Laptop Teleop:**
+### **Laptop Teleop (`laptop_teleop.launch.py`):**
 - ✅ **Robot Movement** (WASD controls)
 - ✅ **Motor Control** (E=Arm, Q=Disarm)
-- ✅ **Map Saving** (M key triggers save + shutdown)
+- ✅ **Map Processing** (PCD processor for cleaning raw maps)
+- ✅ **M Key Workflow** (save → shutdown → copy → process)
 
-## 🗺️ Map Saving Features
+## 🗺️ Map Saving & Processing Workflow
 
-### **Automatic Saving:**
-- Saves filtered point clouds every 60 seconds
-- Height filtering: 0.1m to 2.0m
-- Outlier removal for clean maps
-- Voxel grid filtering (5cm resolution)
+### **When 'M' is Pressed:**
+1. **Save Raw Map** - Saves unprocessed Fast-LIO2 map to `/tmp/robot_maps/` on robot
+2. **Shutdown Mapping** - Kills Fast-LIO2, Livox, and Foxglove nodes
+3. **Copy to Laptop** - Copies raw map from robot to `/home/avenblake/robot_maps/`
+4. **Process Map** - Applies filtering, cleaning, and rotation correction on laptop
 
-### **Manual Saving (M Key):**
-- Triggers immediate map save
-- Shuts down Fast-LIO2 and Livox nodes
-- Saves to `/home/robot/maps/` with timestamp
-
-### **Map File Format:**
-```
-/home/robot/maps/laser_map_YYYYMMDD_HHMMSS_mmm.pcd
-```
+### **Map File Locations:**
+- **Robot Raw Maps**: `/tmp/robot_maps/raw_map_YYYYMMDD_HHMMSS_mmm.pcd`
+- **Laptop Processed Maps**: `/home/avenblake/robot_maps/processed_map_YYYYMMDD_HHMMSS_mmm.pcd`
 
 ## ⚙️ Configuration
 
@@ -95,21 +90,20 @@ ros2 launch pilot_control robot_complete.launch.py \
   -p can_interface:=can0 \
   -p can_bitrate:=250000 \
   -p velocity_multiplier:=0.8 \
-  -p turn_speed_multiplier:=0.4 \
-  -p save_directory:=/home/robot/maps
+  -p turn_speed_multiplier:=0.4
 ```
 
-### **PCD Saver Parameters:**
+### **PCD Processor Parameters:**
 ```bash
-# Custom PCD saving
-ros2 launch pilot_control robot_complete.launch.py \
+# Custom map processing
+ros2 launch pilot_control laptop_teleop.launch.py \
   --ros-args \
-  -p enable_pcd_saver:=true \
-  -p save_interval:=60 \
-  -p max_height:=2.0 \
-  -p min_height:=0.1 \
+  -p processing_mode:=high_quality \
+  -p voxel_size:=0.05 \
   -p remove_outliers:=true \
-  -p voxel_size:=0.05
+  -p outlier_std_dev:=2.0 \
+  -p apply_rotation_correction:=true \
+  -p rotation_angle:=-0.5230
 ```
 
 ## 🔍 Monitoring
@@ -126,10 +120,10 @@ ros2 topic list
 ros2 topic echo /odom
 
 # Check map generation
-ros2 topic echo /map
-
-# Monitor point clouds
 ros2 topic echo /Laser_map
+
+# Monitor services
+ros2 service list
 ```
 
 ### **Foxglove Studio:**
@@ -174,16 +168,16 @@ ros2 node list | grep livox
 ros2 topic list | grep cloud
 ```
 
-### **Performance Issues:**
+### **Map Processing Issues:**
 ```bash
-# Monitor CPU usage
-htop
+# Check raw map saver
+ros2 node list | grep raw_map_saver
 
-# Check disk space
-df -h /home/robot/maps
+# Check PCD processor
+ros2 node list | grep pcd_processor
 
-# Monitor memory
-free -h
+# Check services
+ros2 service list | grep -E "(save|process|shutdown)"
 ```
 
 ## 🚨 Emergency Procedures
@@ -203,10 +197,16 @@ ros2 node kill /diff_drive_controller
 sudo ip link set can0 down
 ```
 
-### **Save Map Manually:**
+### **Manual Map Operations:**
 ```bash
-# Trigger map save via service
-ros2 service call /pcd_saver/save_map std_srvs/srv/Trigger
+# Save raw map manually
+ros2 service call /save_raw_map std_srvs/srv/Trigger
+
+# Process map manually
+ros2 service call /process_and_save_map std_srvs/srv/Trigger
+
+# Shutdown mapping manually
+ros2 service call /shutdown_mapping std_srvs/srv/Trigger
 ```
 
 ## 📁 File Structure
@@ -216,31 +216,33 @@ pilot_ws/
 ├── src/roofus_pilot1/
 │   ├── launch/
 │   │   ├── robot_complete.launch.py    # Complete robot system
-│   │   ├── laptop_teleop.launch.py     # Laptop control
-│   │   └── robot.launch.py             # Basic robot control
+│   │   ├── laptop_teleop.launch.py     # Laptop control & processing
+│   │   └── diff_drive_only.launch.py   # Robot control only
 │   ├── src/
-│   │   ├── pcd_saver.cpp               # Map saving with filtering
+│   │   ├── diff_drive_controller.cpp   # Robot motor control
 │   │   ├── host_teleop.cpp             # Laptop teleop with M key
-│   │   └── map_relay.cpp               # QoS bridge
+│   │   ├── raw_map_saver.cpp           # Robot-side raw map saving
+│   │   ├── pcd_processor.cpp           # Laptop-side map processing
+│   │   └── shutdown_service.cpp        # Remote shutdown service
 │   └── scripts/
-│       └── robot_control.sh            # Management script
+│       └── copy_latest_map.sh          # Copy raw maps from robot to laptop
 ```
 
 ## 🎯 Key Features
 
 - **Single Command Launch** - Everything starts with one command
 - **Automatic CAN Setup** - No manual CAN configuration needed
-- **Integrated Mapping** - Fast-LIO2 + Livox + PCD saving
-- **Laptop Control** - Full teleop with map saving
+- **Integrated Mapping** - Fast-LIO2 + Livox + raw map saving
+- **Laptop Control** - Full teleop with map processing
 - **Safety Features** - Reduced speed multipliers, emergency procedures
-- **Map Management** - Automatic and manual saving with filtering
+- **Two-Phase Workflow** - Mapping at full performance, processing on laptop
 
 ## 🔄 Workflow Summary
 
 1. **SSH into robot** → `ros2 launch pilot_control robot_complete.launch.py`
 2. **Start laptop teleop** → `ros2 launch pilot_control laptop_teleop.launch.py`
 3. **Control robot** → WASD for movement, E/Q for motors
-4. **Save map** → Press 'M' key to save and shutdown mapping
-5. **Access maps** → Files saved to `/home/robot/maps/`
+4. **Save & Process** → Press 'M' key for complete workflow
+5. **Access maps** → Raw maps on robot, processed maps on laptop
 
-This system provides a complete, integrated solution for robot deployment with mapping capabilities! 
+This system provides a complete, integrated solution for robot deployment with optimized mapping and processing capabilities! 

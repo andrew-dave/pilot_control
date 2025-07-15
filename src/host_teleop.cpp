@@ -23,13 +23,24 @@ public:
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
         SDL_Init(SDL_INIT_VIDEO);
-        window_ = SDL_CreateWindow("Teleop", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 300, 300, 0);
+        window_ = SDL_CreateWindow("Teleop", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 300, 300, SDL_WINDOW_SHOWN);
         
+        if (!window_) {
+            RCLCPP_ERROR(get_logger(), "Failed to create SDL window: %s", SDL_GetError());
+            return;
+        }
+        
+        // Force the window to be visible and focused
+        SDL_ShowWindow(window_);
+        SDL_RaiseWindow(window_);
+        
+        RCLCPP_INFO(get_logger(), "SDL window created successfully");
         RCLCPP_INFO(get_logger(), "Teleop started. Controls:");
         RCLCPP_INFO(get_logger(), "  WASD - Move robot");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
+        RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
         
         // Check if services are available (non-blocking)
         RCLCPP_INFO(get_logger(), "Checking service availability...");
@@ -172,15 +183,25 @@ public:
     void update() {
         geometry_msgs::msg::Twist cmd_vel_msg;
         SDL_Event event;
+        static int event_count = 0;
+        
         while (SDL_PollEvent(&event)) {
+            event_count++;
+            if (event_count <= 5) {  // Only log first few events to avoid spam
+                RCLCPP_INFO(get_logger(), "SDL Event received: type=%d", event.type);
+            }
+            
             if (event.type == SDL_QUIT) {
+                RCLCPP_INFO(get_logger(), "SDL_QUIT received, shutting down...");
                 rclcpp::shutdown();
             } else if (event.type == SDL_KEYDOWN) {
+                RCLCPP_INFO(get_logger(), "Key pressed: %d", event.key.keysym.sym);
                 if (event.key.keysym.sym == SDLK_e) {
                     arm_motors();
                 } else if (event.key.keysym.sym == SDLK_q) {
                     disarm_motors();
                 } else if (event.key.keysym.sym == SDLK_m) {
+                    RCLCPP_INFO(get_logger(), "M key pressed - starting map save sequence!");
                     save_map_and_shutdown();
                 }
             }

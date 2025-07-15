@@ -4,7 +4,7 @@
 # Usage: ./copy_latest_map.sh
 
 ROBOT_IP="172.16.14.113"  # Change this to your robot's IP
-ROBOT_USER="robot"
+ROBOT_USER="roofus"
 ROBOT_MAPS_DIR="/tmp/robot_maps"
 LAPTOP_MAPS_DIR="/home/avenblake/robot_maps"
 

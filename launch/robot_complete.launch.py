@@ -1,7 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import os
@@ -38,16 +37,6 @@ def generate_launch_description():
         default_value='0.4',
         description='A multiplier to tune the robot turning speed.'
     )
-    declare_enable_pcd_saver_arg = DeclareLaunchArgument(
-        'enable_pcd_saver',
-        default_value='true',
-        description='Enable PCD saving for mapping data.'
-    )
-    declare_save_directory_arg = DeclareLaunchArgument(
-        'save_directory',
-        default_value='/home/robot/maps',
-        description='Directory to save PCD files.'
-    )
 
     # CAN interface setup command
     can_setup = ExecuteProcess(
@@ -56,22 +45,19 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Include the robot launch file
-    robot_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('pilot_control'),
-                'launch',
-                'robot.launch.py'
-            ])
-        ]),
-        launch_arguments=[
-            ('wheel_radius', LaunchConfiguration('wheel_radius')),
-            ('wheel_base', LaunchConfiguration('wheel_base')),
-            ('can_interface', LaunchConfiguration('can_interface')),
-            ('velocity_multiplier', LaunchConfiguration('velocity_multiplier')),
-            ('turn_speed_multiplier', LaunchConfiguration('turn_speed_multiplier'))
-        ]
+    # Differential Drive Controller
+    diff_drive_controller = Node(
+        package='pilot_control',
+        executable='diff_drive_controller',
+        name='diff_drive_controller',
+        output='screen',
+        parameters=[{
+            'wheel_radius': LaunchConfiguration('wheel_radius'),
+            'wheel_base': LaunchConfiguration('wheel_base'),
+            'can_interface': LaunchConfiguration('can_interface'),
+            'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
+            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
+        }]
     )
 
     # Foxglove Bridge - Maximum buffer settings
@@ -141,6 +127,18 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Raw Map Saver - Saves unprocessed maps from Fast-LIO2
+    raw_map_saver = Node(
+        package='pilot_control',
+        executable='raw_map_saver',
+        name='raw_map_saver',
+        output='screen',
+        parameters=[{
+            'input_topic': '/Laser_map',
+            'save_directory': '/tmp/robot_maps'
+        }]
+    )
+
     # Shutdown Service Node (for remote shutdown)
     shutdown_service_node = Node(
         package='pilot_control',
@@ -157,8 +155,6 @@ def generate_launch_description():
         declare_can_bitrate_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
-        declare_enable_pcd_saver_arg,
-        declare_save_directory_arg,
         
         # CAN setup (with delay to ensure it's ready)
         TimerAction(
@@ -170,12 +166,13 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
-                robot_launch,
+                diff_drive_controller,
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
+                raw_map_saver,
                 shutdown_service_node,
             ]
         ),
