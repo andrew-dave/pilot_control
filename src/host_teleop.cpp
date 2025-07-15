@@ -45,7 +45,20 @@ public:
         // Check if services are available (non-blocking)
         RCLCPP_INFO(get_logger(), "Checking service availability...");
         
-        // Check services without blocking
+        // Check ODrive services
+        if (left_axis_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ Left ODrive service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ Left ODrive service is NOT available (E/Q keys won't work)");
+        }
+        
+        if (right_axis_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ Right ODrive service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ Right ODrive service is NOT available (E/Q keys won't work)");
+        }
+        
+        // Check mapping services
         if (save_raw_map_client_->wait_for_service(std::chrono::seconds(1))) {
             RCLCPP_INFO(get_logger(), "✓ save_raw_map service is available");
         } else {
@@ -65,7 +78,7 @@ public:
         }
         
         RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
-        RCLCPP_INFO(get_logger(), "✓ Press M when ready to save map and shutdown mapping");
+        RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm, M to save map");
     }
 
     ~TeleopNode() {
@@ -77,18 +90,78 @@ public:
 
     void arm_motors() {
         RCLCPP_INFO(get_logger(), "Arming motors (CLOSED_LOOP_CONTROL)...");
+        
+        // Check if services are available
+        if (!left_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "Left ODrive service not available!");
+            return;
+        }
+        if (!right_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
+            return;
+        }
+        
+        RCLCPP_INFO(get_logger(), "ODrive services available, sending arm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
         request->axis_requested_state = 8; // CLOSED_LOOP_CONTROL
-        left_axis_client_->async_send_request(request);
-        right_axis_client_->async_send_request(request);
+        
+        auto left_future = left_axis_client_->async_send_request(request);
+        auto right_future = right_axis_client_->async_send_request(request);
+        
+        // Wait for responses
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto left_response = left_future.get();
+            RCLCPP_INFO(get_logger(), "Left motor arm successful - State: %d, Errors: %d", 
+                       left_response->axis_state, left_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get left motor arm response");
+        }
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), right_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto right_response = right_future.get();
+            RCLCPP_INFO(get_logger(), "Right motor arm successful - State: %d, Errors: %d", 
+                       right_response->axis_state, right_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get right motor arm response");
+        }
     }
 
     void disarm_motors() {
         RCLCPP_INFO(get_logger(), "Disarming motors (IDLE)...");
+        
+        // Check if services are available
+        if (!left_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "Left ODrive service not available!");
+            return;
+        }
+        if (!right_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
+            return;
+        }
+        
+        RCLCPP_INFO(get_logger(), "ODrive services available, sending disarm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
         request->axis_requested_state = 1; // IDLE
-        left_axis_client_->async_send_request(request);
-        right_axis_client_->async_send_request(request);
+        
+        auto left_future = left_axis_client_->async_send_request(request);
+        auto right_future = right_axis_client_->async_send_request(request);
+        
+        // Wait for responses
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto left_response = left_future.get();
+            RCLCPP_INFO(get_logger(), "Left motor disarm successful - State: %d, Errors: %d", 
+                       left_response->axis_state, left_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get left motor disarm response");
+        }
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), right_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto right_response = right_future.get();
+            RCLCPP_INFO(get_logger(), "Right motor disarm successful - State: %d, Errors: %d", 
+                       right_response->axis_state, right_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get right motor disarm response");
+        }
     }
 
     void save_map_and_shutdown() {

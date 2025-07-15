@@ -45,6 +45,31 @@ def generate_launch_description():
         output='screen'
     )
 
+    # ODrive CAN nodes for motor control
+    left_odrive_node = Node(
+        package='odrive_can',
+        executable='odrive_can_node',
+        namespace='left',
+        name='odrive_can_left',
+        parameters=[{
+            'node_id': 0,
+            'interface': LaunchConfiguration('can_interface')
+        }],
+        output='screen'
+    )
+
+    right_odrive_node = Node(
+        package='odrive_can',
+        executable='odrive_can_node',
+        namespace='right',
+        name='odrive_can_right',
+        parameters=[{
+            'node_id': 1,
+            'interface': LaunchConfiguration('can_interface')
+        }],
+        output='screen'
+    )
+
     # Differential Drive Controller
     diff_drive_controller = Node(
         package='pilot_control',
@@ -166,6 +191,8 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
+                left_odrive_node,
+                right_odrive_node,
                 diff_drive_controller,
                 foxglove_bridge,
                 livox_driver,
