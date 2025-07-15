@@ -218,25 +218,26 @@ private:
     
     pcl::PointCloud<pcl::PointXYZI>::Ptr process_fast(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud)
     {
-        // Fast processing - rotation + basic filtering
+        // Fast processing - rotation + basic filtering + height filtering
         auto processed = cloud;
         
+        // Step 1: Rotation correction FIRST
         if (apply_rotation_correction_) {
             processed = apply_rotation(processed);
         }
         
-        // Height filtering
+        // Step 2: Light voxel filtering
+        pcl::VoxelGrid<pcl::PointXYZI> voxel;
+        voxel.setInputCloud(processed);
+        voxel.setLeafSize(voxel_size_ * 2.0, voxel_size_ * 2.0, voxel_size_ * 2.0); // Larger voxels for speed
+        voxel.filter(*processed);
+        
+        // Step 3: Height filtering LAST (after rotation)
         pcl::PassThrough<pcl::PointXYZI> pass;
         pass.setInputCloud(processed);
         pass.setFilterFieldName("z");
         pass.setFilterLimits(min_height_, max_height_);
         pass.filter(*processed);
-        
-        // Light voxel filtering
-        pcl::VoxelGrid<pcl::PointXYZI> voxel;
-        voxel.setInputCloud(processed);
-        voxel.setLeafSize(voxel_size_ * 2.0, voxel_size_ * 2.0, voxel_size_ * 2.0); // Larger voxels for speed
-        voxel.filter(*processed);
         
         return processed;
     }
@@ -246,19 +247,12 @@ private:
         // High quality processing - full pipeline
         auto processed = cloud;
         
-        // Rotation correction
+        // Step 1: Rotation correction FIRST
         if (apply_rotation_correction_) {
             processed = apply_rotation(processed);
         }
         
-        // Height filtering
-        pcl::PassThrough<pcl::PointXYZI> pass;
-        pass.setInputCloud(processed);
-        pass.setFilterFieldName("z");
-        pass.setFilterLimits(min_height_, max_height_);
-        pass.filter(*processed);
-        
-        // Outlier removal
+        // Step 2: Outlier removal
         if (remove_outliers_) {
             pcl::StatisticalOutlierRemoval<pcl::PointXYZI> sor;
             sor.setInputCloud(processed);
@@ -267,11 +261,18 @@ private:
             sor.filter(*processed);
         }
         
-        // Voxel grid filtering
+        // Step 3: Voxel grid filtering
         pcl::VoxelGrid<pcl::PointXYZI> voxel;
         voxel.setInputCloud(processed);
         voxel.setLeafSize(voxel_size_, voxel_size_, voxel_size_);
         voxel.filter(*processed);
+        
+        // Step 4: Height filtering LAST (after rotation)
+        pcl::PassThrough<pcl::PointXYZI> pass;
+        pass.setInputCloud(processed);
+        pass.setFilterFieldName("z");
+        pass.setFilterLimits(min_height_, max_height_);
+        pass.filter(*processed);
         
         return processed;
     }
@@ -282,9 +283,10 @@ private:
         float cos_angle = cos(rotation_angle_);
         float sin_angle = sin(rotation_angle_);
         
-        transform(1, 1) = cos_angle;
-        transform(1, 2) = -sin_angle;
-        transform(2, 1) = sin_angle;
+        // Y-axis pitch rotation matrix
+        transform(0, 0) = cos_angle;
+        transform(0, 2) = sin_angle;
+        transform(2, 0) = -sin_angle;
         transform(2, 2) = cos_angle;
         
         pcl::PointCloud<pcl::PointXYZI>::Ptr rotated_cloud(new pcl::PointCloud<pcl::PointXYZI>);

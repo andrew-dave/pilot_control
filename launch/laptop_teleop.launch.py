@@ -25,7 +25,7 @@ def generate_launch_description():
             'remove_outliers': True,
             'outlier_std_dev': 2.0,
             'apply_rotation_correction': True,
-            'rotation_angle': -0.5230,
+            'rotation_angle': -2.6179,  # -150 degrees in radians
             'save_format': 'pcd',
             'auto_shutdown': False,  # Keep running after processing
             'max_height': 2.0,

@@ -4,6 +4,11 @@
 #include <std_srvs/srv/trigger.hpp>
 #include <SDL2/SDL.h>
 #include <chrono>
+#include <thread>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <atomic>
+#include <future>
 
 class TeleopNode : public rclcpp::Node {
 public:
@@ -82,6 +87,11 @@ public:
     }
 
     ~TeleopNode() {
+        // Wait for workflow thread to finish if it's running
+        if (workflow_thread_.joinable()) {
+            workflow_thread_.join();
+        }
+        
         if (window_) {
             SDL_DestroyWindow(window_);
         }
@@ -164,93 +174,137 @@ public:
         }
     }
 
-    void save_map_and_shutdown() {
+    void start_map_workflow() {
+        if (workflow_active_.load()) {
+            RCLCPP_WARN(get_logger(), "Map workflow already in progress, ignoring M key press");
+            return;
+        }
+        
+        workflow_active_.store(true);
+        workflow_step_.store(0);
+        
         RCLCPP_INFO(get_logger(), "=== STARTING MAP SAVE AND SHUTDOWN SEQUENCE ===");
+        RCLCPP_INFO(get_logger(), "✓ Teleop node will remain active throughout the process");
         
-        // Check if services are available before proceeding
-        RCLCPP_INFO(get_logger(), "Checking service availability before proceeding...");
-        
-        if (!save_raw_map_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "✗ save_raw_map service is not available!");
-            RCLCPP_ERROR(get_logger(), "Make sure the robot is running mapping_only.launch.py");
-            return;
-        }
-        
-        if (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "✗ shutdown_mapping service is not available!");
-            RCLCPP_ERROR(get_logger(), "Make sure the robot is running mapping_only.launch.py");
-            return;
-        }
-        
-        if (!process_map_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "✗ process_and_save_map service is not available!");
-            RCLCPP_ERROR(get_logger(), "Make sure the laptop teleop is running with pcd_processor");
-            return;
-        }
-        
-        RCLCPP_INFO(get_logger(), "✓ All services are available, proceeding...");
-        
-        // Step 1: Save raw map from Fast-LIO2
-        RCLCPP_INFO(get_logger(), "Step 1: Saving raw map from Fast-LIO2...");
-        auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto save_future = save_raw_map_client_->async_send_request(save_request);
-        
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto save_response = save_future.get();
-            if (save_response->success) {
-                RCLCPP_INFO(get_logger(), "✓ Raw map saved: %s", save_response->message.c_str());
-            } else {
-                RCLCPP_WARN(get_logger(), "✗ Failed to save raw map: %s", save_response->message.c_str());
+        // Start the workflow in a separate thread to avoid blocking the main loop
+        workflow_thread_ = std::thread(&TeleopNode::execute_map_workflow, this);
+    }
+
+private:
+    void execute_map_workflow() {
+        try {
+            // Step 1: Check service availability
+            workflow_step_.store(1);
+            RCLCPP_INFO(get_logger(), "Step 1: Checking service availability...");
+            
+            if (!save_raw_map_client_->wait_for_service(std::chrono::seconds(2))) {
+                RCLCPP_ERROR(get_logger(), "✗ save_raw_map service is not available!");
+                workflow_active_.store(false);
                 return;
             }
-        } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call save_raw_map service");
-            return;
-        }
-        
-        // Step 2: Shutdown Fast-LIO2 and mapping nodes
-        RCLCPP_INFO(get_logger(), "Step 2: Shutting down Fast-LIO2 and mapping nodes...");
-        auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto shutdown_future = shutdown_mapping_client_->async_send_request(shutdown_request);
-        
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto shutdown_response = shutdown_future.get();
-            if (shutdown_response->success) {
-                RCLCPP_INFO(get_logger(), "✓ %s", shutdown_response->message.c_str());
-            } else {
-                RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping: %s", shutdown_response->message.c_str());
+            
+            if (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(2))) {
+                RCLCPP_ERROR(get_logger(), "✗ shutdown_mapping service is not available!");
+                workflow_active_.store(false);
+                return;
             }
-        } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
-        }
-        
-        // Step 2.5: Copy raw map from robot to laptop
-        RCLCPP_INFO(get_logger(), "Step 2.5: Copying raw map from robot to laptop...");
-        system("/home/avenblake/pilot_ws/src/roofus_pilot1/scripts/copy_latest_map.sh");
-        RCLCPP_INFO(get_logger(), "✓ Raw map copied to laptop");
-        
-        // Step 3: Process the saved raw map
-        RCLCPP_INFO(get_logger(), "Step 3: Processing saved raw map...");
-        auto process_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto process_future = process_map_client_->async_send_request(process_request);
-        
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), process_future, std::chrono::seconds(30)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto process_response = process_future.get();
-            if (process_response->success) {
-                RCLCPP_INFO(get_logger(), "✓ %s", process_response->message.c_str());
-            } else {
-                RCLCPP_WARN(get_logger(), "✗ Failed to process map: %s", process_response->message.c_str());
+            
+            if (!process_map_client_->wait_for_service(std::chrono::seconds(2))) {
+                RCLCPP_ERROR(get_logger(), "✗ process_and_save_map service is not available!");
+                workflow_active_.store(false);
+                return;
             }
-        } else {
-            RCLCPP_ERROR(get_logger(), "✗ Failed to call process_and_save_map service");
+            
+            RCLCPP_INFO(get_logger(), "✓ All services are available, proceeding...");
+            
+            // Step 2: Save raw map from Fast-LIO2
+            workflow_step_.store(2);
+            RCLCPP_INFO(get_logger(), "Step 2: Saving raw map from Fast-LIO2...");
+            auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
+            auto save_future = save_raw_map_client_->async_send_request(save_request);
+            
+            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+                auto save_response = save_future.get();
+                if (save_response->success) {
+                    RCLCPP_INFO(get_logger(), "✓ Raw map saved: %s", save_response->message.c_str());
+                } else {
+                    RCLCPP_WARN(get_logger(), "✗ Failed to save raw map: %s", save_response->message.c_str());
+                    workflow_active_.store(false);
+                    return;
+                }
+            } else {
+                RCLCPP_ERROR(get_logger(), "✗ Failed to call save_raw_map service");
+                workflow_active_.store(false);
+                return;
+            }
+            
+            // Step 3: Shutdown Fast-LIO2 and mapping nodes
+            workflow_step_.store(3);
+            RCLCPP_INFO(get_logger(), "Step 3: Shutting down Fast-LIO2 and mapping nodes...");
+            auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
+            auto shutdown_future = shutdown_mapping_client_->async_send_request(shutdown_request);
+            
+            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+                auto shutdown_response = shutdown_future.get();
+                if (shutdown_response->success) {
+                    RCLCPP_INFO(get_logger(), "✓ %s", shutdown_response->message.c_str());
+                } else {
+                    RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping: %s", shutdown_response->message.c_str());
+                }
+            } else {
+                RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
+            }
+            
+            // Step 4: Copy raw map from robot to laptop
+            workflow_step_.store(4);
+            RCLCPP_INFO(get_logger(), "Step 4: Copying raw map from robot to laptop...");
+            
+            // Use a simple system call with proper error handling
+            RCLCPP_INFO(get_logger(), "Executing copy script...");
+            int copy_result = std::system("/home/avenblake/pilot_ws/src/roofus_pilot1/scripts/copy_latest_map.sh");
+            RCLCPP_INFO(get_logger(), "Copy script completed with exit code: %d", copy_result);
+            
+            if (copy_result == 0) {
+                RCLCPP_INFO(get_logger(), "✓ Raw map copied to laptop successfully");
+            } else {
+                RCLCPP_ERROR(get_logger(), "✗ Failed to copy raw map to laptop (exit code: %d)", copy_result);
+                RCLCPP_ERROR(get_logger(), "Continuing with processing anyway...");
+            }
+            
+            // Add a small delay to ensure file is fully written
+            RCLCPP_INFO(get_logger(), "Waiting 2 seconds for file to be fully written...");
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            
+            // Step 5: Process the saved raw map
+            workflow_step_.store(5);
+            RCLCPP_INFO(get_logger(), "Step 5: Processing saved raw map...");
+            auto process_request = std::make_shared<std_srvs::srv::Trigger::Request>();
+            auto process_future = process_map_client_->async_send_request(process_request);
+            
+            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), process_future, std::chrono::seconds(30)) == rclcpp::FutureReturnCode::SUCCESS) {
+                auto process_response = process_future.get();
+                if (process_response->success) {
+                    RCLCPP_INFO(get_logger(), "✓ %s", process_response->message.c_str());
+                } else {
+                    RCLCPP_WARN(get_logger(), "✗ Failed to process map: %s", process_response->message.c_str());
+                }
+            } else {
+                RCLCPP_ERROR(get_logger(), "✗ Failed to call process_and_save_map service");
+            }
+            
+            RCLCPP_INFO(get_logger(), "=== MAP SAVE AND PROCESSING COMPLETE ===");
+            RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 and mapping nodes are shutdown");
+            RCLCPP_INFO(get_logger(), "✓ Raw map has been processed and saved");
+            RCLCPP_INFO(get_logger(), "✓ Robot control remains active");
+            RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
+            RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
+            
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(get_logger(), "Exception in map workflow: %s", e.what());
         }
         
-        RCLCPP_INFO(get_logger(), "=== MAP SAVE AND PROCESSING COMPLETE ===");
-        RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 and mapping nodes are shutdown");
-        RCLCPP_INFO(get_logger(), "✓ Raw map has been processed and saved");
-        RCLCPP_INFO(get_logger(), "✓ Robot control remains active");
-        RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
-        RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
+        workflow_active_.store(false);
+        workflow_step_.store(0);
     }
 
     void update() {
@@ -275,7 +329,7 @@ public:
                     disarm_motors();
                 } else if (event.key.keysym.sym == SDLK_m) {
                     RCLCPP_INFO(get_logger(), "M key pressed - starting map save sequence!");
-                    save_map_and_shutdown();
+                    start_map_workflow();
                 }
             }
         }
@@ -304,6 +358,11 @@ public:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;
+    
+    // Workflow state management
+    std::atomic<bool> workflow_active_{false};
+    std::atomic<int> workflow_step_{0};
+    std::thread workflow_thread_;
 };
 
 int main(int argc, char *argv[]) {
