@@ -11,7 +11,7 @@ class GPRSerialBridge(Node):
         super().__init__('gpr_serial_bridge')
         
         # Declare parameters
-        self.declare_parameter('serial_port', '/dev/ttyUSB0')
+        self.declare_parameter('serial_port', '/dev/ttyACM1')
         self.declare_parameter('baud_rate', 9600)
         
         # Get parameters
