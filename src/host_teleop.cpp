@@ -199,17 +199,15 @@ public:
             return;
         }
         auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto future = gpr_line_start_client_->async_send_request(req);
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto resp = future.get();
-            if (resp->success) {
-                RCLCPP_INFO(get_logger(), "✓ Line-UP command sent to Arduino");
-            } else {
-                RCLCPP_ERROR(get_logger(), "✗ Line-UP failed: %s", resp->message.c_str());
-            }
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to call gpr_line_start service");
-        }
+        auto future = gpr_line_start_client_->async_send_request(req,
+            [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture resp) {
+                if (resp.get()->success) {
+                    RCLCPP_INFO(this->get_logger(), "✓ Line-UP command acknowledged by Arduino");
+                } else {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Line-UP failed: %s", resp.get()->message.c_str());
+                }
+            });
+        (void)future; // ignore – handled via callback
     }
 
     void trigger_gpr_line_stop() {
@@ -217,18 +215,16 @@ public:
             RCLCPP_WARN(get_logger(), "gpr_line_stop service not available");
             return;
         }
-        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto future = gpr_line_stop_client_->async_send_request(req);
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto resp = future.get();
-            if (resp->success) {
-                RCLCPP_INFO(get_logger(), "✓ Line-DOWN command sent to Arduino");
-            } else {
-                RCLCPP_ERROR(get_logger(), "✗ Line-DOWN failed: %s", resp->message.c_str());
-            }
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to call gpr_line_stop service");
-        }
+        auto req2 = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future2 = gpr_line_stop_client_->async_send_request(req2,
+            [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture resp) {
+                if (resp.get()->success) {
+                    RCLCPP_INFO(this->get_logger(), "✓ Line-DOWN command acknowledged by Arduino");
+                } else {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Line-DOWN failed: %s", resp.get()->message.c_str());
+                }
+            });
+        (void)future2;
     }
 
     void start_map_workflow() {
