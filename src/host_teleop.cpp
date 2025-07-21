@@ -24,8 +24,9 @@ public:
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
+        // GPR line control services (Arduino)
         gpr_line_start_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_start");
-        gpr_line_stop_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
+        gpr_line_stop_client_  = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
@@ -85,18 +86,18 @@ public:
         } else {
             RCLCPP_WARN(get_logger(), "⚠ process_and_save_map service is NOT available (will be checked when M is pressed)");
         }
-        
-        // Check GPR services
+
+        // Check GPR line services
         if (gpr_line_start_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ GPR line start service is available");
+            RCLCPP_INFO(get_logger(), "✓ gpr_line_start service is available (L key)");
         } else {
-            RCLCPP_WARN(get_logger(), "⚠ GPR line start service is NOT available (L key won't work)");
+            RCLCPP_WARN(get_logger(), "⚠ gpr_line_start service is NOT available (L key will do nothing)");
         }
-        
+
         if (gpr_line_stop_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ GPR line stop service is available");
+            RCLCPP_INFO(get_logger(), "✓ gpr_line_stop service is available (K key)");
         } else {
-            RCLCPP_WARN(get_logger(), "⚠ GPR line stop service is NOT available (K key won't work)");
+            RCLCPP_WARN(get_logger(), "⚠ gpr_line_stop service is NOT available (K key will do nothing)");
         }
         
         RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
@@ -191,49 +192,42 @@ public:
         }
     }
 
-    void start_gpr_line() {
-        RCLCPP_INFO(get_logger(), "Starting GPR line...");
-        
-        if (!gpr_line_start_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR line start service not available!");
+    // ---------------- GPR line control ----------------
+    void trigger_gpr_line_start() {
+        if (!gpr_line_start_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_WARN(get_logger(), "gpr_line_start service not available");
             return;
         }
-        
-        auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto future = gpr_line_start_client_->async_send_request(request);
-        
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto response = future.get();
-            if (response->success) {
-                RCLCPP_INFO(get_logger(), "✓ GPR line start successful: %s", response->message.c_str());
+        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = gpr_line_start_client_->async_send_request(req);
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto resp = future.get();
+            if (resp->success) {
+                RCLCPP_INFO(get_logger(), "✓ Line-UP command sent to Arduino");
             } else {
-                RCLCPP_WARN(get_logger(), "✗ GPR line start failed: %s", response->message.c_str());
+                RCLCPP_ERROR(get_logger(), "✗ Line-UP failed: %s", resp->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR line start response");
+            RCLCPP_ERROR(get_logger(), "Failed to call gpr_line_start service");
         }
     }
 
-    void stop_gpr_line() {
-        RCLCPP_INFO(get_logger(), "Stopping GPR line...");
-        
-        if (!gpr_line_stop_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR line stop service not available!");
+    void trigger_gpr_line_stop() {
+        if (!gpr_line_stop_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_WARN(get_logger(), "gpr_line_stop service not available");
             return;
         }
-        
-        auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-        auto future = gpr_line_stop_client_->async_send_request(request);
-        
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto response = future.get();
-            if (response->success) {
-                RCLCPP_INFO(get_logger(), "✓ GPR line stop successful: %s", response->message.c_str());
+        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = gpr_line_stop_client_->async_send_request(req);
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(2)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto resp = future.get();
+            if (resp->success) {
+                RCLCPP_INFO(get_logger(), "✓ Line-DOWN command sent to Arduino");
             } else {
-                RCLCPP_WARN(get_logger(), "✗ GPR line stop failed: %s", response->message.c_str());
+                RCLCPP_ERROR(get_logger(), "✗ Line-DOWN failed: %s", resp->message.c_str());
             }
         } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR line stop response");
+            RCLCPP_ERROR(get_logger(), "Failed to call gpr_line_stop service");
         }
     }
 
@@ -390,15 +384,15 @@ private:
                     arm_motors();
                 } else if (event.key.keysym.sym == SDLK_q) {
                     disarm_motors();
-                } else if (event.key.keysym.sym == SDLK_l) {
-                    RCLCPP_INFO(get_logger(), "L key pressed - starting GPR line!");
-                    start_gpr_line();
-                } else if (event.key.keysym.sym == SDLK_k) {
-                    RCLCPP_INFO(get_logger(), "K key pressed - stopping GPR line!");
-                    stop_gpr_line();
                 } else if (event.key.keysym.sym == SDLK_m) {
                     RCLCPP_INFO(get_logger(), "M key pressed - starting map save sequence!");
                     start_map_workflow();
+                } else if (event.key.keysym.sym == SDLK_l) {
+                    RCLCPP_INFO(get_logger(), "L key pressed - Line UP");
+                    trigger_gpr_line_start();
+                } else if (event.key.keysym.sym == SDLK_k) {
+                    RCLCPP_INFO(get_logger(), "K key pressed - Line DOWN");
+                    trigger_gpr_line_stop();
                 }
             }
         }
