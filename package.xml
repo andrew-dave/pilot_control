@@ -22,8 +22,8 @@
   <depend>tf2_sensor_msgs</depend>
 
   <!-- Optional: required only for LattePanda serial bridge -->
-  <build_depend>serial</build_depend>
-  <exec_depend>serial</exec_depend>
+  <build_depend>python3-serial</build_depend>
+  <exec_depend>python3-serial</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
