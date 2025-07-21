@@ -36,19 +36,19 @@ def generate_launch_description():
     )
 
     # GPR Serial Bridge Node (runs on laptop, communicates with Arduino)
-    gpr_serial_bridge_node = Node(
-        package='pilot_control',
-        executable='gpr_serial_bridge.py',
-        name='gpr_serial_bridge',
-        output='screen',
-        parameters=[{
-            'serial_port': '/dev/ttyUSB0',  # Change this to match your Arduino port
-            'baud_rate': 9600
-        }]
-    )
+    # gpr_serial_bridge_node = Node(
+    #     package='pilot_control',
+    #     executable='gpr_serial_bridge.py',
+    #     name='gpr_serial_bridge',
+    #     output='screen',
+    #     parameters=[{
+    #         'serial_port': '/dev/ttyUSB0',  # Change this to match your Arduino port
+    #         'baud_rate': 9600
+    #     }]
+    # )
 
     return LaunchDescription([
         host_teleop_node,
         pcd_processor_node,
-        gpr_serial_bridge_node,
+        # gpr_serial_bridge_node,  # Temporarily disabled
     ]) 
