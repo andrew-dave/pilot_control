@@ -261,7 +261,7 @@ private:
             
             // Use a simple system call with proper error handling
             RCLCPP_INFO(get_logger(), "Executing copy script...");
-            int copy_result = std::system("/home/avenblake/pilot_ws/src/roofus_pilot1/scripts/copy_latest_map.sh");
+            int copy_result = std::system("/home/avenblake/pilot_ws/src/pilot_control/scripts/copy_latest_map.sh");
             RCLCPP_INFO(get_logger(), "Copy script completed with exit code: %d", copy_result);
             
             if (copy_result == 0) {

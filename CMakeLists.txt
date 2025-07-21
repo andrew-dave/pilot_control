@@ -44,6 +44,8 @@ target_link_libraries(raw_map_saver ${PCL_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS raw_map_saver DESTINATION lib/${PROJECT_NAME})
 
+
+
 # === SHUTDOWN SERVICE ===
 add_executable(shutdown_service src/shutdown_service.cpp)
 ament_target_dependencies(shutdown_service rclcpp std_srvs)
