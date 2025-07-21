@@ -72,6 +72,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install Python scripts
+install(
+  PROGRAMS scripts/gpr_serial_bridge.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # === Lint/Tests ===
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

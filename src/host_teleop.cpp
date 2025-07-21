@@ -24,6 +24,8 @@ public:
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
+        gpr_line_start_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_start");
+        gpr_line_stop_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
@@ -44,6 +46,8 @@ public:
         RCLCPP_INFO(get_logger(), "  WASD - Move robot");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
+        RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
+        RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
         RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
         
@@ -80,6 +84,19 @@ public:
             RCLCPP_INFO(get_logger(), "✓ process_and_save_map service is available");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ process_and_save_map service is NOT available (will be checked when M is pressed)");
+        }
+        
+        // Check GPR services
+        if (gpr_line_start_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ GPR line start service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ GPR line start service is NOT available (L key won't work)");
+        }
+        
+        if (gpr_line_stop_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ GPR line stop service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ GPR line stop service is NOT available (K key won't work)");
         }
         
         RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
@@ -171,6 +188,52 @@ public:
                        right_response->axis_state, right_response->active_errors);
         } else {
             RCLCPP_ERROR(get_logger(), "Failed to get right motor disarm response");
+        }
+    }
+
+    void start_gpr_line() {
+        RCLCPP_INFO(get_logger(), "Starting GPR line...");
+        
+        if (!gpr_line_start_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "GPR line start service not available!");
+            return;
+        }
+        
+        auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = gpr_line_start_client_->async_send_request(request);
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto response = future.get();
+            if (response->success) {
+                RCLCPP_INFO(get_logger(), "✓ GPR line start successful: %s", response->message.c_str());
+            } else {
+                RCLCPP_WARN(get_logger(), "✗ GPR line start failed: %s", response->message.c_str());
+            }
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get GPR line start response");
+        }
+    }
+
+    void stop_gpr_line() {
+        RCLCPP_INFO(get_logger(), "Stopping GPR line...");
+        
+        if (!gpr_line_stop_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "GPR line stop service not available!");
+            return;
+        }
+        
+        auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = gpr_line_stop_client_->async_send_request(request);
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto response = future.get();
+            if (response->success) {
+                RCLCPP_INFO(get_logger(), "✓ GPR line stop successful: %s", response->message.c_str());
+            } else {
+                RCLCPP_WARN(get_logger(), "✗ GPR line stop failed: %s", response->message.c_str());
+            }
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get GPR line stop response");
         }
     }
 
@@ -327,6 +390,12 @@ private:
                     arm_motors();
                 } else if (event.key.keysym.sym == SDLK_q) {
                     disarm_motors();
+                } else if (event.key.keysym.sym == SDLK_l) {
+                    RCLCPP_INFO(get_logger(), "L key pressed - starting GPR line!");
+                    start_gpr_line();
+                } else if (event.key.keysym.sym == SDLK_k) {
+                    RCLCPP_INFO(get_logger(), "K key pressed - stopping GPR line!");
+                    stop_gpr_line();
                 } else if (event.key.keysym.sym == SDLK_m) {
                     RCLCPP_INFO(get_logger(), "M key pressed - starting map save sequence!");
                     start_map_workflow();
@@ -356,6 +425,8 @@ private:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_raw_map_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_start_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_stop_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;
     
