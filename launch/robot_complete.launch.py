@@ -29,12 +29,12 @@ def generate_launch_description():
     )
     declare_velocity_multiplier_arg = DeclareLaunchArgument(
         'velocity_multiplier',
-        default_value='0.8',
+        default_value='1.0',
         description='A multiplier to tune the robot speed.'
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='0.4',
+        default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
 
@@ -172,6 +172,18 @@ def generate_launch_description():
         output='screen'
     )
 
+    # GPR Serial Bridge (Arduino connector)
+    gpr_serial_bridge_node = Node(
+        package='pilot_control',
+        executable='gpr_serial_bridge.py',
+        name='gpr_serial_bridge',
+        output='screen',
+        parameters=[{
+            'serial_port': '/dev/ttyACM1',  # adjust if different on LattePanda
+            'baud_rate': 9600
+        }]
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -201,6 +213,7 @@ def generate_launch_description():
                 camera_init_to_foot_init_transform,
                 raw_map_saver,
                 shutdown_service_node,
+                gpr_serial_bridge_node,
             ]
         ),
     ]) 
