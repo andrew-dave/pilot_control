@@ -202,7 +202,7 @@ private:
         // ODrive PID applies reverse torque to stop quickly (no resistor needed).
         odrive_can::msg::ControlMessage msg;
         msg.control_mode = 2; // VELOCITY_CONTROL
-        msg.input_mode   = 2; // VEL_RAMP (same as during normal driving)
+        msg.input_mode   = 1; // PASSTHROUGH (no firmware ramp delay)
         msg.input_vel    = 0.0;
         msg.input_torque = 0.0; // keep default torque limit
         left_motor_pub_->publish(msg);
