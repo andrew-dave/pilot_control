@@ -3,6 +3,8 @@
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
+from nav_msgs.msg import Odometry
+import math
 import serial
 import time
 
@@ -15,13 +17,25 @@ class GPRSerialBridge(Node):
         self.declare_parameter('baud_rate', 9600)
         
         # Get parameters
-        self.serial_port = self.get_parameter('serial_port').value
-        self.baud_rate = self.get_parameter('baud_rate').value
+        self.serial_port: str = self.get_parameter('serial_port').get_parameter_value().string_value
+        self.baud_rate: int = int(self.get_parameter('baud_rate').get_parameter_value().integer_value)
         
         # Initialize serial connection
         self.serial_conn = None
         self.connect_serial()
         
+        # State
+        self.scan_active = False
+        self.last_send_time = time.time()
+
+        # Parameters for conversion (can be tuned via ROS params if needed)
+        self.C = math.pi * 0.06               # 60 mm wheel circumference [m]
+        self.gear_ratio = 3.0                 # servo : encoder  (39/13)
+        self.max_servo_rpm = 50               # Parallax CR servo ≈50 RPM @ 6 V
+
+        # Subscribe to odometry to get **actual** robot velocity (includes ODrive ramp)
+        self.create_subscription(Odometry, '/odom', self.odom_cb, 10)
+
         # Create services
         self.line_start_service = self.create_service(
             Trigger, 
@@ -73,6 +87,7 @@ class GPRSerialBridge(Node):
         if self.send_command('L'):
             response.success = True
             response.message = 'Line start command sent to Arduino'
+            self.scan_active = True
         else:
             response.success = False
             response.message = 'Failed to send line start command'
@@ -83,10 +98,37 @@ class GPRSerialBridge(Node):
         if self.send_command('K'):
             response.success = True
             response.message = 'Line stop command sent to Arduino'
+            self.scan_active = False
         else:
             response.success = False
             response.message = 'Failed to send line stop command'
         return response
+
+    # ---------------- Odometry callback ----------------
+    def odom_cb(self, msg: Odometry):
+        if not self.scan_active or self.serial_conn is None:
+            return
+
+        v = msg.twist.twist.linear.x  # m/s (positive forward)
+
+        # Convert to servo RPM (see derivation)
+        servo_rpm = (v / (self.C * self.gear_ratio)) * 60.0
+
+        # Saturate
+        servo_rpm = max(min(servo_rpm,  self.max_servo_rpm), -self.max_servo_rpm)
+
+        # Throttle send rate to e.g. 10 Hz to avoid flooding serial
+        now = time.time()
+        if now - self.last_send_time < 0.1:
+            return
+        self.last_send_time = now
+
+        # Format "S+NN" (integer RPM)
+        cmd = f'S{int(servo_rpm):+d}\n'
+        try:
+            self.serial_conn.write(cmd.encode())
+        except Exception as e:
+            self.get_logger().error(f'Failed to send speed cmd: {e}')
 
 def main(args=None):
     rclpy.init(args=args)
