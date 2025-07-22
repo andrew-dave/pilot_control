@@ -10,8 +10,13 @@ Servo driveServo;
 
 void setServoRPM(int rpm) {
   // Parallax CR-servo: ≈50 RPM @ 2 ms, ‑50 RPM @ 1 ms, stop @ 1.5 ms
-  rpm = constrain(rpm, 50, -50);
-  int pulse = 1500 + rpm * 10;   // 10 µs per RPM (500 µs / 50 RPM)
+  const int DEADBAND_RPM = 2; // below this treat as stop
+  rpm = constrain(rpm, -50, 50);
+  if (abs(rpm) < DEADBAND_RPM) rpm = 0;
+
+  rpm = -rpm;  // Invert direction to match desired rotation
+
+  int pulse = 1500 + rpm * 8;   // 10 µs per RPM (500 µs / 50 RPM)
   driveServo.writeMicroseconds(pulse);
 }
 

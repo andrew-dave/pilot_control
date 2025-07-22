@@ -117,9 +117,9 @@ class GPRSerialBridge(Node):
         # Saturate
         servo_rpm = max(min(servo_rpm,  self.max_servo_rpm), -self.max_servo_rpm)
 
-        # Throttle send rate to e.g. 10 Hz to avoid flooding serial
+        # Throttle send rate to ~20 Hz to keep servo responsive
         now = time.time()
-        if now - self.last_send_time < 0.1:
+        if now - self.last_send_time < 0.05:
             return
         self.last_send_time = now
 

@@ -198,11 +198,13 @@ private:
 
     // ---------------- Helpers ----------------
     void send_zero_torque(){
+        // Active brake: stay in VELOCITY_CONTROL and command 0 turns/s so the
+        // ODrive PID applies reverse torque to stop quickly (no resistor needed).
         odrive_can::msg::ControlMessage msg;
-        msg.control_mode = 1; // TORQUE_CONTROL
-        msg.input_mode   = 1; // PASSTHROUGH
+        msg.control_mode = 2; // VELOCITY_CONTROL
+        msg.input_mode   = 2; // VEL_RAMP (same as during normal driving)
         msg.input_vel    = 0.0;
-        msg.input_torque = 0.0;
+        msg.input_torque = 0.0; // keep default torque limit
         left_motor_pub_->publish(msg);
         right_motor_pub_->publish(msg);
     }
