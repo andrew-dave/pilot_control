@@ -139,7 +139,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='body_to_foot_transform',
-        arguments=['0.17','0','0','0','-0.5230','0', 'body', 'foot'],
+        arguments=['-0.17','0','0','0','-0.5230','0', 'body', 'foot'],
         output='screen'
     )
     
@@ -148,7 +148,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='camera_init_to_foot_init_transform',
-        arguments=['0.17','0','0','0','-0.5230','0', 'camera_init', 'foot_init'],
+        arguments=['-0.17','0','0','0','-0.5230','0', 'camera_init', 'foot_init'],
         output='screen'
     )
 
@@ -184,6 +184,14 @@ def generate_launch_description():
         }]
     )
 
+    # Path relay node (Lidar path to foot frame)
+    path_relay_node = Node(
+        package='pilot_control',
+        executable='path_to_foot.py',
+        name='path_to_foot',
+        output='screen'
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -214,6 +222,7 @@ def generate_launch_description():
                 raw_map_saver,
                 shutdown_service_node,
                 gpr_serial_bridge_node,
+                path_relay_node,
             ]
         ),
     ]) 

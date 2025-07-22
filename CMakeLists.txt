@@ -75,6 +75,7 @@ install(
 # Install Python scripts
 install(
   PROGRAMS scripts/gpr_serial_bridge.py
+  scripts/path_to_foot.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
