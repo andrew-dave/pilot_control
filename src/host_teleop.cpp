@@ -396,9 +396,9 @@ private:
         const Uint8* keys = SDL_GetKeyboardState(NULL);
         // Robot teleoperation (WASD)
         if (keys[SDL_SCANCODE_W]) {
-            cmd_vel_msg.linear.x = 0.5;  // Forward
+            cmd_vel_msg.linear.x = 0.3;  // Forward
         } else if (keys[SDL_SCANCODE_S]) {
-            cmd_vel_msg.linear.x = -0.5; // Backward
+            cmd_vel_msg.linear.x = -0.3; // Backward
         }
         if (keys[SDL_SCANCODE_A]) {
             cmd_vel_msg.angular.z = -1.5; // Left
