@@ -139,7 +139,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='body_to_foot_transform',
-        arguments=['0', '0', '0', '0', '-0.5230', '0', 'body', 'foot'],
+        arguments=['-0.17','0','0','0','-0.5230','0', 'body', 'foot'],
         output='screen'
     )
     
@@ -148,7 +148,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='camera_init_to_foot_init_transform',
-        arguments=['0', '0', '0', '0', '-0.5230', '0', 'camera_init', 'foot_init'],
+        arguments=['-0.17','0','0','0','-0.5230','0', 'camera_init', 'foot_init'],
         output='screen'
     )
 
