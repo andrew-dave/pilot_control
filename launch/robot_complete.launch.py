@@ -222,7 +222,7 @@ def generate_launch_description():
                 raw_map_saver,
                 shutdown_service_node,
                 gpr_serial_bridge_node,
-                path_relay_node,
+                # path_relay_node,
             ]
         ),
     ]) 
