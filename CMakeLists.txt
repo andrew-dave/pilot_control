@@ -68,7 +68,7 @@ endif()
 
 # Install launch files and config
 install(
-  DIRECTORY launch config
+  DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
 

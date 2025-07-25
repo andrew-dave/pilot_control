@@ -29,12 +29,12 @@ def generate_launch_description():
     )
     declare_velocity_multiplier_arg = DeclareLaunchArgument(
         'velocity_multiplier',
-        default_value='0.5',
+        default_value='0.3',
         description='A multiplier to tune the robot speed.'
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='0.75',
+        default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
 
@@ -185,12 +185,12 @@ def generate_launch_description():
     )
 
     # Path relay node (Lidar path to foot frame)
-    path_relay_node = Node(
-        package='pilot_control',
-        executable='path_to_foot.py',
-        name='path_to_foot',
-        output='screen'
-    )
+    # path_relay_node = Node(
+    #     package='pilot_control',
+    #     executable='path_to_foot.py',
+    #     name='path_to_foot',
+    #     output='screen'
+    # )
 
     return LaunchDescription([
         # Launch arguments
