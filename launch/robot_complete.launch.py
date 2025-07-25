@@ -29,12 +29,12 @@ def generate_launch_description():
     )
     declare_velocity_multiplier_arg = DeclareLaunchArgument(
         'velocity_multiplier',
-        default_value='1.0',
+        default_value='0.5',
         description='A multiplier to tune the robot speed.'
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='1.0',
+        default_value='0.75',
         description='A multiplier to tune the robot turning speed.'
     )
 
@@ -111,7 +111,7 @@ def generate_launch_description():
             'xfer_format': 1,
             'multi_topic': 0,
             'data_src': 0,
-            'publish_freq': 3.0,  # Reduced from 10Hz to 3Hz to reduce data load
+            'publish_freq': 10.0,  # Reduced from 10Hz to 3Hz to reduce data load
             'output_data_type': 0,
             'frame_id': 'livox_frame',
             'lvx_file_path': '/home/robot/livox_test.lvx',
