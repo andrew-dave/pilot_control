@@ -192,6 +192,20 @@ def generate_launch_description():
     #     output='screen'
     # )
 
+    # Laser Map Rotator - tilt correction for occupancy grid
+    laser_map_rotator_node = Node(
+        package='pilot_control',
+        executable='laser_map_rotator',
+        name='laser_map_rotator',
+        output='screen',
+        parameters=[{
+            'input_topic': '/Laser_map',
+            'output_topic': '/Laser_map_rotated',
+            'pitch_rad': 0.5235987756,  # 30 degrees
+            'output_frame': 'foot_init'
+        }]
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -217,6 +231,7 @@ def generate_launch_description():
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
+                laser_map_rotator_node,
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 raw_map_saver,

@@ -44,6 +44,12 @@ target_link_libraries(raw_map_saver ${PCL_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS raw_map_saver DESTINATION lib/${PROJECT_NAME})
 
+# === LASER MAP ROTATOR ===
+add_executable(laser_map_rotator src/laser_map_rotator.cpp)
+ament_target_dependencies(laser_map_rotator rclcpp sensor_msgs pcl_conversions tf2 tf2_geometry_msgs tf2_sensor_msgs)
+target_include_directories(laser_map_rotator PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(laser_map_rotator ${PCL_LIBRARIES})
+install(TARGETS laser_map_rotator DESTINATION lib/${PROJECT_NAME})
 
 
 # === SHUTDOWN SERVICE ===
