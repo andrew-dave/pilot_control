@@ -1,0 +1,46 @@
+# octo_occu.yaml
+# OctoMap server tuned for FAST-LIO2 output on a LattePanda Sigma.
+# ---------------------------------------------------------------
+# • Global frame  : foot_init   (Z-up, fixed)
+# • Cloud frame   : foot        (moves with robot, already tilt-corrected)
+# • Cloud topic   : /rotated_ground_cloud   <-- change if you use a different name
+
+octomap_server:
+  ros__parameters:
+    # -----------------------------------------------------------
+    # Core map settings
+    # -----------------------------------------------------------
+    frame_id: foot_init            # OctoMap’s fixed reference frame
+    resolution: 0.10               # Voxel edge length [m] – start with 10 cm
+    compress_map: true             # lossless compression to shrink RAM/ROS msgs
+    filter_speckles: true          # remove isolated single-voxel noise
+
+    # -----------------------------------------------------------
+    # Input cloud
+    # -----------------------------------------------------------
+    point_cloud_topic: /Laser_map_rotated   # processed cloud from FAST-LIO2
+    max_scan_rate: 10.0           # (Hz) cap insert rate so CPU spikes stay tame
+
+    # -----------------------------------------------------------
+    # Sensor model
+    # -----------------------------------------------------------
+    sensor_model:
+      max_range: 60.0             # [m] ignore returns beyond this range
+      prob_hit: 0.7               # P(occupied | hit)
+      prob_miss: 0.4              # P(free | miss)
+      thres_min: 0.12             # log-odds clamping (free)
+      thres_max: 0.97             # log-odds clamping (occupied)
+
+    # -----------------------------------------------------------
+    # 2-D projection (Nav2 / coverage planner)
+    # -----------------------------------------------------------
+    publish_2d_map: true
+    2d_min_z: -0.20               # keep voxels within this vertical band
+    2d_max_z:  0.50               #   (adjust to match roof height variation)
+
+    # -----------------------------------------------------------
+    # Misc
+    # -----------------------------------------------------------
+    publish_free_space: true      # save bandwidth if you only need obstacles
+    color_octomap: false           # true → intensity-colored voxels in RViz
+    use_sim_time: false

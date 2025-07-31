@@ -206,6 +206,19 @@ def generate_launch_description():
         }]
     )
 
+    # OctoMap Server – builds 3-D occupancy map from rotated cloud
+    octomap_server_node = Node(
+        package='octomap_server',
+        executable='octomap_server_node',
+        name='octomap_server',
+        output='screen',
+        parameters=[
+            PathJoinSubstitution([
+                FindPackageShare('pilot_control'), 'config', 'octo_occu.yaml'
+            ])
+        ]
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -235,6 +248,7 @@ def generate_launch_description():
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 raw_map_saver,
+                octomap_server_node,
                 shutdown_service_node,
                 gpr_serial_bridge_node,
                 # path_relay_node,
