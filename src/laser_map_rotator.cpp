@@ -20,8 +20,8 @@ public:
     this->declare_parameter<std::string>("output_topic", "/Laser_map_rotated");
     this->declare_parameter<double>("pitch_rad", 0.0); // 30 deg default
     this->declare_parameter<std::string>("output_frame", "foot_init");
-    this->declare_parameter<double>("max_height", 2.0);
-    this->declare_parameter<double>("min_height", 0.04);
+    this->declare_parameter<double>("max_height", 1.0);
+    this->declare_parameter<double>("min_height", 0.05);
 
     input_topic_  = this->get_parameter("input_topic").as_string();
     output_topic_ = this->get_parameter("output_topic").as_string();
