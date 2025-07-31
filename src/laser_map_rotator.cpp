@@ -18,7 +18,7 @@ public:
     // Declare & read parameters
     this->declare_parameter<std::string>("input_topic", "/Laser_map");
     this->declare_parameter<std::string>("output_topic", "/Laser_map_rotated");
-    this->declare_parameter<double>("pitch_rad", 0.0); // 30 deg default
+    this->declare_parameter<double>("pitch_rad", -0.5235987756); // -30 deg default
     this->declare_parameter<std::string>("output_frame", "foot_init");
     this->declare_parameter<double>("max_height", 1.0);
     this->declare_parameter<double>("min_height", 0.05);
@@ -31,11 +31,11 @@ public:
     max_height_  = this->get_parameter("max_height").as_double();
 
     // Pre-compute transform both as Eigen (possibly used later) and as tf2 TransformStamped for safe PointCloud2 transform
-    Eigen::AngleAxisf pitch_rot(pitch_rad_, Eigen::Vector3f::UnitY());
-    transform_ = Eigen::Affine3f(pitch_rot);
+    Eigen::AngleAxisf roll_rot(pitch_rad_, Eigen::Vector3f::UnitX());
+    transform_ = Eigen::Affine3f(roll_rot);
 
     tf2::Quaternion q;
-    q.setRPY(0.0, pitch_rad_, 0.0);
+    q.setRPY(pitch_rad_, 0.0, 0.0);
     q.normalize();
     tf2_transform_.transform.rotation.x = q.x();
     tf2_transform_.transform.rotation.y = q.y();
