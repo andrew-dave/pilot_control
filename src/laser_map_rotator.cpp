@@ -31,11 +31,11 @@ public:
     max_height_  = this->get_parameter("max_height").as_double();
 
     // Pre-compute transform both as Eigen (possibly used later) and as tf2 TransformStamped for safe PointCloud2 transform
-    Eigen::AngleAxisf roll_rot(pitch_rad_, Eigen::Vector3f::UnitX());
+    Eigen::AngleAxisf roll_rot(pitch_rad_, Eigen::Vector3f::UnitZ());
     transform_ = Eigen::Affine3f(roll_rot);
 
     tf2::Quaternion q;
-    q.setRPY(pitch_rad_, 0.0, 0.0);
+    q.setRPY(0.0, 0.0, pitch_rad_);
     q.normalize();
     tf2_transform_.transform.rotation.x = q.x();
     tf2_transform_.transform.rotation.y = q.y();
