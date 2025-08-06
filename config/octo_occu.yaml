@@ -18,7 +18,7 @@ octomap_server:
     # -----------------------------------------------------------
     # Input cloud
     # -----------------------------------------------------------
-    point_cloud_topic: /Laser_map_rotated   # processed cloud from FAST-LIO2
+    cloud_in: /Laser_map_rotated  # processed cloud from FAST-LIO2
     max_scan_rate: 10.0           # (Hz) cap insert rate so CPU spikes stay tame
 
     # -----------------------------------------------------------

@@ -72,9 +72,15 @@ else()
   message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
 endif()
 
-# Install launch files and config
+# Install launch and config files
 install(
   DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+# Install config directory so YAMLs are available at runtime
+install(
+  DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -212,6 +212,7 @@ def generate_launch_description():
         executable='octomap_server_node',
         name='octomap_server',
         output='screen',
+        remappings=[('cloud_in', '/Laser_map_rotated')],
         parameters=[
             PathJoinSubstitution([
                 FindPackageShare('pilot_control'), 'config', 'octo_occu.yaml'
