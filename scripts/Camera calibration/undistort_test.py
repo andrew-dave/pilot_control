@@ -162,6 +162,7 @@ def main():
     ap.add_argument("--no-strict-fps", action="store_true", help="Do not strictly enforce reported FPS")
     ap.add_argument("--buffers", type=int, default=1, help="Capture buffer count (if supported)")
     ap.add_argument("--show-side", action="store_true", help="Show raw | undistorted side-by-side")
+    ap.add_argument("--rotate-180", action="store_true", help="Rotate displayed images by 180 degrees")
     args = ap.parse_args()
 
     # Load calibration
@@ -194,7 +195,26 @@ def main():
     while True:
         ok, frame = cap.read()
         if not ok:
-            print("WARN: frame grab failed"); continue
+            print("WARN: frame grab failed; retrying camera in 2s")
+            try:
+                cap.release()
+            except Exception:
+                pass
+            time.sleep(2.0)
+            # Keep trying to reopen the camera until success
+            while True:
+                cap_new, dev_used_new, info_new = open_camera(
+                    args.dev, args.cam, W, H, args.fps, args.fourcc,
+                    strict=True, buffers=args.buffers, strict_fps=(not args.no_strict_fps)
+                )
+                if cap_new is not None:
+                    cap, dev_used, info = cap_new, dev_used_new, info_new
+                    print(f"[INFO] Reopened {dev_used}  ({info})")
+                    break
+                else:
+                    print(f"WARN: reopen failed ({info_new}); retrying in 2s")
+                    time.sleep(2.0)
+            continue
 
         und = cv2.remap(frame, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
@@ -205,15 +225,22 @@ def main():
             frames = 0
             last = now
 
+        # Optional 180° rotation for display
+        frame_disp = frame
+        und_disp = und
+        if args.rotate_180:
+            frame_disp = cv2.rotate(frame_disp, cv2.ROTATE_180)
+            und_disp = cv2.rotate(und_disp, cv2.ROTATE_180)
+
         if args.show_side:
-            combo = np.hstack((frame, und))
+            combo = np.hstack((frame_disp, und_disp))
             put_text(combo, f"raw | undistorted  ({info})")
             put_text(combo, f"FPS ~ {fps_disp:.1f}", y=60)
             cv2.imshow("undistort", combo)
         else:
-            put_text(und, f"undistorted  ({info})")
-            put_text(und, f"FPS ~ {fps_disp:.1f}", y=60)
-            cv2.imshow("undistort", und)
+            put_text(und_disp, f"undistorted  ({info})")
+            put_text(und_disp, f"FPS ~ {fps_disp:.1f}", y=60)
+            cv2.imshow("undistort", und_disp)
 
         key = cv2.waitKey(1) & 0xFF
         if key in (ord('q'), 27):
