@@ -70,6 +70,19 @@ def generate_launch_description():
         output='screen'
     )
 
+    # ODrive CAN node for GPR/micro (node_id 2)
+    gpr_odrive_node = Node(
+        package='odrive_can',
+        executable='odrive_can_node',
+        namespace='gpr',
+        name='odrive_can_gpr',
+        parameters=[{
+            'node_id': 2,
+            'interface': LaunchConfiguration('can_interface')
+        }],
+        output='screen'
+    )
+
     # Differential Drive Controller
     diff_drive_controller = Node(
         package='pilot_control',
@@ -82,6 +95,21 @@ def generate_launch_description():
             'can_interface': LaunchConfiguration('can_interface'),
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
+        }]
+    )
+
+    # GPR motion follower – mirrors forward linear motion to micro motor
+    gpr_motion_follower = Node(
+        package='pilot_control',
+        executable='gpr_motion_follower',
+        name='gpr_motion_follower',
+        output='screen',
+        parameters=[{
+            'odrive_namespace': 'gpr',
+            'encoder_wheel_diameter': 0.06,    # 60 mm wheel
+            'micro_gear_ratio': 1.0,
+            'velocity_multiplier': 1.0,
+            'velocity_deadband': 0.01
         }]
     )
 
@@ -241,7 +269,9 @@ def generate_launch_description():
             actions=[
                 left_odrive_node,
                 right_odrive_node,
+                gpr_odrive_node,
                 diff_drive_controller,
+                gpr_motion_follower,
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,

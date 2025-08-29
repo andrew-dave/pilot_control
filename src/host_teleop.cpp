@@ -396,14 +396,14 @@ private:
         const Uint8* keys = SDL_GetKeyboardState(NULL);
         // Robot teleoperation (WASD)
         if (keys[SDL_SCANCODE_W]) {
-            cmd_vel_msg.linear.x = 1.0;  // Forward
+            cmd_vel_msg.linear.x = 0.5;  // Forward
         } else if (keys[SDL_SCANCODE_S]) {
-            cmd_vel_msg.linear.x = -1.0; // Backward
+            cmd_vel_msg.linear.x = -0.5; // Backward
         }
         if (keys[SDL_SCANCODE_A]) {
-            cmd_vel_msg.angular.z = -1.5; // Left
+            cmd_vel_msg.angular.z = -3; // Left
         } else if (keys[SDL_SCANCODE_D]) {
-            cmd_vel_msg.angular.z = 1.5; // Right
+            cmd_vel_msg.angular.z = 3; // Right
         }
 
         cmd_vel_pub_->publish(cmd_vel_msg);

@@ -51,6 +51,11 @@ target_include_directories(laser_map_rotator PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(laser_map_rotator ${PCL_LIBRARIES})
 install(TARGETS laser_map_rotator DESTINATION lib/${PROJECT_NAME})
 
+# === GPR MOTION FOLLOWER (mirrors forward distance to ODrive micro) ===
+add_executable(gpr_motion_follower src/gpr_motion_follower.cpp)
+ament_target_dependencies(gpr_motion_follower rclcpp geometry_msgs nav_msgs odrive_can)
+install(TARGETS gpr_motion_follower DESTINATION lib/${PROJECT_NAME})
+
 
 # === SHUTDOWN SERVICE ===
 add_executable(shutdown_service src/shutdown_service.cpp)
