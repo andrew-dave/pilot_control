@@ -49,9 +49,11 @@ public:
         odom_pub_       = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
         left_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
         right_motor_pub_= this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
+        third_motor_pub_= this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
         left_axis_client_  = this->create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
+        third_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
 
         cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             "cmd_vel", 10, std::bind(&DiffDriveController::cmd_vel_callback, this, std::placeholders::_1));
@@ -59,6 +61,8 @@ public:
             "/left/controller_status", 10, std::bind(&DiffDriveController::left_status_callback, this, std::placeholders::_1));
         right_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
             "/right/controller_status", 10, std::bind(&DiffDriveController::right_status_callback, this, std::placeholders::_1));
+        third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
+            "/gpr/controller_status", 10, std::bind(&DiffDriveController::third_status_callback, this, std::placeholders::_1));
 
         odom_timer_ = this->create_wall_timer(100ms, std::bind(&DiffDriveController::update_odometry, this)); // Reduced from 50ms to 100ms
         arm_timer_  = this->create_wall_timer(200ms, [this]() {
@@ -71,7 +75,7 @@ public:
     // ---------------- Motor State Helpers ----------------
     void arm_motors() {
         RCLCPP_INFO(this->get_logger(), "Waiting for ODrive services to become available...");
-        if (!left_axis_client_->wait_for_service(3s) || !right_axis_client_->wait_for_service(3s)) {
+        if (!left_axis_client_->wait_for_service(3s) || !right_axis_client_->wait_for_service(3s) || !third_axis_client_->wait_for_service(3s)) {
             RCLCPP_FATAL(this->get_logger(), "ODrive services not available after waiting. Shutting down.");
             g_shutdown_requested = true;
             return;
@@ -81,6 +85,7 @@ public:
         request->axis_requested_state = 8; // CLOSED_LOOP
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
+        third_axis_client_->async_send_request(request);
     }
 
     void disarm_motors() {
@@ -89,6 +94,7 @@ public:
         request->axis_requested_state = 1; // IDLE
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
+        third_axis_client_->async_send_request(request);
     }
 
 private:
@@ -98,7 +104,7 @@ private:
         double angular_vel = msg->angular.z;  // rad/s
         last_cmd_time_     = this->get_clock()->now();
 
-        // Dead‑band -> zero torque stop
+        // Dead‑band -> zero torque stop (all motors)
         if (std::abs(linear_vel) < velocity_deadband_ && std::abs(angular_vel) < velocity_deadband_) {
             send_zero_torque();
             return;
@@ -139,6 +145,25 @@ private:
 
         right_motor_pub_->publish(right_msg);
         left_motor_pub_ ->publish(left_msg);
+
+        // ---- Third motor behavior ----
+        // - Should only move when driving forward (linear_vel > deadband)
+        // - Should not rotate when turning in place (linear_vel ~ 0)
+        // - Should stop when not moving forward (same zero‑torque method)
+        if (linear_vel > velocity_deadband_) {
+            // Map linear velocity to motor turns/s (same conversion as wheels)
+            double third_turns_per_sec = (linear_vel / wheel_circumference) * gear_ratio_ * velocity_multiplier_;
+
+            odrive_can::msg::ControlMessage third_msg;
+            third_msg.control_mode = 2; // VELOCITY_CONTROL
+            third_msg.input_mode   = 2; // VEL_RAMP
+            third_msg.input_vel    = third_turns_per_sec;
+            third_msg.input_torque = 0.0;
+            third_motor_pub_->publish(third_msg);
+        } else {
+            // Not forward -> actively stop third motor using torque=0
+            send_zero_torque_third();
+        }
     }
 
     // ---------------- Feedback Callbacks ----------------
@@ -147,6 +172,10 @@ private:
     }
     void right_status_callback(const odrive_can::msg::ControllerStatus::SharedPtr msg) {
         current_right_vel_ = msg->vel_estimate;  // motor turns/s (same sign as cmd)
+    }
+
+    void third_status_callback(const odrive_can::msg::ControllerStatus::SharedPtr msg) {
+        current_third_vel_ = msg->vel_estimate;   // motor turns/s
     }
 
     // ---------------- Odometry ----------------
@@ -206,6 +235,16 @@ private:
         msg.input_torque = 0.0;
         left_motor_pub_->publish(msg);
         right_motor_pub_->publish(msg);
+        third_motor_pub_->publish(msg);
+    }
+
+    void send_zero_torque_third(){
+        odrive_can::msg::ControlMessage msg;
+        msg.control_mode = 1; // TORQUE_CONTROL
+        msg.input_mode   = 1; // PASSTHROUGH
+        msg.input_vel    = 0.0;
+        msg.input_torque = 0.0;
+        third_motor_pub_->publish(msg);
     }
 
     // ---------------- Members ----------------
@@ -213,16 +252,17 @@ private:
     int stop_timeout_ms_;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_;
-    rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_;
+    rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_, third_motor_pub_;
+    rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-    rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_;
+    rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
     rclcpp::TimerBase::SharedPtr odom_timer_, arm_timer_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     rclcpp::Time last_time_, last_cmd_time_;
     double current_left_vel_  = 0.0;
     double current_right_vel_ = 0.0;
+    double current_third_vel_ = 0.0;
     double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
 };
 
