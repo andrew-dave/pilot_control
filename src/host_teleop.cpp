@@ -21,6 +21,7 @@ public:
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
+        gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
@@ -66,6 +67,12 @@ public:
             RCLCPP_INFO(get_logger(), "✓ Right ODrive service is available");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ Right ODrive service is NOT available (E/Q keys won't work)");
+        }
+        
+        if (gpr_axis_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ GPR ODrive service is available");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ GPR ODrive service is NOT available (E/Q won't affect 3rd motor)");
         }
         
         // Check mapping services
@@ -128,6 +135,10 @@ public:
             RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
             return;
         }
+        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
+            return;
+        }
         
         RCLCPP_INFO(get_logger(), "ODrive services available, sending arm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
@@ -135,6 +146,7 @@ public:
         
         auto left_future = left_axis_client_->async_send_request(request);
         auto right_future = right_axis_client_->async_send_request(request);
+        auto gpr_future = gpr_axis_client_->async_send_request(request);
         
         // Wait for responses
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
@@ -152,6 +164,14 @@ public:
         } else {
             RCLCPP_ERROR(get_logger(), "Failed to get right motor arm response");
         }
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto gpr_response = gpr_future.get();
+            RCLCPP_INFO(get_logger(), "GPR motor arm successful - State: %d, Errors: %d", 
+                       gpr_response->axis_state, gpr_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor arm response");
+        }
     }
 
     void disarm_motors() {
@@ -166,6 +186,10 @@ public:
             RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
             return;
         }
+        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
+            return;
+        }
         
         RCLCPP_INFO(get_logger(), "ODrive services available, sending disarm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
@@ -173,6 +197,7 @@ public:
         
         auto left_future = left_axis_client_->async_send_request(request);
         auto right_future = right_axis_client_->async_send_request(request);
+        auto gpr_future = gpr_axis_client_->async_send_request(request);
         
         // Wait for responses
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
@@ -189,6 +214,14 @@ public:
                        right_response->axis_state, right_response->active_errors);
         } else {
             RCLCPP_ERROR(get_logger(), "Failed to get right motor disarm response");
+        }
+        
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            auto gpr_response = gpr_future.get();
+            RCLCPP_INFO(get_logger(), "GPR motor disarm successful - State: %d, Errors: %d", 
+                       gpr_response->axis_state, gpr_response->active_errors);
+        } else {
+            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor disarm response");
         }
     }
 
@@ -412,6 +445,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
+    rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr gpr_axis_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_raw_map_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;

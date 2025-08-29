@@ -27,8 +27,8 @@ public:
     DiffDriveController()
         : Node("diff_drive_controller"), last_time_(this->get_clock()->now()) {
         // ---------------- Parameters ----------------
-        this->declare_parameter<double>("wheel_radius", 0.063);
-        this->declare_parameter<double>("wheel_base", 0.315);
+        this->declare_parameter<double>("wheel_radius", 0.057);
+        this->declare_parameter<double>("wheel_base", 0.35);
         this->declare_parameter<double>("gear_ratio", 10.0);          // NEW
         this->declare_parameter<double>("velocity_multiplier", 1.0);
         this->declare_parameter<double>("turn_speed_multiplier", 1.0);
