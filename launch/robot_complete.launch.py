@@ -9,7 +9,7 @@ def generate_launch_description():
     # Declare launch arguments
     declare_wheel_radius_arg = DeclareLaunchArgument(
         'wheel_radius',
-        default_value='0.063',
+        default_value='0.072',
         description='Radius of the wheels in meters.'
     )
     declare_wheel_base_arg = DeclareLaunchArgument(
@@ -29,12 +29,12 @@ def generate_launch_description():
     )
     declare_velocity_multiplier_arg = DeclareLaunchArgument(
         'velocity_multiplier',
-        default_value='0.3',
+        default_value='1.0',
         description='A multiplier to tune the robot speed.'
     )
     declare_turn_speed_multiplier_arg = DeclareLaunchArgument(
         'turn_speed_multiplier',
-        default_value='2.0',
+        default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
 
@@ -99,19 +99,19 @@ def generate_launch_description():
     )
 
     # GPR motion follower – mirrors forward linear motion to micro motor
-    gpr_motion_follower = Node(
-        package='pilot_control',
-        executable='gpr_motion_follower',
-        name='gpr_motion_follower',
-        output='screen',
-        parameters=[{
-            'odrive_namespace': 'gpr',
-            'encoder_wheel_diameter': 0.06,    # 60 mm wheel
-            'micro_gear_ratio': 1.0,
-            'velocity_multiplier': 1.0,
-            'velocity_deadband': 0.01
-        }]
-    )
+    # gpr_motion_follower = Node(
+    #     package='pilot_control',
+    #     executable='gpr_motion_follower',
+    #     name='gpr_motion_follower',
+    #     output='screen',
+    #     parameters=[{
+    #         'odrive_namespace': 'gpr',
+    #         'encoder_wheel_diameter': 0.06,    # 60 mm wheel
+    #         'micro_gear_ratio': 1.0,
+    #         'velocity_multiplier': 1.0,
+    #         'velocity_deadband': 0.01
+    #     }]
+    # )
 
     # Foxglove Bridge - Maximum buffer settings
     foxglove_bridge = Node(
@@ -271,7 +271,7 @@ def generate_launch_description():
                 right_odrive_node,
                 gpr_odrive_node,
                 diff_drive_controller,
-                gpr_motion_follower,
+                #gpr_motion_follower,
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
