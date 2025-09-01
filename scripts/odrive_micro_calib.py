@@ -10,24 +10,24 @@ Usage:
   # or with serial (hex without 0x):
   python3 odrive_micro_calib.py 335737803432
 """
-import sys, time, math, inspect
+import sys, time, math
 import odrive
 from odrive.enums import *
 from odrive.utils import dump_errors
 
-# Try to import the specific exception; fall back to generic Exception if not present
+# Try to import the specific disconnect exception; fall back to generic
 try:
     from odrive.libodrive import DeviceLostException
 except Exception:
     class DeviceLostException(Exception): pass
 
 # ---------- User constants ----------
-BUS_OV = 16.0            # V  (headroom for regen on 12 V)
+BUS_OV = 16.0            # V  (regen headroom on 12 V bus)
 BUS_UV = 9.2             # V
 POLE_PAIRS = 7           # GM2804 = 12N/14P => 7
 KT = 0.056               # N·m/A (Kv~170 RPM/V)
 I_CAL = 0.5              # A   (R/L calibration)
-V_CAL_MAX = 4.5          # V   (0.5 A * ~9 Ω)
+V_CAL_MAX = 4.5          # V   (~0.5 A * 9 Ω)
 I_LIM = 1.2              # A   (gentle)
 BW_CURRENT = 300.0       # Hz  (softer current loop for small gimbals)
 
@@ -45,6 +45,11 @@ HC_VEL    = 5.0          # turn/s
 HC_TURNS  = 4.0          # mech turns
 HC_SETTLE = 0.2          # s
 
+# Optional: run these at boot once you’re happy
+STARTUP_MOTOR_CAL = True
+STARTUP_ENC_CAL   = True
+STARTUP_CLOSED_LOOP = False
+
 def wait_idle(axis, timeout=90.0):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -53,24 +58,19 @@ def wait_idle(axis, timeout=90.0):
         time.sleep(0.1)
     return False
 
-def safe_save_and_reboot(odrv, serial=None, sleep_before_reboot=0.5, sleep_after=5.0):
-    """Handle the expected USB drop during flash write and reboot cleanly."""
+def safe_save_and_reboot(odrv, serial=None, pre=0.4, post=5.0):
     try:
         odrv.save_configuration()
-        # Some FW auto-reboot here; some don’t. Either way we try an explicit reboot after a short pause.
-        time.sleep(sleep_before_reboot)
+        time.sleep(pre)
         try:
             odrv.reboot()
         except Exception:
             pass
     except DeviceLostException:
-        # Totally fine: device reset mid-flash
-        pass
+        pass  # expected on some builds
     except Exception as e:
-        # Non-fatal; we’ll try to reconnect anyway
         print("save_configuration raised:", repr(e))
-    time.sleep(sleep_after)
-    # Reconnect
+    time.sleep(post)
     return odrive.find_any(serial_number=serial) if serial else odrive.find_any()
 
 def pick(obj, *names):
@@ -79,61 +79,44 @@ def pick(obj, *names):
             return getattr(obj, n)
     return None
 
-def set_if_has(obj, name, value):
-    if obj and hasattr(obj, name):
-        setattr(obj, name, value); return True
-    return False
-
 def set_cfg_if_has(cfg, pairs):
     for k, v in pairs:
         if cfg and hasattr(cfg, k):
             setattr(cfg, k, v)
 
-def configure_encoder_objects(odrv):
+def configure_encoder_objects_and_map(odrv):
     """
-    Try to configure both the axis encoder and a possible onboard encoder to SPI ABS (AMS) 14-bit.
-    If neither path exists, we just print a note (you can set it in GUI).
+    Configure SPI Absolute (AMS) 14-bit on whichever encoder object is exposed,
+    then map Axis0 load+commutation encoders to Onboard Encoder 0.
     """
-    # 1) axis0.encoder (most common path)
+    # 1) Configure axis0.encoder if present
     enc = pick(odrv.axis0, "encoder")
     if enc and hasattr(enc, "config"):
         try:
-            # Prefer AMS absolute if available
             enc.config.mode = ENCODER_MODE_SPI_ABS_AMS
         except Exception:
-            # Some FW may use a generic SPI ABS mode constant name
-            try:
-                enc.config.mode = ENCODER_MODE_SPI_ABS
-            except Exception:
-                pass
-        set_cfg_if_has(enc.config, [
-            ("cpr", 16384),
-            ("bandwidth", 1000),
-            ("use_index", False),
-        ])
+            try: enc.config.mode = ENCODER_MODE_SPI_ABS
+            except Exception: pass
+        set_cfg_if_has(enc.config, [("cpr", 16384), ("bandwidth", 1000), ("use_index", False)])
         print("Configured axis0.encoder (SPI ABS, 14-bit) — OK")
-        return True
 
-    # 2) onboard encoder object (Micro) — names vary: onboard_encoder0 / encoder0
+    # 2) Configure the onboard encoder object too (Micro exposes this)
     onboard = pick(odrv, "onboard_encoder0", "encoder0")
     if onboard and hasattr(onboard, "config"):
         try:
             onboard.config.mode = ENCODER_MODE_SPI_ABS_AMS
         except Exception:
-            try:
-                onboard.config.mode = ENCODER_MODE_SPI_ABS
-            except Exception:
-                pass
-        set_cfg_if_has(onboard.config, [
-            ("cpr", 16384),
-            ("bandwidth", 1000),
-            ("use_index", False),
-        ])
+            try: onboard.config.mode = ENCODER_MODE_SPI_ABS
+            except Exception: pass
+        set_cfg_if_has(onboard.config, [("cpr", 16384), ("bandwidth", 1000), ("use_index", False)])
         print("Configured onboard encoder (SPI ABS, 14-bit) — OK")
-        return True
 
-    print("NOTE: Could not program encoder via Python; set Onboard Encoder 0 to 'SPI Absolute (AMS)' and 14-bit in GUI.")
-    return False
+    # 3) Map Axis0 to use the onboard encoder for both roles
+    if hasattr(odrv.axis0, "config") and hasattr(odrv.axis0.config, "load_encoder"):
+        odrv.axis0.config.load_encoder = EncoderId.ONBOARD_ENCODER0
+    if hasattr(odrv.axis0, "config") and hasattr(odrv.axis0.config, "commutation_encoder"):
+        odrv.axis0.config.commutation_encoder = EncoderId.ONBOARD_ENCODER0
+    print("Axis0 mapped: load & commutation → ONBOARD_ENCODER0")
 
 def main():
     serial = sys.argv[1] if len(sys.argv) > 1 else None
@@ -155,7 +138,7 @@ def main():
     motor_if  = pick(ax, "motor")
     motor_cfg = pick(motor_if, "config") if motor_if else None
     axis_cfg  = pick(ax, "config")
-    axis_motor_cfg = pick(axis_cfg, "motor") if axis_cfg else None  # fallback seen in some layouts
+    axis_motor_cfg = pick(axis_cfg, "motor") if axis_cfg else None  # fallback on some builds
 
     def set_motor_param(name, value):
         ok = False
@@ -178,7 +161,7 @@ def main():
     if motor_cfg and hasattr(motor_cfg, "current_control_bandwidth"):
         motor_cfg.current_control_bandwidth = BW_CURRENT
 
-    # Lock-in alignment & torque window
+    # Lock-in & soft torque window
     if axis_cfg and hasattr(axis_cfg, "calibration_lockin"):
         axis_cfg.calibration_lockin.current = LOCKIN_I
     if axis_cfg and hasattr(axis_cfg, "torque_soft_min"):
@@ -186,8 +169,8 @@ def main():
     if axis_cfg and hasattr(axis_cfg, "torque_soft_max"):
         axis_cfg.torque_soft_max = TORQUE_SOFT_MAX
 
-    # -------- Encoder(s) --------
-    configured_any_encoder = configure_encoder_objects(odrv)
+    # -------- Encoder(s) + mapping --------
+    configure_encoder_objects_and_map(odrv)
 
     # -------- Controller (velocity + ramp) --------
     ctrl = pick(ax, "controller")
@@ -201,17 +184,24 @@ def main():
         if hasattr(ctrl_cfg, "vel_gain"):            ctrl_cfg.vel_gain = VEL_GAIN
         if hasattr(ctrl_cfg, "vel_integrator_gain"): ctrl_cfg.vel_integrator_gain = VEL_IGAIN
 
+    # -------- Optional startup behavior --------
+    if axis_cfg:
+        set_cfg_if_has(axis_cfg, [
+            ("startup_motor_calibration", STARTUP_MOTOR_CAL),
+            ("startup_encoder_offset_calibration", STARTUP_ENC_CAL),
+            ("startup_closed_loop_control", STARTUP_CLOSED_LOOP),
+        ])
+
     # -------- Save & reboot (robust) --------
     print("Saving configuration & rebooting (USB may drop briefly)...")
     odrv = safe_save_and_reboot(odrv, serial=serial)
 
     # -------- Full calibration --------
-    print("Running FULL_CALIBRATION_SEQUENCE...")
+    print("Running FULL_CALIBRATION_SEQUENCE (shaft unloaded)...")
     odrv.axis0.requested_state = AxisState.FULL_CALIBRATION_SEQUENCE
     if not wait_idle(odrv.axis0, 90):
         print("Calibration timed out. Errors:")
-        dump_errors(odrv, True)
-        sys.exit(1)
+        dump_errors(odrv, True); sys.exit(1)
     print("Calibration done. Error snapshot:")
     dump_errors(odrv, False)
 
@@ -233,9 +223,8 @@ def main():
             print("Harmonic calibration timed out. Errors:")
             dump_errors(odrv, True)
         else:
-            coefs = []
-            for k in ("cosx_coef", "sinx_coef", "cos2x_coef", "sin2x_coef"):
-                coefs.append(getattr(hc_cfg, k) if hasattr(hc_cfg, k) else None)
+            coefs = [getattr(hc_cfg, k) if hasattr(hc_cfg, k) else None
+                     for k in ("cosx_coef", "sinx_coef", "cos2x_coef", "sin2x_coef")]
             print("Harmonic coefficients:", coefs)
             print("Saving coefficients...")
             odrv = safe_save_and_reboot(odrv, serial=serial)
