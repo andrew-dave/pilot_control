@@ -28,7 +28,7 @@ def generate_launch_description():
             'apply_rotation_correction': True,
             'rotation_angle': -2.6179,  # -150 degrees in radians
             'save_format': 'pcd',
-            'auto_shutdown': False,  # Keep running after processing
+            'auto_shutdown': True,  # Keep running after processing
             'max_height': 2.0,
             'min_height': 0.1,
             'find_latest_raw_map': True  # Automatically find the latest raw map
