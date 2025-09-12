@@ -368,6 +368,14 @@ private:
     bool use_vaapi_{};
     int rtp_mtu_{};
     std::string raw_format_;
+    // Capture/record pipeline controls
+    bool use_mjpeg_pipeline_a_{};
+    int cap_a_w_{};
+    int cap_a_h_{};
+    int cap_a_fps_{};
+    int record_w_{};
+    int record_h_{};
+    int record_fps_{};
 
     // State
     bool recording_a_{false};
