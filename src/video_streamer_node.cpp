@@ -327,6 +327,7 @@ private:
     int segment_seconds_{};
     bool use_vaapi_{};
     int rtp_mtu_{};
+    std::string raw_format_;
 
     // State
     bool recording_a_{false};
