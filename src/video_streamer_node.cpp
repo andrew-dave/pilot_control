@@ -21,6 +21,7 @@ public:
         this->declare_parameter<int>("width", 640);
         this->declare_parameter<int>("height", 480);
         this->declare_parameter<int>("fps", 15);
+        this->declare_parameter<std::string>("raw_format", "UYVY");
         this->declare_parameter<std::string>("stream_host", "192.168.168.100");
         this->declare_parameter<int>("stream_port", 5600);
         this->declare_parameter<int>("bitrate_a_kbps", 400);
@@ -45,6 +46,7 @@ public:
         recording_a_ = recording_b_ = this->get_parameter("start_recording").as_bool();
         use_vaapi_        = this->get_parameter("use_vaapi").as_bool();
         rtp_mtu_          = this->get_parameter("rtp_mtu").as_int();
+        raw_format_       = this->get_parameter("raw_format").as_string();
 
         // Ensure output directory exists
         try {
@@ -102,7 +104,7 @@ private:
         std::ostringstream ss;
         ss
             << "v4l2src device=" << cam_a_
-            << " ! video/x-raw,format=YUY2,width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1"
+            << " ! video/x-raw,format=" << raw_format_ << ",width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1"
             << " ! videoconvert ! video/x-raw,format=" << fmt_before_enc
             << " ! queue"
             << " ! " << enc.str()
@@ -133,7 +135,7 @@ private:
         std::ostringstream ss;
         ss
             << "v4l2src device=" << cam_b_
-            << " ! video/x-raw,format=YUY2,width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1"
+            << " ! video/x-raw,format=" << raw_format_ << ",width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1"
             << " ! videoconvert ! video/x-raw,format=" << fmt_before_enc
             << " ! queue"
             << " ! " << enc.str()
