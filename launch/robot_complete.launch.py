@@ -38,6 +38,30 @@ def generate_launch_description():
         description='A multiplier to tune the robot turning speed.'
     )
 
+    # Video streamer args
+    declare_cam_a_arg = DeclareLaunchArgument(
+        'cam_a',
+        default_value='/dev/v4l/by-id/unknown-cam-a',
+        description='Stable path to Camera A device'
+    )
+    declare_cam_b_arg = DeclareLaunchArgument(
+        'cam_b',
+        default_value='/dev/v4l/by-id/unknown-cam-b',
+        description='Stable path to Camera B device'
+    )
+    declare_vw_arg = DeclareLaunchArgument('video_width', default_value='640')
+    declare_vh_arg = DeclareLaunchArgument('video_height', default_value='480')
+    declare_vfps_arg = DeclareLaunchArgument('video_fps', default_value='15')
+    declare_stream_host_arg = DeclareLaunchArgument('stream_host', default_value='192.168.168.100')
+    declare_stream_port_arg = DeclareLaunchArgument('stream_port', default_value='5600')
+    declare_bitrate_a_arg = DeclareLaunchArgument('bitrate_a_kbps', default_value='400')
+    declare_bitrate_b_arg = DeclareLaunchArgument('bitrate_b_kbps', default_value='300')
+    declare_out_dir_arg = DeclareLaunchArgument('video_out_dir', default_value='/home/roofus/videos')
+    declare_segment_sec_arg = DeclareLaunchArgument('segment_seconds', default_value='60')
+    declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
+    declare_use_vaapi_arg = DeclareLaunchArgument('use_vaapi', default_value='true')
+    declare_rtp_mtu_arg = DeclareLaunchArgument('rtp_mtu', default_value='1200')
+
     # CAN interface setup command
     can_setup = ExecuteProcess(
         cmd=['sudo', 'ip', 'link', 'set', LaunchConfiguration('can_interface'), 
@@ -248,6 +272,30 @@ def generate_launch_description():
         ]
     )
 
+    # Video Streamer Node (robot-side)
+    video_streamer_node = Node(
+        package='pilot_control',
+        executable='video_streamer',
+        name='video_streamer',
+        output='screen',
+        parameters=[{
+            'cam_a': LaunchConfiguration('cam_a'),
+            'cam_b': LaunchConfiguration('cam_b'),
+            'width': LaunchConfiguration('video_width'),
+            'height': LaunchConfiguration('video_height'),
+            'fps': LaunchConfiguration('video_fps'),
+            'stream_host': LaunchConfiguration('stream_host'),
+            'stream_port': LaunchConfiguration('stream_port'),
+            'bitrate_a_kbps': LaunchConfiguration('bitrate_a_kbps'),
+            'bitrate_b_kbps': LaunchConfiguration('bitrate_b_kbps'),
+            'out_dir': LaunchConfiguration('video_out_dir'),
+            'segment_seconds': LaunchConfiguration('segment_seconds'),
+            'start_recording': LaunchConfiguration('start_recording'),
+            'use_vaapi': LaunchConfiguration('use_vaapi'),
+            'rtp_mtu': LaunchConfiguration('rtp_mtu')
+        }]
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -256,6 +304,20 @@ def generate_launch_description():
         declare_can_bitrate_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
+        declare_cam_a_arg,
+        declare_cam_b_arg,
+        declare_vw_arg,
+        declare_vh_arg,
+        declare_vfps_arg,
+        declare_stream_host_arg,
+        declare_stream_port_arg,
+        declare_bitrate_a_arg,
+        declare_bitrate_b_arg,
+        declare_out_dir_arg,
+        declare_segment_sec_arg,
+        declare_start_rec_arg,
+        declare_use_vaapi_arg,
+        declare_rtp_mtu_arg,
         
         # CAN setup (with delay to ensure it's ready)
         TimerAction(
@@ -281,6 +343,7 @@ def generate_launch_description():
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
+                video_streamer_node,
                 gpr_serial_bridge_node,
                 # path_relay_node,
             ]

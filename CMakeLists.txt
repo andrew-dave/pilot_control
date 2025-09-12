@@ -20,6 +20,14 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 
+# GStreamer for video_streamer
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+  pkg_check_modules(GSTREAMER_APP QUIET gstreamer-app-1.0)
+  pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+endif()
+
 # Find SDL2 for teleop
 find_package(SDL2 QUIET)
 
@@ -75,6 +83,19 @@ if(SDL2_FOUND)
   install(TARGETS host_teleop DESTINATION lib/${PROJECT_NAME})
 else()
   message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
+endif()
+
+# === VIDEO STREAMER (GStreamer RTP + recording) ===
+if(GSTREAMER_FOUND AND GLIB2_FOUND)
+  add_executable(video_streamer src/video_streamer_node.cpp)
+  ament_target_dependencies(video_streamer rclcpp std_srvs)
+  target_include_directories(video_streamer PUBLIC ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS})
+  target_link_directories(video_streamer PUBLIC ${GSTREAMER_LIBRARY_DIRS} ${GLIB2_LIBRARY_DIRS})
+  target_link_libraries(video_streamer ${GSTREAMER_LIBRARIES} ${GLIB2_LIBRARIES})
+  target_compile_definitions(video_streamer PUBLIC ${GSTREAMER_CFLAGS_OTHER})
+  install(TARGETS video_streamer DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "GStreamer not found — cannot build video_streamer")
 endif()
 
 # Install launch and config files
