@@ -41,12 +41,12 @@ def generate_launch_description():
     # Video streamer args
     declare_cam_a_arg = DeclareLaunchArgument(
         'cam_a',
-        default_value='/dev/v4l/by-id/unknown-cam-a',
+        default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
         description='Stable path to Camera A device'
     )
     declare_cam_b_arg = DeclareLaunchArgument(
         'cam_b',
-        default_value='/dev/v4l/by-id/unknown-cam-b',
+        default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
         description='Stable path to Camera B device'
     )
     declare_vw_arg = DeclareLaunchArgument('video_width', default_value='1280')

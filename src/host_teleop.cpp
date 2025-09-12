@@ -2,6 +2,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 #include <SDL2/SDL.h>
 #include <chrono>
 #include <thread>
@@ -25,6 +26,7 @@ public:
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
+        video_record_set_client_ = create_client<std_srvs::srv::SetBool>("/video_streamer/video_record_set");
         // GPR line control services (Arduino)
         gpr_line_start_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_start");
         gpr_line_stop_client_  = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
@@ -51,6 +53,8 @@ public:
         RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
+        RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
+        RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
         RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
         
         // Check if services are available (non-blocking)
@@ -92,6 +96,13 @@ public:
             RCLCPP_INFO(get_logger(), "✓ process_and_save_map service is available");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ process_and_save_map service is NOT available (will be checked when M is pressed)");
+        }
+
+        // Check video record service
+        if (video_record_set_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ video_record_set service is available (R/T keys)");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ video_record_set service is NOT available (R/T will do nothing)");
         }
 
         // Check GPR line services
@@ -422,6 +433,12 @@ private:
                 } else if (event.key.keysym.sym == SDLK_k) {
                     RCLCPP_INFO(get_logger(), "K key pressed - Line DOWN");
                     trigger_gpr_line_stop();
+                } else if (event.key.keysym.sym == SDLK_r) {
+                    RCLCPP_INFO(get_logger(), "R key pressed - Start recording (both cams)");
+                    send_video_record_set(true);
+                } else if (event.key.keysym.sym == SDLK_t) {
+                    RCLCPP_INFO(get_logger(), "T key pressed - Stop recording (both cams)");
+                    send_video_record_set(false);
                 }
             }
         }
@@ -449,6 +466,7 @@ private:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_raw_map_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
+    rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr video_record_set_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_start_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_stop_client_;
     rclcpp::TimerBase::SharedPtr timer_;
@@ -458,6 +476,24 @@ private:
     std::atomic<bool> workflow_active_{false};
     std::atomic<int> workflow_step_{0};
     std::thread workflow_thread_;
+
+    void send_video_record_set(bool enable) {
+        if (!video_record_set_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_WARN(get_logger(), "video_record_set service not available");
+            return;
+        }
+        auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+        req->data = enable;
+        auto future = video_record_set_client_->async_send_request(req,
+            [this, enable](rclcpp::Client<std_srvs::srv::SetBool>::SharedFuture resp) {
+                if (resp.get()->success) {
+                    RCLCPP_INFO(this->get_logger(), "✓ Recording %s", enable ? "ON" : "OFF");
+                } else {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Failed to set recording: %s", resp.get()->message.c_str());
+                }
+            });
+        (void)future;
+    }
 };
 
 int main(int argc, char *argv[]) {

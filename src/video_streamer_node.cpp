@@ -18,19 +18,28 @@ public:
         // Parameters
         this->declare_parameter<std::string>("cam_a", "/dev/v4l/by-id/unknown-cam-a");
         this->declare_parameter<std::string>("cam_b", "/dev/v4l/by-id/unknown-cam-b");
-        this->declare_parameter<int>("width", 640);
-        this->declare_parameter<int>("height", 480);
-        this->declare_parameter<int>("fps", 15);
+        this->declare_parameter<int>("width", 1280);
+        this->declare_parameter<int>("height", 720);
+        this->declare_parameter<int>("fps", 60);
         this->declare_parameter<std::string>("raw_format", "UYVY");
         this->declare_parameter<std::string>("stream_host", "172.16.10.121");
         this->declare_parameter<int>("stream_port", 5600);
-        this->declare_parameter<int>("bitrate_a_kbps", 400);
+        this->declare_parameter<int>("bitrate_a_kbps", 800);
         this->declare_parameter<int>("bitrate_b_kbps", 300);
         this->declare_parameter<std::string>("out_dir", "/home/roofus/videos");
         this->declare_parameter<int>("segment_seconds", 60);
         this->declare_parameter<bool>("start_recording", false);
-        this->declare_parameter<bool>("use_vaapi", true);
+        this->declare_parameter<bool>("use_vaapi", false);
         this->declare_parameter<int>("rtp_mtu", 1200);
+        // MJPEG capture -> decode -> rate/scale -> encode for Cam A
+        this->declare_parameter<bool>("use_mjpeg_pipeline_a", true);
+        this->declare_parameter<int>("capture_a_width", 1920);
+        this->declare_parameter<int>("capture_a_height", 1080);
+        this->declare_parameter<int>("capture_a_fps", 30);
+        // Record resolution (defaults to high)
+        this->declare_parameter<int>("record_width", 1920);
+        this->declare_parameter<int>("record_height", 1080);
+        this->declare_parameter<int>("record_fps", 30);
 
         cam_a_            = this->get_parameter("cam_a").as_string();
         cam_b_            = this->get_parameter("cam_b").as_string();
@@ -47,6 +56,13 @@ public:
         use_vaapi_        = this->get_parameter("use_vaapi").as_bool();
         rtp_mtu_          = this->get_parameter("rtp_mtu").as_int();
         raw_format_       = this->get_parameter("raw_format").as_string();
+        use_mjpeg_pipeline_a_ = this->get_parameter("use_mjpeg_pipeline_a").as_bool();
+        cap_a_w_ = this->get_parameter("capture_a_width").as_int();
+        cap_a_h_ = this->get_parameter("capture_a_height").as_int();
+        cap_a_fps_ = this->get_parameter("capture_a_fps").as_int();
+        record_w_ = this->get_parameter("record_width").as_int();
+        record_h_ = this->get_parameter("record_height").as_int();
+        record_fps_ = this->get_parameter("record_fps").as_int();
 
         // Ensure output directory exists
         try {
@@ -100,21 +116,45 @@ private:
             enc << "x264enc tune=zerolatency speed-preset=ultrafast bframes=0 bitrate=" << bitrate_a_kbps_
                 << " key-int-max=" << kf_stream;
         }
+        std::ostringstream enc_rec;
+        if (use_vaapi_) {
+            enc_rec << "vaapih264enc tune=low-power rate-control=cbr max-bframes=2 bitrate=" << bitrate_a_kbps_
+                    << " keyframe-period=" << kf_stream;
+        } else {
+            enc_rec << "x264enc speed-preset=veryfast bitrate=" << bitrate_a_kbps_
+                    << " key-int-max=" << kf_stream;
+        }
 
         std::ostringstream ss;
         ss
-            << "v4l2src device=" << cam_a_
-            << " ! video/x-raw,format=" << raw_format_ << ",width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1"
-            << " ! videoconvert ! video/x-raw,format=" << fmt_before_enc
-            << " ! queue"
-            << " ! " << enc.str()
-            << " ! tee name=t_a "
-            // Stream branch
-            << "t_a. ! queue ! rtph264pay pt=96 mtu=" << rtp_mtu_ << " config-interval=1 ! udpsink host=" << stream_host_ << " port=" << stream_port_ << " sync=false"
-            // Record branch
-            << " t_a. ! queue leaky=downstream max-size-time=2000000000 ! valve name=valve_a drop=" << (start_rec ? "false" : "true")
-            << " ! h264parse ! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time=" << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
-            << " muxer-factory=matroskamux";
+            << "v4l2src device=" << cam_a_ << " ";
+
+        if (use_mjpeg_pipeline_a_) {
+            ss << "! image/jpeg,width=" << cap_a_w_ << ",height=" << cap_a_h_ << ",framerate=" << cap_a_fps_ << "/1 "
+               << "! jpegdec ! videorate ! video/x-raw,framerate=" << fps_ << "/1 "
+               << "! videoscale ! video/x-raw,width=" << width_ << ",height=" << height_ << " "
+               << "! videoconvert ! video/x-raw,format=" << fmt_before_enc << " ";
+        } else {
+            ss << "! video/x-raw,format=" << raw_format_ << ",width=" << width_ << ",height=" << height_ << ",framerate=" << fps_ << "/1 "
+               << "! videoconvert ! video/x-raw,format=" << fmt_before_enc << " ";
+        }
+
+        // Split raw video to two branches (stream vs record)
+        ss << "! tee name=split_a ";
+
+        // Stream branch: rate/scale to requested output, then encode and RTP
+        ss << "split_a. ! queue ! videorate ! video/x-raw,framerate=" << fps_ << "/1 "
+           << "! videoscale ! video/x-raw,width=" << width_ << ",height=" << height_ << " "
+           << "! videoconvert ! video/x-raw,format=" << fmt_before_enc << " ! " << enc.str()
+           << " ! video/x-h264,stream-format=byte-stream,alignment=au ! rtph264pay pt=96 mtu=" << rtp_mtu_ << " config-interval=1 ! udpsink host=" << stream_host_ << " port=" << stream_port_ << " sync=false ";
+
+        // Record branch: keep highest capture resolution, encode and segment
+        ss << " split_a. ! queue leaky=downstream max-size-time=2000000000 ! valve name=valve_a drop=" << (start_rec ? "false" : "true")
+           << " ! videorate ! video/x-raw,framerate=" << record_fps_ << "/1 "
+           << "! videoscale ! video/x-raw,width=" << record_w_ << ",height=" << record_h_ << " "
+           << "! videoconvert ! video/x-raw,format=" << fmt_before_enc << " ! " << enc_rec.str()
+           << " ! h264parse ! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time=" << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
+           << " muxer-factory=matroskamux";
 
         return ss.str();
     }
