@@ -22,7 +22,7 @@ public:
         this->declare_parameter<int>("height", 480);
         this->declare_parameter<int>("fps", 15);
         this->declare_parameter<std::string>("raw_format", "UYVY");
-        this->declare_parameter<std::string>("stream_host", "192.168.168.100");
+        this->declare_parameter<std::string>("stream_host", "172.16.10.121");
         this->declare_parameter<int>("stream_port", 5600);
         this->declare_parameter<int>("bitrate_a_kbps", 400);
         this->declare_parameter<int>("bitrate_b_kbps", 300);

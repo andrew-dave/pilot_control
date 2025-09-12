@@ -49,17 +49,18 @@ def generate_launch_description():
         default_value='/dev/v4l/by-id/unknown-cam-b',
         description='Stable path to Camera B device'
     )
-    declare_vw_arg = DeclareLaunchArgument('video_width', default_value='640')
-    declare_vh_arg = DeclareLaunchArgument('video_height', default_value='480')
-    declare_vfps_arg = DeclareLaunchArgument('video_fps', default_value='15')
-    declare_stream_host_arg = DeclareLaunchArgument('stream_host', default_value='192.168.168.100')
+    declare_vw_arg = DeclareLaunchArgument('video_width', default_value='1280')
+    declare_vh_arg = DeclareLaunchArgument('video_height', default_value='720')
+    declare_vfps_arg = DeclareLaunchArgument('video_fps', default_value='60')
+    declare_raw_fmt_arg = DeclareLaunchArgument('raw_format', default_value='UYVY')
+    declare_stream_host_arg = DeclareLaunchArgument('stream_host', default_value='172.16.10.121')
     declare_stream_port_arg = DeclareLaunchArgument('stream_port', default_value='5600')
     declare_bitrate_a_arg = DeclareLaunchArgument('bitrate_a_kbps', default_value='400')
     declare_bitrate_b_arg = DeclareLaunchArgument('bitrate_b_kbps', default_value='300')
     declare_out_dir_arg = DeclareLaunchArgument('video_out_dir', default_value='/home/roofus/videos')
     declare_segment_sec_arg = DeclareLaunchArgument('segment_seconds', default_value='60')
     declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
-    declare_use_vaapi_arg = DeclareLaunchArgument('use_vaapi', default_value='true')
+    declare_use_vaapi_arg = DeclareLaunchArgument('use_vaapi', default_value='false')
     declare_rtp_mtu_arg = DeclareLaunchArgument('rtp_mtu', default_value='1200')
 
     # CAN interface setup command
@@ -121,21 +122,6 @@ def generate_launch_description():
             'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
         }]
     )
-
-    # GPR motion follower – mirrors forward linear motion to micro motor
-    # gpr_motion_follower = Node(
-    #     package='pilot_control',
-    #     executable='gpr_motion_follower',
-    #     name='gpr_motion_follower',
-    #     output='screen',
-    #     parameters=[{
-    #         'odrive_namespace': 'gpr',
-    #         'encoder_wheel_diameter': 0.06,    # 60 mm wheel
-    #         'micro_gear_ratio': 1.0,
-    #         'velocity_multiplier': 1.0,
-    #         'velocity_deadband': 0.01
-    #     }]
-    # )
 
     # Foxglove Bridge - Maximum buffer settings
     foxglove_bridge = Node(
@@ -236,14 +222,6 @@ def generate_launch_description():
         }]
     )
 
-    # Path relay node (Lidar path to foot frame)
-    # path_relay_node = Node(
-    #     package='pilot_control',
-    #     executable='path_to_foot.py',
-    #     name='path_to_foot',
-    #     output='screen'
-    # )
-
     # Laser Map Rotator - tilt correction for occupancy grid
     laser_map_rotator_node = Node(
         package='pilot_control',
@@ -284,6 +262,7 @@ def generate_launch_description():
             'width': LaunchConfiguration('video_width'),
             'height': LaunchConfiguration('video_height'),
             'fps': LaunchConfiguration('video_fps'),
+            'raw_format': LaunchConfiguration('raw_format'),
             'stream_host': LaunchConfiguration('stream_host'),
             'stream_port': LaunchConfiguration('stream_port'),
             'bitrate_a_kbps': LaunchConfiguration('bitrate_a_kbps'),
@@ -309,6 +288,7 @@ def generate_launch_description():
         declare_vw_arg,
         declare_vh_arg,
         declare_vfps_arg,
+        declare_raw_fmt_arg,
         declare_stream_host_arg,
         declare_stream_port_arg,
         declare_bitrate_a_arg,
@@ -333,7 +313,6 @@ def generate_launch_description():
                 right_odrive_node,
                 gpr_odrive_node,
                 diff_drive_controller,
-                #gpr_motion_follower,
                 foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
@@ -345,7 +324,6 @@ def generate_launch_description():
                 shutdown_service_node,
                 video_streamer_node,
                 gpr_serial_bridge_node,
-                # path_relay_node,
             ]
         ),
     ]) 
