@@ -38,7 +38,7 @@ def generate_launch_description():
         description='A multiplier to tune the robot turning speed.'
     )
 
-    # Video streamer args
+    # Video recorder args (MJPEG recording at highest resolution)
     declare_cam_a_arg = DeclareLaunchArgument(
         'cam_a',
         default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
@@ -49,20 +49,12 @@ def generate_launch_description():
         default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
         description='Stable path to Camera B device'
     )
-    declare_vw_arg = DeclareLaunchArgument('video_width', default_value='1280')
-    declare_vh_arg = DeclareLaunchArgument('video_height', default_value='720')
-    declare_vfps_arg = DeclareLaunchArgument('video_fps', default_value='60')
-    declare_raw_fmt_arg = DeclareLaunchArgument('raw_format', default_value='UYVY')
-    declare_stream_host_arg = DeclareLaunchArgument('stream_host', default_value='172.16.10.121')
-    declare_stream_port_arg = DeclareLaunchArgument('stream_port', default_value='5600')
-    declare_bitrate_a_arg = DeclareLaunchArgument('bitrate_a_kbps', default_value='400')
-    declare_bitrate_b_arg = DeclareLaunchArgument('bitrate_b_kbps', default_value='300')
     declare_out_dir_arg = DeclareLaunchArgument('video_out_dir', default_value='/home/roofus/videos')
     declare_segment_sec_arg = DeclareLaunchArgument('segment_seconds', default_value='60')
     declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
-    declare_auto_start_streaming_arg = DeclareLaunchArgument('auto_start_streaming', default_value='true')
-    declare_use_vaapi_arg = DeclareLaunchArgument('use_vaapi', default_value='false')
-    declare_rtp_mtu_arg = DeclareLaunchArgument('rtp_mtu', default_value='1200')
+    declare_rec_w_arg = DeclareLaunchArgument('record_width', default_value='1920')
+    declare_rec_h_arg = DeclareLaunchArgument('record_height', default_value='1200')
+    declare_rec_fps_arg = DeclareLaunchArgument('record_fps', default_value='60')
 
     # CAN interface setup command
     can_setup = ExecuteProcess(
@@ -251,7 +243,7 @@ def generate_launch_description():
         ]
     )
 
-    # Video Streamer Node (robot-side)
+    # Video Recorder Node (robot-side, no streaming)
     video_streamer_node = Node(
         package='pilot_control',
         executable='video_streamer',
@@ -260,20 +252,12 @@ def generate_launch_description():
         parameters=[{
             'cam_a': LaunchConfiguration('cam_a'),
             'cam_b': LaunchConfiguration('cam_b'),
-            'width': LaunchConfiguration('video_width'),
-            'height': LaunchConfiguration('video_height'),
-            'fps': LaunchConfiguration('video_fps'),
-            'raw_format': LaunchConfiguration('raw_format'),
-            'stream_host': LaunchConfiguration('stream_host'),
-            'stream_port': LaunchConfiguration('stream_port'),
-            'bitrate_a_kbps': LaunchConfiguration('bitrate_a_kbps'),
-            'bitrate_b_kbps': LaunchConfiguration('bitrate_b_kbps'),
             'out_dir': LaunchConfiguration('video_out_dir'),
             'segment_seconds': LaunchConfiguration('segment_seconds'),
             'start_recording': LaunchConfiguration('start_recording'),
-            'auto_start_streaming': LaunchConfiguration('auto_start_streaming'),
-            'use_vaapi': LaunchConfiguration('use_vaapi'),
-            'rtp_mtu': LaunchConfiguration('rtp_mtu')
+            'record_width': LaunchConfiguration('record_width'),
+            'record_height': LaunchConfiguration('record_height'),
+            'record_fps': LaunchConfiguration('record_fps')
         }]
     )
 
@@ -287,20 +271,12 @@ def generate_launch_description():
         declare_turn_speed_multiplier_arg,
         declare_cam_a_arg,
         declare_cam_b_arg,
-        declare_vw_arg,
-        declare_vh_arg,
-        declare_vfps_arg,
-        declare_raw_fmt_arg,
-        declare_stream_host_arg,
-        declare_stream_port_arg,
-        declare_bitrate_a_arg,
-        declare_bitrate_b_arg,
         declare_out_dir_arg,
         declare_segment_sec_arg,
         declare_start_rec_arg,
-        declare_auto_start_streaming_arg,
-        declare_use_vaapi_arg,
-        declare_rtp_mtu_arg,
+        declare_rec_w_arg,
+        declare_rec_h_arg,
+        declare_rec_fps_arg,
         
         # CAN setup (with delay to ensure it's ready)
         TimerAction(
