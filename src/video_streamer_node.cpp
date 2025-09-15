@@ -95,13 +95,13 @@ private:
         // Simplest record pipeline: MJPEG direct -> MKV
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
            << "! queue "
-           << "! splitmuxsink name=splitmux_a location=" << out_dir_ << "/" << file_base_a_ << "-%02d.mkv max-size-time="
+           << "! splitmuxsink name=splitmux_a location=" << out_dir_ << "/" << file_base_a_ << "-%02d.avi max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
-           << " muxer-factory=matroskamux";
+           << " muxer-factory=avimux";
         return ss.str();
     }
 
@@ -109,13 +109,13 @@ private:
         // Simplest record pipeline: MJPEG direct -> MKV
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
            << "! queue "
-           << "! splitmuxsink name=splitmux_b location=" << out_dir_ << "/" << file_base_b_ << "-%02d.mkv max-size-time="
+           << "! splitmuxsink name=splitmux_b location=" << out_dir_ << "/" << file_base_b_ << "-%02d.avi max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
-           << " muxer-factory=matroskamux";
+           << " muxer-factory=avimux";
         return ss.str();
     }
 
