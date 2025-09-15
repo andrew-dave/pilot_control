@@ -1,5 +1,4 @@
 #include <rclcpp/rclcpp.hpp>
-#include <std_srvs/srv/trigger.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <gst/gst.h>
@@ -18,19 +17,9 @@ public:
         // Parameters
         this->declare_parameter<std::string>("cam_a", "/dev/v4l/by-id/unknown-cam-a");
         this->declare_parameter<std::string>("cam_b", "/dev/v4l/by-id/unknown-cam-b");
-        this->declare_parameter<int>("width", 1280);
-        this->declare_parameter<int>("height", 720);
-        this->declare_parameter<int>("fps", 60);
-        this->declare_parameter<std::string>("raw_format", "UYVY");
-        this->declare_parameter<std::string>("stream_host", "172.16.10.121");
-        this->declare_parameter<int>("stream_port", 5600);
-        this->declare_parameter<int>("bitrate_a_kbps", 800);
-        this->declare_parameter<int>("bitrate_b_kbps", 300);
         this->declare_parameter<std::string>("out_dir", "/home/roofus/videos");
         this->declare_parameter<int>("segment_seconds", 60);
         this->declare_parameter<bool>("start_recording", false);
-        this->declare_parameter<bool>("use_vaapi", false);
-        this->declare_parameter<int>("rtp_mtu", 1200);
         // Recording-only defaults target 1920x1200@60 (per v4l2 capabilities provided)
         // Record resolution (use highest by default)
         this->declare_parameter<int>("record_width", 1920);
@@ -79,11 +68,12 @@ private:
     std::string build_cam_a_pipeline_string(bool start_rec) {
         // Record-only pipeline at highest resolution in MJPEG
         std::ostringstream ss;
-        ss << "v4l2src device=" << cam_a_ << " "
+        ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
-           << "! queue leaky=downstream max-size-time=2000000000 "
+           << "! jpegparse "
+           << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
-           << "! jpegparse ! splitmuxsink location=" << out_dir_ << "/camA-%02d.avi max-size-time="
+           << "! splitmuxsink location=" << out_dir_ << "/camA-%02d.avi max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=avimux";
         return ss.str();
@@ -92,11 +82,12 @@ private:
     std::string build_cam_b_pipeline_string(bool start_rec) {
         // Record-only pipeline at highest resolution in MJPEG
         std::ostringstream ss;
-        ss << "v4l2src device=" << cam_b_ << " "
+        ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
-           << "! queue leaky=downstream max-size-time=2000000000 "
+           << "! jpegparse "
+           << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
-           << "! jpegparse ! splitmuxsink location=" << out_dir_ << "/camB-%02d.avi max-size-time="
+           << "! splitmuxsink location=" << out_dir_ << "/camB-%02d.avi max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=avimux";
         return ss.str();
@@ -197,9 +188,24 @@ private:
         res->message = std::string("Recording both cameras ") + (req->data ? "ON" : "OFF");
     }
 
+    // Toggle both valves within the GLib main context to synchronize start/stop
     void set_recording_both(bool enable) {
-        set_recording_single(true, enable);
-        set_recording_single(false, enable);
+        struct ToggleData { VideoStreamerNode* self; gboolean drop; };
+        auto *data = new ToggleData{ this, enable ? FALSE : TRUE };
+        g_main_context_invoke(context_, [](gpointer user_data) -> gboolean {
+            auto *d = static_cast<ToggleData*>(user_data);
+            VideoStreamerNode *self = d->self;
+            {
+                std::lock_guard<std::mutex> lock(self->valve_mutex_);
+                if (self->valve_a_) g_object_set(G_OBJECT(self->valve_a_), "drop", d->drop, NULL);
+                if (self->valve_b_) g_object_set(G_OBJECT(self->valve_b_), "drop", d->drop, NULL);
+                const bool enable_local = (d->drop == FALSE);
+                self->recording_a_ = enable_local;
+                self->recording_b_ = enable_local;
+            }
+            delete d;
+            return G_SOURCE_REMOVE;
+        }, data);
     }
 
     void set_recording_single(bool is_a, bool enable) {
