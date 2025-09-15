@@ -69,13 +69,13 @@ private:
         // Record-only pipeline at highest resolution in MJPEG
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
-           << "! splitmuxsink location=" << out_dir_ << "/camA-%02d.avi max-size-time="
+           << "! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
-           << " muxer-factory=avimux";
+           << " muxer-factory=matroskamux";
         return ss.str();
     }
 
@@ -83,13 +83,13 @@ private:
         // Record-only pipeline at highest resolution in MJPEG
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
-           << "! splitmuxsink location=" << out_dir_ << "/camB-%02d.avi max-size-time="
+           << "! splitmuxsink location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
-           << " muxer-factory=avimux";
+           << " muxer-factory=matroskamux";
         return ss.str();
     }
 
