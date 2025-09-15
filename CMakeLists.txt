@@ -31,6 +31,9 @@ endif()
 # Find SDL2 for teleop
 find_package(SDL2 QUIET)
 
+# OpenCV for video_recorder
+find_package(OpenCV QUIET COMPONENTS core imgproc videoio)
+
 # === DIFFERENTIAL DRIVE CONTROLLER ===
 add_executable(diff_drive_controller src/diff_drive_controller.cpp)
 ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
@@ -85,19 +88,16 @@ else()
   message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
 endif()
 
-# === VIDEO RECORDER (GStreamer MJPEG recording only) ===
-if(GSTREAMER_FOUND AND GLIB2_FOUND)
-  add_executable(video_streamer src/video_streamer_node.cpp)
-  ament_target_dependencies(video_streamer rclcpp std_srvs)
-  target_include_directories(video_streamer PUBLIC ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS})
-  target_link_directories(video_streamer PUBLIC ${GSTREAMER_LIBRARY_DIRS} ${GLIB2_LIBRARY_DIRS})
-  target_link_libraries(video_streamer ${GSTREAMER_LIBRARIES} ${GLIB2_LIBRARIES})
-  if(GSTREAMER_CFLAGS_OTHER)
-    target_compile_options(video_streamer PRIVATE ${GSTREAMER_CFLAGS_OTHER})
-  endif()
-  install(TARGETS video_streamer DESTINATION lib/${PROJECT_NAME})
+## Video recorder removed per user request
+if(OpenCV_FOUND)
+  add_executable(video_recorder src/video_recorder.cpp)
+  target_compile_features(video_recorder PUBLIC cxx_std_17)
+  ament_target_dependencies(video_recorder rclcpp std_srvs)
+  target_include_directories(video_recorder PUBLIC ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(video_recorder ${OpenCV_LIBS})
+  install(TARGETS video_recorder DESTINATION lib/${PROJECT_NAME})
 else()
-  message(WARNING "GStreamer not found — cannot build video_streamer")
+  message(WARNING "OpenCV not found — video_recorder will not be built")
 endif()
 
 # Install launch and config files

@@ -38,24 +38,21 @@ def generate_launch_description():
         description='A multiplier to tune the robot turning speed.'
     )
 
-    # Video recorder args (MJPEG recording at highest resolution)
-    declare_cam_a_arg = DeclareLaunchArgument(
-        'cam_a',
-        default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
-        description='Stable path to Camera A device'
+    # Video recorder node
+    video_recorder_node = Node(
+        package='pilot_control',
+        executable='video_recorder',
+        name='video_recorder',
+        output='screen',
+        parameters=[{
+            # Use by-id auto discovery for two See3CAM index0 endpoints; override if needed
+            'left_device': 'auto',
+            'right_device': 'auto',
+            'output_dir': os.path.join(os.path.expanduser('~'), 'scan_videos'),
+            'fourcc': 'MJPG',
+            'fps': 60.0
+        }]
     )
-    declare_cam_b_arg = DeclareLaunchArgument(
-        'cam_b',
-        default_value='/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
-        description='Stable path to Camera B device'
-    )
-    declare_out_dir_arg = DeclareLaunchArgument('video_out_dir', default_value='/home/roofus/videos')
-    declare_segment_sec_arg = DeclareLaunchArgument('segment_seconds', default_value='60')
-    declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
-    declare_rec_w_arg = DeclareLaunchArgument('record_width', default_value='1920')
-    declare_rec_h_arg = DeclareLaunchArgument('record_height', default_value='1200')
-    declare_rec_fps_arg = DeclareLaunchArgument('record_fps', default_value='30')
-    declare_rec_bitrate_arg = DeclareLaunchArgument('record_bitrate_kbps', default_value='10000')
 
     # CAN interface setup command
     can_setup = ExecuteProcess(
@@ -244,24 +241,7 @@ def generate_launch_description():
         ]
     )
 
-    # Video Recorder Node (robot-side, no streaming)
-    video_streamer_node = Node(
-        package='pilot_control',
-        executable='video_streamer',
-        name='video_streamer',
-        output='screen',
-        parameters=[{
-            'cam_a': LaunchConfiguration('cam_a'),
-            'cam_b': LaunchConfiguration('cam_b'),
-            'out_dir': LaunchConfiguration('video_out_dir'),
-            'segment_seconds': LaunchConfiguration('segment_seconds'),
-            'start_recording': LaunchConfiguration('start_recording'),
-            'record_width': LaunchConfiguration('record_width'),
-            'record_height': LaunchConfiguration('record_height'),
-            'record_fps': LaunchConfiguration('record_fps'),
-            'record_bitrate_kbps': LaunchConfiguration('record_bitrate_kbps')
-        }]
-    )
+    # Video recorder removed
 
     return LaunchDescription([
         # Launch arguments
@@ -271,15 +251,7 @@ def generate_launch_description():
         declare_can_bitrate_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
-        declare_cam_a_arg,
-        declare_cam_b_arg,
-        declare_out_dir_arg,
-        declare_segment_sec_arg,
-        declare_start_rec_arg,
-        declare_rec_w_arg,
-        declare_rec_h_arg,
-        declare_rec_fps_arg,
-        declare_rec_bitrate_arg,
+        
         
         # CAN setup (with delay to ensure it's ready)
         TimerAction(
@@ -304,7 +276,8 @@ def generate_launch_description():
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
-                video_streamer_node,
+                video_recorder_node,
+                
                 gpr_serial_bridge_node,
             ]
         ),
