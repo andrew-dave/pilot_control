@@ -60,6 +60,7 @@ def generate_launch_description():
     declare_out_dir_arg = DeclareLaunchArgument('video_out_dir', default_value='/home/roofus/videos')
     declare_segment_sec_arg = DeclareLaunchArgument('segment_seconds', default_value='60')
     declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
+    declare_auto_start_streaming_arg = DeclareLaunchArgument('auto_start_streaming', default_value='true')
     declare_use_vaapi_arg = DeclareLaunchArgument('use_vaapi', default_value='false')
     declare_rtp_mtu_arg = DeclareLaunchArgument('rtp_mtu', default_value='1200')
 
@@ -270,6 +271,7 @@ def generate_launch_description():
             'out_dir': LaunchConfiguration('video_out_dir'),
             'segment_seconds': LaunchConfiguration('segment_seconds'),
             'start_recording': LaunchConfiguration('start_recording'),
+            'auto_start_streaming': LaunchConfiguration('auto_start_streaming'),
             'use_vaapi': LaunchConfiguration('use_vaapi'),
             'rtp_mtu': LaunchConfiguration('rtp_mtu')
         }]
@@ -296,6 +298,7 @@ def generate_launch_description():
         declare_out_dir_arg,
         declare_segment_sec_arg,
         declare_start_rec_arg,
+        declare_auto_start_streaming_arg,
         declare_use_vaapi_arg,
         declare_rtp_mtu_arg,
         

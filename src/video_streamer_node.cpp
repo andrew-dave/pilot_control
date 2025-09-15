@@ -29,6 +29,7 @@ public:
         this->declare_parameter<std::string>("out_dir", "/home/roofus/videos");
         this->declare_parameter<int>("segment_seconds", 60);
         this->declare_parameter<bool>("start_recording", false);
+        this->declare_parameter<bool>("auto_start_streaming", true);
         this->declare_parameter<bool>("use_vaapi", false);
         this->declare_parameter<int>("rtp_mtu", 1200);
         // MJPEG capture -> decode -> rate/scale -> encode for Cam A
@@ -53,6 +54,7 @@ public:
         out_dir_          = this->get_parameter("out_dir").as_string();
         segment_seconds_  = this->get_parameter("segment_seconds").as_int();
         recording_a_ = recording_b_ = this->get_parameter("start_recording").as_bool();
+        auto_start_streaming_ = this->get_parameter("auto_start_streaming").as_bool();
         use_vaapi_        = this->get_parameter("use_vaapi").as_bool();
         rtp_mtu_          = this->get_parameter("rtp_mtu").as_int();
         raw_format_       = this->get_parameter("raw_format").as_string();
@@ -78,24 +80,13 @@ public:
         build_pipelines();
         start_pipelines();
 
-        // Services
-        srv_toggle_ = this->create_service<std_srvs::srv::Trigger>(
-            "video_record_toggle",
-            std::bind(&VideoStreamerNode::on_toggle, this, std::placeholders::_1, std::placeholders::_2));
-
-        srv_set_both_ = this->create_service<std_srvs::srv::SetBool>(
+        // Service - only keep the record control for both cameras
+        srv_record_control_ = this->create_service<std_srvs::srv::SetBool>(
             "video_record_set",
-            std::bind(&VideoStreamerNode::on_set_both, this, std::placeholders::_1, std::placeholders::_2));
+            std::bind(&VideoStreamerNode::on_record_control, this, std::placeholders::_1, std::placeholders::_2));
 
-        srv_set_a_ = this->create_service<std_srvs::srv::SetBool>(
-            "video_record_set_cam_a",
-            std::bind(&VideoStreamerNode::on_set_a, this, std::placeholders::_1, std::placeholders::_2));
-
-        srv_set_b_ = this->create_service<std_srvs::srv::SetBool>(
-            "video_record_set_cam_b",
-            std::bind(&VideoStreamerNode::on_set_b, this, std::placeholders::_1, std::placeholders::_2));
-
-        RCLCPP_INFO(this->get_logger(), "video_streamer started: stream %s:%d, VAAPI=%d", stream_host_.c_str(), stream_port_, use_vaapi_);
+        RCLCPP_INFO(this->get_logger(), "video_streamer started: stream %s:%d, VAAPI=%d, auto_streaming=%d", stream_host_.c_str(), stream_port_, use_vaapi_, auto_start_streaming_);
+        RCLCPP_INFO(this->get_logger(), "Service available: /video_record_set (controls recording for both cameras)");
     }
 
     ~VideoStreamerNode() override {
@@ -274,37 +265,12 @@ private:
         if (context_) { g_main_context_unref(context_); context_ = nullptr; }
     }
 
-    // ============ Services ============
-    void on_toggle(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
-                   std::shared_ptr<std_srvs::srv::Trigger::Response> res) {
-        (void)req;
-        const bool any_on = recording_a_ || recording_b_;
-        set_recording_both(!any_on);
-        res->success = true;
-        std::ostringstream msg;
-        msg << "Recording " << (recording_a_ ? "A:on" : "A:off") << ", " << (recording_b_ ? "B:on" : "B:off");
-        res->message = msg.str();
-    }
-
-    void on_set_both(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
-                      std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
+    // ============ Service ============
+    void on_record_control(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
+                           std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
         set_recording_both(req->data);
         res->success = true;
-        res->message = std::string("Recording both ") + (req->data ? "ON" : "OFF");
-    }
-
-    void on_set_a(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
-                  std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
-        set_recording_single(true, req->data);
-        res->success = true;
-        res->message = std::string("Recording A ") + (req->data ? "ON" : "OFF");
-    }
-
-    void on_set_b(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
-                  std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
-        set_recording_single(false, req->data);
-        res->success = true;
-        res->message = std::string("Recording B ") + (req->data ? "ON" : "OFF");
+        res->message = std::string("Recording both cameras ") + (req->data ? "ON" : "OFF");
     }
 
     void set_recording_both(bool enable) {
@@ -380,6 +346,7 @@ private:
     // State
     bool recording_a_{false};
     bool recording_b_{false};
+    bool auto_start_streaming_{true};
 
     // GStreamer
     GstElement *pipeline_a_{nullptr};
@@ -391,11 +358,8 @@ private:
     std::thread loop_thread_;
     std::mutex valve_mutex_;
 
-    // Services
-    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_toggle_;
-    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr srv_set_both_;
-    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr srv_set_a_;
-    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr srv_set_b_;
+    // Service
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr srv_record_control_;
 };
 
 int main(int argc, char **argv) {

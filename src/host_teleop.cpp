@@ -26,7 +26,7 @@ public:
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
-        video_record_set_client_ = create_client<std_srvs::srv::SetBool>("/video_streamer/video_record_set");
+        video_record_set_client_ = create_client<std_srvs::srv::SetBool>("/video_record_set");
         // GPR line control services (Arduino)
         gpr_line_start_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_start");
         gpr_line_stop_client_  = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
@@ -99,7 +99,7 @@ public:
         }
 
         // Check video record service
-        if (video_record_set_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (video_record_set_client_->wait_for_service(std::chrono::seconds(5))) {
             RCLCPP_INFO(get_logger(), "✓ video_record_set service is available (R/T keys)");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ video_record_set service is NOT available (R/T will do nothing)");
@@ -478,7 +478,7 @@ private:
     std::thread workflow_thread_;
 
     void send_video_record_set(bool enable) {
-        if (!video_record_set_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!video_record_set_client_->wait_for_service(std::chrono::seconds(5))) {
             RCLCPP_WARN(get_logger(), "video_record_set service not available");
             return;
         }
