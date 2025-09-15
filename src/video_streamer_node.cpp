@@ -25,7 +25,6 @@ public:
         this->declare_parameter<int>("record_width", 1920);
         this->declare_parameter<int>("record_height", 1200);
         this->declare_parameter<int>("record_fps", 30);
-        this->declare_parameter<int>("record_bitrate_kbps", 10000);
 
         cam_a_            = this->get_parameter("cam_a").as_string();
         cam_b_            = this->get_parameter("cam_b").as_string();
@@ -35,7 +34,6 @@ public:
         record_w_ = this->get_parameter("record_width").as_int();
         record_h_ = this->get_parameter("record_height").as_int();
         record_fps_ = this->get_parameter("record_fps").as_int();
-        record_bitrate_kbps_ = this->get_parameter("record_bitrate_kbps").as_int();
 
         // Ensure output directory exists
         try {
@@ -49,6 +47,15 @@ public:
 
         // Build and start pipelines
         build_pipelines();
+        // Force both pipelines to use the same system clock for consistent timestamping
+        {
+            GstClock *sysclk = gst_system_clock_obtain();
+            if (sysclk) {
+                if (pipeline_a_) gst_pipeline_use_clock(GST_PIPELINE(pipeline_a_), sysclk);
+                if (pipeline_b_) gst_pipeline_use_clock(GST_PIPELINE(pipeline_b_), sysclk);
+                gst_object_unref(sysclk);
+            }
+        }
         start_pipelines();
 
         // Service - only keep the record control for both cameras
@@ -56,8 +63,8 @@ public:
             "video_record_set",
             std::bind(&VideoStreamerNode::on_record_control, this, std::placeholders::_1, std::placeholders::_2));
 
-        RCLCPP_INFO(this->get_logger(), "video_recorder started: re-encode H.264, %dx%d@%d, ~%d kbps to %s",
-                    record_w_, record_h_, record_fps_, record_bitrate_kbps_, out_dir_.c_str());
+        RCLCPP_INFO(this->get_logger(), "video_recorder started: MJPEG direct, %dx%d@%d to %s",
+                    record_w_, record_h_, record_fps_, out_dir_.c_str());
         RCLCPP_INFO(this->get_logger(), "Service available: /video_record_set (controls recording for both cameras)");
     }
 
@@ -66,44 +73,56 @@ public:
     }
 
 private:
+    // ============ Helpers ============
+    static std::string now_timestamp_string() {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm_buf{};
+#ifdef _WIN32
+        localtime_s(&tm_buf, &t);
+#else
+        localtime_r(&t, &tm_buf);
+#endif
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%04d%02d%02d-%02d%02d%02d",
+                      tm_buf.tm_year + 1900, tm_buf.tm_mon + 1, tm_buf.tm_mday,
+                      tm_buf.tm_hour, tm_buf.tm_min, tm_buf.tm_sec);
+        return std::string(buf);
+    }
+
     // ============ Pipeline construction ============
     std::string build_cam_a_pipeline_string(bool start_rec) {
-        // Record pipeline: decode MJPEG -> rate limit -> H.264 encode -> MKV
-        const int keyint = std::max(2 * record_fps_, 2);
+        // Simplest record pipeline: MJPEG direct -> MKV
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
-           << "! jpegparse ! jpegdec "
-           << "! videorate drop-only=true ! video/x-raw,framerate=" << record_fps_ << "/1 "
-           << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! jpegparse "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
-           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bframes=0 bitrate=" << record_bitrate_kbps_
-           << " key-int-max=" << keyint << " "
-           << "! h264parse ! splitmuxsink send-keyframe-requests=true location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
+           << "! queue "
+           << "! splitmuxsink name=splitmux_a location=" << out_dir_ << "/" << file_base_a_ << "-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
     }
 
     std::string build_cam_b_pipeline_string(bool start_rec) {
-        // Record pipeline: decode MJPEG -> rate limit -> H.264 encode -> MKV
-        const int keyint = std::max(2 * record_fps_, 2);
+        // Simplest record pipeline: MJPEG direct -> MKV
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
-           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
-           << "! jpegparse ! jpegdec "
-           << "! videorate drop-only=true ! video/x-raw,framerate=" << record_fps_ << "/1 "
-           << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
+           << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << ",framerate=" << record_fps_ << "/1 "
+           << "! jpegparse "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
-           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bframes=0 bitrate=" << record_bitrate_kbps_
-           << " key-int-max=" << keyint << " "
-           << "! h264parse ! splitmuxsink send-keyframe-requests=true location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
+           << "! queue "
+           << "! splitmuxsink name=splitmux_b location=" << out_dir_ << "/" << file_base_b_ << "-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
     }
 
     void build_pipelines() {
+        // Build with unique timestamped base names
+        file_base_a_ = std::string("camA-") + now_timestamp_string();
+        file_base_b_ = std::string("camB-") + now_timestamp_string();
         std::string a_str = build_cam_a_pipeline_string(recording_a_);
         std::string b_str = build_cam_b_pipeline_string(recording_b_);
 
@@ -124,11 +143,13 @@ private:
         }
         if (err) { RCLCPP_WARN(this->get_logger(), "Cam B pipeline warnings: %s", err->message); g_error_free(err); err = nullptr; }
 
-        // Cache valve elements for fast toggling
+        // Cache valve and splitmux elements for fast toggling and splitting
         valve_a_ = gst_bin_get_by_name(GST_BIN(pipeline_a_), "valve_a");
         valve_b_ = gst_bin_get_by_name(GST_BIN(pipeline_b_), "valve_b");
-        if (!valve_a_ || !valve_b_) {
-            RCLCPP_FATAL(this->get_logger(), "Failed to find valves in pipelines");
+        splitmux_a_ = gst_bin_get_by_name(GST_BIN(pipeline_a_), "splitmux_a");
+        splitmux_b_ = gst_bin_get_by_name(GST_BIN(pipeline_b_), "splitmux_b");
+        if (!valve_a_ || !valve_b_ || !splitmux_a_ || !splitmux_b_) {
+            RCLCPP_FATAL(this->get_logger(), "Failed to find required elements (valves or splitmux) in pipelines");
             throw std::runtime_error("Valve elements not found");
         }
 
@@ -184,6 +205,8 @@ private:
 
         if (valve_a_) { gst_object_unref(valve_a_); valve_a_ = nullptr; }
         if (valve_b_) { gst_object_unref(valve_b_); valve_b_ = nullptr; }
+        if (splitmux_a_) { gst_object_unref(splitmux_a_); splitmux_a_ = nullptr; }
+        if (splitmux_b_) { gst_object_unref(splitmux_b_); splitmux_b_ = nullptr; }
         if (pipeline_a_) { gst_object_unref(pipeline_a_); pipeline_a_ = nullptr; }
         if (pipeline_b_) { gst_object_unref(pipeline_b_); pipeline_b_ = nullptr; }
         if (loop_) { g_main_loop_unref(loop_); loop_ = nullptr; }
@@ -213,6 +236,9 @@ private:
                 self->recording_a_ = enable_local;
                 self->recording_b_ = enable_local;
             }
+            // If stopping, request split and wait for it; if starting, also split to force a fresh file
+            if (self->splitmux_a_) g_signal_emit_by_name(self->splitmux_a_, "split-now");
+            if (self->splitmux_b_) g_signal_emit_by_name(self->splitmux_b_, "split-now");
             delete d;
             return G_SOURCE_REMOVE;
         }, data);
@@ -268,7 +294,8 @@ private:
     int record_w_{};
     int record_h_{};
     int record_fps_{};
-    int record_bitrate_kbps_{};
+    std::string file_base_a_;
+    std::string file_base_b_;
 
     // State
     bool recording_a_{false};
@@ -280,6 +307,8 @@ private:
     GstElement *pipeline_b_{nullptr};
     GstElement *valve_a_{nullptr};
     GstElement *valve_b_{nullptr};
+    GstElement *splitmux_a_{nullptr};
+    GstElement *splitmux_b_{nullptr};
     GMainContext *context_{nullptr};
     GMainLoop *loop_{nullptr};
     std::thread loop_thread_;
