@@ -1,13 +1,10 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess, DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PythonExpression
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
-    # Video viewer args
-    declare_view_enabled = DeclareLaunchArgument('view_stream', default_value='true')
-    declare_view_port = DeclareLaunchArgument('view_stream_port', default_value='5600')
+    # No streaming viewer; recording-only system
     # Node for teleoperation (runs on laptop)
     host_teleop_node = Node(
         package='pilot_control',
@@ -51,24 +48,10 @@ def generate_launch_description():
     #     }]
     # )
 
-    # UDP H.264 viewer (runs on laptop)
-    gst_viewer = ExecuteProcess(
-        condition=IfCondition(LaunchConfiguration('view_stream')),
-        cmd=[
-            'gst-launch-1.0', '-v',
-            'udpsrc',
-            PythonExpression(["'port=' + str(", LaunchConfiguration('view_stream_port'), ")"]),
-            'caps=application/x-rtp,media=video,encoding-name=H264,payload=96',
-            '!', 'rtph264depay', '!', 'decodebin', '!', 'autovideosink', 'sync=false'
-        ],
-        output='screen'
-    )
+    # Streaming viewer removed
 
     return LaunchDescription([
-        declare_view_enabled,
-        declare_view_port,
         host_teleop_node,
         pcd_processor_node,
         # gpr_serial_bridge_node,  # runs on robot instead
-        gst_viewer,
     ]) 

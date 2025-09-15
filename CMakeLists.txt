@@ -85,7 +85,7 @@ else()
   message(WARNING "SDL2 not found — cannot build host_teleop (SDL2 version)")
 endif()
 
-# === VIDEO STREAMER (GStreamer RTP + recording) ===
+# === VIDEO RECORDER (GStreamer MJPEG recording only) ===
 if(GSTREAMER_FOUND AND GLIB2_FOUND)
   add_executable(video_streamer src/video_streamer_node.cpp)
   ament_target_dependencies(video_streamer rclcpp std_srvs)
