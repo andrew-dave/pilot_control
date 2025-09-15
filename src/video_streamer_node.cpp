@@ -24,7 +24,8 @@ public:
         // Record resolution (use highest by default)
         this->declare_parameter<int>("record_width", 1920);
         this->declare_parameter<int>("record_height", 1200);
-        this->declare_parameter<int>("record_fps", 60);
+        this->declare_parameter<int>("record_fps", 30);
+        this->declare_parameter<int>("record_bitrate_kbps", 10000);
 
         cam_a_            = this->get_parameter("cam_a").as_string();
         cam_b_            = this->get_parameter("cam_b").as_string();
@@ -34,6 +35,7 @@ public:
         record_w_ = this->get_parameter("record_width").as_int();
         record_h_ = this->get_parameter("record_height").as_int();
         record_fps_ = this->get_parameter("record_fps").as_int();
+        record_bitrate_kbps_ = this->get_parameter("record_bitrate_kbps").as_int();
 
         // Ensure output directory exists
         try {
@@ -54,8 +56,8 @@ public:
             "video_record_set",
             std::bind(&VideoStreamerNode::on_record_control, this, std::placeholders::_1, std::placeholders::_2));
 
-        RCLCPP_INFO(this->get_logger(), "video_recorder started: MJPEG recording only, %dx%d@%d to %s",
-                    record_w_, record_h_, record_fps_, out_dir_.c_str());
+        RCLCPP_INFO(this->get_logger(), "video_recorder started: re-encode H.264, %dx%d@%d, ~%d kbps to %s",
+                    record_w_, record_h_, record_fps_, record_bitrate_kbps_, out_dir_.c_str());
         RCLCPP_INFO(this->get_logger(), "Service available: /video_record_set (controls recording for both cameras)");
     }
 
@@ -66,28 +68,36 @@ public:
 private:
     // ============ Pipeline construction ============
     std::string build_cam_a_pipeline_string(bool start_rec) {
-        // Record-only pipeline at highest resolution in MJPEG
+        // Record pipeline: decode MJPEG -> rate limit -> H.264 encode -> MKV
+        const int keyint = std::max(2 * record_fps_, 2);
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
-           << "! jpegparse "
+           << "! jpegparse ! jpegdec "
+           << "! videorate ! video/x-raw,framerate=" << record_fps_ << "/1 "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
-           << "! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
+           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << record_bitrate_kbps_
+           << " key-int-max=" << keyint << " "
+           << "! h264parse ! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
     }
 
     std::string build_cam_b_pipeline_string(bool start_rec) {
-        // Record-only pipeline at highest resolution in MJPEG
+        // Record pipeline: decode MJPEG -> rate limit -> H.264 encode -> MKV
+        const int keyint = std::max(2 * record_fps_, 2);
         std::ostringstream ss;
         ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
-           << "! jpegparse "
+           << "! jpegparse ! jpegdec "
+           << "! videorate ! video/x-raw,framerate=" << record_fps_ << "/1 "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
-           << "! splitmuxsink location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
+           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << record_bitrate_kbps_
+           << " key-int-max=" << keyint << " "
+           << "! h264parse ! splitmuxsink location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
@@ -258,6 +268,7 @@ private:
     int record_w_{};
     int record_h_{};
     int record_fps_{};
+    int record_bitrate_kbps_{};
 
     // State
     bool recording_a_{false};

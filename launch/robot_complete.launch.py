@@ -54,7 +54,8 @@ def generate_launch_description():
     declare_start_rec_arg = DeclareLaunchArgument('start_recording', default_value='false')
     declare_rec_w_arg = DeclareLaunchArgument('record_width', default_value='1920')
     declare_rec_h_arg = DeclareLaunchArgument('record_height', default_value='1200')
-    declare_rec_fps_arg = DeclareLaunchArgument('record_fps', default_value='60')
+    declare_rec_fps_arg = DeclareLaunchArgument('record_fps', default_value='30')
+    declare_rec_bitrate_arg = DeclareLaunchArgument('record_bitrate_kbps', default_value='10000')
 
     # CAN interface setup command
     can_setup = ExecuteProcess(
@@ -257,7 +258,8 @@ def generate_launch_description():
             'start_recording': LaunchConfiguration('start_recording'),
             'record_width': LaunchConfiguration('record_width'),
             'record_height': LaunchConfiguration('record_height'),
-            'record_fps': LaunchConfiguration('record_fps')
+            'record_fps': LaunchConfiguration('record_fps'),
+            'record_bitrate_kbps': LaunchConfiguration('record_bitrate_kbps')
         }]
     )
 
@@ -277,6 +279,7 @@ def generate_launch_description():
         declare_rec_w_arg,
         declare_rec_h_arg,
         declare_rec_fps_arg,
+        declare_rec_bitrate_arg,
         
         # CAN setup (with delay to ensure it's ready)
         TimerAction(
