@@ -74,12 +74,12 @@ private:
         ss << "v4l2src device=" << cam_a_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse ! jpegdec "
-           << "! videorate ! video/x-raw,framerate=" << record_fps_ << "/1 "
+           << "! videorate drop-only=true ! video/x-raw,framerate=" << record_fps_ << "/1 "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_a drop=" << (start_rec ? "false" : "true") << " "
-           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << record_bitrate_kbps_
+           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bframes=0 bitrate=" << record_bitrate_kbps_
            << " key-int-max=" << keyint << " "
-           << "! h264parse ! splitmuxsink location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
+           << "! h264parse ! splitmuxsink send-keyframe-requests=true location=" << out_dir_ << "/camA-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
@@ -92,12 +92,12 @@ private:
         ss << "v4l2src device=" << cam_b_ << " do-timestamp=true "
            << "! image/jpeg,width=" << record_w_ << ",height=" << record_h_ << " "
            << "! jpegparse ! jpegdec "
-           << "! videorate ! video/x-raw,framerate=" << record_fps_ << "/1 "
+           << "! videorate drop-only=true ! video/x-raw,framerate=" << record_fps_ << "/1 "
            << "! queue max-size-buffers=0 max-size-bytes=0 max-size-time=4000000000 "
            << "! valve name=valve_b drop=" << (start_rec ? "false" : "true") << " "
-           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << record_bitrate_kbps_
+           << "! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast bframes=0 bitrate=" << record_bitrate_kbps_
            << " key-int-max=" << keyint << " "
-           << "! h264parse ! splitmuxsink location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
+           << "! h264parse ! splitmuxsink send-keyframe-requests=true location=" << out_dir_ << "/camB-%02d.mkv max-size-time="
            << static_cast<unsigned long long>(segment_seconds_) * 1000000000ULL
            << " muxer-factory=matroskamux";
         return ss.str();
