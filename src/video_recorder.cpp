@@ -33,7 +33,10 @@ public:
         output_directory_(output_directory),
         fourcc_str_(fourcc_str),
         desired_fps_(desired_fps),
-        running_(false) {}
+        running_(false),
+        has_frame_(false),
+        actual_w_(0),
+        actual_h_(0) {}
 
   ~SingleCameraRecorder() { stop(); }
 
@@ -97,6 +100,9 @@ public:
       measured_fps = (desired_fps_ > 0.0) ? desired_fps_ : 30.0;
     }
 
+    // Output FPS: prefer desired (to synchronize both sides). Fall back to measured.
+    double output_fps_for_writer = (desired_fps_ > 0.0) ? desired_fps_ : measured_fps;
+
     // Build output filename
     const auto now = std::chrono::system_clock::now();
     const std::time_t tnow = std::chrono::system_clock::to_time_t(now);
@@ -120,7 +126,7 @@ public:
         fourcc_str_.size() > 2 ? fourcc_str_[2] : 'P',
         fourcc_str_.size() > 3 ? fourcc_str_[3] : 'G');
 
-    if (!writer_.open(out_path, fourcc, measured_fps, cv::Size(actual_w, actual_h))) {
+    if (!writer_.open(out_path, fourcc, output_fps_for_writer, cv::Size(actual_w, actual_h))) {
       last_error_ = "Failed to open writer: " + out_path;
       cap_.release();
       return false;
@@ -128,14 +134,19 @@ public:
 
     output_path_ = out_path;
     running_.store(true);
-    worker_ = std::thread([this]() { this->loop(); });
+    actual_w_ = actual_w;
+    actual_h_ = actual_h;
+    output_fps_ = output_fps_for_writer;
+    capture_thread_ = std::thread([this]() { this->capture_loop(); });
+    write_thread_ = std::thread([this]() { this->write_loop(); });
     return true;
   }
 
   void stop() {
     if (!running_.load()) return;
     running_.store(false);
-    if (worker_.joinable()) worker_.join();
+    if (capture_thread_.joinable()) capture_thread_.join();
+    if (write_thread_.joinable()) write_thread_.join();
     if (writer_.isOpened()) writer_.release();
     if (cap_.isOpened()) cap_.release();
   }
@@ -144,15 +155,50 @@ public:
   std::string last_error() const { return last_error_; }
 
 private:
-  void loop() {
+  void capture_loop() {
     cv::Mat frame;
     while (running_.load()) {
       if (!cap_.read(frame)) {
         last_error_ = "Failed to read frame from " + device_path_;
-        break;
+        // small backoff
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        continue;
       }
       if (!frame.empty()) {
-        writer_.write(frame);
+        std::lock_guard<std::mutex> lk(frame_mu_);
+        frame.copyTo(last_frame_);
+        has_frame_ = true;
+      }
+    }
+  }
+
+  void write_loop() {
+    using clock = std::chrono::steady_clock;
+    const double fps = (output_fps_ > 0.0) ? output_fps_ : 30.0;
+    const auto period = std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(1.0 / fps));
+    auto next_tp = clock::now() + period;
+
+    // Prepare a black frame fallback if no frames yet
+    cv::Mat black;
+    if (actual_w_ > 0 && actual_h_ > 0) {
+      black = cv::Mat::zeros(actual_h_, actual_w_, CV_8UC3);
+    }
+
+    while (running_.load()) {
+      std::this_thread::sleep_until(next_tp);
+      next_tp += period;
+
+      cv::Mat to_write;
+      {
+        std::lock_guard<std::mutex> lk(frame_mu_);
+        if (has_frame_ && !last_frame_.empty()) {
+          to_write = last_frame_.clone();
+        } else if (!black.empty()) {
+          to_write = black;
+        }
+      }
+      if (!to_write.empty()) {
+        writer_.write(to_write);
       }
     }
   }
@@ -188,11 +234,18 @@ private:
   double desired_fps_;
 
   std::atomic<bool> running_;
-  std::thread worker_;
+  std::thread capture_thread_;
+  std::thread write_thread_;
   cv::VideoCapture cap_;
   cv::VideoWriter writer_;
   std::string output_path_;
   std::string last_error_;
+  std::mutex frame_mu_;
+  cv::Mat last_frame_;
+  bool has_frame_;
+  int actual_w_;
+  int actual_h_;
+  double output_fps_;
 };
 
 class DualVideoRecorderNode : public rclcpp::Node {
