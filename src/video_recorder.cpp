@@ -61,11 +61,6 @@ public:
         fourcc_str_.size() > 3 ? fourcc_str_[3] : 'G');
     cap_.set(cv::CAP_PROP_FOURCC, cap_fourcc);
 
-    // Try to set desired FPS if provided
-    if (desired_fps_ > 0.0) {
-      cap_.set(cv::CAP_PROP_FPS, desired_fps_);
-    }
-
     // Attempt highest resolution from a list of common options (descending)
     const std::vector<ResolutionOption> candidates = {
         {4096, 2160}, {3840, 2160}, {2560, 1440}, {2048, 1536}, {1920, 1200},
@@ -85,11 +80,21 @@ public:
       }
     }
 
+    // After resolution is set, try to set desired FPS (order matters on many UVC devices)
+    if (desired_fps_ > 0.0) {
+      cap_.set(cv::CAP_PROP_FPS, desired_fps_);
+    }
+
     int actual_w = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
     int actual_h = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
-    double actual_fps = cap_.get(cv::CAP_PROP_FPS);
-    if (actual_fps <= 0.0) {
-      actual_fps = (desired_fps_ > 0.0) ? desired_fps_ : 30.0;
+
+    // Measure actual capture FPS to avoid sped-up/slow videos due to driver reporting mismatch
+    double measured_fps = measure_capture_fps(0.6 /*seconds*/, 0.2 /*warmup_seconds*/);
+    if (measured_fps <= 0.0) {
+      measured_fps = cap_.get(cv::CAP_PROP_FPS);
+    }
+    if (measured_fps <= 0.0) {
+      measured_fps = (desired_fps_ > 0.0) ? desired_fps_ : 30.0;
     }
 
     // Build output filename
@@ -115,7 +120,7 @@ public:
         fourcc_str_.size() > 2 ? fourcc_str_[2] : 'P',
         fourcc_str_.size() > 3 ? fourcc_str_[3] : 'G');
 
-    if (!writer_.open(out_path, fourcc, actual_fps, cv::Size(actual_w, actual_h))) {
+    if (!writer_.open(out_path, fourcc, measured_fps, cv::Size(actual_w, actual_h))) {
       last_error_ = "Failed to open writer: " + out_path;
       cap_.release();
       return false;
@@ -150,6 +155,30 @@ private:
         writer_.write(frame);
       }
     }
+  }
+
+  double measure_capture_fps(double measure_seconds, double warmup_seconds) {
+    if (measure_seconds <= 0.0) return 0.0;
+    const auto t_start = std::chrono::steady_clock::now();
+    // Warmup: drain a bit to stabilize exposure/IO
+    cv::Mat frame;
+    while (std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count() < warmup_seconds) {
+      cap_.read(frame);
+    }
+
+    const auto t_meas_start = std::chrono::steady_clock::now();
+    size_t frames = 0;
+    while (std::chrono::duration<double>(std::chrono::steady_clock::now() - t_meas_start).count() < measure_seconds) {
+      if (cap_.read(frame)) {
+        if (!frame.empty()) frames++;
+      } else {
+        // brief sleep to avoid busy loop if camera stalls
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+    }
+    const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_meas_start).count();
+    if (elapsed <= 0.0) return 0.0;
+    return static_cast<double>(frames) / elapsed;
   }
 
   std::string device_path_;
