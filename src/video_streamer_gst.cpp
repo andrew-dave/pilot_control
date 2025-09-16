@@ -335,16 +335,24 @@ private:
     } catch (...) {
       RCLCPP_WARN(this->get_logger(), "Failed to ensure output directories exist");
     }
+
+    // Put muxers and sinks to READY before changing filesink locations
+    gst_element_set_state(avim_, GST_STATE_READY);
+    gst_element_set_state(rec_sink_, GST_STATE_READY);
+    gst_element_set_state(avim_right_, GST_STATE_READY);
+    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
+
+    // Set target file locations now that sinks are not open
     g_object_set(G_OBJECT(rec_sink_), "location", location_left.c_str(), NULL);
     g_object_set(G_OBJECT(rec_sink_right_), "location", location_right.c_str(), NULL);
     RCLCPP_INFO(this->get_logger(), "Recording LEFT to: %s", location_left.c_str());
     RCLCPP_INFO(this->get_logger(), "Recording RIGHT to: %s", location_right.c_str());
 
-    // Ensure recording branch is in PLAYING (in case it was readied after a previous stop)
-    gst_element_set_state(avim_, GST_STATE_PLAYING);
+    // Bring branches back to PLAYING in order: sinks first, then muxers
     gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
     gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
 
     // Open valve
     g_object_set(G_OBJECT(valve_rec_), "drop", FALSE, NULL);
@@ -377,18 +385,20 @@ private:
       cv_.wait_for(ul, std::chrono::seconds(5), [this]() { return eos_left_received_.load() && eos_right_received_.load(); });
     }
 
-    // Ready branch for next session. Reset filesink location to a safe dummy until next start.
-    gst_element_set_state(rec_sink_, GST_STATE_READY);
+    // Ready branches for next session and reset filesink location safely
     gst_element_set_state(avim_, GST_STATE_READY);
-    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
+    gst_element_set_state(rec_sink_, GST_STATE_READY);
     gst_element_set_state(avim_right_, GST_STATE_READY);
+    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
+
     g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
     g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
-    // Set back to PLAYING so next start_recording just opens the valve
-    gst_element_set_state(avim_, GST_STATE_PLAYING);
+
+    // Return branches to PLAYING so pipeline remains healthy with valves closed
     gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
     gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
 
     recording_active_ = false;
     return true;
