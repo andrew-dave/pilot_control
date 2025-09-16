@@ -38,19 +38,31 @@ def generate_launch_description():
         description='A multiplier to tune the robot turning speed.'
     )
 
-    # Video recorder node
-    video_recorder_node = Node(
+    # Video streamer (GStreamer tee: recording + streaming)
+    video_streamer_gst_node = Node(
         package='pilot_control',
-        executable='video_recorder',
-        name='video_recorder',
+        executable='video_streamer_gst',
+        name='video_streamer_gst',
         output='screen',
         parameters=[{
-            # Use by-id auto discovery for two See3CAM index0 endpoints; override if needed
-            'left_device': 'auto',
-            'right_device': 'auto',
+            'left_device': '/dev/v4l/by-id/See3CAM_Left-video-index0',
+            'camera_label': 'cam_left',
             'output_dir': os.path.join(os.path.expanduser('~'), 'scan_videos'),
             'fourcc': 'MJPG',
-            'fps': 60.0
+            'fps': 60.0,
+            'start_recording': False,
+            'use_mjpeg_pipeline': True,
+            'cap_w': 1920,
+            'cap_h': 1080,
+            'cap_fps': 30,
+            'raw_format': 'UYVY',
+            'raw_w': 1280,
+            'raw_h': 720,
+            'raw_fps': 60,
+            'stream_host': '172.16.10.121',
+            'stream_port': 5600,
+            'stream_bitrate_kbps': 800,
+            'rtp_mtu': 1200,
         }]
     )
 
@@ -276,7 +288,7 @@ def generate_launch_description():
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
-                video_recorder_node,
+                video_streamer_gst_node,
                 
                 gpr_serial_bridge_node,
             ]

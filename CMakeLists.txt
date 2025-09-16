@@ -100,6 +100,18 @@ else()
   message(WARNING "OpenCV not found — video_recorder will not be built")
 endif()
 
+# === VIDEO STREAMER (GStreamer tee: record + stream) ===
+if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND)
+  add_executable(video_streamer_gst src/video_streamer_gst.cpp)
+  target_compile_features(video_streamer_gst PUBLIC cxx_std_17)
+  ament_target_dependencies(video_streamer_gst rclcpp std_srvs)
+  target_include_directories(video_streamer_gst PUBLIC ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS})
+  target_link_libraries(video_streamer_gst ${GSTREAMER_LIBRARIES} ${GLIB2_LIBRARIES})
+  install(TARGETS video_streamer_gst DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "GStreamer not found — video_streamer_gst will not be built")
+endif()
+
 # Install launch and config files
 install(
   DIRECTORY launch
