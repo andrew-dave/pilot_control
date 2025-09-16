@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <condition_variable>
+#include <filesystem>
 
 class VideoStreamerGstNode : public rclcpp::Node {
 public:
@@ -182,6 +183,10 @@ private:
       throw std::runtime_error("Missing elements");
     }
 
+    // Set initial dummy locations so filesink can go to PLAYING before recording starts
+    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
+    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
+
     // Do not set PLAYING here; bus watch isn't attached yet. State is set in start_main_loop().
   }
 
@@ -323,6 +328,13 @@ private:
 
     const std::string location_left = build_output_path_left();
     const std::string location_right = build_output_path_right();
+    // Ensure directory exists
+    try {
+      std::filesystem::create_directories(std::filesystem::path(location_left).parent_path());
+      std::filesystem::create_directories(std::filesystem::path(location_right).parent_path());
+    } catch (...) {
+      RCLCPP_WARN(this->get_logger(), "Failed to ensure output directories exist");
+    }
     g_object_set(G_OBJECT(rec_sink_), "location", location_left.c_str(), NULL);
     g_object_set(G_OBJECT(rec_sink_right_), "location", location_right.c_str(), NULL);
     RCLCPP_INFO(this->get_logger(), "Recording LEFT to: %s", location_left.c_str());
@@ -365,11 +377,13 @@ private:
       cv_.wait_for(ul, std::chrono::seconds(5), [this]() { return eos_left_received_.load() && eos_right_received_.load(); });
     }
 
-    // Ready branch for next session
+    // Ready branch for next session. Reset filesink location to a safe dummy until next start.
     gst_element_set_state(rec_sink_, GST_STATE_READY);
     gst_element_set_state(avim_, GST_STATE_READY);
     gst_element_set_state(rec_sink_right_, GST_STATE_READY);
     gst_element_set_state(avim_right_, GST_STATE_READY);
+    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
+    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
     // Set back to PLAYING so next start_recording just opens the valve
     gst_element_set_state(avim_, GST_STATE_PLAYING);
     gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
