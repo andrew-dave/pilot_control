@@ -77,6 +77,14 @@ public:
   }
 
 private:
+  // Helper to block until an element reaches target state (or timeout). Returns true on success.
+  static bool set_state_blocking(GstElement *elem, GstState target, GstClockTime timeout_ns) {
+    if (!elem) return false;
+    gst_element_set_state(elem, target);
+    GstState cur = GST_STATE_NULL, pending = GST_STATE_NULL;
+    GstStateChangeReturn rc = gst_element_get_state(elem, &cur, &pending, timeout_ns);
+    return rc != GST_STATE_CHANGE_FAILURE && cur == target;
+  }
   static std::string default_output_dir() {
     const char *home = std::getenv("HOME");
     if (home && std::string(home).size() > 0) {
@@ -183,9 +191,9 @@ private:
       throw std::runtime_error("Missing elements");
     }
 
-    // Set initial dummy locations so filesink can go to PLAYING before recording starts
-    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
-    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
+    // Valves default to drop=true in pipeline string; ensure closed before any state changes
+    g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
+    g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
 
     // Do not set PLAYING here; bus watch isn't attached yet. State is set in start_main_loop().
   }
@@ -336,11 +344,15 @@ private:
       RCLCPP_WARN(this->get_logger(), "Failed to ensure output directories exist");
     }
 
-    // Put muxers and sinks to READY before changing filesink locations
-    gst_element_set_state(avim_, GST_STATE_READY);
-    gst_element_set_state(rec_sink_, GST_STATE_READY);
-    gst_element_set_state(avim_right_, GST_STATE_READY);
-    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
+    // Ensure no buffers flow
+    g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
+    g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
+
+    // Fully close sinks/muxers before changing filesink locations
+    (void)set_state_blocking(avim_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(rec_sink_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(avim_right_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_NULL, GST_SECOND);
 
     // Set target file locations now that sinks are not open
     g_object_set(G_OBJECT(rec_sink_), "location", location_left.c_str(), NULL);
@@ -348,11 +360,19 @@ private:
     RCLCPP_INFO(this->get_logger(), "Recording LEFT to: %s", location_left.c_str());
     RCLCPP_INFO(this->get_logger(), "Recording RIGHT to: %s", location_right.c_str());
 
-    // Bring branches back to PLAYING in order: sinks first, then muxers
-    gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
-    gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
+    // Bring branches back up synchronously: NULL->READY->PAUSED->PLAYING
+    (void)set_state_blocking(rec_sink_, GST_STATE_READY, GST_SECOND);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_READY, GST_SECOND);
+    (void)set_state_blocking(avim_, GST_STATE_READY, GST_SECOND);
+    (void)set_state_blocking(avim_right_, GST_STATE_READY, GST_SECOND);
+    (void)set_state_blocking(rec_sink_, GST_STATE_PAUSED, GST_SECOND);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_PAUSED, GST_SECOND);
+    (void)set_state_blocking(avim_, GST_STATE_PAUSED, GST_SECOND);
+    (void)set_state_blocking(avim_right_, GST_STATE_PAUSED, GST_SECOND);
+    (void)set_state_blocking(rec_sink_, GST_STATE_PLAYING, GST_SECOND);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_PLAYING, GST_SECOND);
+    (void)set_state_blocking(avim_, GST_STATE_PLAYING, GST_SECOND);
+    (void)set_state_blocking(avim_right_, GST_STATE_PLAYING, GST_SECOND);
 
     // Open valve
     g_object_set(G_OBJECT(valve_rec_), "drop", FALSE, NULL);
@@ -369,7 +389,7 @@ private:
     g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
     g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
 
-    // Send EOS to finalize AVI cleanly
+    // Send EOS to finalize AVI cleanly (send to muxers and sinks for robustness)
     eos_left_received_ = false;
     eos_right_received_ = false;
     if (!gst_element_send_event(avim_, gst_event_new_eos())) {
@@ -378,6 +398,12 @@ private:
     if (!gst_element_send_event(avim_right_, gst_event_new_eos())) {
       RCLCPP_WARN(this->get_logger(), "Failed to send EOS to avim_right branch");
     }
+    if (!gst_element_send_event(rec_sink_, gst_event_new_eos())) {
+      RCLCPP_DEBUG(this->get_logger(), "filesink left EOS send returned false (may be ok)");
+    }
+    if (!gst_element_send_event(rec_sink_right_, gst_event_new_eos())) {
+      RCLCPP_DEBUG(this->get_logger(), "filesink right EOS send returned false (may be ok)");
+    }
 
     // Wait for EOS confirmation for a bounded time
     {
@@ -385,20 +411,11 @@ private:
       cv_.wait_for(ul, std::chrono::seconds(5), [this]() { return eos_left_received_.load() && eos_right_received_.load(); });
     }
 
-    // Ready branches for next session and reset filesink location safely
-    gst_element_set_state(avim_, GST_STATE_READY);
-    gst_element_set_state(rec_sink_, GST_STATE_READY);
-    gst_element_set_state(avim_right_, GST_STATE_READY);
-    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
-
-    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
-    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
-
-    // Return branches to PLAYING so pipeline remains healthy with valves closed
-    gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
-    gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_, GST_STATE_PLAYING);
-    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
+    // Keep valves closed and fully close sinks/muxers so files are not kept open
+    (void)set_state_blocking(avim_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(rec_sink_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(avim_right_, GST_STATE_NULL, GST_SECOND);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_NULL, GST_SECOND);
 
     recording_active_ = false;
     return true;
