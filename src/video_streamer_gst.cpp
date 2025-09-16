@@ -22,14 +22,14 @@ public:
       : rclcpp::Node("video_streamer_gst"),
         recording_active_(false),
         shutting_down_(false) {
-    // ---- Parameters (kept compatible with your prior recorder) ----
+    // ---- Parameters (parity with your prior recorder) ----
     this->declare_parameter<std::string>("left_device", "/dev/v4l/by-id/See3CAM_Left-video-index0");
     this->declare_parameter<std::string>("right_device", "/dev/v4l/by-id/See3CAM_Right-video-index0");
     this->declare_parameter<std::string>("camera_label", "cam_left");
     this->declare_parameter<std::string>("camera_label_right", "cam_right");
     this->declare_parameter<std::string>("output_dir", default_output_dir());
-    this->declare_parameter<std::string>("fourcc", "MJPG");       // parity marker; recording is MJPG
-    this->declare_parameter<double>("fps", 30.0);                 // target record fps
+    this->declare_parameter<std::string>("fourcc", "MJPG");   // parity marker; MJPG in AVI
+    this->declare_parameter<double>("fps", 30.0);             // target record fps
     this->declare_parameter<bool>("start_recording", false);
     this->declare_parameter<bool>("enable_record_service", false);
 
@@ -144,13 +144,12 @@ private:
     }
     oss << "! tee name=T ";
 
-    // Record branch (non-leaky) — add capssetter+jpegparse to ensure proper MJPEG caps in AVI
+    // Record branch (non-leaky) — simplified & robust
     oss << " T. ! queue "
         << "! videorate ! video/x-raw,framerate=" << rec_fps << "/1 "
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec drop=true "
         << "! jpegenc quality=95 "
-        << "! capssetter caps=\\\"image/jpeg,framerate=" << rec_fps << "/1\\\" ! jpegparse "
         << "! avimux name=avim "
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
@@ -164,7 +163,7 @@ private:
         << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false ";
 
-    // ---- RIGHT camera (record only) — mirrored clean branch ----
+    // ---- RIGHT camera (record only) ----
     if (use_mjpeg) {
       oss << "\n"
           << "v4l2src device=" << right_dev << " do-timestamp=true "
@@ -181,7 +180,6 @@ private:
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec_right drop=true "
         << "! jpegenc quality=95 "
-        << "! capssetter caps=\\\"image/jpeg,framerate=" << rec_fps << "/1\\\" ! jpegparse "
         << "! avimux name=avim_right "
         << "! queue "
         << "! filesink name=rec_sink_right async=false sync=false ";
@@ -216,13 +214,13 @@ private:
       throw std::runtime_error("Missing elements");
     }
 
+    // Important: Give filesinks a safe initial location BEFORE pipeline goes PLAYING
+    g_object_set(G_OBJECT(rec_sink_),        "location", "/dev/null", NULL);
+    g_object_set(G_OBJECT(rec_sink_right_),  "location", "/dev/null", NULL);
+
     // Ensure valves closed before any state movement
     g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
     g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
-
-    // Provide safe initial locations so filesinks don't error when pipeline goes PLAYING
-    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
-    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
   }
 
   // ---------- GLib main loop ----------
@@ -322,23 +320,23 @@ private:
       RCLCPP_WARN(this->get_logger(), "Failed to ensure output directories exist");
     }
 
-    // Keep valves closed while (re)arming sinks/muxers and changing filenames
+    // Keep valves closed while we re-arm sinks/muxers and change filenames
     g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
     g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
 
-    // Bring sinks/muxers to READY, set new locations, then PLAYING (avoid PLAYING->property changes)
-    (void)set_state_blocking(avim_,     GST_STATE_READY);
-    (void)set_state_blocking(rec_sink_, GST_STATE_READY);
+    // Drive sinks/muxers to NULL, set new locations, then bring them to PLAYING (no race)
+    (void)set_state_blocking(rec_sink_, GST_STATE_NULL);
+    (void)set_state_blocking(avim_,     GST_STATE_NULL);
     g_object_set(G_OBJECT(rec_sink_), "location", left_path.c_str(), NULL);
 
-    (void)set_state_blocking(avim_right_,     GST_STATE_READY);
-    (void)set_state_blocking(rec_sink_right_, GST_STATE_READY);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_NULL);
+    (void)set_state_blocking(avim_right_,     GST_STATE_NULL);
     g_object_set(G_OBJECT(rec_sink_right_), "location", right_path.c_str(), NULL);
 
     RCLCPP_INFO(this->get_logger(), "Recording LEFT  to: %s", left_path.c_str());
     RCLCPP_INFO(this->get_logger(), "Recording RIGHT to: %s", right_path.c_str());
 
-    // Move to PLAYING
+    // Upstream→downstream order is fine; ensure both end at PLAYING
     (void)set_state_blocking(avim_,     GST_STATE_PLAYING);
     (void)set_state_blocking(rec_sink_, GST_STATE_PLAYING);
     (void)set_state_blocking(avim_right_,     GST_STATE_PLAYING);
@@ -364,11 +362,11 @@ private:
     eos_left_received_.store(false);
     eos_right_received_.store(false);
 
-    // Send EOS to muxers only (let EOS flow downstream to filesinks to finalize AVI)
-    (void)gst_element_send_event(avim_, gst_event_new_eos());
+    // Send EOS to muxers only (they will flush and forward EOS to filesinks)
+    (void)gst_element_send_event(avim_,       gst_event_new_eos());
     (void)gst_element_send_event(avim_right_, gst_event_new_eos());
 
-    // Wait for EOS *from filesinks* (they post EOS after writing the index)
+    // Wait for EOS from filesinks (index written)
     {
       std::unique_lock<std::mutex> ul(cv_mu_);
       cv_.wait_for(ul, std::chrono::seconds(5), [this]() {
@@ -376,7 +374,7 @@ private:
       });
     }
 
-    // After EOS handled, leave branches at READY (quickly re-armed on next start)
+    // Park branches at READY so we can quickly re-arm next time
     (void)set_state_blocking(rec_sink_, GST_STATE_READY);
     (void)set_state_blocking(avim_,     GST_STATE_READY);
     (void)set_state_blocking(rec_sink_right_, GST_STATE_READY);
@@ -402,7 +400,6 @@ private:
       case GST_MESSAGE_EOS: {
         GstObject* src = GST_MESSAGE_SRC(msg);
         const char* name = GST_OBJECT_NAME(src);
-        // We only mark completion when *filesinks* report EOS (muxers may post earlier)
         bool notify = false;
         {
           std::lock_guard<std::mutex> lk(self->cv_mu_);
