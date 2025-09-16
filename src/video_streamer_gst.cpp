@@ -46,6 +46,7 @@ public:
     record_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/video_record_set",
         std::bind(&VideoStreamerGstNode::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
+    RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
 
     // Initialize GStreamer (once per process)
     static std::once_flag gst_once;
@@ -213,6 +214,7 @@ private:
   void onSetRecording(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
                       std::shared_ptr<std_srvs::srv::SetBool::Response> resp) {
     std::lock_guard<std::mutex> lk(mu_);
+    RCLCPP_INFO(this->get_logger(), "onSetRecording request: %s (active=%s)", req->data ? "true" : "false", recording_active_ ? "true" : "false");
     if (req->data) {
       if (recording_active_) {
         resp->success = true;
@@ -222,9 +224,11 @@ private:
       if (start_recording()) {
         resp->success = true;
         resp->message = "Recording started";
+        RCLCPP_INFO(this->get_logger(), "Recording started OK");
       } else {
         resp->success = false;
         resp->message = "Failed to start recording";
+        RCLCPP_ERROR(this->get_logger(), "Failed to start recording");
       }
     } else {
       if (!recording_active_) {
@@ -235,9 +239,11 @@ private:
       if (stop_recording()) {
         resp->success = true;
         resp->message = "Recording stopped";
+        RCLCPP_INFO(this->get_logger(), "Recording stopped OK");
       } else {
         resp->success = false;
         resp->message = "Failed to stop recording";
+        RCLCPP_ERROR(this->get_logger(), "Failed to stop recording");
       }
     }
   }

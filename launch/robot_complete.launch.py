@@ -44,8 +44,11 @@ def generate_launch_description():
         executable='video_streamer_gst',
         name='video_streamer_gst',
         output='screen',
+        respawn=True,
+        respawn_delay=2.0,
         parameters=[{
-            'left_device': '/dev/v4l/by-id/See3CAM_Left-video-index0',
+            # Use the working raw device for reliability; switch to by-id later if desired
+            'left_device': '/dev/video1',
             'camera_label': 'cam_left',
             'output_dir': os.path.join(os.path.expanduser('~'), 'scan_videos'),
             'fourcc': 'MJPG',
