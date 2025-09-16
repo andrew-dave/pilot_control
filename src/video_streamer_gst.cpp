@@ -118,11 +118,12 @@ private:
                     "! videoconvert ! video/x-raw,format=I420 ")
         << "! tee name=T ";
 
-    // Record branch (non-leaky)
+    // Record branch (non-leaky). Ensure encoded caps carry framerate for avimux; parse JPEG bitstream
     oss << " T. ! queue ! videorate ! video/x-raw,framerate=" << rec_fps << "/1 "
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec drop=true "
-        << "! jpegenc quality=95 ! avimux name=avim ! filesink name=rec_sink async=false sync=false ";
+        << "! jpegenc quality=95 ! capssetter caps=\"image/jpeg,framerate=" << rec_fps << "/1\" ! jpegparse "
+        << "! avimux name=avim ! filesink name=rec_sink async=false sync=false ";
 
     // Stream branch (leaky, exact chain requested)
     oss << " T. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
@@ -147,7 +148,8 @@ private:
     oss << "! queue ! videorate ! video/x-raw,framerate=" << rec_fps << "/1 "
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec_right drop=true "
-        << "! jpegenc quality=95 ! avimux name=avim_right ! filesink name=rec_sink_right async=false sync=false ";
+        << "! jpegenc quality=95 ! capssetter caps=\"image/jpeg,framerate=" << rec_fps << "/1\" ! jpegparse "
+        << "! avimux name=avim_right ! filesink name=rec_sink_right async=false sync=false ";
 
     const std::string pipeline_str = oss.str();
     RCLCPP_INFO(this->get_logger(), "Launching GStreamer pipeline:\n%s", pipeline_str.c_str());

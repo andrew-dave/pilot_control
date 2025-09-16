@@ -49,11 +49,14 @@ def generate_launch_description():
         parameters=[{
             # Lock to the specific See3CAM by-id (maps to /dev/video1 on your system)
             'left_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
+            'right_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
             'camera_label': 'cam_left',
+            'camera_label_right': 'cam_right',
             'output_dir': os.path.join(os.path.expanduser('~'), 'scan_videos'),
             'fourcc': 'MJPG',
             'fps': 60.0,
             'start_recording': False,
+            'enable_record_service': True,
             'use_mjpeg_pipeline': True,
             'cap_w': 1920,
             'cap_h': 1080,
