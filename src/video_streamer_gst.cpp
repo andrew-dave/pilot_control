@@ -22,10 +22,12 @@ public:
     this->declare_parameter<std::string>("left_device", "/dev/v4l/by-id/See3CAM_Left-video-index0");
     this->declare_parameter<std::string>("right_device", "/dev/v4l/by-id/See3CAM_Right-video-index0");
     this->declare_parameter<std::string>("camera_label", "cam_left");
+    this->declare_parameter<std::string>("camera_label_right", "cam_right");
     this->declare_parameter<std::string>("output_dir", default_output_dir());
     this->declare_parameter<std::string>("fourcc", "MJPG");
     this->declare_parameter<double>("fps", 30.0);
     this->declare_parameter<bool>("start_recording", false);
+    this->declare_parameter<bool>("enable_record_service", false);
 
     this->declare_parameter<bool>("use_mjpeg_pipeline", true);
     this->declare_parameter<int>("cap_w", 1920);
@@ -43,10 +45,12 @@ public:
     this->declare_parameter<int>("rtp_mtu", 1200);
 
     // Service for recording control (compatible with existing teleop)
-    record_srv_ = this->create_service<std_srvs::srv::SetBool>(
-        "/video_record_set",
-        std::bind(&VideoStreamerGstNode::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
-    RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
+    if (this->get_parameter("enable_record_service").as_bool()) {
+      record_srv_ = this->create_service<std_srvs::srv::SetBool>(
+          "/video_record_set",
+          std::bind(&VideoStreamerGstNode::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
+      RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
+    }
 
     // Initialize GStreamer (once per process)
     static std::once_flag gst_once;
@@ -93,6 +97,8 @@ private:
     const int raw_h = this->get_parameter("raw_h").as_int();
     const int raw_fps = this->get_parameter("raw_fps").as_int();
 
+    const std::string right_device = this->get_parameter("right_device").as_string();
+
     const double rec_fps_d = this->get_parameter("fps").as_double();
     const int rec_fps = static_cast<int>(rec_fps_d);
 
@@ -102,6 +108,7 @@ private:
     const int rtp_mtu = this->get_parameter("rtp_mtu").as_int();
 
     std::ostringstream oss;
+    // LEFT camera (stream + record)
     oss << (use_mjpeg
               ? "v4l2src device=" + device +
                     " ! image/jpeg,width=" + std::to_string(cap_w) + ",height=" + std::to_string(cap_h) + ",framerate=" + std::to_string(cap_fps) + "/1 "
@@ -126,6 +133,22 @@ private:
         << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false";
 
+    // RIGHT camera (record only)
+    oss << " \n";
+    if (use_mjpeg) {
+      oss << "v4l2src device=" << right_device
+          << " ! image/jpeg,width=" << cap_w << ",height=" << cap_h << ",framerate=" << cap_fps << "/1 "
+          << "! jpegdec ! videoconvert ! video/x-raw,format=I420 ";
+    } else {
+      oss << "v4l2src device=" << right_device
+          << " ! video/x-raw,format=" << raw_format << ",width=" << raw_w << ",height=" << raw_h << ",framerate=" << raw_fps << "/1 "
+          << "! videoconvert ! video/x-raw,format=I420 ";
+    }
+    oss << "! queue ! videorate ! video/x-raw,framerate=" << rec_fps << "/1 "
+        << "! videoconvert ! video/x-raw,format=I420 "
+        << "! valve name=valve_rec_right drop=true "
+        << "! jpegenc quality=95 ! avimux name=avim_right ! filesink name=rec_sink_right async=false sync=false ";
+
     const std::string pipeline_str = oss.str();
     RCLCPP_INFO(this->get_logger(), "Launching GStreamer pipeline:\n%s", pipeline_str.c_str());
 
@@ -148,9 +171,12 @@ private:
     valve_rec_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "valve_rec"));
     avim_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "avim"));
     rec_sink_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "rec_sink"));
+    valve_rec_right_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "valve_rec_right"));
+    avim_right_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "avim_right"));
+    rec_sink_right_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "rec_sink_right"));
 
-    if (!valve_rec_ || !avim_ || !rec_sink_) {
-      RCLCPP_FATAL(this->get_logger(), "Failed to retrieve required elements (valve_rec/avim/rec_sink)");
+    if (!valve_rec_ || !avim_ || !rec_sink_ || !valve_rec_right_ || !avim_right_ || !rec_sink_right_) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to retrieve required elements (left and right record chain)");
       throw std::runtime_error("Missing elements");
     }
 
@@ -248,9 +274,30 @@ private:
     }
   }
 
-  std::string build_output_path() const {
+  std::string build_output_path_left() const {
     const std::string output_dir = this->get_parameter("output_dir").as_string();
     const std::string label = this->get_parameter("camera_label").as_string();
+
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t tnow = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_buf;
+#ifdef _WIN32
+    localtime_s(&tm_buf, &tnow);
+#else
+    localtime_r(&tnow, &tm_buf);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buf, "%Y%m%d_%H%M%S") << "_" << label << ".avi";
+    std::string filename = oss.str();
+    if (!output_dir.empty() && output_dir.back() == '/') {
+      return output_dir + filename;
+    }
+    return output_dir + "/" + filename;
+  }
+
+  std::string build_output_path_right() const {
+    const std::string output_dir = this->get_parameter("output_dir").as_string();
+    const std::string label = this->get_parameter("camera_label_right").as_string();
 
     const auto now = std::chrono::system_clock::now();
     const std::time_t tnow = std::chrono::system_clock::to_time_t(now);
@@ -272,16 +319,22 @@ private:
   bool start_recording() {
     if (!pipeline_ || !valve_rec_ || !avim_ || !rec_sink_) return false;
 
-    const std::string location = build_output_path();
-    g_object_set(G_OBJECT(rec_sink_), "location", location.c_str(), NULL);
-    RCLCPP_INFO(this->get_logger(), "Recording to: %s", location.c_str());
+    const std::string location_left = build_output_path_left();
+    const std::string location_right = build_output_path_right();
+    g_object_set(G_OBJECT(rec_sink_), "location", location_left.c_str(), NULL);
+    g_object_set(G_OBJECT(rec_sink_right_), "location", location_right.c_str(), NULL);
+    RCLCPP_INFO(this->get_logger(), "Recording LEFT to: %s", location_left.c_str());
+    RCLCPP_INFO(this->get_logger(), "Recording RIGHT to: %s", location_right.c_str());
 
     // Ensure recording branch is in PLAYING (in case it was readied after a previous stop)
     gst_element_set_state(avim_, GST_STATE_PLAYING);
     gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
+    gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
 
     // Open valve
     g_object_set(G_OBJECT(valve_rec_), "drop", FALSE, NULL);
+    g_object_set(G_OBJECT(valve_rec_right_), "drop", FALSE, NULL);
     recording_active_ = true;
     return true;
   }
@@ -292,25 +345,34 @@ private:
 
     // Close valve to stop new buffers
     g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
+    g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
 
     // Send EOS to finalize AVI cleanly
-    eos_from_avim_received_ = false;
+    eos_left_received_ = false;
+    eos_right_received_ = false;
     if (!gst_element_send_event(avim_, gst_event_new_eos())) {
       RCLCPP_WARN(this->get_logger(), "Failed to send EOS to avim branch");
+    }
+    if (!gst_element_send_event(avim_right_, gst_event_new_eos())) {
+      RCLCPP_WARN(this->get_logger(), "Failed to send EOS to avim_right branch");
     }
 
     // Wait for EOS confirmation for a bounded time
     {
       std::unique_lock<std::mutex> ul(cv_mu_);
-      cv_.wait_for(ul, std::chrono::seconds(3), [this]() { return eos_from_avim_received_.load(); });
+      cv_.wait_for(ul, std::chrono::seconds(5), [this]() { return eos_left_received_.load() && eos_right_received_.load(); });
     }
 
     // Ready branch for next session
     gst_element_set_state(rec_sink_, GST_STATE_READY);
     gst_element_set_state(avim_, GST_STATE_READY);
+    gst_element_set_state(rec_sink_right_, GST_STATE_READY);
+    gst_element_set_state(avim_right_, GST_STATE_READY);
     // Set back to PLAYING so next start_recording just opens the valve
     gst_element_set_state(avim_, GST_STATE_PLAYING);
     gst_element_set_state(rec_sink_, GST_STATE_PLAYING);
+    gst_element_set_state(avim_right_, GST_STATE_PLAYING);
+    gst_element_set_state(rec_sink_right_, GST_STATE_PLAYING);
 
     recording_active_ = false;
     return true;
@@ -331,15 +393,21 @@ private:
         break;
       }
       case GST_MESSAGE_EOS: {
-        // Identify EOS from avim branch
+        // Identify EOS from record branches (left/right)
         GstObject *src = GST_MESSAGE_SRC(msg);
-        if (src && self->avim_ && (src == GST_OBJECT(self->avim_) || gst_object_has_ancestor(src, GST_OBJECT(self->avim_)))) {
+        {
           std::lock_guard<std::mutex> lk(self->cv_mu_);
-          self->eos_from_avim_received_.store(true);
+          // Mark left/right as received if message originates from either branch (sink or avim or pipeline)
+          if (self->avim_ && (src == GST_OBJECT(self->avim_))) self->eos_left_received_.store(true);
+          if (self->rec_sink_ && (src == GST_OBJECT(self->rec_sink_))) self->eos_left_received_.store(true);
+          if (self->avim_right_ && (src == GST_OBJECT(self->avim_right_))) self->eos_right_received_.store(true);
+          if (self->rec_sink_right_ && (src == GST_OBJECT(self->rec_sink_right_))) self->eos_right_received_.store(true);
+          // As a fallback, if pipeline posts EOS, consider both done
+          if (GST_MESSAGE_SRC(msg) == GST_OBJECT(self->pipeline_.get())) {
+            self->eos_left_received_.store(true);
+            self->eos_right_received_.store(true);
+          }
           self->cv_.notify_all();
-        } else {
-          // Pipeline-wide EOS (should not happen in normal run)
-          RCLCPP_WARN(self->get_logger(), "EOS received (non-recording branch)");
         }
         break;
       }
@@ -361,7 +429,8 @@ private:
   // EOS sync for recording branch
   std::mutex cv_mu_;
   std::condition_variable cv_;
-  std::atomic<bool> eos_from_avim_received_{false};
+  std::atomic<bool> eos_left_received_{false};
+  std::atomic<bool> eos_right_received_{false};
 
   // GStreamer bits
   struct GstElementDeleter { void operator()(GstElement *p) const { if (p) gst_object_unref(p); } };
@@ -369,6 +438,9 @@ private:
   GstElement *valve_rec_ {nullptr};
   GstElement *avim_ {nullptr};
   GstElement *rec_sink_ {nullptr};
+  GstElement *valve_rec_right_ {nullptr};
+  GstElement *avim_right_ {nullptr};
+  GstElement *rec_sink_right_ {nullptr};
   GstBus *bus_ {nullptr};
   guint bus_watch_id_ {0};
   GMainContext *context_ {nullptr};
