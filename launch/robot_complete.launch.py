@@ -66,6 +66,7 @@ def generate_launch_description():
             'stream_port': 5600,
             'stream_bitrate_kbps': 800,
             'rtp_mtu': 1200,
+            'enable_record_service': True,
         }]
     )
 
