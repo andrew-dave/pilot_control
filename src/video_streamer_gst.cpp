@@ -144,12 +144,13 @@ private:
     }
     oss << "! tee name=T ";
 
-    // Record branch (non-leaky) — simplified & robust
+    // Record branch (non-leaky) — add capssetter+jpegparse to ensure proper MJPEG caps in AVI
     oss << " T. ! queue "
         << "! videorate ! video/x-raw,framerate=" << rec_fps << "/1 "
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec drop=true "
         << "! jpegenc quality=95 "
+        << "! capssetter caps=\\\"image/jpeg,framerate=" << rec_fps << "/1\\\" ! jpegparse "
         << "! avimux name=avim "
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
@@ -180,6 +181,7 @@ private:
         << "! videoconvert ! video/x-raw,format=I420 "
         << "! valve name=valve_rec_right drop=true "
         << "! jpegenc quality=95 "
+        << "! capssetter caps=\\\"image/jpeg,framerate=" << rec_fps << "/1\\\" ! jpegparse "
         << "! avimux name=avim_right "
         << "! queue "
         << "! filesink name=rec_sink_right async=false sync=false ";
