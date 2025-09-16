@@ -219,6 +219,10 @@ private:
     // Ensure valves closed before any state movement
     g_object_set(G_OBJECT(valve_rec_), "drop", TRUE, NULL);
     g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
+
+    // Provide safe initial locations so filesinks don't error when pipeline goes PLAYING
+    g_object_set(G_OBJECT(rec_sink_), "location", "/dev/null", NULL);
+    g_object_set(G_OBJECT(rec_sink_right_), "location", "/dev/null", NULL);
   }
 
   // ---------- GLib main loop ----------
@@ -323,12 +327,12 @@ private:
     g_object_set(G_OBJECT(valve_rec_right_), "drop", TRUE, NULL);
 
     // Bring sinks/muxers to READY, set new locations, then PLAYING (avoid PLAYING->property changes)
-    (void)set_state_blocking(rec_sink_, GST_STATE_READY);
     (void)set_state_blocking(avim_,     GST_STATE_READY);
+    (void)set_state_blocking(rec_sink_, GST_STATE_READY);
     g_object_set(G_OBJECT(rec_sink_), "location", left_path.c_str(), NULL);
 
-    (void)set_state_blocking(rec_sink_right_, GST_STATE_READY);
     (void)set_state_blocking(avim_right_,     GST_STATE_READY);
+    (void)set_state_blocking(rec_sink_right_, GST_STATE_READY);
     g_object_set(G_OBJECT(rec_sink_right_), "location", right_path.c_str(), NULL);
 
     RCLCPP_INFO(this->get_logger(), "Recording LEFT  to: %s", left_path.c_str());
