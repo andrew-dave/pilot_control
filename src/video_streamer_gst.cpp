@@ -154,12 +154,7 @@ private:
       throw std::runtime_error("Missing elements");
     }
 
-    // Set pipeline to PLAYING
-    GstStateChangeReturn ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-      RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING");
-      throw std::runtime_error("Pipeline PLAYING failed");
-    }
+    // Do not set PLAYING here; bus watch isn't attached yet. State is set in start_main_loop().
   }
 
   void start_main_loop() {
@@ -177,6 +172,11 @@ private:
       g_main_context_push_thread_default(context_);
       // Attach bus watch to this context (now default for this thread)
       bus_watch_id_ = gst_bus_add_watch(bus_, &VideoStreamerGstNode::bus_func, this);
+      // Now that the bus watch is active, set pipeline to PLAYING so errors are reported
+      GstStateChangeReturn ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
+      if (ret == GST_STATE_CHANGE_FAILURE) {
+        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING (see GStreamer logs above)");
+      }
       g_main_loop_run(loop_);
       if (bus_watch_id_ != 0) {
         g_source_remove(bus_watch_id_);
