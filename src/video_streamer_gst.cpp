@@ -13,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <condition_variable>
 
 class VideoStreamerGstNode : public rclcpp::Node {
 public:
@@ -140,7 +141,7 @@ private:
       throw std::runtime_error("Failed to create GStreamer pipeline");
     }
 
-    pipeline_.reset(pipe, [](GstElement *p) { if (p) gst_object_unref(p); });
+    pipeline_.reset(pipe);
 
     // Grab elements we control
     valve_rec_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "valve_rec"));
@@ -171,14 +172,15 @@ private:
     context_ = g_main_context_new();
     loop_ = g_main_loop_new(context_, FALSE);
 
-    GSource *bus_source = gst_bus_create_watch(bus_);
-    g_source_set_callback(bus_source, (GSourceFunc)&VideoStreamerGstNode::bus_source_func, this, nullptr);
-    g_source_attach(bus_source, context_);
-    g_source_unref(bus_source);
-
     loop_thread_ = std::thread([this]() {
       g_main_context_push_thread_default(context_);
+      // Attach bus watch to this context (now default for this thread)
+      bus_watch_id_ = gst_bus_add_watch(bus_, &VideoStreamerGstNode::bus_func, this);
       g_main_loop_run(loop_);
+      if (bus_watch_id_ != 0) {
+        g_source_remove(bus_watch_id_);
+        bus_watch_id_ = 0;
+      }
       g_main_context_pop_thread_default(context_);
     });
   }
@@ -310,6 +312,7 @@ private:
 
   // ===== Bus watch =====
   static gboolean bus_source_func(GstBus * /*bus*/, GstMessage *msg, gpointer user_data) {
+    // Deprecated path; keep for compatibility if needed
     auto *self = static_cast<VideoStreamerGstNode *>(user_data);
     switch (GST_MESSAGE_TYPE(msg)) {
       case GST_MESSAGE_ERROR: {
@@ -340,6 +343,10 @@ private:
     return TRUE;
   }
 
+  static gboolean bus_func(GstBus * /*bus*/, GstMessage *msg, gpointer user_data) {
+    return bus_source_func(nullptr, msg, user_data);
+  }
+
   // ===== Members =====
   std::mutex mu_;
   std::atomic<bool> recording_active_;
@@ -357,6 +364,7 @@ private:
   GstElement *avim_ {nullptr};
   GstElement *rec_sink_ {nullptr};
   GstBus *bus_ {nullptr};
+  guint bus_watch_id_ {0};
   GMainContext *context_ {nullptr};
   GMainLoop *loop_ {nullptr};
   std::thread loop_thread_;
