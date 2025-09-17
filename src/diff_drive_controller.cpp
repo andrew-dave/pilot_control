@@ -61,6 +61,10 @@ public:
         this->declare_parameter<bool>("gpr_forward_only", true);     // rotate only when moving forward
         this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
         this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
+        // Allow GPR to continue during residual coast after cmd_vel stops
+        this->declare_parameter<bool>("gpr_follow_coast", true);
+        this->declare_parameter<int>("gpr_coast_timeout_ms", 2000);
+        this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
 
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
@@ -81,6 +85,9 @@ public:
         gpr_forward_only_      = this->get_parameter("gpr_forward_only").as_bool();
         gpr_gate_turns_        = this->get_parameter("gpr_gate_turns").as_bool();
         gpr_turn_rate_thresh_  = this->get_parameter("gpr_turn_rate_thresh").as_double();
+        gpr_follow_coast_      = this->get_parameter("gpr_follow_coast").as_bool();
+        gpr_coast_timeout_ms_  = this->get_parameter("gpr_coast_timeout_ms").as_int();
+        gpr_min_vx_follow_     = this->get_parameter("gpr_min_vx_follow").as_double();
 
         RCLCPP_INFO(get_logger(),
             "Drive: r=%.3f m, base=%.3f m, gear=%.2f | GPR: r=%.3f m, gear=%.2f | invert L/R/3=%d/%d/%d",
@@ -284,9 +291,15 @@ private:
     void update_gpr_motor() {
         // Watchdog for GPR control: if stale, stop third motor
         const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
+        // If command is stale, optionally follow measured coast for a short window
         if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
-            send_zero_torque_third();
-            return;
+            if (!(gpr_follow_coast_ &&
+                  ms_since_cmd <= static_cast<double>(gpr_coast_timeout_ms_) &&
+                  std::abs(meas_vx_) > gpr_min_vx_follow_)) {
+                send_zero_torque_third();
+                return;
+            }
+            // else fall through to compute drive from measured velocities
         }
 
         const double vx = meas_vx_;  // measured forward m/s
@@ -361,6 +374,9 @@ private:
 
     bool   gpr_forward_only_{true}, gpr_gate_turns_{false};
     double gpr_turn_rate_thresh_{0.25};
+    bool   gpr_follow_coast_{true};
+    int    gpr_coast_timeout_ms_{2000};
+    double gpr_min_vx_follow_{0.02};
 
     // ROS I/O
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
