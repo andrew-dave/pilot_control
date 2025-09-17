@@ -331,20 +331,22 @@ private:
 
     // ---------------- Helpers ----------------
     void send_zero_torque(){
+        // Active brake to 0 speed using velocity loop and ramp deceleration
         odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::TORQUE_CONTROL;
-        msg.input_mode   = odrv::PASSTHROUGH;
-        msg.input_vel    = 0.0; // ignored in torque mode
-        msg.input_torque = 0.0;
+        msg.control_mode = odrv::VELOCITY_CONTROL; // 2
+        msg.input_mode   = odrv::VEL_RAMP;         // 2
+        msg.input_vel    = 0.0;                    // target 0 turns/s
+        msg.input_torque = 0.0;                    // torque limited by ODrive config
         left_motor_pub_->publish(msg);
         right_motor_pub_->publish(msg);
         third_motor_pub_->publish(msg);
     }
 
     void send_zero_torque_third(){
+        // Active brake the third motor to 0 speed
         odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::TORQUE_CONTROL;
-        msg.input_mode   = odrv::PASSTHROUGH;
+        msg.control_mode = odrv::VELOCITY_CONTROL; // 2
+        msg.input_mode   = odrv::VEL_RAMP;         // 2
         msg.input_vel    = 0.0;
         msg.input_torque = 0.0;
         third_motor_pub_->publish(msg);
