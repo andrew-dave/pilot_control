@@ -227,7 +227,7 @@ def generate_launch_description():
         name='gpr_serial_bridge',
         output='screen',
         parameters=[{
-            'serial_port': '/dev/ttyACM1',  # adjust if different on LattePanda
+            'serial_port': '/dev/ttyACM0',  # adjust if different on LattePanda
             'baud_rate': 9600
         }]
     )
