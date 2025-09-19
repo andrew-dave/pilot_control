@@ -45,7 +45,7 @@ public:
         // Drive behavior
         this->declare_parameter<double>("velocity_multiplier",    1.0);
         this->declare_parameter<double>("turn_speed_multiplier",  1.0);
-        this->declare_parameter<double>("velocity_deadband",      0.01); // m/s (and rad/s used comparably)
+        this->declare_parameter<double>("velocity_deadband",      0.001); // m/s (and rad/s used comparably)
         this->declare_parameter<int>("stop_timeout_ms",           500);
 
         // Motor inversion (signs)
@@ -59,10 +59,10 @@ public:
 
         // GPR gating
         this->declare_parameter<bool>("gpr_forward_only", true);     // rotate only when moving forward
-        this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
+        this->declare_parameter<bool>("gpr_gate_turns",   true);    // optionally stop during turns
         this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
         // Allow GPR to continue during residual coast after cmd_vel stops
-        this->declare_parameter<bool>("gpr_follow_coast", true);
+        this->declare_parameter<bool>("gpr_follow_coast", false);
         this->declare_parameter<int>("gpr_coast_timeout_ms", 1000);
         this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
 
