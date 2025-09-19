@@ -65,7 +65,7 @@ private:
     const double linear_v = msg->twist.twist.linear.x; // m/s (base_link forward)
 
     // Only move when forward command is given; otherwise command zero velocity
-    if (linear_v <= velocity_deadband_) {
+    if (linear_v >= velocity_deadband_) {
       publishVelocity(0.0);
       return;
     }
