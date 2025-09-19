@@ -49,8 +49,8 @@ public:
         this->declare_parameter<int>("stop_timeout_ms",           500);
 
         // Motor inversion (signs)
-        this->declare_parameter<bool>("invert_left",   true);   // adjust to your wiring
-        this->declare_parameter<bool>("invert_right",  false);
+        this->declare_parameter<bool>("invert_left",   false);   // adjust to your wiring
+        this->declare_parameter<bool>("invert_right",  true);
         this->declare_parameter<bool>("invert_third",  false);
 
         // GPR (node 2) kinematics (60 mm dia virtual wheel by default, direct 1:1)
@@ -162,6 +162,7 @@ private:
         const double linear_vel  = msg->linear.x;   // m/s
         const double angular_vel = msg->angular.z;  // rad/s
         last_cmd_time_           = this->get_clock()->now();
+        last_cmd_linear_x_       = linear_vel;
 
         // Dead-band -> zero torque stop (all motors)
         if (std::abs(linear_vel) < velocity_deadband_ && std::abs(angular_vel) < velocity_deadband_) {
@@ -302,8 +303,10 @@ private:
             // else fall through to compute drive from measured velocities
         }
 
-        const double vx = meas_vx_;  // measured forward m/s
-        const double wz = meas_wz_;  // measured yaw rate rad/s
+        // Prefer command-based start for immediate response; fall back to measured after timeout
+        const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
+        const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
+        const double wz = meas_wz_;  // yaw rate rad/s
 
         // Forward-only gating
         if (gpr_forward_only_) {
@@ -395,6 +398,8 @@ private:
 
     double meas_vx_ = 0.0; // measured linear x (m/s)
     double meas_wz_ = 0.0; // measured yaw (rad/s)
+
+    double last_cmd_linear_x_ = 0.0; // last commanded forward m/s
 
     double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
 };
