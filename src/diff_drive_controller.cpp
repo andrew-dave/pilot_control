@@ -51,14 +51,14 @@ public:
         // Motor inversion (signs)
         this->declare_parameter<bool>("invert_left",   true);   // adjust to your wiring
         this->declare_parameter<bool>("invert_right",  false);
-        this->declare_parameter<bool>("invert_third",  false);
+        this->declare_parameter<bool>("invert_third",  true);
 
         // GPR (node 2) kinematics (60 mm dia virtual wheel by default, direct 1:1)
         this->declare_parameter<double>("third_wheel_radius", 0.03); // 60 mm dia -> 0.03 m radius
         this->declare_parameter<double>("third_gear_ratio",   1.0);  // direct
 
         // GPR gating
-        this->declare_parameter<bool>("gpr_forward_only", true);     // rotate only when moving forward
+        this->declare_parameter<bool>("gpr_forward_only", false);     // rotate only when moving forward
         this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
         this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
         // Allow GPR to continue during residual coast after cmd_vel stops
