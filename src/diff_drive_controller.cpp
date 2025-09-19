@@ -59,7 +59,7 @@ public:
 
         // GPR gating
         this->declare_parameter<bool>("gpr_forward_only", true);     // rotate only when moving forward
-        this->declare_parameter<bool>("gpr_gate_turns",   true);    // optionally stop during turns
+        this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
         this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
         // Allow GPR to continue during residual coast after cmd_vel stops
         this->declare_parameter<bool>("gpr_follow_coast", false);
