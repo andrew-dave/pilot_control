@@ -15,7 +15,7 @@ public:
     this->declare_parameter<std::string>("odrive_namespace", "gpr");
     this->declare_parameter<double>("encoder_wheel_diameter", 0.06); // 60 mm
     this->declare_parameter<double>("micro_gear_ratio", 1.0);
-    this->declare_parameter<double>("velocity_multiplier", 1.0);
+    this->declare_parameter<double>("velocity_multiplier", 0.9);
     this->declare_parameter<double>("velocity_deadband", 0.001);
 
     odrive_namespace_     = this->get_parameter("odrive_namespace").as_string();
