@@ -63,7 +63,7 @@ public:
         this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
         // Allow GPR to continue during residual coast after cmd_vel stops
         this->declare_parameter<bool>("gpr_follow_coast", true);
-        this->declare_parameter<int>("gpr_coast_timeout_ms", 2000);
+        this->declare_parameter<int>("gpr_coast_timeout_ms", 1000);
         this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
 
         // Read params
