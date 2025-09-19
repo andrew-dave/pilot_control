@@ -51,7 +51,7 @@ public:
         // Motor inversion (signs)
         this->declare_parameter<bool>("invert_left",   false);   // adjust to your wiring
         this->declare_parameter<bool>("invert_right",  true);
-        this->declare_parameter<bool>("invert_third",  true);
+        this->declare_parameter<bool>("invert_third",  false);
 
         // GPR (node 2) kinematics (60 mm dia virtual wheel by default, direct 1:1)
         this->declare_parameter<double>("third_wheel_radius", 0.03); // 60 mm dia -> 0.03 m radius
