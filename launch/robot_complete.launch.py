@@ -129,7 +129,9 @@ def generate_launch_description():
             'wheel_base': LaunchConfiguration('wheel_base'),
             'can_interface': LaunchConfiguration('can_interface'),
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
-            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier')
+            'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier'),
+            # Invert third (GPR) motor direction so it rotates opposite
+            'invert_third': True
         }]
     )
 
