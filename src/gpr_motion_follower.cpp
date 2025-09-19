@@ -81,7 +81,7 @@ private:
     odrive_can::msg::ControlMessage m;
     m.control_mode = 2; // VELOCITY_CONTROL
     m.input_mode   = 2; // VEL_RAMP
-    m.input_vel    = -turns_per_sec;
+    m.input_vel    = turns_per_sec;
     m.input_torque = 0.0;
     control_pub_->publish(m);
   }
