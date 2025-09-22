@@ -184,12 +184,12 @@ def generate_launch_description():
     )
 
     # Static Transform Publishers for Tilted LiDAR Setup
-    # Transform from body to foot (corrects the 30-degree tilt)
+    # Transform from body to foot (corrects the 15-degree tilt)
     body_to_foot_transform = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='body_to_foot_transform',
-        arguments=['0.0', '0.0', '0.0', '0.0', '0.2618', '0.0', 'body', 'foot'],
+        arguments=['0.0', '0.0', '0.0', '0.0', '-0.2618', '0.0', 'body', 'foot'],
         output='screen'
     )
     
@@ -198,7 +198,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='camera_init_to_foot_init_transform',
-        arguments=['0.0','0.0','0.0','0.0','0.2618','0.0', 'camera_init', 'foot_init'],
+        arguments=['0.0','0.0','0.0','0.0','-0.2618','0.0', 'camera_init', 'foot_init'],
         output='screen'
     )
 
@@ -243,7 +243,7 @@ def generate_launch_description():
         parameters=[{
             'input_topic': '/Laser_map',
             'output_topic': '/Laser_map_rotated',
-            'pitch_rad': 0.2617993878,  # 15 degrees
+            'pitch_rad': -0.2617993878,  # 15 degrees
             'output_frame': 'foot_init'
         }]
     )
