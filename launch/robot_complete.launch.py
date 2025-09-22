@@ -243,7 +243,7 @@ def generate_launch_description():
         parameters=[{
             'input_topic': '/Laser_map',
             'output_topic': '/Laser_map_rotated',
-            'pitch_rad': -0.2617993878,  # 15 degrees
+            'pitch_rad': 0.2617993878,  # 15 degrees
             'output_frame': 'foot_init'
         }]
     )
