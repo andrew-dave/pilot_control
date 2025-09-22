@@ -49,8 +49,8 @@ public:
         this->declare_parameter<int>("stop_timeout_ms",           500);
 
         // Motor inversion (signs)
-        this->declare_parameter<bool>("invert_left",   true);   // adjust to your wiring
-        this->declare_parameter<bool>("invert_right",  false);
+        this->declare_parameter<bool>("invert_left",   false);   // adjust to your wiring
+        this->declare_parameter<bool>("invert_right",  true);
         this->declare_parameter<bool>("invert_third",  true);
 
         // GPR (node 2) kinematics (60 mm dia virtual wheel by default, direct 1:1)
