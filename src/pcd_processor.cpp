@@ -31,7 +31,7 @@ public:
         this->declare_parameter("remove_outliers", true);
         this->declare_parameter("outlier_std_dev", 2.0);
         this->declare_parameter("apply_rotation_correction", true);
-        this->declare_parameter("rotation_angle", -0.5230);
+        this->declare_parameter("rotation_angle", -0.2617993878); // -15 degrees in radians
         this->declare_parameter("save_format", "pcd");
         this->declare_parameter("auto_shutdown", true);
         this->declare_parameter("max_height", 2.0);
