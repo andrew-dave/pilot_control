@@ -290,43 +290,49 @@ private:
 
     // ---------------- GPR motor updater (forward-only gating) ----------------
     void update_gpr_motor() {
-        // Watchdog for GPR control: if stale, stop third motor
-        const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
-        // If command is stale, optionally follow measured coast for a short window
-        if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
-            if (!(gpr_follow_coast_ &&
-                  ms_since_cmd <= static_cast<double>(gpr_coast_timeout_ms_) &&
-                  std::abs(meas_vx_) > gpr_min_vx_follow_)) {
-                send_zero_torque_third();
-                return;
-            }
-            // else fall through to compute drive from measured velocities
-        }
+        // // Watchdog for GPR control: if stale, stop third motor
+        // const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
+        // // If command is stale, optionally follow measured coast for a short window
+        // if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
+        //     if (!(gpr_follow_coast_ &&
+        //           ms_since_cmd <= static_cast<double>(gpr_coast_timeout_ms_) &&
+        //           std::abs(meas_vx_) > gpr_min_vx_follow_)) {
+        //         send_zero_torque_third();
+        //         return;
+        //     }
+        //     // else fall through to compute drive from measured velocities
+        // }
 
-        // Prefer command-based start for immediate response; fall back to measured after timeout
-        const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
-        const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
-        const double wz = meas_wz_;  // yaw rate rad/s
+        // // Prefer command-based start for immediate response; fall back to measured after timeout
+        // const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
+        // const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
+        // const double wz = meas_wz_;  // yaw rate rad/s
 
-        // Forward-only gating
-        if (gpr_forward_only_) {
-            if (vx <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
-            }
-        } else {
-            if (std::abs(vx) <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
-            }
-        }
+        // // Forward-only gating
+        // if (gpr_forward_only_) {
+        //     if (vx <= velocity_deadband_) {
+        //         send_zero_torque_third();
+        //         return;
+        //     }
+        // } else {
+        //     if (std::abs(vx) <= velocity_deadband_) {
+        //         send_zero_torque_third();
+        //         return;
+        //     }
+        // }
 
-        // Optional: gate out during turns
-        if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
-            send_zero_torque_third();
-            return;
-        }
-
+        // // Optional: gate out during turns
+        // if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
+        //     send_zero_torque_third();
+        //     return;
+        // }
+        double vx=0;
+        if (current_left_vel_>0 && current_right_vel_<0){
+            vx = (current_left_vel_ + std::abs(current_right_vel_))/2.0;
+        }else{
+            vx=0;
+        }   
+        
         // Map measured forward speed to motor turns/s
         const double third_circ = 2.0 * M_PI * third_wheel_radius_;
         double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
