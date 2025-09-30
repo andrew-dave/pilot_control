@@ -331,12 +331,13 @@ private:
         if (current_left_vel_>0 && current_right_vel_<0){
             vx = (current_left_vel_ + std::abs(current_right_vel_))/2.0;
         }else{
-            vx=0;
+            send_zero_torque_third();
         }   
         vx = vx/10;
         // Map measured forward speed to motor turns/s
-        const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        // const double third_circ = 2.0 * M_PI * third_wheel_radius_;
+        // double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        double turns_per_sec = 2.4*vx;
 
         // If forward-only, do not allow negative speed
         if (gpr_forward_only_ && turns_per_sec < 0.0) {
