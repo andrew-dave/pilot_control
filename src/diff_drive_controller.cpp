@@ -332,10 +332,10 @@ private:
         }else{
             vx=0;
         }   
-        
+
         // Map measured forward speed to motor turns/s
         const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        double turns_per_sec = (vx / 10*third_circ) * third_gear_ratio_ * velocity_multiplier_;
 
         // If forward-only, do not allow negative speed
         if (gpr_forward_only_ && turns_per_sec < 0.0) {
