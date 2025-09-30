@@ -309,17 +309,17 @@ private:
         const double wz = meas_wz_;  // yaw rate rad/s
 
         // Forward-only gating
-        if (gpr_forward_only_) {
-            if (vx <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
-            }
-        } else {
-            if (std::abs(vx) <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
-            }
-        }
+        // if (gpr_forward_only_) {
+        //     if (vx <= velocity_deadband_) {
+        //         send_zero_torque_third();
+        //         return;
+        //     }
+        // } else {
+        //     if (std::abs(vx) <= velocity_deadband_) {
+        //         send_zero_torque_third();
+        //         return;
+        //     }
+        // }
 
         // Optional: gate out during turns
         if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
@@ -337,7 +337,7 @@ private:
         // Map measured forward speed to motor turns/s
         // const double third_circ = 2.0 * M_PI * third_wheel_radius_;
         // double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
-        double turns_per_sec = 2.4*vx;
+        double turns_per_sec = -2.4*vx;
 
         // If forward-only, do not allow negative speed
         if (gpr_forward_only_ && turns_per_sec < 0.0) {
