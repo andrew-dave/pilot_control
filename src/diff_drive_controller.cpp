@@ -306,7 +306,7 @@ private:
         // // Prefer command-based start for immediate response; fall back to measured after timeout
         // const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
         // const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
-        // const double wz = meas_wz_;  // yaw rate rad/s
+        const double wz = meas_wz_;  // yaw rate rad/s
 
         // // Forward-only gating
         // if (gpr_forward_only_) {
@@ -321,21 +321,22 @@ private:
         //     }
         // }
 
-        // // Optional: gate out during turns
-        // if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
-        //     send_zero_torque_third();
-        //     return;
-        // }
+        // Optional: gate out during turns
+        if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
+            send_zero_torque_third();
+            return;
+        }
+
         double vx=0;
         if (current_left_vel_>0 && current_right_vel_<0){
             vx = (current_left_vel_ + std::abs(current_right_vel_))/2.0;
         }else{
             vx=0;
         }   
-
+        vx = vx/10;
         // Map measured forward speed to motor turns/s
         const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        double turns_per_sec = (vx / 10*third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
 
         // If forward-only, do not allow negative speed
         if (gpr_forward_only_ && turns_per_sec < 0.0) {
