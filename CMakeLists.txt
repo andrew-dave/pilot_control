@@ -129,6 +129,7 @@ install(
   PROGRAMS scripts/gpr_serial_bridge.py
   scripts/path_to_foot.py
   scripts/move_one_meter.py
+  scripts/gpr_travel_distance.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
