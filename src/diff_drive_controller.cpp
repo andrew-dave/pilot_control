@@ -356,7 +356,7 @@ private:
     // ---------------- Helpers ----------------
     void send_zero_torque(){
         odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::VELOCITY_CONTROL;
+        msg.control_mode = odrv::TORQUE_CONTROL;
         msg.input_mode   = odrv::PASSTHROUGH;
         msg.input_vel    = 0.0; // ignored in torque mode
         msg.input_torque = 0.0;
