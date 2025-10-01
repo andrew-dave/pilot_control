@@ -21,7 +21,8 @@ class GPRTravelDistance(Node):
         self.declare_parameter('velocity_multiplier', 1.0)
         self.declare_parameter('stop_timeout_ms', 500)   # if feedback stale, coast/stop
         self.declare_parameter('start_delay_s', 0.3)     # allow odrive_can to come up
-        self.declare_parameter('feedback_required', True) # require status before motion
+        self.declare_parameter('feedback_required', False) # move even if status not yet received
+        self.declare_parameter('debug', True)            # log every step
 
         # Kinematics for the GPR drive wheel
         self.declare_parameter('third_wheel_radius', 0.03)  # m (60 mm dia)
@@ -48,6 +49,7 @@ class GPRTravelDistance(Node):
         self.gpr_control_topic: str = str(self.get_parameter('gpr_control_topic').value)
         self.gpr_status_topic: str = str(self.get_parameter('gpr_status_topic').value)
         self.gpr_axis_service: str = str(self.get_parameter('gpr_axis_service').value)
+        self.debug: bool = bool(self.get_parameter('debug').value)
 
         # Interfaces
         self.gpr_pub = self.create_publisher(ControlMessage, self.gpr_control_topic, 10)
@@ -76,16 +78,20 @@ class GPRTravelDistance(Node):
         self.arm_timer = self.create_timer(0.2, self._arm_once)
 
         self.get_logger().info(
-            f"gpr_travel_distance: target={self.target_distance:.3f} m, vmax={self.max_speed:.2f} m/s, amax={self.max_accel:.2f} m/s^2"
+            f"gpr_travel_distance: target={self.target_distance:.3f} m, vmax={self.max_speed:.2f} m/s, amax={self.max_accel:.2f} m/s^2, feedback_required={self.feedback_required}"
         )
 
     def _arm_once(self) -> None:
         try:
-            if not self.gpr_axis_client.wait_for_service(timeout_sec=0.1):
+            if not self.gpr_axis_client.wait_for_service(timeout_sec=0.2):
+                if self.debug:
+                    self.get_logger().info("Waiting for /gpr/request_axis_state service...")
                 return
             req = AxisState.Request()
             req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
             self.gpr_axis_client.call_async(req)
+            if self.debug:
+                self.get_logger().info("Sent CLOSED_LOOP arming request to GPR axis")
             if self.arm_timer is not None:
                 self.arm_timer.cancel()
         except Exception as exc:
@@ -95,6 +101,8 @@ class GPRTravelDistance(Node):
         self.current_motor_rps = float(msg.vel_estimate)
         self.received_status = True
         self.last_status_time = self.get_clock().now()
+        if self.debug:
+            self.get_logger().info(f"status: motor_rps={self.current_motor_rps:.4f}")
 
     def control_step(self) -> None:
         if self.finished:
@@ -108,17 +116,23 @@ class GPRTravelDistance(Node):
 
         # Wait small delay for ODrive nodes to initialize
         if (now - self.start_time).nanoseconds * 1e-9 < self.start_delay_s:
+            if self.debug:
+                self.get_logger().info("waiting: start_delay_s not elapsed; commanding 0.0")
             self.publish_velocity_command(0.0)
             return
 
         # Optionally require feedback before moving (safer distance integration)
         if self.feedback_required and not self.received_status:
+            if self.debug:
+                self.get_logger().info("waiting: no controller_status yet; commanding 0.0")
             self.publish_velocity_command(0.0)
             return
 
         # Watchdog: if feedback stale, stop
         ms_since_status = (now - self.last_status_time).nanoseconds * 1e-6
         if ms_since_status > float(self.stop_timeout_ms):
+            if self.debug:
+                self.get_logger().info(f"stale feedback: {ms_since_status:.1f} ms > {self.stop_timeout_ms} ms; commanding 0.0")
             self.publish_velocity_command(0.0)
             return
 
@@ -127,10 +141,15 @@ class GPRTravelDistance(Node):
         wheel_circ = 2.0 * math.pi * self.third_wheel_radius
         wheel_mps = (motor_rps_meas / self.third_gear_ratio) * wheel_circ
         self.total_travel_abs += abs(wheel_mps) * dt
+        if self.debug:
+            self.get_logger().info(
+                f"integrate: dt={dt:.3f}s wheel_mps={wheel_mps:.4f} total={self.total_travel_abs:.3f}m")
 
         self.remaining = max(0.0, abs(self.target_distance) - self.total_travel_abs)
         if self.remaining <= self.stop_tol:
             # Controlled stop at zero velocity in velocity mode
+            if self.debug:
+                self.get_logger().info("target reached: commanding 0.0 and finishing")
             self.publish_velocity_command(0.0)
             self.finished = True
             self.get_logger().info(f"GPR travel complete: {self.total_travel_abs:.3f} m")
@@ -139,12 +158,18 @@ class GPRTravelDistance(Node):
         # Trapezoidal profile: v_target = min(vmax, sqrt(2 a d_rem))
         v_target_abs = min(self.max_speed, math.sqrt(max(0.0, 2.0 * self.max_accel * self.remaining)))
         v_target_signed = self.direction_sign * v_target_abs
+        if self.debug:
+            self.get_logger().info(
+                f"profile: remaining={self.remaining:.3f} v_target={v_target_signed:.3f} cur_cmd={self.current_speed_cmd:.3f}")
 
         # Accel-limited change
         speed_error = v_target_signed - self.current_speed_cmd
         max_delta = self.max_accel * dt
         delta = max(-max_delta, min(max_delta, speed_error))
         self.current_speed_cmd += delta
+        if self.debug:
+            self.get_logger().info(
+                f"accel-limit: delta={delta:.3f} new_cmd={self.current_speed_cmd:.3f}")
 
         # Send velocity command
         self.publish_velocity_command(self.current_speed_cmd)
@@ -162,6 +187,9 @@ class GPRTravelDistance(Node):
         msg.input_torque = 0.0
         msg.input_vel = float(motor_rps_cmd)
         self.gpr_pub.publish(msg)
+        if self.debug:
+            self.get_logger().info(
+                f"publish: vx={linear_vx_mps:.3f} m/s -> motor_rps={motor_rps_cmd:.3f} (invert={self.invert_third})")
 
     def send_zero_torque(self) -> None:
         msg = ControlMessage()
