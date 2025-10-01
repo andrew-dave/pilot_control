@@ -66,6 +66,9 @@ class GPRTravelDistance(Node):
         self.received_status: bool = False
         self.last_status_time = self.get_clock().now()
         self.arming_requested: bool = False
+        self._pos_start: float = 0.0
+        self._pos_latest: float = 0.0
+        self._have_pos_start: bool = False
 
         # Derived direction (+1 forward, -1 reverse)
         self.direction_sign: float = 1.0 if self.target_distance >= 0.0 else -1.0
@@ -101,8 +104,14 @@ class GPRTravelDistance(Node):
         self.current_motor_rps = float(msg.vel_estimate)
         self.received_status = True
         self.last_status_time = self.get_clock().now()
+        # Initialize and update encoder position baseline/latest (in motor turns)
+        pos = float(msg.pos_estimate)
+        if not self._have_pos_start:
+            self._pos_start = pos
+            self._have_pos_start = True
+        self._pos_latest = pos
         if self.debug:
-            self.get_logger().info(f"status: motor_rps={self.current_motor_rps:.4f}")
+            self.get_logger().info(f"status: motor_rps={self.current_motor_rps:.4f} pos={pos:.5f}")
 
     def control_step(self) -> None:
         if self.finished:
@@ -143,14 +152,26 @@ class GPRTravelDistance(Node):
                 self.get_logger().info(
                     "no feedback yet; proceeding (feedback_required=False), watchdog disabled until first status")
 
-        # Integrate absolute distance from motor speed
-        motor_rps_meas = -self.current_motor_rps if self.invert_third else self.current_motor_rps
+        # Prefer encoder position for distance; fallback to velocity integration if encoder start not yet captured
         wheel_circ = 2.0 * math.pi * self.third_wheel_radius
-        wheel_mps = (motor_rps_meas / self.third_gear_ratio) * wheel_circ
-        self.total_travel_abs += abs(wheel_mps) * dt
-        if self.debug:
-            self.get_logger().info(
-                f"integrate: dt={dt:.3f}s wheel_mps={wheel_mps:.4f} total={self.total_travel_abs:.3f}m")
+        if self._have_pos_start:
+            motor_turns_delta = self._pos_latest - self._pos_start
+            # Convert motor turns -> wheel turns -> meters; use absolute distance from start
+            wheel_turns_delta = motor_turns_delta / self.third_gear_ratio
+            distance_from_start_m = abs(wheel_turns_delta) * wheel_circ
+            self.total_travel_abs = distance_from_start_m
+            if self.debug:
+                self.get_logger().info(
+                    f"encoder: pos_start={self._pos_start:.5f} pos_latest={self._pos_latest:.5f} "
+                    f"d_turns={motor_turns_delta:.5f} dist={self.total_travel_abs:.4f}m")
+        else:
+            # Fallback: integrate absolute wheel speed from velocity estimate until first pos arrives
+            motor_rps_meas = -self.current_motor_rps if self.invert_third else self.current_motor_rps
+            wheel_mps = (motor_rps_meas / self.third_gear_ratio) * wheel_circ
+            self.total_travel_abs += abs(wheel_mps) * dt
+            if self.debug:
+                self.get_logger().info(
+                    f"integrate: dt={dt:.3f}s wheel_mps={wheel_mps:.4f} total={self.total_travel_abs:.3f}m")
 
         self.remaining = max(0.0, abs(self.target_distance) - self.total_travel_abs)
         if self.remaining <= self.stop_tol:
