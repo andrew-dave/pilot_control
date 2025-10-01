@@ -128,13 +128,20 @@ class GPRTravelDistance(Node):
             self.publish_velocity_command(0.0)
             return
 
-        # Watchdog: if feedback stale, stop
+        # Watchdog: if feedback stale, stop (only after we've ever received feedback
+        # or when feedback is required). Otherwise, allow motion while waiting.
         ms_since_status = (now - self.last_status_time).nanoseconds * 1e-6
-        if ms_since_status > float(self.stop_timeout_ms):
+        if self.received_status or self.feedback_required:
+            if ms_since_status > float(self.stop_timeout_ms):
+                if self.debug:
+                    self.get_logger().info(
+                        f"stale feedback: {ms_since_status:.1f} ms > {self.stop_timeout_ms} ms; commanding 0.0")
+                self.publish_velocity_command(0.0)
+                return
+        else:
             if self.debug:
-                self.get_logger().info(f"stale feedback: {ms_since_status:.1f} ms > {self.stop_timeout_ms} ms; commanding 0.0")
-            self.publish_velocity_command(0.0)
-            return
+                self.get_logger().info(
+                    "no feedback yet; proceeding (feedback_required=False), watchdog disabled until first status")
 
         # Integrate absolute distance from motor speed
         motor_rps_meas = -self.current_motor_rps if self.invert_third else self.current_motor_rps
