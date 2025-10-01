@@ -18,6 +18,10 @@ class GPRTravelDistance(Node):
         self.declare_parameter('max_speed', 0.4)         # m/s
         self.declare_parameter('max_accel', 0.8)         # m/s^2
         self.declare_parameter('stop_tolerance', 0.005)  # m
+        self.declare_parameter('velocity_multiplier', 1.0)
+        self.declare_parameter('stop_timeout_ms', 500)   # if feedback stale, coast/stop
+        self.declare_parameter('start_delay_s', 0.3)     # allow odrive_can to come up
+        self.declare_parameter('feedback_required', True) # require status before motion
 
         # Kinematics for the GPR drive wheel
         self.declare_parameter('third_wheel_radius', 0.03)  # m (60 mm dia)
@@ -34,6 +38,10 @@ class GPRTravelDistance(Node):
         self.max_speed: float = float(self.get_parameter('max_speed').value)
         self.max_accel: float = float(self.get_parameter('max_accel').value)
         self.stop_tol: float = float(self.get_parameter('stop_tolerance').value)
+        self.velocity_multiplier: float = float(self.get_parameter('velocity_multiplier').value)
+        self.stop_timeout_ms: int = int(self.get_parameter('stop_timeout_ms').value)
+        self.start_delay_s: float = float(self.get_parameter('start_delay_s').value)
+        self.feedback_required: bool = bool(self.get_parameter('feedback_required').value)
         self.third_wheel_radius: float = float(self.get_parameter('third_wheel_radius').value)
         self.third_gear_ratio: float = float(self.get_parameter('third_gear_ratio').value)
         self.invert_third: bool = bool(self.get_parameter('invert_third').value)
@@ -52,6 +60,10 @@ class GPRTravelDistance(Node):
         self.finished: bool = False
         self.current_motor_rps: float = 0.0  # turns/s
         self.last_control_time = self.get_clock().now()
+        self.start_time = self.get_clock().now()
+        self.received_status: bool = False
+        self.last_status_time = self.get_clock().now()
+        self.arming_requested: bool = False
 
         # Derived direction (+1 forward, -1 reverse)
         self.direction_sign: float = 1.0 if self.target_distance >= 0.0 else -1.0
@@ -81,6 +93,8 @@ class GPRTravelDistance(Node):
 
     def status_cb(self, msg: ControllerStatus) -> None:
         self.current_motor_rps = float(msg.vel_estimate)
+        self.received_status = True
+        self.last_status_time = self.get_clock().now()
 
     def control_step(self) -> None:
         if self.finished:
@@ -91,6 +105,22 @@ class GPRTravelDistance(Node):
         if dt <= 0.0:
             return
         self.last_control_time = now
+
+        # Wait small delay for ODrive nodes to initialize
+        if (now - self.start_time).nanoseconds * 1e-9 < self.start_delay_s:
+            self.publish_velocity_command(0.0)
+            return
+
+        # Optionally require feedback before moving (safer distance integration)
+        if self.feedback_required and not self.received_status:
+            self.publish_velocity_command(0.0)
+            return
+
+        # Watchdog: if feedback stale, stop
+        ms_since_status = (now - self.last_status_time).nanoseconds * 1e-6
+        if ms_since_status > float(self.stop_timeout_ms):
+            self.publish_velocity_command(0.0)
+            return
 
         # Integrate absolute distance from motor speed
         motor_rps_meas = -self.current_motor_rps if self.invert_third else self.current_motor_rps
@@ -123,7 +153,7 @@ class GPRTravelDistance(Node):
         # Convert desired ground linear velocity to motor rps
         wheel_circ = 2.0 * math.pi * self.third_wheel_radius
         wheel_turns_per_s = linear_vx_mps / wheel_circ
-        motor_rps_cmd = wheel_turns_per_s * self.third_gear_ratio
+        motor_rps_cmd = wheel_turns_per_s * self.third_gear_ratio * self.velocity_multiplier
         motor_rps_cmd = -motor_rps_cmd if self.invert_third else motor_rps_cmd
 
         msg = ControlMessage()
