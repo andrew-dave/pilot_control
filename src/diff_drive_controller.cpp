@@ -381,7 +381,8 @@ private:
         const double px = msg->pose.pose.position.x;
         const double py = msg->pose.pose.position.y;
         const double pz = msg->pose.pose.position.z;
-        const rclcpp::Time t = msg->header.stamp;
+        // Force ROS time for incoming stamp to avoid mixing time sources
+        const rclcpp::Time t(msg->header.stamp, RCL_ROS_TIME);
         if (!have_fastlio_prev_) {
             last_fastlio_x_ = px;
             last_fastlio_y_ = py;
