@@ -6,6 +6,7 @@
 #include <odrive_can/msg/controller_status.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -111,6 +112,7 @@ public:
         right_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
         third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
         gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
+        gpr_fastlio_delta_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/gpr/fastlio_delta_xyz", 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -413,6 +415,14 @@ private:
         const double dz = pz - last_fastlio_z_;
         const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
         fastlio_speed_mps_ = dist / dt; // magnitude speed between updates
+        // Publish delta vector
+        if (gpr_fastlio_delta_pub_) {
+            geometry_msgs::msg::Vector3 v;
+            v.x = dx;
+            v.y = dy;
+            v.z = dz;
+            gpr_fastlio_delta_pub_->publish(v);
+        }
         last_fastlio_x_ = px;
         last_fastlio_y_ = py;
         last_fastlio_z_ = pz;
@@ -459,6 +469,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_, third_motor_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr gpr_fastlio_delta_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
