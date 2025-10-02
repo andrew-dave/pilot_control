@@ -5,6 +5,7 @@
 #include <odrive_can/msg/control_message.hpp>
 #include <odrive_can/msg/controller_status.hpp>
 #include <odrive_can/srv/axis_state.hpp>
+#include <std_msgs/msg/float32.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -109,6 +110,7 @@ public:
         left_motor_pub_  = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
         right_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
         third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
+        gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -361,6 +363,13 @@ private:
             vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
         }
 
+        // Publish the computed forward speed (m/s) used to drive the GPR
+        if (gpr_vx_pub_) {
+            std_msgs::msg::Float32 vx_msg;
+            vx_msg.data = static_cast<float>(vx);
+            gpr_vx_pub_->publish(vx_msg);
+        }
+
         // Map measured forward speed to GPR motor turns/s via kinematics
         const double third_circ = 2.0 * M_PI * third_wheel_radius_;
         double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
@@ -449,6 +458,7 @@ private:
     // ROS I/O
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_, third_motor_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
