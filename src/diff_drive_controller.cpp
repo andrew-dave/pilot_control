@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/clock.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <odrive_can/msg/control_message.hpp>
@@ -341,8 +342,9 @@ private:
 
         // Compute robot linear speed to drive GPR. Prefer Fast-LIO odometry if enabled and fresh.
         double vx = 0.0;
-        const rclcpp::Time now = this->get_clock()->now();
-        const double ms_since_fastlio = (now - last_fastlio_time_).seconds() * 1000.0;
+        // Use ROS clock for Fast-LIO stamps to avoid time source mismatch
+        const rclcpp::Time now_ros = ros_clock_.now();
+        const double ms_since_fastlio = (now_ros - last_fastlio_time_).seconds() * 1000.0;
         bool have_fastlio = gpr_use_fastlio_odom_ && fastlio_speed_mps_ > 0.0 && ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_);
         if (have_fastlio) {
             vx = fastlio_speed_mps_;
@@ -471,6 +473,8 @@ private:
     double last_fastlio_x_{0.0}, last_fastlio_y_{0.0}, last_fastlio_z_{0.0};
     rclcpp::Time last_fastlio_time_{};
     double fastlio_speed_mps_{0.0};
+    // ROS time clock for Fast-LIO age computations
+    rclcpp::Clock ros_clock_{RCL_ROS_TIME};
 };
 
 int main(int argc, char* argv[]) {
