@@ -374,7 +374,7 @@ private:
         msg.control_mode = odrv::VELOCITY_CONTROL;
         msg.input_mode   = odrv::VEL_RAMP;
         msg.input_torque = 0.0;
-        msg.input_vel    = invert_third_ ? -turns_per_sec : turns_per_sec;
+        msg.input_vel    = invert_third_ ? turns_per_sec : -turns_per_sec;
 
         third_motor_pub_->publish(msg);
     }
