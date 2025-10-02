@@ -131,6 +131,7 @@ install(
   scripts/move_one_meter.py
   scripts/gpr_travel_distance.py
   scripts/drive_travel_distance.py
+  scripts/left_wheel_distance.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
