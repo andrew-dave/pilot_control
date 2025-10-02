@@ -358,7 +358,7 @@ private:
             have_fastlio = (fastlio_speed_mps_ > 0.0) && (ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_));
         }
         if (have_fastlio) {
-            vx = fastlio_speed_mps_;
+            vx = fastlio_speed_mps_<0.05 ? 0.0 : fastlio_speed_mps_;
         } else {
             // Fallback: estimate from drive motor speeds
             const double wheel_circumference = 2.0 * M_PI * wheel_radius_;
