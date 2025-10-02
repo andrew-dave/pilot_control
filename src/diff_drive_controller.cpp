@@ -116,6 +116,7 @@ public:
         right_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
         third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
         gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
+        gpr_vx_raw_pub_  = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps_raw", 10);
         gpr_fastlio_delta_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/gpr/fastlio_delta_xyz", 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -360,13 +361,14 @@ private:
         if (have_fastlio) {
             vx = fastlio_speed_mps_<0.05 ? 0.0 : fastlio_speed_mps_;
         } else {
-            // Fallback: estimate from drive motor speeds
-            const double wheel_circumference = 2.0 * M_PI * wheel_radius_;
-            const double left_motor_rps_meas  = invert_left_  ? -current_left_vel_  : current_left_vel_;
-            const double right_motor_rps_meas = invert_right_ ? -current_right_vel_ : current_right_vel_;
-            const double left_wheel_mps_meas  = (left_motor_rps_meas  / gear_ratio_) * wheel_circumference;
-            const double right_wheel_mps_meas = (right_motor_rps_meas / gear_ratio_) * wheel_circumference;
-            vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
+            // // Fallback: estimate from drive motor speeds
+            // const double wheel_circumference = 2.0 * M_PI * wheel_radius_;
+            // const double left_motor_rps_meas  = invert_left_  ? -current_left_vel_  : current_left_vel_;
+            // const double right_motor_rps_meas = invert_right_ ? -current_right_vel_ : current_right_vel_;
+            // const double left_wheel_mps_meas  = (left_motor_rps_meas  / gear_ratio_) * wheel_circumference;
+            // const double right_wheel_mps_meas = (right_motor_rps_meas / gear_ratio_) * wheel_circumference;
+            // vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
+            continue;
         }
 
         // Publish the computed forward speed (m/s) used to drive the GPR
@@ -417,6 +419,15 @@ private:
         const double dx_raw = px - last_fastlio_x_;
         const double dy_raw = py - last_fastlio_y_;
         const double dz_raw = pz - last_fastlio_z_;
+
+        const double dist_raw = std::sqrt(dx_raw*dx_raw + dy_raw*dy_raw + dz_raw*dz_raw);
+        fastlio_speed_mps_raw_ = dist_raw / dt;
+        if (gpr_vx_raw_pub_) {
+            std_msgs::msg::Float32 vraw;
+            vraw.data = static_cast<float>(fastlio_speed_mps_raw_);
+            gpr_vx_raw_pub_->publish(vraw);
+        }
+    
 
         // Push into sliding window
         fastlio_dx_window_.push_back(dx_raw);
@@ -488,6 +499,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_, third_motor_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_raw_pub_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr gpr_fastlio_delta_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
@@ -517,6 +529,7 @@ private:
     double last_fastlio_x_{0.0}, last_fastlio_y_{0.0}, last_fastlio_z_{0.0};
     rclcpp::Time last_fastlio_time_{};
     double fastlio_speed_mps_{0.0};
+    double fastlio_speed_mps_raw_{0.0};
     // ROS time clock for Fast-LIO age computations
     rclcpp::Clock ros_clock_{RCL_ROS_TIME};
     // Sliding window buffers for Fast-LIO deltas
