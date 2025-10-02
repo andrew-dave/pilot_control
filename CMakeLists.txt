@@ -130,6 +130,7 @@ install(
   scripts/path_to_foot.py
   scripts/move_one_meter.py
   scripts/gpr_travel_distance.py
+  scripts/drive_travel_distance.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

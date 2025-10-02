@@ -5,6 +5,7 @@ ODrive Micro + iPower GM2804 (12N/14P → 7 pp) @ 12 V
 - Full calibration
 - Harmonic calibration (FW >= 0.6.11)
 - Robust save() that handles the expected USB drop during flash write
+- Optional CAN config: Node ID, heartbeat, and feedback publish rates
 Usage:
   python3 odrive_micro_calib.py
   # or with serial (hex without 0x):
@@ -12,6 +13,7 @@ Usage:
 """
 import sys, time, math
 import odrive
+import odrive.enums as od_enums
 from odrive.enums import *
 from odrive.utils import dump_errors
 
@@ -32,9 +34,9 @@ I_LIM = 1.2              # A   (gentle)
 BW_CURRENT = 300.0       # Hz  (softer current loop for small gimbals)
 
 VEL_LIMIT = 12.0         # turn/s
-VEL_RAMP  = 1.0          # turn/s^2
-VEL_GAIN  = 0.02
-VEL_IGAIN = 0.0
+VEL_RAMP  = 120.0          # turn/s^2
+VEL_GAIN  = 0.004672
+VEL_IGAIN = 0.063
 
 LOCKIN_I = 0.65          # A
 TORQUE_SOFT_MIN = -0.1
@@ -83,6 +85,118 @@ def set_cfg_if_has(cfg, pairs):
     for k, v in pairs:
         if cfg and hasattr(cfg, k):
             setattr(cfg, k, v)
+
+def configure_can(odrv, node_id=2, heartbeat_ms=100, feedback_ms=10, baud_bps=250000):
+    """Best-effort CAN configuration across FW/API variants.
+    - Sets Node ID
+    - Enables and sets heartbeat period (ms)
+    - Enables and sets feedback/encoder publish period (ms)
+    """
+    can_if = pick(odrv, "can")
+    can_cfg = pick(can_if, "config") if can_if else None
+
+    if not can_cfg:
+        print("CAN config not exposed on this FW/API; skipping CAN setup.")
+        return
+
+    # Protocol + baud rate (if exposed)
+    try:
+        if hasattr(can_cfg, "protocol"):
+            # Prefer SIMPLE protocol for ODrive-Simple-CAN bridges when requested
+            proto_enum = getattr(od_enums, 'CanProtocol', None)
+            if proto_enum is None:
+                proto_enum = getattr(od_enums, 'Protocol', None)
+            if proto_enum is not None and hasattr(proto_enum, 'SIMPLE'):
+                can_cfg.protocol = getattr(proto_enum, 'SIMPLE')
+    except Exception:
+        pass
+    for baud_name in ("baud_rate", "baud_rate_bps", "baudrate"):
+        if hasattr(can_cfg, baud_name):
+            try:
+                setattr(can_cfg, baud_name, baud_bps)
+            except Exception:
+                pass
+
+    # Node ID (primary location on recent FW)
+    if hasattr(can_cfg, "node_id"):
+        can_cfg.node_id = node_id
+    # Fallback older layouts under axis0.config.can
+    elif hasattr(odrv, "axis0") and hasattr(odrv.axis0, "config") and hasattr(odrv.axis0.config, "can") and hasattr(odrv.axis0.config.can, "node_id"):
+        odrv.axis0.config.can.node_id = node_id
+
+    # Heartbeat enable + rate (0 often disables; set explicit enable when available)
+    for rate_name in ("heartbeat_msg_rate_ms", "heartbeat_rate_ms"):
+        if hasattr(can_cfg, rate_name):
+            setattr(can_cfg, rate_name, heartbeat_ms)
+    for en_name in ("enable_heartbeat", "heartbeat_msg_enable", "enable_heartbeat_messages"):
+        if hasattr(can_cfg, en_name):
+            setattr(can_cfg, en_name, True)
+
+    # Feedback groups: attempt to enable and set rates for common message families
+    def try_set(name_candidates, value):
+        for nm in name_candidates:
+            if hasattr(can_cfg, nm):
+                setattr(can_cfg, nm, value)
+    def try_enable(name_candidates, enabled=True):
+        for nm in name_candidates:
+            if hasattr(can_cfg, nm):
+                setattr(can_cfg, nm, enabled)
+
+    # Encoder/feedback estimates
+    try_set(["encoder_msg_rate_ms", "feedback_msg_rate_ms", "encoder_rate_ms", "estimates_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_encoder_msg", "enable_feedback", "enable_feedback_msg", "encoder_msg_enable"]) 
+
+    # Iq (phase current)
+    try_set(["iq_msg_rate_ms", "current_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_iq_msg", "iq_msg_enable", "enable_iq"])
+
+    # Torques (if exposed separately)
+    try_set(["torque_msg_rate_ms", "torques_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_torque_msg", "torque_msg_enable", "enable_torques_msg"])
+
+    # Error/status summary
+    try_set(["error_msg_rate_ms", "errors_msg_rate_ms", "status_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_error_msg", "errors_msg_enable", "enable_status_msg"])
+
+    # Temperature
+    try_set(["temperature_msg_rate_ms", "temp_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_temperature_msg", "temp_msg_enable"])
+
+    # Bus voltage/current
+    try_set(["bus_msg_rate_ms", "bus_voltage_current_msg_rate_ms", "vbus_msg_rate_ms"], feedback_ms)
+    try_enable(["enable_bus_msg", "bus_msg_enable", "enable_bus_voltage_current_msg"])
+
+    # Axis-level fallbacks for older FW layouts
+    axis_can = None
+    if hasattr(odrv, "axis0") and hasattr(odrv.axis0, "config") and hasattr(odrv.axis0.config, "can"):
+        axis_can = odrv.axis0.config.can
+        # Node ID (duplicate here if present)
+        if hasattr(axis_can, "node_id"):
+            try:
+                axis_can.node_id = node_id
+            except Exception:
+                pass
+        # Explicit rates used in some firmwares
+        def atry_set(name, value):
+            if hasattr(axis_can, name):
+                try:
+                    setattr(axis_can, name, value)
+                except Exception:
+                    pass
+        atry_set("heartbeat_msg_rate_ms", heartbeat_ms)
+        for nm in ("encoder_msg_rate_ms", "iq_msg_rate_ms", "torques_msg_rate_ms",
+                   "error_msg_rate_ms", "temperature_msg_rate_ms",
+                   "bus_voltage_msg_rate_ms", "bus_msg_rate_ms"):
+            atry_set(nm, feedback_ms)
+
+    # Optional: disable watchdog if exposed at axis level per user request
+    if hasattr(odrv, "axis0") and hasattr(odrv.axis0, "config") and hasattr(odrv.axis0.config, "enable_watchdog"):
+        try:
+            odrv.axis0.config.enable_watchdog = False
+        except Exception:
+            pass
+
+    print("Configured CAN (protocol, baud, node_id, heartbeat, feedback groups) — OK")
 
 def configure_encoder_objects_and_map(odrv):
     """
@@ -191,6 +305,12 @@ def main():
             ("startup_encoder_offset_calibration", STARTUP_ENC_CAL),
             ("startup_closed_loop_control", STARTUP_CLOSED_LOOP),
         ])
+
+    # -------- CAN configuration --------
+    try:
+        configure_can(odrv, node_id=2, heartbeat_ms=100, feedback_ms=10)
+    except Exception as e:
+        print("Skipped CAN setup:", e)
 
     # -------- Save & reboot (robust) --------
     print("Saving configuration & rebooting (USB may drop briefly)...")
