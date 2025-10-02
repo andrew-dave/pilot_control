@@ -66,6 +66,11 @@ public:
         this->declare_parameter<int>("gpr_coast_timeout_ms", 1000);
         this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
 
+        // Fast-LIO odometry input (for GPR velocity drive)
+        this->declare_parameter<bool>("gpr_use_fastlio_odom", true);
+        this->declare_parameter<std::string>("fastlio_odom_topic", "/Odometry");
+        this->declare_parameter<int>("fastlio_timeout_ms", 500);
+
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
         wheel_base_            = this->get_parameter("wheel_base").as_double();
@@ -88,6 +93,10 @@ public:
         gpr_follow_coast_      = this->get_parameter("gpr_follow_coast").as_bool();
         gpr_coast_timeout_ms_  = this->get_parameter("gpr_coast_timeout_ms").as_int();
         gpr_min_vx_follow_     = this->get_parameter("gpr_min_vx_follow").as_double();
+
+        gpr_use_fastlio_odom_  = this->get_parameter("gpr_use_fastlio_odom").as_bool();
+        fastlio_odom_topic_    = this->get_parameter("fastlio_odom_topic").as_string();
+        fastlio_timeout_ms_    = this->get_parameter("fastlio_timeout_ms").as_int();
 
         RCLCPP_INFO(get_logger(),
             "Drive: r=%.3f m, base=%.3f m, gear=%.2f | GPR: r=%.3f m, gear=%.2f | invert L/R/3=%d/%d/%d",
@@ -115,6 +124,12 @@ public:
             "/right/controller_status", 10, std::bind(&DiffDriveController::right_status_callback, this, std::placeholders::_1));
         third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
             "/gpr/controller_status", 10, std::bind(&DiffDriveController::third_status_callback, this, std::placeholders::_1));
+
+        // Optional: subscribe to Fast-LIO odometry for GPR speed estimation
+        if (gpr_use_fastlio_odom_) {
+            fastlio_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+                fastlio_odom_topic_, 10, std::bind(&DiffDriveController::fastlio_odom_callback, this, std::placeholders::_1));
+        }
 
         // Timers
         odom_timer_ = this->create_wall_timer(100ms, std::bind(&DiffDriveController::update_odometry, this)); // 10 Hz
@@ -303,10 +318,7 @@ private:
             // else fall through to compute drive from measured velocities
         }
 
-        // // Prefer command-based start for immediate response; fall back to measured after timeout
-        // const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
-        // const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
-        const double wz = meas_wz_;  // yaw rate rad/s
+        const double wz = meas_wz_;  // yaw rate rad/s (from wheel-based odom)
 
         // Forward-only gating
         // if (gpr_forward_only_) {
@@ -327,17 +339,26 @@ private:
             return;
         }
 
-        double vx=0;
-        if (current_left_vel_>0 && current_right_vel_<0){
-            vx = (current_left_vel_ + std::abs(current_right_vel_))/2.0;
-        }else{
-            send_zero_torque_third();
-        }   
-        vx = vx/10;
-        // Map measured forward speed to motor turns/s
-        // const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        // double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
-        double turns_per_sec = -2.4*vx;
+        // Compute robot linear speed to drive GPR. Prefer Fast-LIO odometry if enabled and fresh.
+        double vx = 0.0;
+        const rclcpp::Time now = this->get_clock()->now();
+        const double ms_since_fastlio = (now - last_fastlio_time_).seconds() * 1000.0;
+        bool have_fastlio = gpr_use_fastlio_odom_ && fastlio_speed_mps_ > 0.0 && ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_);
+        if (have_fastlio) {
+            vx = fastlio_speed_mps_;
+        } else {
+            // Fallback: estimate from drive motor speeds
+            const double wheel_circumference = 2.0 * M_PI * wheel_radius_;
+            const double left_motor_rps_meas  = invert_left_  ? -current_left_vel_  : current_left_vel_;
+            const double right_motor_rps_meas = invert_right_ ? -current_right_vel_ : current_right_vel_;
+            const double left_wheel_mps_meas  = (left_motor_rps_meas  / gear_ratio_) * wheel_circumference;
+            const double right_wheel_mps_meas = (right_motor_rps_meas / gear_ratio_) * wheel_circumference;
+            vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
+        }
+
+        // Map measured forward speed to GPR motor turns/s via kinematics
+        const double third_circ = 2.0 * M_PI * third_wheel_radius_;
+        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
 
         // If forward-only, do not allow negative speed
         if (gpr_forward_only_ && turns_per_sec < 0.0) {
@@ -351,6 +372,36 @@ private:
         msg.input_vel    = invert_third_ ? -turns_per_sec : turns_per_sec;
 
         third_motor_pub_->publish(msg);
+    }
+
+    // ---------------- Fast-LIO odometry callback ----------------
+    void fastlio_odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+        const double px = msg->pose.pose.position.x;
+        const double py = msg->pose.pose.position.y;
+        const double pz = msg->pose.pose.position.z;
+        const rclcpp::Time t = msg->header.stamp;
+        if (!have_fastlio_prev_) {
+            last_fastlio_x_ = px;
+            last_fastlio_y_ = py;
+            last_fastlio_z_ = pz;
+            last_fastlio_time_ = t;
+            have_fastlio_prev_ = true;
+            fastlio_speed_mps_ = 0.0;
+            return;
+        }
+        const double dt = (t - last_fastlio_time_).seconds();
+        if (dt <= 0.0) {
+            return;
+        }
+        const double dx = px - last_fastlio_x_;
+        const double dy = py - last_fastlio_y_;
+        const double dz = pz - last_fastlio_z_;
+        const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+        fastlio_speed_mps_ = dist / dt; // magnitude speed between updates
+        last_fastlio_x_ = px;
+        last_fastlio_y_ = py;
+        last_fastlio_z_ = pz;
+        last_fastlio_time_ = t;
     }
 
     // ---------------- Helpers ----------------
@@ -395,6 +446,7 @@ private:
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_odom_sub_;
     rclcpp::TimerBase::SharedPtr odom_timer_, arm_timer_, gpr_timer_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -410,6 +462,15 @@ private:
     double last_cmd_linear_x_ = 0.0; // last commanded forward m/s
 
     double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
+
+    // Fast-LIO state for GPR drive
+    bool   gpr_use_fastlio_odom_{true};
+    std::string fastlio_odom_topic_{"/Odometry"};
+    int    fastlio_timeout_ms_{500};
+    bool   have_fastlio_prev_{false};
+    double last_fastlio_x_{0.0}, last_fastlio_y_{0.0}, last_fastlio_z_{0.0};
+    rclcpp::Time last_fastlio_time_{};
+    double fastlio_speed_mps_{0.0};
 };
 
 int main(int argc, char* argv[]) {
