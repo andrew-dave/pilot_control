@@ -73,6 +73,7 @@ public:
         this->declare_parameter<bool>("gpr_use_fastlio_odom", true);
         this->declare_parameter<std::string>("fastlio_odom_topic", "/Odometry");
         this->declare_parameter<int>("fastlio_timeout_ms", 500);
+        this->declare_parameter<int>("fastlio_delta_window", 10);
 
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
@@ -100,6 +101,8 @@ public:
         gpr_use_fastlio_odom_  = this->get_parameter("gpr_use_fastlio_odom").as_bool();
         fastlio_odom_topic_    = this->get_parameter("fastlio_odom_topic").as_string();
         fastlio_timeout_ms_    = this->get_parameter("fastlio_timeout_ms").as_int();
+        fastlio_delta_window_  = this->get_parameter("fastlio_delta_window").as_int();
+        if (fastlio_delta_window_ < 1) fastlio_delta_window_ = 1;
 
         RCLCPP_INFO(get_logger(),
             "Drive: r=%.3f m, base=%.3f m, gear=%.2f | GPR: r=%.3f m, gear=%.2f | invert L/R/3=%d/%d/%d",
@@ -410,9 +413,24 @@ private:
         if (dt <= 0.0) {
             return;
         }
-        const double dx = px - last_fastlio_x_;
-        const double dy = py - last_fastlio_y_;
-        const double dz = pz - last_fastlio_z_;
+        const double dx_raw = px - last_fastlio_x_;
+        const double dy_raw = py - last_fastlio_y_;
+        const double dz_raw = pz - last_fastlio_z_;
+
+        // Push into sliding window
+        fastlio_dx_window_.push_back(dx_raw);
+        fastlio_dy_window_.push_back(dy_raw);
+        fastlio_dz_window_.push_back(dz_raw);
+        while (static_cast<int>(fastlio_dx_window_.size()) > fastlio_delta_window_) fastlio_dx_window_.pop_front();
+        while (static_cast<int>(fastlio_dy_window_.size()) > fastlio_delta_window_) fastlio_dy_window_.pop_front();
+        while (static_cast<int>(fastlio_dz_window_.size()) > fastlio_delta_window_) fastlio_dz_window_.pop_front();
+
+        // Compute sliding window average
+        auto avg = [](const std::deque<double>& q){ double s=0.0; for(double v: q) s+=v; return q.empty()?0.0:s/static_cast<double>(q.size()); };
+        const double dx = avg(fastlio_dx_window_);
+        const double dy = avg(fastlio_dy_window_);
+        const double dz = avg(fastlio_dz_window_);
+
         const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
         fastlio_speed_mps_ = dist / dt; // magnitude speed between updates
         // Publish delta vector
@@ -500,6 +518,11 @@ private:
     double fastlio_speed_mps_{0.0};
     // ROS time clock for Fast-LIO age computations
     rclcpp::Clock ros_clock_{RCL_ROS_TIME};
+    // Sliding window buffers for Fast-LIO deltas
+    int fastlio_delta_window_{5};
+    std::deque<double> fastlio_dx_window_;
+    std::deque<double> fastlio_dy_window_;
+    std::deque<double> fastlio_dz_window_;
 };
 
 int main(int argc, char* argv[]) {
