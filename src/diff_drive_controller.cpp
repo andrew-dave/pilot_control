@@ -368,7 +368,7 @@ private:
             // const double left_wheel_mps_meas  = (left_motor_rps_meas  / gear_ratio_) * wheel_circumference;
             // const double right_wheel_mps_meas = (right_motor_rps_meas / gear_ratio_) * wheel_circumference;
             // vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
-            print("No Fast-LIO odometry available, Abort mission, kill Raj");
+            std::cerr << "No Fast-LIO odometry available. Exiting." << std::endl;
         }
 
         // Publish the computed forward speed (m/s) used to drive the GPR
