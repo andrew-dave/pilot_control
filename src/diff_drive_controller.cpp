@@ -344,8 +344,11 @@ private:
         double vx = 0.0;
         // Use ROS clock for Fast-LIO stamps to avoid time source mismatch
         const rclcpp::Time now_ros = ros_clock_.now();
-        const double ms_since_fastlio = (now_ros - last_fastlio_time_).seconds() * 1000.0;
-        bool have_fastlio = gpr_use_fastlio_odom_ && fastlio_speed_mps_ > 0.0 && ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_);
+        bool have_fastlio = false;
+        if (gpr_use_fastlio_odom_ && have_fastlio_prev_) {
+            const double ms_since_fastlio = (now_ros - last_fastlio_time_).seconds() * 1000.0;
+            have_fastlio = (fastlio_speed_mps_ > 0.0) && (ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_));
+        }
         if (have_fastlio) {
             vx = fastlio_speed_mps_;
         } else {
