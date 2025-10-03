@@ -126,8 +126,8 @@ private:
     if (!std::isfinite(a.x()) || !std::isfinite(a.y()) || !std::isfinite(a.z())) {
       return;
     }
-    a.x = -a.x;
-    a.z = -a.z;
+    a.x() = -a.x();
+    a.z() = -a.z();
 
     accel_sum_ += a;
     accel_count_ += 1;
