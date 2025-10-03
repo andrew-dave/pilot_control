@@ -117,6 +117,7 @@ public:
         third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
         gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
         gpr_vx_raw_pub_  = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps_raw", 10);
+        gpr_distance_pub_ = this->create_publisher<std_msgs::msg::Float32>("/gpr/travel_distance_m", 10);
         gpr_fastlio_delta_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/gpr/fastlio_delta_xyz", 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -313,7 +314,7 @@ private:
         last_time_ = current_time;
     }
 
-    // ---------------- GPR motor updater (forward-only gating) ----------------
+    // ---------------- GPR motor updater (absolute position from travel distance) ----------------
     void update_gpr_motor() {
         // Watchdog for GPR control: if stale, stop third motor
         const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
@@ -349,49 +350,21 @@ private:
             return;
         }
 
-        // Compute robot linear speed to drive GPR. Prefer Fast-LIO odometry if enabled and fresh.
-        double vx = 0.0;
-        // Use ROS clock for Fast-LIO stamps to avoid time source mismatch
-        const rclcpp::Time now_ros = ros_clock_.now();
-        bool have_fastlio = false;
-        if (gpr_use_fastlio_odom_ && have_fastlio_prev_) {
-            const double ms_since_fastlio = (now_ros - last_fastlio_time_).seconds() * 1000.0;
-            have_fastlio = (fastlio_speed_mps_ > 0.0) && (ms_since_fastlio <= static_cast<double>(fastlio_timeout_ms_));
-        }
-        if (have_fastlio) {
-            vx = fastlio_speed_mps_<0.05 ? 0.0 : fastlio_speed_mps_;
-        } else {
-            // // Fallback: estimate from drive motor speeds
-            // const double wheel_circumference = 2.0 * M_PI * wheel_radius_;
-            // const double left_motor_rps_meas  = invert_left_  ? -current_left_vel_  : current_left_vel_;
-            // const double right_motor_rps_meas = invert_right_ ? -current_right_vel_ : current_right_vel_;
-            // const double left_wheel_mps_meas  = (left_motor_rps_meas  / gear_ratio_) * wheel_circumference;
-            // const double right_wheel_mps_meas = (right_motor_rps_meas / gear_ratio_) * wheel_circumference;
-            // vx = (left_wheel_mps_meas + right_wheel_mps_meas) / 2.0;
-            std::cerr << "No Fast-LIO odometry available. Exiting." << std::endl;
-        }
-
-        // Publish the computed forward speed (m/s) used to drive the GPR
-        if (gpr_vx_pub_) {
-            std_msgs::msg::Float32 vx_msg;
-            vx_msg.data = static_cast<float>(vx);
-            gpr_vx_pub_->publish(vx_msg);
-        }
-
-        // Map measured forward speed to GPR motor turns/s via kinematics
+        // Compute desired absolute GPR motor position (turns) from total travel distance
+        // turns = (distance_m / circumference_m) * gear_ratio * velocity_multiplier
         const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        double turns_target = (total_travel_m_ / third_circ) * third_gear_ratio_ * velocity_multiplier_;
 
-        // If forward-only, do not allow negative speed
-        if (gpr_forward_only_ && turns_per_sec < 0.0) {
-            turns_per_sec = 0.0;
-        }
+        // Apply inversion/sign convention consistent with previous velocity command path
+        double pos_cmd_turns = invert_third_ ? turns_target : -turns_target;
 
+        // Send absolute position command using trap trajectory for smooth motion
         odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::VELOCITY_CONTROL;
-        msg.input_mode   = odrv::VEL_RAMP;
+        msg.control_mode = odrv::POSITION_CONTROL;
+        msg.input_mode   = odrv::TRAP_TRAJ;
         msg.input_torque = 0.0;
-        msg.input_vel    = invert_third_ ? turns_per_sec : -turns_per_sec;
+        msg.input_vel    = 0.0;
+        msg.input_pos    = pos_cmd_turns;
 
         third_motor_pub_->publish(msg);
     }
@@ -453,6 +426,16 @@ private:
             v.z = dz;
             gpr_fastlio_delta_pub_->publish(v);
         }
+        // Accumulate total travel distance. If forward-only, gate accumulation by wheel odom sign.
+        bool forward_motion = (meas_vx_ > velocity_deadband_);
+        if (!gpr_forward_only_ || forward_motion) {
+            total_travel_m_ += dist_raw;
+            if (gpr_distance_pub_) {
+                std_msgs::msg::Float32 dmsg; dmsg.data = static_cast<float>(total_travel_m_);
+                gpr_distance_pub_->publish(dmsg);
+            }
+        }
+
         last_fastlio_x_ = px;
         last_fastlio_y_ = py;
         last_fastlio_z_ = pz;
@@ -501,6 +484,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_raw_pub_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr gpr_fastlio_delta_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_distance_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
@@ -530,6 +514,7 @@ private:
     rclcpp::Time last_fastlio_time_{};
     double fastlio_speed_mps_{0.0};
     double fastlio_speed_mps_raw_{0.0};
+    double total_travel_m_{0.0};
     // ROS time clock for Fast-LIO age computations
     rclcpp::Clock ros_clock_{RCL_ROS_TIME};
     // Sliding window buffers for Fast-LIO deltas
