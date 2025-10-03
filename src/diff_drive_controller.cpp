@@ -356,7 +356,7 @@ private:
         double turns_target = (total_travel_m_ / third_circ) * third_gear_ratio_ * velocity_multiplier_;
 
         // Apply inversion/sign convention consistent with previous velocity command path
-        double pos_cmd_turns = invert_third_ ? turns_target : -turns_target;
+        double pos_cmd_turns = invert_third_ ? -turns_target : turns_target;
 
         // Send absolute position command using trap trajectory for smooth motion
         odrive_can::msg::ControlMessage msg;
@@ -426,14 +426,20 @@ private:
             v.z = dz;
             gpr_fastlio_delta_pub_->publish(v);
         }
-        // Accumulate total travel distance. If forward-only, gate accumulation by wheel odom sign.
-        bool forward_motion = (meas_vx_ > velocity_deadband_);
-        if (!gpr_forward_only_ || forward_motion) {
-            total_travel_m_ += dist_raw;
-            if (gpr_distance_pub_) {
-                std_msgs::msg::Float32 dmsg; dmsg.data = static_cast<float>(total_travel_m_);
-                gpr_distance_pub_->publish(dmsg);
-            }
+        // Update absolute displacement from starting Fast-LIO pose (no integration from velocity)
+        if (!have_fastlio_start_) {
+            start_fastlio_x_ = px;
+            start_fastlio_y_ = py;
+            start_fastlio_z_ = pz;
+            have_fastlio_start_ = true;
+        }
+        const double dx_start = px - start_fastlio_x_;
+        const double dy_start = py - start_fastlio_y_;
+        const double dz_start = pz - start_fastlio_z_;
+        total_travel_m_ = std::sqrt(dx_start*dx_start + dy_start*dy_start + dz_start*dz_start);
+        if (gpr_distance_pub_) {
+            std_msgs::msg::Float32 dmsg; dmsg.data = static_cast<float>(total_travel_m_);
+            gpr_distance_pub_->publish(dmsg);
         }
 
         last_fastlio_x_ = px;
@@ -514,6 +520,8 @@ private:
     rclcpp::Time last_fastlio_time_{};
     double fastlio_speed_mps_{0.0};
     double fastlio_speed_mps_raw_{0.0};
+    bool   have_fastlio_start_{false};
+    double start_fastlio_x_{0.0}, start_fastlio_y_{0.0}, start_fastlio_z_{0.0};
     double total_travel_m_{0.0};
     // ROS time clock for Fast-LIO age computations
     rclcpp::Clock ros_clock_{RCL_ROS_TIME};
