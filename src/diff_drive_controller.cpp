@@ -361,7 +361,7 @@ private:
         // Send absolute position command using trap trajectory for smooth motion
         odrive_can::msg::ControlMessage msg;
         msg.control_mode = odrv::POSITION_CONTROL;
-        msg.input_mode   = odrv::PASSTHROUGH;
+        msg.input_mode   = odrv::POSE_FILTER;
         msg.input_torque = 0.0;
         msg.input_vel    = 0.0;
         msg.input_pos    = pos_cmd_turns;
