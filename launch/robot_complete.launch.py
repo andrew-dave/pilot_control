@@ -67,8 +67,8 @@ def generate_launch_description():
             'raw_w': 1280,
             'raw_h': 720,
             'raw_fps': 60,
-            'stream_host': '172.16.13.122',
-            'stream_port': 5600,
+            'stream_host': '172.16.13.122', # TODO: change to 172.16.14.195
+            'stream_port': 5600, # TODO: change to 5602
             'stream_bitrate_kbps': 800,
             'rtp_mtu': 1200,
             'enable_record_service': True,
