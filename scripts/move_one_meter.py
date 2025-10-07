@@ -21,7 +21,7 @@ class MoveOneMeter(Node):
         # Drive parameters (match diff_drive_controller defaults)
         self.declare_parameter('wheel_radius', 0.072)   # m
         self.declare_parameter('wheel_base', 0.35)      # m
-        self.declare_parameter('gear_ratio', 10.0)
+        self.declare_parameter('gear_ratio', 1.0)
         self.declare_parameter('invert_left', False)
         self.declare_parameter('invert_right', True)
         # Topics

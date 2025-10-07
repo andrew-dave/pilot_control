@@ -48,13 +48,13 @@ MOTOR_KV = 350                       # RPM/V
 TORQUE_CONSTANT = 0.023628571428571426  # Your measured value (N·m/A)
 
 # --- Current Limits ---
-CALIBRATION_CURRENT = 3.0       # A
+CALIBRATION_CURRENT = 4.0       # A
 CURRENT_SOFT_MAX = 6.0          # A
 CURRENT_HARD_MAX = 17.8         # A
 LOCKIN_CURRENT = 10.0           # A (for encoder calibration)
 
 # --- Voltage Limits ---
-CALIBRATION_VOLTAGE = 2.0       # V
+CALIBRATION_VOLTAGE = 6.0       # V
 
 # --- Motor Thermistor ---
 MOTOR_THERMISTOR_ENABLED = False
@@ -66,7 +66,7 @@ HALL_POLARITY_CALIBRATED = True # Already calibrated
 # --- Absolute Encoder Configuration (Position Feedback) ---
 # AMT212B-OD: CUI 12-bit absolute SPI encoder
 ENCODER_CPR = 16384              # 12-bit = 4096
-ENCODER_MODE = ENCODER_MODE_SPI_ABS_CUI
+ENCODER_MODE = Rs485EncoderMode.AMT21_EVENT_DRIVEN
 
 # --- Gear Ratio ---
 # TODO: CRITICAL - Measure your actual gearbox ratio!
@@ -89,8 +89,8 @@ COMMUTATION_VEL_SCALE = 1.0 / (POLE_PAIRS * GEAR_RATIO)  # Correct formula!
 VEL_LIMIT = 10.0                # turn/s (motor shaft)
 VEL_LIMIT_TOLERANCE = 1.2
 VEL_RAMP_RATE = 10.0            # turn/s²
-VEL_GAIN = 0.16
-VEL_INTEGRATOR_GAIN = 0.32
+VEL_GAIN = 0.03
+VEL_INTEGRATOR_GAIN = 0.15
 
 # --- Position Controller ---
 POS_GAIN = 20.0
@@ -126,13 +126,15 @@ ENCODER_BANDWIDTH = 100         # Hz
 # HELPER FUNCTIONS
 # ============================================================================
 
-def wait_for_idle(axis, timeout=90.0):
+def wait_for_idle(axis, timeout=5000.0):
     """Wait for axis to return to IDLE state"""
     t0 = time.time()
     while time.time() - t0 < timeout:
         if axis.current_state == AxisState.IDLE:
+            print(time.time() - t0 )
             return True
         time.sleep(0.1)
+    print(time.time() - t0 )
     return False
 
 def safe_save_and_reboot(odrv, serial_number=None, pre_delay=0.5, post_delay=5.0):
@@ -173,17 +175,17 @@ def configure_all_parameters(odrv, axis):
     
     # --- Motor Configuration ---
     print("\n⚙️  Motor Configuration...")
-    axis.motor.config.motor_type = MOTOR_TYPE
-    axis.motor.config.pole_pairs = POLE_PAIRS
-    axis.motor.config.torque_constant = TORQUE_CONSTANT
-    axis.motor.config.current_soft_max = CURRENT_SOFT_MAX
-    axis.motor.config.current_hard_max = CURRENT_HARD_MAX
-    axis.motor.config.calibration_current = CALIBRATION_CURRENT
-    if hasattr(axis.motor.config, 'resistance_calib_max_voltage'):
-        axis.motor.config.resistance_calib_max_voltage = CALIBRATION_VOLTAGE
+    axis.config.motor.motor_type = MOTOR_TYPE
+    axis.config.motor.pole_pairs = POLE_PAIRS
+    axis.config.motor.torque_constant = TORQUE_CONSTANT
+    axis.config.motor.current_soft_max = CURRENT_SOFT_MAX
+    axis.config.motor.current_hard_max = CURRENT_HARD_MAX
+    axis.config.motor.calibration_current = CALIBRATION_CURRENT
+    if hasattr(axis.config.motor, 'resistance_calib_max_voltage'):
+        axis.config.motor.resistance_calib_max_voltage = CALIBRATION_VOLTAGE
     if hasattr(axis.config, 'calibration_lockin'):
         axis.config.calibration_lockin.current = LOCKIN_CURRENT
-    if hasattr(axis.motor, 'motor_thermistor'):
+    if hasattr(axis.config.motor, 'motor_thermistor'):
         axis.motor.motor_thermistor.config.enabled = MOTOR_THERMISTOR_ENABLED
     print(f"  ✓ Pole pairs: {POLE_PAIRS}, Kt: {TORQUE_CONSTANT:.6f} N·m/A")
     print(f"  ✓ Current: soft={CURRENT_SOFT_MAX}A, hard={CURRENT_HARD_MAX}A, cal={CALIBRATION_CURRENT}A")
@@ -192,7 +194,7 @@ def configure_all_parameters(odrv, axis):
     print("\n🧭 Hall Sensor (Commutation)...")
     if hasattr(odrv, 'hall_encoder0'):
         odrv.hall_encoder0.config.enabled = True
-        if hasattr(odrv.hall_encoder0.config, 'hall_polarity'):
+        if hasattr(odrv.hall_encoder0, 'hall_polarity'):
             odrv.hall_encoder0.config.hall_polarity = HALL_POLARITY
         axis.config.commutation_encoder = EncoderId.HALL_ENCODER0
         print(f"  ✓ Hall enabled, polarity={HALL_POLARITY}, set as commutation encoder")
@@ -202,7 +204,6 @@ def configure_all_parameters(odrv, axis):
     if hasattr(odrv, 'spi_encoder0'):
         enc = odrv.spi_encoder0
         enc.config.mode = ENCODER_MODE
-        enc.config.cpr = ENCODER_CPR
         if hasattr(enc.config, 'bandwidth'):
             enc.config.bandwidth = 1000
         if hasattr(enc.config, 'use_index'):
@@ -215,6 +216,8 @@ def configure_all_parameters(odrv, axis):
         axis.config.load_encoder = EncoderId.SPI_ENCODER0
         print(f"  ✓ SPI encoder: {ENCODER_CPR} CPR, mode={ENCODER_MODE}")
         print(f"  ✓ Set as load encoder (position feedback)")
+        if hasattr(enc.config, 'pre_calibrated'):
+            enc.config.pre_calibrated = False
     
     # --- Controller ---
     print("\n🎮 Controller...")
@@ -296,23 +299,40 @@ def run_motor_calibration(axis):
     time.sleep(3)
     
     print("🔄 Running motor calibration...")
-    axis.requested_state = AxisState.MOTOR_CALIBRATION
+    axis.requested_state = AxisState.FULL_CALIBRATION_SEQUENCE
     
-    if not wait_for_idle(axis, timeout=30):
+    if not wait_for_idle(axis, timeout=5000):
         print("❌ Motor calibration failed!")
         dump_errors(axis, True)
         return False
     
-    if axis.motor.is_calibrated:
-        print(f"✅ Motor calibration successful!")
-        print(f"   R = {axis.motor.config.phase_resistance:.4f} Ω")
-        print(f"   L = {axis.motor.config.phase_inductance*1e6:.2f} µH")
-        axis.motor.config.pre_calibrated = True
-        return True
+    # Accept success if firmware reports a successful procedure result (GUI-like)
+    proc = getattr(axis, 'procedure_result', None)
+    proc_success = False
+    try:
+        proc_success = (proc == od_enums.ProcedureResult.SUCCESS)
+    except Exception:
+        proc_success = False
+
+    # Fallback robust check based on errors and measured parameters
+    calibrated_flag = getattr(axis.motor, 'is_calibrated', None)
+    if isinstance(calibrated_flag, bool):
+        calibrated = calibrated_flag
     else:
-        print("❌ Motor calibration failed!")
-        dump_errors(axis, True)
-        return False
+        calibrated = (
+            getattr(axis.motor, 'error', 1) == 0 and
+            getattr(axis, 'error', 1) == 0
+        )
+
+    if proc_success or calibrated:
+        print(f"✅ Motor calibration successful!")
+        print(f"   R = {axis.config.motor.phase_resistance:.4f} Ω")
+        print(f"   L = {axis.config.motor.phase_inductance*1e6:.2f} µH")
+        # axis.config.motor.pre_calibrated = True
+        return True
+    print("❌ Motor calibration failed!")
+    dump_errors(axis, True)
+    return False
 
 def run_encoder_offset_calibration(axis):
     """Run encoder offset calibration"""
@@ -324,6 +344,14 @@ def run_encoder_offset_calibration(axis):
     time.sleep(3)
     
     print("🔄 Running encoder offset calibration...")
+    # Step 1: Calibrate commutation (hall) first if supported
+    if hasattr(axis, 'hall_encoder') and hasattr(axis, 'requested_state'):
+        try:
+            # Many firmwares lack a dedicated state; we can at least request partial calibration
+            # Fallback to general encoder offset calibration state
+            pass
+        except Exception:
+            pass
     axis.requested_state = AxisState.ENCODER_OFFSET_CALIBRATION
     
     if not wait_for_idle(axis, timeout=60):
@@ -393,7 +421,7 @@ def main():
     axis = odrv.axis0
     odrv.clear_errors()
     
-    # Calibration sequence
+    # Calibration sequence (GUI-like): motor first, then encoder offset
     if not run_motor_calibration(axis):
         print("\n❌ Calibration failed!")
         sys.exit(1)
@@ -402,6 +430,17 @@ def main():
         print("\n❌ Calibration failed!")
         sys.exit(1)
     
+    # Mark devices as pre-calibrated if attributes exist
+    try:
+        if hasattr(axis.motor.config, 'pre_calibrated'):
+            axis.motor.config.pre_calibrated = True
+        if hasattr(odrv, 'spi_encoder0') and hasattr(odrv.spi_encoder0.config, 'pre_calibrated'):
+            odrv.spi_encoder0.config.pre_calibrated = True
+        if hasattr(odrv, 'hall_encoder0') and hasattr(odrv.hall_encoder0.config, 'pre_calibrated'):
+            odrv.hall_encoder0.config.pre_calibrated = True
+    except Exception:
+        pass
+
     # Save calibration
     print("\n💾 Saving calibration...")
     odrv = safe_save_and_reboot(odrv, serial_number)
