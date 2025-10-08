@@ -221,7 +221,7 @@ class DriveTravelDistance(Node):
         # Convert straight m/s to wheel/motor rps and publish to both sides
         wheel_circ = 2.0 * math.pi * self.wheel_radius
         wheel_turns_per_s = linear_vx_mps / wheel_circ
-        motor_rps_cmd = wheel_turns_per_s * self.gear_ratio * self.velocity_multiplier
+        motor_rps_cmd = wheel_turns_per_s # * selr_ratio * self.velocity_multiplier
 
         right_cmd = -motor_rps_cmd if self.invert_right else motor_rps_cmd
         left_cmd = -motor_rps_cmd if self.invert_left else motor_rps_cmd
