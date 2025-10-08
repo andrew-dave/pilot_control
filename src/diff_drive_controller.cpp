@@ -44,7 +44,7 @@ public:
         // Drive geometry
         this->declare_parameter<double>("wheel_radius", 0.072); // 144 mm dia wheels -> 0.072 m radius
         this->declare_parameter<double>("wheel_base",   0.35);
-        this->declare_parameter<double>("gear_ratio",   10.0);
+        this->declare_parameter<double>("gear_ratio",   1.0);
 
         // Drive behavior
         this->declare_parameter<double>("velocity_multiplier",    1.0);
