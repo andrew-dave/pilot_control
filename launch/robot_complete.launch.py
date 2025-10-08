@@ -236,6 +236,24 @@ def generate_launch_description():
         }]
     )
 
+    # GPR Scan Controller - Synchronized scan + motor + logging
+    gpr_scan_controller_node = Node(
+        package='pilot_control',
+        executable='gpr_scan_controller.py',
+        name='gpr_scan_controller',
+        output='screen',
+        parameters=[{
+            'gpr_wheel_radius': 0.03,           # 60mm diameter virtual wheel
+            'gpr_gear_ratio': 1.0,               # Direct drive
+            'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
+            'gpr_scan_velocity_mps': 0.5,        # 0.5 m/s scanning speed
+            'invert_third': True,                # Match diff_drive_controller setting
+            'fastlio_odom_topic': '/Odometry',
+            'log_frequency_hz': 50.0,            # 50 Hz logging
+            'log_directory': os.path.join(os.path.expanduser('~'), 'gpr_scans')
+        }]
+    )
+
     # Laser Map Rotator - tilt correction for occupancy grid
     laser_map_rotator_node = Node(
         package='pilot_control',
@@ -302,6 +320,7 @@ def generate_launch_description():
                 video_streamer_gst_node,
                 
                 gpr_serial_bridge_node,
+                gpr_scan_controller_node,
             ]
         ),
     ]) 

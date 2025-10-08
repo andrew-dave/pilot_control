@@ -134,6 +134,7 @@ install(
   scripts/left_wheel_distance.py
   scripts/bot_travel_distance.py
   scripts/test_gpr_position.py
+  scripts/gpr_scan_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
