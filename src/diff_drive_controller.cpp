@@ -201,7 +201,7 @@ private:
         double left_wheel_mps  = linear_vel - (angular_vel * wheel_base_ / 2.0);
 
         // Apply turn speed multiplier to the rotational component only
-        double rot_term = (angular_vel * wheel_base_ / 2.0) * (turn_speed_multiplier_ - 1.0);
+        double rot_term = (angular_vel * wheel_base_ / 2.0) 
         right_wheel_mps += rot_term;
         left_wheel_mps  -= rot_term;
 
@@ -211,8 +211,8 @@ private:
         const double left_wheel_turns  = left_wheel_mps  / wheel_circumference;
 
         // Wheel turns/s -> motor turns/s via gearbox
-        double right_motor_rps_cmd = right_wheel_turns * gear_ratio_ * velocity_multiplier_;
-        double left_motor_rps_cmd  = left_wheel_turns  * gear_ratio_ * velocity_multiplier_;
+        double right_motor_rps_cmd = right_wheel_turns;
+        double left_motor_rps_cmd  = left_wheel_turns;
 
         // Build messages
         odrive_can::msg::ControlMessage right_msg;
