@@ -444,7 +444,8 @@ private:
             if (event.type == SDL_QUIT) {
                 RCLCPP_INFO(get_logger(), "SDL_QUIT received, shutting down...");
                 rclcpp::shutdown();
-            } else if (event.type == SDL_KEYDOWN) {
+            } else if (event.type == SDL_KEYDOWN && !event.key.repeat) {
+                // Ignore key repeat events to prevent double triggering
                 RCLCPP_INFO(get_logger(), "Key pressed: %d", event.key.keysym.sym);
                 if (event.key.keysym.sym == SDLK_e) {
                     arm_motors();
