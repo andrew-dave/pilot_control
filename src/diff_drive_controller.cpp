@@ -201,7 +201,7 @@ private:
         double left_wheel_mps  = linear_vel - (angular_vel * wheel_base_ / 2.0);
 
         // Apply turn speed multiplier to the rotational component only
-        double rot_term = (angular_vel * wheel_base_ / 2.0) 
+        double rot_term = (angular_vel * wheel_base_ / 2.0);
         right_wheel_mps += rot_term;
         left_wheel_mps  -= rot_term;
 
