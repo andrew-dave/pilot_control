@@ -479,8 +479,10 @@ class GPRScanController(Node):
     
     def fastlio_callback(self, msg):
         """Cache latest Fast-LIO odometry for logging at GPR tick rate."""
-        # Extract timestamp (ROS time) in microseconds
-        self.fastlio_timestamp_us = msg.header.stamp.sec * 1_000_000 + msg.header.stamp.nanosec // 1000
+        # Timestamp from the same node clock as GPR timestamp (ROS time)
+        now = self.get_clock().now()
+        sec, nsec = now.seconds_nanoseconds()
+        self.fastlio_timestamp_us = sec * 1_000_000 + nsec // 1000
 
         # Cache pose and twist
         self.fastlio_pose['pos_x']     = msg.pose.pose.position.x
