@@ -71,6 +71,7 @@ class GPRScanController(Node):
         self.logging_active = False  # Flag for 50Hz logging
         self.start_sequence_time = None  # Time when start sequence began
         self.gpr_motor_start_delay = 0.5  # Delay before starting GPR motor (seconds)
+        self.motor_enabled = False  # Gate to prevent motion before start event
         
         # GPR motor state (from ODrive feedback)
         self.gpr_position = 0.0
@@ -327,11 +328,10 @@ class GPRScanController(Node):
             self.motor_start_timer.cancel()
             self.motor_start_timer = None
         
-        # Log GPR_MOTOR_START event
-        #self.current_event = 'GPR_MOTOR_START'
-        # Immediate event log
+        # Log GPR_MOTOR_START event, then enable motor publishing
         self.log_event_now('GPR_MOTOR_START')
         self.current_event = None
+        self.motor_enabled = True
         self.get_logger().info('⏳ Starting GPR motor rotation...')
         
         # Calculate motor velocity in turns/s
@@ -448,7 +448,7 @@ class GPRScanController(Node):
     
     def update_gpr_motor(self):
         """Send velocity command to GPR motor"""
-        if self.scanning:
+        if self.scanning and self.motor_enabled:
             # Calculate motor velocity in turns/s
             wheel_turns_per_sec = self.gpr_scan_velocity / self.gpr_circumference
             motor_turns_per_sec = wheel_turns_per_sec * self.gpr_gear_ratio * self.velocity_multiplier
