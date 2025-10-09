@@ -175,7 +175,25 @@ class GPRScanController(Node):
         self.scan_start_time = time.time()
         self.scanning = True
         self.log_count = 0
-        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s')
+        
+        # Send velocity command immediately
+        wheel_turns_per_sec = self.gpr_scan_velocity / self.gpr_circumference
+        motor_turns_per_sec = wheel_turns_per_sec * self.gpr_gear_ratio * self.velocity_multiplier
+        
+        # Apply inversion if needed
+        if self.invert_third:
+            motor_turns_per_sec = -motor_turns_per_sec
+        
+        # Send velocity command
+        msg = ControlMessage()
+        msg.control_mode = 2  # VELOCITY_CONTROL
+        msg.input_mode = 2    # VEL_RAMP
+        msg.input_vel = motor_turns_per_sec
+        msg.input_torque = 0.0
+        msg.input_pos = 0.0
+        
+        self.gpr_motor_pub.publish(msg)
+        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({motor_turns_per_sec:.3f} turns/s)')
         
         # Step 4: Start data logging (happens in fastlio_callback)
         self.get_logger().info(f'✓ Fast-LIO logging started at {self.log_freq:.1f} Hz')
@@ -195,6 +213,16 @@ class GPRScanController(Node):
         
         # Step 1: Stop GPR motor
         self.scanning = False
+        
+        # Send zero velocity command immediately
+        msg = ControlMessage()
+        msg.control_mode = 2  # VELOCITY_CONTROL
+        msg.input_mode = 1    # PASSTHROUGH
+        msg.input_vel = 0.0
+        msg.input_torque = 0.0
+        msg.input_pos = 0.0
+        
+        self.gpr_motor_pub.publish(msg)
         self.get_logger().info('✓ GPR motor stopped')
         
         # Step 2: Stop linear actuator
