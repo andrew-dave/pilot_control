@@ -275,7 +275,7 @@ class GPRScanController(Node):
             return False
         
         # Step 2: Log KEY_PRESS_START and enable 50Hz logging IMMEDIATELY
-        self.current_event = 'KEY_PRESS_START'
+        #self.current_event = 'KEY_PRESS_START'
         self.logging_active = True
         self.start_sequence_time = time.time()
         self.gpr_motor_started = False
@@ -286,7 +286,7 @@ class GPRScanController(Node):
         
         # Step 3: Start linear actuator (Arduino - line up) - non-blocking
         self.get_logger().info('⏳ Starting linear actuator...')
-        self.current_event = 'ARDUINO_START'
+        # self.current_event = 'ARDUINO_START'
         # Immediate event log
         self.log_event_now('ARDUINO_START')
         self.current_event = None
@@ -328,7 +328,7 @@ class GPRScanController(Node):
             self.motor_start_timer = None
         
         # Log GPR_MOTOR_START event
-        self.current_event = 'GPR_MOTOR_START'
+        #self.current_event = 'GPR_MOTOR_START'
         # Immediate event log
         self.log_event_now('GPR_MOTOR_START')
         self.current_event = None
@@ -363,13 +363,13 @@ class GPRScanController(Node):
         self.get_logger().info('='*70)
         
         # Step 1: Log KEY_PRESS_STOP (50Hz logging continues)
-        self.current_event = 'KEY_PRESS_STOP'
+        # self.current_event = 'KEY_PRESS_STOP'
         self.log_event_now('KEY_PRESS_STOP')
         self.current_event = None
         self.get_logger().info('✓ KEY_PRESS_STOP logged - 50Hz logging continues')
         
         # Step 2: Log MOTOR_STOPPING and stop GPR motor
-        self.current_event = 'MOTOR_STOPPING'
+        # self.current_event = 'MOTOR_STOPPING'
         self.log_event_now('MOTOR_STOPPING')
         self.current_event = None
         self.scanning = False
@@ -405,7 +405,7 @@ class GPRScanController(Node):
         self.get_logger().info('✓ Post-stop logging duration complete')
         
         # Log ARDUINO_STOP event before stopping actuator
-        self.current_event = 'ARDUINO_STOP'
+        # self.current_event = 'ARDUINO_STOP'
         self.log_event_now('ARDUINO_STOP')
         self.current_event = None
         
