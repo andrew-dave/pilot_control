@@ -21,13 +21,14 @@ Services:
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from odrive_can.msg import ControlMessage
+from odrive_can.msg import ControlMessage, ControllerStatus
 from std_srvs.srv import Trigger
 import os
 import time
 from datetime import datetime
 import threading
 import csv
+from collections import deque
 
 
 class GPRScanController(Node):
@@ -65,6 +66,19 @@ class GPRScanController(Node):
         self.csv_writer = None
         self.log_count = 0
         self.lock = threading.Lock()
+        self.stopping = False  # Flag for post-stop logging
+        self.post_stop_samples = 0  # Counter for post-stop samples
+        self.post_stop_target = 5  # Number of samples to log after stop
+        
+        # GPR motor state (from ODrive feedback)
+        self.gpr_position = 0.0
+        self.gpr_velocity = 0.0
+        self.gpr_timestamp_us = 0  # Timestamp in microseconds
+        self.gpr_data_available = False
+        
+        # Pre-scan buffer (circular buffer for last N samples before scan start)
+        self.pre_scan_buffer_size = 5
+        self.pre_scan_buffer = deque(maxlen=self.pre_scan_buffer_size)
         
         # Publishers
         self.gpr_motor_pub = self.create_publisher(
@@ -73,6 +87,10 @@ class GPRScanController(Node):
         # Subscribers
         self.fastlio_sub = self.create_subscription(
             Odometry, self.fastlio_topic, self.fastlio_callback, 10)
+        
+        # Subscribe to GPR motor status for position/velocity feedback
+        self.gpr_status_sub = self.create_subscription(
+            ControllerStatus, '/gpr/controller_status', self.gpr_status_callback, 10)
         
         # Service clients (Arduino control)
         self.line_start_client = self.create_client(Trigger, '/gpr_line_start')
@@ -93,10 +111,22 @@ class GPRScanController(Node):
         self.get_logger().info(f'GPR wheel circumference: {self.gpr_circumference:.4f} m')
         self.get_logger().info(f'Scan velocity: {self.gpr_scan_velocity:.3f} m/s')
         self.get_logger().info(f'Log frequency: {self.log_freq:.1f} Hz')
+        self.get_logger().info(f'Pre-scan buffer: {self.pre_scan_buffer_size} samples')
+        self.get_logger().info(f'Post-stop samples: {self.post_stop_target}')
         self.get_logger().info(f'Log directory: {self.log_dir}')
         self.get_logger().info(f'Service available: /gpr_scan/toggle')
         self.get_logger().info('')
         self.get_logger().info('💡 Press assigned key in teleop to start/stop scanning')
+    
+    def gpr_status_callback(self, msg):
+        """Store latest GPR motor status"""
+        self.gpr_position = msg.pos_estimate  # turns
+        self.gpr_velocity = msg.vel_estimate  # turns/s
+        # Create timestamp from current time in microseconds
+        current_time = self.get_clock().now()
+        seconds, nanoseconds = current_time.seconds_nanoseconds()
+        self.gpr_timestamp_us = seconds * 1_000_000 + nanoseconds // 1000  # Convert to microseconds
+        self.gpr_data_available = True
     
     def toggle_scan_callback(self, request, response):
         """Toggle GPR scanning on/off"""
@@ -134,30 +164,58 @@ class GPRScanController(Node):
             self.log_file_handle = open(self.current_log_file, 'w', buffering=1)
             
             # Write metadata as comments
-            self.log_file_handle.write(f'# GPR Scan Data\n')
+            self.log_file_handle.write(f'# GPR Scan Data - Comprehensive Logging\n')
             self.log_file_handle.write(f'# Start Time: {timestamp}\n')
             self.log_file_handle.write(f'# GPR Velocity (m/s): {self.gpr_scan_velocity}\n')
             self.log_file_handle.write(f'# Log Frequency (Hz): {self.log_freq}\n')
             self.log_file_handle.write(f'# GPR Wheel Radius (m): {self.gpr_wheel_radius}\n')
             self.log_file_handle.write(f'# Fast-LIO Topic: {self.fastlio_topic}\n')
-            self.log_file_handle.write('#\n')
+            self.log_file_handle.write(f'# Pre-Scan Buffer: {self.pre_scan_buffer_size} samples\n')
+            self.log_file_handle.write(f'# Post-Stop Samples: {self.post_stop_target}\n')
+            self.log_file_handle.write(f'#\n')
+            self.log_file_handle.write(f'# Timestamp Format: Microseconds (µs) since epoch\n')
+            self.log_file_handle.write(f'# Time Sync: Both fastlio_time_us and gpr_time_us use ROS time\n')
+            self.log_file_handle.write(f'#\n')
+            self.log_file_handle.write(f'# Event Types:\n')
+            self.log_file_handle.write(f'#   PRE_SCAN - Samples before scan started (from buffer)\n')
+            self.log_file_handle.write(f'#   KEY_PRESS_START - Scan key pressed\n')
+            self.log_file_handle.write(f'#   PRE_MOTOR_START_1/2 - Just before motor starts\n')
+            self.log_file_handle.write(f'#   MOTOR_STARTED - Motor velocity command sent\n')
+            self.log_file_handle.write(f'#   SCANNING - Normal scanning operation\n')
+            self.log_file_handle.write(f'#   KEY_PRESS_STOP - Stop key pressed\n')
+            self.log_file_handle.write(f'#   MOTOR_STOPPING_1/2 - While stopping motor\n')
+            self.log_file_handle.write(f'#   POST_STOP - After motor stopped\n')
+            self.log_file_handle.write(f'#\n')
             
             # Create CSV writer
             self.csv_writer = csv.writer(self.log_file_handle, lineterminator='\n')
             
             # Write header row
             self.csv_writer.writerow([
-                'seq', 'time', 
+                'seq', 'event', 'fastlio_time_us', 'gpr_time_us',
                 'pos_x', 'pos_y', 'pos_z',
                 'quat_x', 'quat_y', 'quat_z', 'quat_w',
                 'vel_lin_x', 'vel_lin_y', 'vel_lin_z',
-                'vel_ang_x', 'vel_ang_y', 'vel_ang_z'
+                'vel_ang_x', 'vel_ang_y', 'vel_ang_z',
+                'gpr_position', 'gpr_velocity'
             ])
             
             self.get_logger().info(f'✓ Log file created: {self.current_log_file}')
+            
+            # Write buffered pre-scan samples
+            if len(self.pre_scan_buffer) > 0:
+                self.get_logger().info(f'✓ Writing {len(self.pre_scan_buffer)} pre-scan samples')
+                for sample in self.pre_scan_buffer:
+                    self.csv_writer.writerow(sample)
+                    self.log_count += 1
+                self.get_logger().info(f'✓ Pre-scan samples written')
+            
         except Exception as e:
             self.get_logger().error(f'Failed to create log file: {e}')
             return False
+        
+        # Log KEY_PRESS_START event
+        self.log_event('KEY_PRESS_START')
         
         # Step 2: Start linear actuator (Arduino - line up)
         self.get_logger().info('⏳ Starting linear actuator...')
@@ -171,10 +229,15 @@ class GPRScanController(Node):
         else:
             self.get_logger().warn('⚠️  Linear actuator service not available')
         
+        # Log PRE_MOTOR_START events (capture a couple of samples before motor starts)
+        self.log_event('PRE_MOTOR_START_1')
+        time.sleep(0.05)  # Wait for one sample
+        self.log_event('PRE_MOTOR_START_2')
+        time.sleep(0.05)  # Wait for one more sample
+        
         # Step 3: Start GPR motor rotation
         self.scan_start_time = time.time()
         self.scanning = True
-        self.log_count = 0
         
         # Send velocity command immediately
         wheel_turns_per_sec = self.gpr_scan_velocity / self.gpr_circumference
@@ -195,6 +258,9 @@ class GPRScanController(Node):
         self.gpr_motor_pub.publish(msg)
         self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({motor_turns_per_sec:.3f} turns/s)')
         
+        # Log MOTOR_STARTED event
+        self.log_event('MOTOR_STARTED')
+        
         # Step 4: Start data logging (happens in fastlio_callback)
         self.get_logger().info(f'✓ Fast-LIO logging started at {self.log_freq:.1f} Hz')
         
@@ -211,8 +277,18 @@ class GPRScanController(Node):
         self.get_logger().info('STOPPING GPR SCAN')
         self.get_logger().info('='*70)
         
+        # Log KEY_PRESS_STOP event
+        self.log_event('KEY_PRESS_STOP')
+        
+        # Log MOTOR_STOPPING events (capture samples while stopping)
+        self.log_event('MOTOR_STOPPING_1')
+        time.sleep(0.05)  # Wait for one sample
+        self.log_event('MOTOR_STOPPING_2')
+        
         # Step 1: Stop GPR motor
         self.scanning = False
+        self.stopping = True  # Enable post-stop logging
+        self.post_stop_samples = 0
         
         # Send zero velocity command immediately
         msg = ControlMessage()
@@ -224,6 +300,17 @@ class GPRScanController(Node):
         
         self.gpr_motor_pub.publish(msg)
         self.get_logger().info('✓ GPR motor stopped')
+        
+        # Wait for post-stop samples to be logged
+        self.get_logger().info(f'⏳ Capturing post-stop samples ({self.post_stop_target})...')
+        max_wait = 2.0  # Maximum 2 seconds to wait for post-stop samples
+        wait_start = time.time()
+        while self.stopping and (time.time() - wait_start) < max_wait:
+            time.sleep(0.05)  # Check every 50ms
+        
+        if self.stopping:
+            self.get_logger().warn(f'⚠️  Timeout waiting for post-stop samples')
+            self.stopping = False
         
         # Step 2: Stop linear actuator
         self.get_logger().info('⏳ Stopping linear actuator...')
@@ -290,50 +377,83 @@ class GPRScanController(Node):
             
             self.gpr_motor_pub.publish(msg)
     
+    def log_event(self, event_name):
+        """Log a special event with current Fast-LIO and GPR data"""
+        # This will be captured in the next fastlio_callback
+        # We store the event name so it can be included
+        self.current_event = event_name
+    
     def fastlio_callback(self, msg):
-        """Log Fast-LIO odometry data - CSV format for minimal latency"""
-        if not self.scanning or not self.csv_writer:
+        """Log Fast-LIO odometry data with GPR position - CSV format for minimal latency"""
+        # Extract timestamp (ROS time) in microseconds
+        fastlio_timestamp_us = msg.header.stamp.sec * 1_000_000 + msg.header.stamp.nanosec // 1000
+        
+        # Build data row
+        # Determine event type
+        if hasattr(self, 'current_event'):
+            event = self.current_event
+        elif self.stopping:
+            event = 'POST_STOP'
+        elif self.scanning:
+            event = 'SCANNING'
+        else:
+            event = 'PRE_SCAN'
+        
+        data_row = [
+            self.log_count,
+            event,
+            fastlio_timestamp_us,  # Timestamp in microseconds (integer)
+            self.gpr_timestamp_us if self.gpr_data_available else 0,  # Timestamp in microseconds (integer)
+            f'{msg.pose.pose.position.x:.6f}',
+            f'{msg.pose.pose.position.y:.6f}',
+            f'{msg.pose.pose.position.z:.6f}',
+            f'{msg.pose.pose.orientation.x:.6f}',
+            f'{msg.pose.pose.orientation.y:.6f}',
+            f'{msg.pose.pose.orientation.z:.6f}',
+            f'{msg.pose.pose.orientation.w:.6f}',
+            f'{msg.twist.twist.linear.x:.6f}',
+            f'{msg.twist.twist.linear.y:.6f}',
+            f'{msg.twist.twist.linear.z:.6f}',
+            f'{msg.twist.twist.angular.x:.6f}',
+            f'{msg.twist.twist.angular.y:.6f}',
+            f'{msg.twist.twist.angular.z:.6f}',
+            f'{self.gpr_position:.6f}' if self.gpr_data_available else '0.0',
+            f'{self.gpr_velocity:.6f}' if self.gpr_data_available else '0.0'
+        ]
+        
+        # Clear event after using it
+        if hasattr(self, 'current_event'):
+            delattr(self, 'current_event')
+        
+        # Store in pre-scan buffer if not scanning
+        if not self.scanning and not self.stopping:
+            self.pre_scan_buffer.append(data_row)
             return
         
-        # No lock needed - CSV writerow is atomic enough for our use case
-        # Avoiding lock reduces latency significantly
-        try:
-            # Extract timestamp (ROS time)
-            timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        # Write to CSV if we have a writer (scanning or stopping)
+        if self.csv_writer:
+            try:
+                self.csv_writer.writerow(data_row)
+                self.log_count += 1
+                
+                # Handle post-stop logging
+                if self.stopping:
+                    self.post_stop_samples += 1
+                    if self.post_stop_samples >= self.post_stop_target:
+                        self.get_logger().info(f'✓ Post-stop samples captured ({self.post_stop_target})')
+                        self.stopping = False
+                
+                # Log progress every 50 samples (only during active scanning)
+                if self.scanning and self.log_count % 50 == 0:
+                    elapsed = time.time() - self.scan_start_time
+                    self.get_logger().info(
+                        f'📝 Logged {self.log_count} samples | '
+                        f'{elapsed:.1f}s | '
+                        f'{self.log_count/elapsed:.1f} Hz'
+                    )
             
-            # Write CSV row directly - minimal processing for low latency
-            self.csv_writer.writerow([
-                self.log_count,
-                f'{timestamp:.9f}',
-                f'{msg.pose.pose.position.x:.6f}',
-                f'{msg.pose.pose.position.y:.6f}',
-                f'{msg.pose.pose.position.z:.6f}',
-                f'{msg.pose.pose.orientation.x:.6f}',
-                f'{msg.pose.pose.orientation.y:.6f}',
-                f'{msg.pose.pose.orientation.z:.6f}',
-                f'{msg.pose.pose.orientation.w:.6f}',
-                f'{msg.twist.twist.linear.x:.6f}',
-                f'{msg.twist.twist.linear.y:.6f}',
-                f'{msg.twist.twist.linear.z:.6f}',
-                f'{msg.twist.twist.angular.x:.6f}',
-                f'{msg.twist.twist.angular.y:.6f}',
-                f'{msg.twist.twist.angular.z:.6f}'
-            ])
-            # Line buffering (buffering=1) ensures automatic flush after each line
-            
-            self.log_count += 1
-            
-            # Log progress every 50 samples
-            if self.log_count % 50 == 0:
-                elapsed = time.time() - self.scan_start_time
-                self.get_logger().info(
-                    f'📝 Logged {self.log_count} samples | '
-                    f'{elapsed:.1f}s | '
-                    f'{self.log_count/elapsed:.1f} Hz'
-                )
-        
-        except Exception as e:
-            self.get_logger().error(f'Error logging data: {e}')
+            except Exception as e:
+                self.get_logger().error(f'Error logging data: {e}')
     
     def __del__(self):
         """Cleanup when node is destroyed"""
