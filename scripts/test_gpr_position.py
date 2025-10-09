@@ -39,7 +39,7 @@ class GPRPositionTester(Node):
         self.control_pub = self.create_publisher(ControlMessage, '/gpr/control_message', 10)
         self.status_sub = self.create_subscription(
             ControllerStatus, '/gpr/controller_status', self.status_callback, 10)
-        self.axis_client = self.create_client(AxisState, '/gpr/request_axis_state')
+        # self.axis_client = self.create_client(AxisState, '/gpr/request_axis_state')  # UNDO-GPR
         
         # Calculate circumference
         self.third_circ = 2.0 * math.pi * self.third_wheel_radius
@@ -62,9 +62,10 @@ class GPRPositionTester(Node):
         
         # Arm motor if requested
         if self.auto_arm:
-            self.get_logger().info('Waiting for GPR ODrive service...')
-            time.sleep(2)
-            self.arm_motor()
+            # self.get_logger().info('Waiting for GPR ODrive service...')  # UNDO-GPR
+            # time.sleep(2)  # UNDO-GPR
+            # self.arm_motor()  # UNDO-GPR
+            pass  # UNDO-GPR
         
         # Timer to publish position commands at 20 Hz (matching diff_drive_controller)
         self.timer = self.create_timer(0.05, self.update_position)
@@ -83,15 +84,13 @@ class GPRPositionTester(Node):
         
     def arm_motor(self):
         """Arm the GPR motor to CLOSED_LOOP state"""
-        if not self.axis_client.wait_for_service(timeout_sec=3.0):
-            self.get_logger().warn('GPR ODrive service not available!')
-            return
-        
-        request = AxisState.Request()
-        request.axis_requested_state = 8  # CLOSED_LOOP
-        
-        future = self.axis_client.call_async(request)
-        future.add_done_callback(self.arm_response_callback)
+        # if not self.axis_client.wait_for_service(timeout_sec=3.0):  # UNDO-GPR
+        #     self.get_logger().warn('GPR ODrive service not available!')  # UNDO-GPR
+        #     return  # UNDO-GPR
+        # request = AxisState.Request()  # UNDO-GPR
+        # request.axis_requested_state = 8  # CLOSED_LOOP  # UNDO-GPR
+        # future = self.axis_client.call_async(request)  # UNDO-GPR
+        # future.add_done_callback(self.arm_response_callback)  # UNDO-GPR
         
     def arm_response_callback(self, future):
         try:
@@ -192,7 +191,7 @@ class GPRPositionTester(Node):
         msg.input_vel = 0.0
         msg.input_torque = 0.0
         
-        self.control_pub.publish(msg)
+        # self.control_pub.publish(msg)  # UNDO-GPR
         
         # Log status every 2 seconds (40 cycles at 20 Hz)
         if not hasattr(self, 'log_counter'):

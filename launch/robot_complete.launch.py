@@ -121,6 +121,7 @@ def generate_launch_description():
     )
 
     # Differential Drive Controller
+    # NOTE: GPR (third motor) control is DISABLED here - handled by gpr_scan_controller instead
     diff_drive_controller = Node(
         package='pilot_control',
         executable='diff_drive_controller',
@@ -132,8 +133,8 @@ def generate_launch_description():
             'can_interface': LaunchConfiguration('can_interface'),
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier'),
-            # Invert third (GPR) motor direction so it rotates opposite
-            'invert_third': True
+            # GPR CONTROL DISABLED - controlled by gpr_scan_controller instead
+            # 'invert_third': True  # COMMENTED OUT - no GPR control from diff_drive_controller
         }]
     )
 
@@ -236,7 +237,8 @@ def generate_launch_description():
         }]
     )
 
-    # GPR Scan Controller - Synchronized scan + motor + logging
+    # GPR Scan Controller - EXCLUSIVE GPR motor control + synchronized scan + logging
+    # This is the ONLY node that controls the GPR motor (diff_drive_controller GPR control is disabled)
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
@@ -247,7 +249,7 @@ def generate_launch_description():
             'gpr_gear_ratio': 1.0,               # Direct drive
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'gpr_scan_velocity_mps': 0.5,        # 0.5 m/s scanning speed
-            'invert_third': True,                # Match diff_drive_controller setting
+            'invert_third': True,                # GPR motor direction inversion
             'fastlio_odom_topic': '/Odometry',
             'log_frequency_hz': 50.0,            # 50 Hz logging
             'log_directory': os.path.join(os.path.expanduser('~'), 'gpr_scans')

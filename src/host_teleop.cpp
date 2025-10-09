@@ -22,7 +22,7 @@ public:
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
+        // gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state"); // UNDO-GPR
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
         shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
         process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
@@ -155,10 +155,10 @@ public:
             RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
             return;
         }
-        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
-            return;
-        }
+        // if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) { // UNDO-GPR
+        //     RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!"); // UNDO-GPR
+        //     return; // UNDO-GPR
+        // } // UNDO-GPR
         
         RCLCPP_INFO(get_logger(), "ODrive services available, sending arm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
@@ -166,7 +166,7 @@ public:
         
         auto left_future = left_axis_client_->async_send_request(request);
         auto right_future = right_axis_client_->async_send_request(request);
-        auto gpr_future = gpr_axis_client_->async_send_request(request);
+        // auto gpr_future = gpr_axis_client_->async_send_request(request); // UNDO-GPR
         
         // Wait for responses
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
@@ -185,13 +185,13 @@ public:
             RCLCPP_ERROR(get_logger(), "Failed to get right motor arm response");
         }
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto gpr_response = gpr_future.get();
-            RCLCPP_INFO(get_logger(), "GPR motor arm successful - State: %d, Errors: %d", 
-                       gpr_response->axis_state, gpr_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor arm response");
-        }
+        // if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) { // UNDO-GPR
+        //     auto gpr_response = gpr_future.get(); // UNDO-GPR
+        //     RCLCPP_INFO(get_logger(), "GPR motor arm successful - State: %d, Errors: %d",  // UNDO-GPR
+        //                gpr_response->axis_state, gpr_response->active_errors); // UNDO-GPR
+        // } else { // UNDO-GPR
+        //     RCLCPP_ERROR(get_logger(), "Failed to get GPR motor arm response"); // UNDO-GPR
+        // } // UNDO-GPR
     }
 
     void disarm_motors() {
@@ -206,10 +206,10 @@ public:
             RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
             return;
         }
-        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
-            return;
-        }
+        // if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) { // UNDO-GPR
+        //     RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!"); // UNDO-GPR
+        //     return; // UNDO-GPR
+        // } // UNDO-GPR
         
         RCLCPP_INFO(get_logger(), "ODrive services available, sending disarm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
@@ -217,7 +217,7 @@ public:
         
         auto left_future = left_axis_client_->async_send_request(request);
         auto right_future = right_axis_client_->async_send_request(request);
-        auto gpr_future = gpr_axis_client_->async_send_request(request);
+        // auto gpr_future = gpr_axis_client_->async_send_request(request); // UNDO-GPR
         
         // Wait for responses
         if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
@@ -236,13 +236,13 @@ public:
             RCLCPP_ERROR(get_logger(), "Failed to get right motor disarm response");
         }
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto gpr_response = gpr_future.get();
-            RCLCPP_INFO(get_logger(), "GPR motor disarm successful - State: %d, Errors: %d", 
-                       gpr_response->axis_state, gpr_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor disarm response");
-        }
+        // if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) { // UNDO-GPR
+        //     auto gpr_response = gpr_future.get(); // UNDO-GPR
+        //     RCLCPP_INFO(get_logger(), "GPR motor disarm successful - State: %d, Errors: %d",  // UNDO-GPR
+        //                gpr_response->axis_state, gpr_response->active_errors); // UNDO-GPR
+        // } else { // UNDO-GPR
+        //     RCLCPP_ERROR(get_logger(), "Failed to get GPR motor disarm response"); // UNDO-GPR
+        // } // UNDO-GPR
     }
 
     // ---------------- GPR line control ----------------
@@ -455,11 +455,11 @@ private:
                     RCLCPP_INFO(get_logger(), "M key pressed - starting map save sequence!");
                     start_map_workflow();
                 } else if (event.key.keysym.sym == SDLK_l) {
-                    RCLCPP_INFO(get_logger(), "L key pressed - Line UP");
-                    trigger_gpr_line_start();
+                    // RCLCPP_INFO(get_logger(), "L key pressed - Line UP"); // UNDO-GPR
+                    // trigger_gpr_line_start(); // UNDO-GPR
                 } else if (event.key.keysym.sym == SDLK_k) {
-                    RCLCPP_INFO(get_logger(), "K key pressed - Line DOWN");
-                    trigger_gpr_line_stop();
+                    // RCLCPP_INFO(get_logger(), "K key pressed - Line DOWN"); // UNDO-GPR
+                    // trigger_gpr_line_stop(); // UNDO-GPR
                 } else if (event.key.keysym.sym == SDLK_g) {
                     RCLCPP_INFO(get_logger(), "G key pressed - Toggle GPR Scan");
                     trigger_gpr_scan_toggle();

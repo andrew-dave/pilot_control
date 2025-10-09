@@ -38,10 +38,10 @@ public:
     );
 
     // Attempt to arm the micro axis shortly after startup
-    arm_timer_ = this->create_wall_timer(200ms, [this]() {
-      this->armMicroAxis();
-      this->arm_timer_->cancel();
-    });
+    // arm_timer_ = this->create_wall_timer(200ms, [this]() { // UNDO-GPR
+    //   this->armMicroAxis(); // UNDO-GPR
+    //   this->arm_timer_->cancel(); // UNDO-GPR
+    // }); // UNDO-GPR
 
     RCLCPP_INFO(this->get_logger(),
                 "GPRMotionFollower started (ns: %s, wheel_diam=%.3f m, gear=%.2f)",
@@ -49,17 +49,7 @@ public:
   }
 
 private:
-  void armMicroAxis() {
-    RCLCPP_INFO(this->get_logger(), "Waiting for micro ODrive service to become available...");
-    if (!axis_client_->wait_for_service(3s)) {
-      RCLCPP_WARN(this->get_logger(), "Micro ODrive service not available; follower will still publish velocities");
-      return;
-    }
-    auto req = std::make_shared<odrive_can::srv::AxisState::Request>();
-    req->axis_requested_state = 8; // CLOSED_LOOP
-    (void)axis_client_->async_send_request(req);
-    RCLCPP_INFO(this->get_logger(), "Requested CLOSED_LOOP for micro ODrive axis");
-  }
+  void armMicroAxis() { /* disabled - controlled by gpr_scan_controller.py */ } // UNDO-GPR
 
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     const double linear_v = msg->twist.twist.linear.x; // m/s (base_link forward)
@@ -83,7 +73,7 @@ private:
     m.input_mode   = 2; // VEL_RAMP
     m.input_vel    = turns_per_sec;
     m.input_torque = 0.0;
-    control_pub_->publish(m);
+    // control_pub_->publish(m); // UNDO-GPR
   }
 
   // Members

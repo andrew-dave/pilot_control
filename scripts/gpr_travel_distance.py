@@ -54,7 +54,7 @@ class GPRTravelDistance(Node):
         # Interfaces
         self.gpr_pub = self.create_publisher(ControlMessage, self.gpr_control_topic, 10)
         self.gpr_sub = self.create_subscription(ControllerStatus, self.gpr_status_topic, self.status_cb, 20)
-        self.gpr_axis_client = self.create_client(AxisState, self.gpr_axis_service)
+        # self.gpr_axis_client = self.create_client(AxisState, self.gpr_axis_service)  # UNDO-GPR
 
         # State
         self.total_travel_abs: float = 0.0
@@ -78,7 +78,7 @@ class GPRTravelDistance(Node):
         self.timer = self.create_timer(0.02, self.control_step)  # 50 Hz
 
         # Arm axis shortly after startup (one-shot)
-        self.arm_timer = self.create_timer(0.2, self._arm_once)
+        # self.arm_timer = self.create_timer(0.2, self._arm_once)  # UNDO-GPR
 
         self.get_logger().info(
             f"gpr_travel_distance: target={self.target_distance:.3f} m, vmax={self.max_speed:.2f} m/s, amax={self.max_accel:.2f} m/s^2, feedback_required={self.feedback_required}"
@@ -90,13 +90,13 @@ class GPRTravelDistance(Node):
                 if self.debug:
                     self.get_logger().info("Waiting for /gpr/request_axis_state service...")
                 return
-            req = AxisState.Request()
-            req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
-            self.gpr_axis_client.call_async(req)
-            if self.debug:
-                self.get_logger().info("Sent CLOSED_LOOP arming request to GPR axis")
-            if self.arm_timer is not None:
-                self.arm_timer.cancel()
+            # req = AxisState.Request()  # UNDO-GPR
+            # req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL  # UNDO-GPR
+            # self.gpr_axis_client.call_async(req)  # UNDO-GPR
+            # if self.debug:  # UNDO-GPR
+            #     self.get_logger().info("Sent CLOSED_LOOP arming request to GPR axis")  # UNDO-GPR
+            # if self.arm_timer is not None:  # UNDO-GPR
+            #     self.arm_timer.cancel()  # UNDO-GPR
         except Exception as exc:
             self.get_logger().warn(f"Arming GPR axis failed: {exc}")
 
@@ -214,7 +214,7 @@ class GPRTravelDistance(Node):
         msg.input_mode = 2    # VEL_RAMP
         msg.input_torque = 0.0
         msg.input_vel = float(motor_rps_cmd)
-        self.gpr_pub.publish(msg)
+        # self.gpr_pub.publish(msg)  # UNDO-GPR
         if self.debug:
             self.get_logger().info(
                 f"publish: vx={linear_vx_mps:.3f} m/s -> motor_rps={motor_rps_cmd:.3f} (invert={self.invert_third})")
@@ -225,7 +225,7 @@ class GPRTravelDistance(Node):
         msg.input_mode = 1    # PASSTHROUGH
         msg.input_vel = 0.0
         msg.input_torque = 0.0
-        self.gpr_pub.publish(msg)
+        # self.gpr_pub.publish(msg)  # UNDO-GPR
 
 
 def main() -> None:

@@ -114,7 +114,7 @@ public:
         odom_pub_        = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
         left_motor_pub_  = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
         right_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
-        third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
+        // third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
         gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
         gpr_vx_raw_pub_  = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps_raw", 10);
         gpr_distance_pub_ = this->create_publisher<std_msgs::msg::Float32>("/gpr/travel_distance_m", 10);
@@ -124,7 +124,7 @@ public:
 
         left_axis_client_  = this->create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        third_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
+        // third_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
 
         cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             "cmd_vel", 10, std::bind(&DiffDriveController::cmd_vel_callback, this, std::placeholders::_1));
@@ -158,9 +158,11 @@ public:
     // ---------------- Motor State Helpers ----------------
     void arm_motors() {
         RCLCPP_INFO(this->get_logger(), "Waiting for ODrive services to become available...");
+        // if (!left_axis_client_->wait_for_service(3s) ||
+        //     !right_axis_client_->wait_for_service(3s) ||
+        //     !third_axis_client_->wait_for_service(3s)) { // UNDO-GPR
         if (!left_axis_client_->wait_for_service(3s) ||
-            !right_axis_client_->wait_for_service(3s) ||
-            !third_axis_client_->wait_for_service(3s)) {
+            !right_axis_client_->wait_for_service(3s)) {
             RCLCPP_FATAL(this->get_logger(), "ODrive services not available after waiting. Shutting down.");
             g_shutdown_requested = true;
             return;
@@ -170,7 +172,7 @@ public:
         request->axis_requested_state = 8; // CLOSED_LOOP
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
-        third_axis_client_->async_send_request(request);
+        // third_axis_client_->async_send_request(request); // UNDO-GPR
     }
 
     void disarm_motors() {
@@ -179,7 +181,7 @@ public:
         request->axis_requested_state = 1; // IDLE
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
-        third_axis_client_->async_send_request(request);
+        // third_axis_client_->async_send_request(request); // UNDO-GPR
     }
 
 private:
@@ -366,7 +368,7 @@ private:
         msg.input_vel    = 0.0;
         msg.input_pos    = pos_cmd_turns;
 
-        third_motor_pub_->publish(msg);
+        //third_motor_pub_->publish(msg);
     }
 
     // ---------------- Fast-LIO odometry callback ----------------
@@ -457,7 +459,7 @@ private:
         msg.input_torque = 0.0;
         left_motor_pub_->publish(msg);
         right_motor_pub_->publish(msg);
-        third_motor_pub_->publish(msg);
+        // third_motor_pub_->publish(msg); // UNDO-GPR
     }
 
     void send_zero_torque_third(){
@@ -466,7 +468,7 @@ private:
         msg.input_mode   = odrv::PASSTHROUGH;
         msg.input_vel    = 0.0;
         msg.input_torque = 0.0;
-        third_motor_pub_->publish(msg);
+        // third_motor_pub_->publish(msg); // UNDO-GPR
     }
 
     // ---------------- Members ----------------
