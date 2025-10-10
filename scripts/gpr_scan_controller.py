@@ -142,10 +142,14 @@ class GPRScanController(Node):
         """Store latest GPR motor status"""
         self.gpr_position = msg.pos_estimate  # turns
         self.gpr_velocity = msg.vel_estimate  # turns/s
-        # Create timestamp from current time in microseconds
-        current_time = self.get_clock().now()
-        seconds, nanoseconds = current_time.seconds_nanoseconds()
-        self.gpr_timestamp_us = seconds * 1_000_000 + nanoseconds // 1000  # Convert to microseconds
+        # Use acquisition timestamp from the CAN node (microseconds since epoch, ROS time domain)
+        try:
+            self.gpr_timestamp_us = int(getattr(msg, 'stamp_us'))
+        except Exception as e:
+            self.get_logger().warn(f"GPR stamp_us unavailable; using callback time. Error: {e}")
+            current_time = self.get_clock().now()
+            seconds, nanoseconds = current_time.seconds_nanoseconds()
+            self.gpr_timestamp_us = seconds * 1_000_000 + nanoseconds // 1000
         self.gpr_data_available = True
         
         # Buffer this GPR sample for nearest-neighbor matching on Fast-LIO ticks
