@@ -26,6 +26,7 @@ from std_srvs.srv import Trigger
 import os
 import time
 from datetime import datetime
+from collections import deque
 import threading
 import csv
 
@@ -107,6 +108,9 @@ class GPRScanController(Node):
         # Subscribe to GPR motor status for position/velocity feedback
         self.gpr_status_sub = self.create_subscription(
             ControllerStatus, '/gpr/controller_status', self.gpr_status_callback, 10)
+
+        # Buffer recent GPR samples (timestamp, position, velocity) at 100 Hz
+        self.gpr_samples = deque(maxlen=300)
         
         # Service clients (Arduino control)
         self.line_start_client = self.create_client(Trigger, '/gpr_line_start')
@@ -144,57 +148,11 @@ class GPRScanController(Node):
         self.gpr_timestamp_us = seconds * 1_000_000 + nanoseconds // 1000  # Convert to microseconds
         self.gpr_data_available = True
         
-        # Write a log row at each GPR status update (acts as the logging tick)
-        if not self.logging_active or not self.csv_writer:
-            return
-        
-        # Determine event type based on current state
-        if self.current_event:
-            event = self.current_event
-            self.current_event = None
-        elif self.stopping:
-            event = 'POST_STOP'
-        elif not self.gpr_motor_started:
-            event = 'PRE_MOTOR'
-        elif self.scanning:
-            event = 'SCANNING'
-        else:
-            event = 'UNKNOWN'
-        
+        # Buffer this GPR sample for nearest-neighbor matching on Fast-LIO ticks
         try:
-            data_row = [
-                self.log_count,
-                event,
-                self.fastlio_timestamp_us,
-                self.gpr_timestamp_us,
-                f"{self.fastlio_pose['pos_x']:.6f}",
-                f"{self.fastlio_pose['pos_y']:.6f}",
-                f"{self.fastlio_pose['pos_z']:.6f}",
-                f"{self.fastlio_pose['quat_x']:.6f}",
-                f"{self.fastlio_pose['quat_y']:.6f}",
-                f"{self.fastlio_pose['quat_z']:.6f}",
-                f"{self.fastlio_pose['quat_w']:.6f}",
-                f"{self.fastlio_pose['vel_lin_x']:.6f}",
-                f"{self.fastlio_pose['vel_lin_y']:.6f}",
-                f"{self.fastlio_pose['vel_lin_z']:.6f}",
-                f"{self.fastlio_pose['vel_ang_x']:.6f}",
-                f"{self.fastlio_pose['vel_ang_y']:.6f}",
-                f"{self.fastlio_pose['vel_ang_z']:.6f}",
-                f'{self.gpr_position:.6f}',
-                f'{self.gpr_velocity:.6f}'
-            ]
-            self.csv_writer.writerow(data_row)
-            self.log_count += 1
-            
-            # Progress log (based on active scanning only)
-            if self.scanning and self.log_count % 50 == 0 and self.scan_start_time:
-                elapsed = time.time() - self.scan_start_time
-                if elapsed > 0:
-                    self.get_logger().info(
-                        f'📝 Logged {self.log_count} samples | {elapsed:.1f}s | {self.log_count/elapsed:.1f} Hz'
-                    )
-        except Exception as e:
-            self.get_logger().error(f'Error logging data at GPR tick: {e}')
+            self.gpr_samples.append((self.gpr_timestamp_us, self.gpr_position, self.gpr_velocity))
+        except Exception:
+            pass
     
     def toggle_scan_callback(self, request, response):
         """Toggle GPR scanning on/off"""
@@ -478,11 +436,9 @@ class GPRScanController(Node):
             self.gpr_motor_pub.publish(msg)
     
     def fastlio_callback(self, msg):
-        """Cache latest Fast-LIO odometry for logging at GPR tick rate."""
-        # Timestamp from the same node clock as GPR timestamp (ROS time)
-        now = self.get_clock().now()
-        sec, nsec = now.seconds_nanoseconds()
-        self.fastlio_timestamp_us = sec * 1_000_000 + nsec // 1000
+        """On each Fast-LIO odometry, pick nearest GPR sample and write one aligned row."""
+        # Use measurement time from header (ROS time domain)
+        self.fastlio_timestamp_us = msg.header.stamp.sec * 1_000_000 + msg.header.stamp.nanosec // 1000
 
         # Cache pose and twist
         self.fastlio_pose['pos_x']     = msg.pose.pose.position.x
@@ -499,7 +455,67 @@ class GPRScanController(Node):
         self.fastlio_pose['vel_ang_y'] = msg.twist.twist.angular.y
         self.fastlio_pose['vel_ang_z'] = msg.twist.twist.angular.z
 
-        # Note: no direct logging here; rows are written in gpr_status_callback()
+        # Write one row per Fast-LIO tick, using nearest GPR sample
+        if not self.logging_active or not self.csv_writer:
+            return
+
+        # Determine event
+        if self.current_event:
+            event = self.current_event
+            self.current_event = None
+        elif self.stopping:
+            event = 'POST_STOP'
+        elif not self.motor_enabled:
+            event = 'PRE_MOTOR'
+        elif self.scanning:
+            event = 'SCANNING'
+        else:
+            event = 'UNKNOWN'
+
+        # Nearest-neighbor match on time
+        g_ts = 0
+        g_pos = 0.0
+        g_vel = 0.0
+        if self.gpr_samples:
+            try:
+                nearest = min(self.gpr_samples, key=lambda s: abs(s[0] - self.fastlio_timestamp_us))
+                g_ts, g_pos, g_vel = nearest
+            except Exception:
+                pass
+
+        try:
+            data_row = [
+                self.log_count,
+                event,
+                self.fastlio_timestamp_us,
+                g_ts,
+                f"{self.fastlio_pose['pos_x']:.6f}",
+                f"{self.fastlio_pose['pos_y']:.6f}",
+                f"{self.fastlio_pose['pos_z']:.6f}",
+                f"{self.fastlio_pose['quat_x']:.6f}",
+                f"{self.fastlio_pose['quat_y']:.6f}",
+                f"{self.fastlio_pose['quat_z']:.6f}",
+                f"{self.fastlio_pose['quat_w']:.6f}",
+                f"{self.fastlio_pose['vel_lin_x']:.6f}",
+                f"{self.fastlio_pose['vel_lin_y']:.6f}",
+                f"{self.fastlio_pose['vel_lin_z']:.6f}",
+                f"{self.fastlio_pose['vel_ang_x']:.6f}",
+                f"{self.fastlio_pose['vel_ang_y']:.6f}",
+                f"{self.fastlio_pose['vel_ang_z']:.6f}",
+                f'{g_pos:.6f}',
+                f'{g_vel:.6f}'
+            ]
+            self.csv_writer.writerow(data_row)
+            self.log_count += 1
+
+            if self.scanning and self.log_count % 50 == 0 and self.scan_start_time:
+                elapsed = time.time() - self.scan_start_time
+                if elapsed > 0:
+                    self.get_logger().info(
+                        f'📝 Logged {self.log_count} samples | {elapsed:.1f}s | {self.log_count/elapsed:.1f} Hz'
+                    )
+        except Exception as e:
+            self.get_logger().error(f'Error logging nearest-match row: {e}')
 
     def log_event_now(self, event: str):
         """Write an immediate event row using latest cached data (no waiting for next tick)."""

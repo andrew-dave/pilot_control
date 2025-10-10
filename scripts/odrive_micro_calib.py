@@ -86,7 +86,7 @@ def set_cfg_if_has(cfg, pairs):
         if cfg and hasattr(cfg, k):
             setattr(cfg, k, v)
 
-def configure_can(odrv, node_id=2, heartbeat_ms=100, feedback_ms=10, baud_bps=250000):
+def configure_can(odrv, node_id=2, heartbeat_ms=10, feedback_ms=10, baud_bps=250000):
     """Best-effort CAN configuration across FW/API variants.
     - Sets Node ID
     - Enables and sets heartbeat period (ms)
@@ -308,7 +308,7 @@ def main():
 
     # -------- CAN configuration --------
     try:
-        configure_can(odrv, node_id=2, heartbeat_ms=100, feedback_ms=10)
+        configure_can(odrv, node_id=2, heartbeat_ms=10, feedback_ms=10)
     except Exception as e:
         print("Skipped CAN setup:", e)
 
