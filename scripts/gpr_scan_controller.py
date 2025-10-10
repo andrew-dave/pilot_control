@@ -523,11 +523,29 @@ class GPRScanController(Node):
             return
 
         try:
+            # Target timestamp to align with: prefer latest Fast-LIO stamp; fallback to now
+            target_ts = self.fastlio_timestamp_us
+            if target_ts == 0:
+                now = self.get_clock().now()
+                s, ns = now.seconds_nanoseconds()
+                target_ts = s * 1_000_000 + ns // 1000
+
+            # Nearest-neighbor GPR sample to the target timestamp
+            g_ts = 0
+            g_pos = 0.0
+            g_vel = 0.0
+            if self.gpr_samples:
+                try:
+                    nearest = min(self.gpr_samples, key=lambda s: abs(s[0] - target_ts))
+                    g_ts, g_pos, g_vel = nearest
+                except Exception:
+                    pass
+
             data_row = [
                 self.log_count,
                 event,
-                self.fastlio_timestamp_us,  # may be 0 if not yet received
-                self.gpr_timestamp_us if self.gpr_data_available else 0,
+                self.fastlio_timestamp_us if self.fastlio_timestamp_us != 0 else target_ts,
+                g_ts,
                 f"{self.fastlio_pose['pos_x']:.6f}",
                 f"{self.fastlio_pose['pos_y']:.6f}",
                 f"{self.fastlio_pose['pos_z']:.6f}",
@@ -541,8 +559,8 @@ class GPRScanController(Node):
                 f"{self.fastlio_pose['vel_ang_x']:.6f}",
                 f"{self.fastlio_pose['vel_ang_y']:.6f}",
                 f"{self.fastlio_pose['vel_ang_z']:.6f}",
-                f'{self.gpr_position:.6f}' if self.gpr_data_available else '0.0',
-                f'{self.gpr_velocity:.6f}' if self.gpr_data_available else '0.0'
+                f'{g_pos:.6f}',
+                f'{g_vel:.6f}'
             ]
             self.csv_writer.writerow(data_row)
             self.log_count += 1
