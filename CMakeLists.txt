@@ -128,7 +128,6 @@ install(
 install(
   PROGRAMS scripts/gpr_serial_bridge.py
   scripts/path_to_foot.py
-  scripts/move_one_meter.py
   scripts/gpr_travel_distance.py
   scripts/drive_travel_distance.py
   scripts/left_wheel_distance.py
