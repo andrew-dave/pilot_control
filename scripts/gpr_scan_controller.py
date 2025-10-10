@@ -22,6 +22,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from odrive_can.msg import ControlMessage, ControllerStatus
+from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
 import os
 import time
@@ -44,6 +45,11 @@ class GPRScanController(Node):
         self.declare_parameter('fastlio_odom_topic', '/Odometry')
         self.declare_parameter('log_frequency_hz', 50.0)      # 50 Hz logging
         self.declare_parameter('log_directory', os.path.expanduser('~/gpr_scans'))
+        # Namespaces and arming behavior
+        self.declare_parameter('left_ns', 'left')
+        self.declare_parameter('right_ns', 'right')
+        self.declare_parameter('gpr_ns', 'gpr')
+        self.declare_parameter('auto_arm_on_start', True)
         
         # Get parameters
         self.gpr_wheel_radius = self.get_parameter('gpr_wheel_radius').value
@@ -54,6 +60,10 @@ class GPRScanController(Node):
         self.fastlio_topic = self.get_parameter('fastlio_odom_topic').value
         self.log_freq = self.get_parameter('log_frequency_hz').value
         self.log_dir = self.get_parameter('log_directory').value
+        self.left_ns = self.get_parameter('left_ns').value
+        self.right_ns = self.get_parameter('right_ns').value
+        self.gpr_ns = self.get_parameter('gpr_ns').value
+        self.auto_arm_on_start = bool(self.get_parameter('auto_arm_on_start').value)
         
         # Create log directory
         os.makedirs(self.log_dir, exist_ok=True)
@@ -115,6 +125,15 @@ class GPRScanController(Node):
         # Service clients (Arduino control)
         self.line_start_client = self.create_client(Trigger, '/gpr_line_start')
         self.line_stop_client = self.create_client(Trigger, '/gpr_line_stop')
+
+        # ODrive Axis arming service client (GPR only)
+        self.gpr_axis_client = self.create_client(AxisState, f'/{self.gpr_ns}/request_axis_state')
+
+        # One-shot arming timer
+        if self.auto_arm_on_start:
+            self.arm_timer = self.create_timer(0.2, self._arm_once)
+        else:
+            self.arm_timer = None
         
         # Service server (toggle scan)
         self.toggle_service = self.create_service(
@@ -137,6 +156,23 @@ class GPRScanController(Node):
         self.get_logger().info(f'Service available: /gpr_scan/toggle')
         self.get_logger().info('')
         self.get_logger().info('💡 Press assigned key in teleop to start/stop scanning')
+
+    def _arm_once(self):
+        """Attempt to arm GPR axis into CLOSED_LOOP once service is available."""
+        try:
+            if not self.gpr_axis_client.wait_for_service(timeout_sec=0.1):
+                return
+
+            req = AxisState.Request()
+            req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
+            self.gpr_axis_client.call_async(req)
+
+            if self.arm_timer is not None:
+                self.arm_timer.cancel()
+                self.arm_timer = None
+            self.get_logger().info('Sent CLOSED_LOOP arming to /gpr axis')
+        except Exception as exc:
+            self.get_logger().warn(f"Arming failed: {exc}")
     
     def gpr_status_callback(self, msg):
         """Store latest GPR motor status"""
