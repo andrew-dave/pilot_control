@@ -45,6 +45,8 @@ class GPRScanController(Node):
         self.declare_parameter('fastlio_odom_topic', '/Odometry')
         self.declare_parameter('log_frequency_hz', 50.0)      # 50 Hz logging
         self.declare_parameter('log_directory', os.path.expanduser('~/gpr_scans'))
+        # Fast-LIO filtering
+        self.declare_parameter('fastlio_filter_window', 5)
         # Namespaces and arming behavior
         self.declare_parameter('left_ns', 'left')
         self.declare_parameter('right_ns', 'right')
@@ -60,6 +62,7 @@ class GPRScanController(Node):
         self.fastlio_topic = self.get_parameter('fastlio_odom_topic').value
         self.log_freq = self.get_parameter('log_frequency_hz').value
         self.log_dir = self.get_parameter('log_directory').value
+        self.fastlio_filter_window = int(self.get_parameter('fastlio_filter_window').value) or 1
         self.left_ns = self.get_parameter('left_ns').value
         self.right_ns = self.get_parameter('right_ns').value
         self.gpr_ns = self.get_parameter('gpr_ns').value
@@ -98,6 +101,10 @@ class GPRScanController(Node):
             'vel_lin_x': 0.0, 'vel_lin_y': 0.0, 'vel_lin_z': 0.0,
             'vel_ang_x': 0.0, 'vel_ang_y': 0.0, 'vel_ang_z': 0.0,
         }
+        # Filtered pose (moving average)
+        self.fastlio_pose_filt = dict(self.fastlio_pose)
+        # Buffer for filtering (stores dict snapshots)
+        self.fastlio_buffer = deque(maxlen=max(1, self.fastlio_filter_window))
         
         # Event tracking
         self.current_event = None
@@ -495,6 +502,44 @@ class GPRScanController(Node):
         self.fastlio_pose['vel_ang_y'] = msg.twist.twist.angular.y
         self.fastlio_pose['vel_ang_z'] = msg.twist.twist.angular.z
 
+        # Update moving average buffer
+        try:
+            self.fastlio_buffer.append(dict(self.fastlio_pose))
+            n = len(self.fastlio_buffer)
+            if n > 0:
+                # Average scalar components
+                def avg(key):
+                    return sum(sample[key] for sample in self.fastlio_buffer) / float(n)
+                self.fastlio_pose_filt['pos_x']     = avg('pos_x')
+                self.fastlio_pose_filt['pos_y']     = avg('pos_y')
+                self.fastlio_pose_filt['pos_z']     = avg('pos_z')
+                self.fastlio_pose_filt['vel_lin_x'] = avg('vel_lin_x')
+                self.fastlio_pose_filt['vel_lin_y'] = avg('vel_lin_y')
+                self.fastlio_pose_filt['vel_lin_z'] = avg('vel_lin_z')
+                self.fastlio_pose_filt['vel_ang_x'] = avg('vel_ang_x')
+                self.fastlio_pose_filt['vel_ang_y'] = avg('vel_ang_y')
+                self.fastlio_pose_filt['vel_ang_z'] = avg('vel_ang_z')
+                # Average quaternion and renormalize
+                qx = avg('quat_x')
+                qy = avg('quat_y')
+                qz = avg('quat_z')
+                qw = avg('quat_w')
+                norm = (qx*qx + qy*qy + qz*qz + qw*qw) ** 0.5
+                if norm > 1e-9:
+                    self.fastlio_pose_filt['quat_x'] = qx / norm
+                    self.fastlio_pose_filt['quat_y'] = qy / norm
+                    self.fastlio_pose_filt['quat_z'] = qz / norm
+                    self.fastlio_pose_filt['quat_w'] = qw / norm
+                else:
+                    # Fallback to latest raw quaternion
+                    self.fastlio_pose_filt['quat_x'] = self.fastlio_pose['quat_x']
+                    self.fastlio_pose_filt['quat_y'] = self.fastlio_pose['quat_y']
+                    self.fastlio_pose_filt['quat_z'] = self.fastlio_pose['quat_z']
+                    self.fastlio_pose_filt['quat_w'] = self.fastlio_pose['quat_w']
+        except Exception:
+            # On any error, fall back to raw
+            self.fastlio_pose_filt = dict(self.fastlio_pose)
+
         # Write one row per Fast-LIO tick, using nearest GPR sample
         if not self.logging_active or not self.csv_writer:
             return
@@ -529,19 +574,19 @@ class GPRScanController(Node):
                 event,
                 self.fastlio_timestamp_us,
                 g_ts,
-                f"{self.fastlio_pose['pos_x']:.6f}",
-                f"{self.fastlio_pose['pos_y']:.6f}",
-                f"{self.fastlio_pose['pos_z']:.6f}",
-                f"{self.fastlio_pose['quat_x']:.6f}",
-                f"{self.fastlio_pose['quat_y']:.6f}",
-                f"{self.fastlio_pose['quat_z']:.6f}",
-                f"{self.fastlio_pose['quat_w']:.6f}",
-                f"{self.fastlio_pose['vel_lin_x']:.6f}",
-                f"{self.fastlio_pose['vel_lin_y']:.6f}",
-                f"{self.fastlio_pose['vel_lin_z']:.6f}",
-                f"{self.fastlio_pose['vel_ang_x']:.6f}",
-                f"{self.fastlio_pose['vel_ang_y']:.6f}",
-                f"{self.fastlio_pose['vel_ang_z']:.6f}",
+                f"{self.fastlio_pose_filt['pos_x']:.6f}",
+                f"{self.fastlio_pose_filt['pos_y']:.6f}",
+                f"{self.fastlio_pose_filt['pos_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_x']:.6f}",
+                f"{self.fastlio_pose_filt['quat_y']:.6f}",
+                f"{self.fastlio_pose_filt['quat_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_w']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_z']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_z']:.6f}",
                 f'{g_pos:.6f}',
                 f'{g_vel:.6f}'
             ]
@@ -586,19 +631,19 @@ class GPRScanController(Node):
                 event,
                 self.fastlio_timestamp_us if self.fastlio_timestamp_us != 0 else target_ts,
                 g_ts,
-                f"{self.fastlio_pose['pos_x']:.6f}",
-                f"{self.fastlio_pose['pos_y']:.6f}",
-                f"{self.fastlio_pose['pos_z']:.6f}",
-                f"{self.fastlio_pose['quat_x']:.6f}",
-                f"{self.fastlio_pose['quat_y']:.6f}",
-                f"{self.fastlio_pose['quat_z']:.6f}",
-                f"{self.fastlio_pose['quat_w']:.6f}",
-                f"{self.fastlio_pose['vel_lin_x']:.6f}",
-                f"{self.fastlio_pose['vel_lin_y']:.6f}",
-                f"{self.fastlio_pose['vel_lin_z']:.6f}",
-                f"{self.fastlio_pose['vel_ang_x']:.6f}",
-                f"{self.fastlio_pose['vel_ang_y']:.6f}",
-                f"{self.fastlio_pose['vel_ang_z']:.6f}",
+                f"{self.fastlio_pose_filt['pos_x']:.6f}",
+                f"{self.fastlio_pose_filt['pos_y']:.6f}",
+                f"{self.fastlio_pose_filt['pos_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_x']:.6f}",
+                f"{self.fastlio_pose_filt['quat_y']:.6f}",
+                f"{self.fastlio_pose_filt['quat_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_w']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_z']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_z']:.6f}",
                 f'{g_pos:.6f}',
                 f'{g_vel:.6f}'
             ]
