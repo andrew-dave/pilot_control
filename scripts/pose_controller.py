@@ -65,7 +65,7 @@ class PoseController(Node):
         self.declare_parameter('Kd_angular', 0)
 
         # Safety parameters
-        self.declare_parameter('enable_controller', False) # Start disabled for safety
+        self.declare_parameter('enable_controller', True) # Start enabled by default
         self.declare_parameter('odometry_timeout_ms', 500) # Stop if no odometry
         
         # Topic names
@@ -208,7 +208,7 @@ class PoseController(Node):
         self.get_logger().info('='*70)
         
         if not self.controller_enabled:
-            self.get_logger().warn('⚠️  Controller is DISABLED. Use /enable_controller service to activate.')
+            self.get_logger().info('Controller is currently disabled; it will auto-enable on first target pose.')
     
     # ============================================================
     # CALLBACK: ODOMETRY
@@ -546,6 +546,10 @@ class PoseController(Node):
         self.target_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
         
         self.has_target = True
+        # Auto-enable controller on first target if disabled
+        if not self.controller_enabled:
+            self.controller_enabled = True
+            self.get_logger().info('✓ Controller auto-enabled on target reception')
         
         self.get_logger().info(
             f'🎯 New target set: x={self.target_x:.2f}m, y={self.target_y:.2f}m, '
