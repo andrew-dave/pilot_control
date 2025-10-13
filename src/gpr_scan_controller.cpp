@@ -39,7 +39,7 @@ class GPRScanController(Node):
         self.declare_parameter('gpr_gear_ratio', 1.0)         # Direct drive
         self.declare_parameter('velocity_multiplier', 1.0)
         self.declare_parameter('gpr_scan_velocity_mps', 0.5)  # 0.5 m/s scanning speed
-        self.declare_parameter('invert_third', true)
+        self.declare_parameter('invert_third', True)
         self.declare_parameter('fastlio_odom_topic', '/Odometry')
         self.declare_parameter('log_frequency_hz', 50.0)      # 50 Hz logging
         self.declare_parameter('log_directory', os.path.expanduser('~/gpr_scans'))
@@ -232,8 +232,9 @@ class GPRScanController(Node):
             motor_turns_per_sec = wheel_turns_per_sec * self.gpr_gear_ratio * self.velocity_multiplier
             
             # Apply inversion if needed
-            if self.invert_third:
-                motor_turns_per_sec = motor_turns_per_sec
+            //  if self.invert_third:
+            motor_turns_per_sec = -motor_turns_per_sec
+            print(motor_turns_per_sec)
             
             # Send velocity command
             msg = ControlMessage()
