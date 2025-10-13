@@ -135,7 +135,6 @@ install(
   scripts/test_gpr_position.py
   scripts/gpr_scan_controller.py
   scripts/pose_controller.py
-  scripts/test_pose_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
