@@ -4,8 +4,10 @@
 
 import sys
 import os
+import argparse
 import numpy as np
-import matplotlib.pyplot as plt
+# Matplotlib is imported lazily inside plotting functions to avoid
+# environment issues where system matplotlib is incompatible with numpy.
 import csv
 
 try:
@@ -28,7 +30,19 @@ def load_with_segysak(fname):
     return ds, da
 
 
+def _import_matplotlib_pyplot():
+    try:
+        import matplotlib.pyplot as plt  # type: ignore
+        return plt
+    except Exception as e:
+        print(f"Matplotlib unavailable ({e}); skipping plot.")
+        return None
+
+
 def plot_radargram(da, title="GPR Radargram"):
+    plt = _import_matplotlib_pyplot()
+    if plt is None:
+        return
     A = da.values
     cdp = da.coords.get("cdp", np.arange(A.shape[0])).values
     twt = da.coords.get("twt", np.arange(A.shape[1])).values
@@ -52,11 +66,48 @@ def plot_radargram(da, title="GPR Radargram"):
     plt.show()
 
 
+def compute_along_track_distances(xy):
+    if xy.size == 0:
+        return np.zeros((0,), dtype=float)
+    diffs = np.diff(np.asarray(xy, dtype=float), axis=0)
+    seg = np.hypot(diffs[:, 0], diffs[:, 1])
+    s = np.concatenate(([0.0], np.cumsum(seg)))
+    return s
+
+
+def plot_matrix_with_distance(A_T, twt, distances, title="", xlabel="Distance (m)"):
+    plt = _import_matplotlib_pyplot()
+    if plt is None:
+        return
+    if A_T.size == 0 or distances.size == 0 or twt.size == 0:
+        print("Nothing to plot: empty data.")
+        return
+    v = np.percentile(np.abs(A_T), 98)
+    plt.figure(figsize=(12, 6))
+    im = plt.imshow(
+        A_T,
+        aspect="auto",
+        cmap="gray",
+        vmin=-v,
+        vmax=v,
+        extent=[float(distances[0]), float(distances[-1]), float(twt[-1]), float(twt[0])],
+    )
+    plt.xlabel(xlabel)
+    plt.ylabel("TWT (ms)")
+    plt.title(title)
+    plt.colorbar(im, label="Amplitude")
+    plt.tight_layout()
+    plt.show()
+
+
 def load_scan_csv(csv_path):
     """Load gpr_scan_controller CSV and return a dict of columns.
 
-    Returns keys: 'event' (list[str]), 'fastlio_time_us', 'gpr_time_us',
-    'pos_x','pos_y','pos_z','gpr_position','gpr_velocity'. Missing fields default to zeros/empty.
+    - Detects the header row anywhere in the file (e.g., row 24), skipping comments
+      and empty lines until it finds required column names.
+    - Returns keys: 'event' (list[str]), 'fastlio_time_us', 'gpr_time_us',
+      'pos_x','pos_y','pos_z','gpr_position','gpr_velocity'. Missing fields
+      default to zeros/empty.
     """
     out = {
         'event': [],
@@ -67,25 +118,57 @@ def load_scan_csv(csv_path):
     }
     with open(csv_path, 'r', newline='') as f:
         reader = csv.reader(f)
-        header = next(reader)
-        name_to_idx = {name.strip(): i for i, name in enumerate(header)}
+        header = None
+        name_to_idx = {}
 
-        def col(name, row, default=""):
-            idx = name_to_idx.get(name)
-            return row[idx] if idx is not None and idx < len(row) else default
+        def to_float(val, default=0.0):
+            try:
+                return float(val)
+            except Exception:
+                return float(default)
 
+        line_no = 0
         for row in reader:
-            # skip comments/empty
-            if not row or (row[0].startswith('#')):
+            line_no += 1
+            # Normalize row values
+            row = [c.strip() for c in row]
+            # Skip empty rows entirely
+            if not row or all(c == '' for c in row):
                 continue
+            # Identify header if not yet found
+            if header is None:
+                # Skip comment lines
+                if row[0].startswith('#'):
+                    continue
+                # Heuristic: header must include required columns
+                required = {'event', 'pos_x', 'pos_y', 'gpr_position'}
+                if required.issubset(set(row)):
+                    header = row
+                    name_to_idx = {name: i for i, name in enumerate(header)}
+                    print(f"Detected CSV header at row {line_no}: {header}")
+                    continue
+                # Not a header yet; keep scanning
+                continue
+
+            # From here, we have a header; skip comment lines
+            if row[0].startswith('#'):
+                continue
+            # Skip any repeated header rows found later
+            if {'event', 'pos_x', 'pos_y', 'gpr_position'}.issubset(set(row)):
+                continue
+
+            def col(name, row_vals, default=""):
+                idx = name_to_idx.get(name)
+                return row_vals[idx] if idx is not None and idx < len(row_vals) else default
+
             out['event'].append(col('event', row, ''))
-            out['fastlio_time_us'].append(float(col('fastlio_time_us', row, 0.0)))
-            out['gpr_time_us'].append(float(col('gpr_time_us', row, 0.0)))
-            out['pos_x'].append(float(col('pos_x', row, 0.0)))
-            out['pos_y'].append(float(col('pos_y', row, 0.0)))
-            out['pos_z'].append(float(col('pos_z', row, 0.0)))
-            out['gpr_position'].append(float(col('gpr_position', row, 0.0)))
-            out['gpr_velocity'].append(float(col('gpr_velocity', row, 0.0)))
+            out['fastlio_time_us'].append(to_float(col('fastlio_time_us', row, 0.0)))
+            out['gpr_time_us'].append(to_float(col('gpr_time_us', row, 0.0)))
+            out['pos_x'].append(to_float(col('pos_x', row, 0.0)))
+            out['pos_y'].append(to_float(col('pos_y', row, 0.0)))
+            out['pos_z'].append(to_float(col('pos_z', row, 0.0)))
+            out['gpr_position'].append(to_float(col('gpr_position', row, 0.0)))
+            out['gpr_velocity'].append(to_float(col('gpr_velocity', row, 0.0)))
     # Convert lists to numpy arrays for numeric fields
     for key in ['fastlio_time_us', 'gpr_time_us', 'pos_x', 'pos_y', 'pos_z', 'gpr_position', 'gpr_velocity']:
         out[key] = np.asarray(out[key], dtype=float)
@@ -246,7 +329,7 @@ def assign_locations_by_revs(matrix,
 def build_output_matrix(amplitudes_matrix,
                         ascan_locations_xy,
                         interest_locations_xy,
-                        spacing_m=0.005):
+                        spacing_m=0.0025):
     """Create weighted-averaged A-scans at the locations of interest.
 
     - amplitudes_matrix: shape (twt, Nascans)
@@ -296,8 +379,23 @@ def main():
         # print("Usage: python segy_explorer.py your_file.sgy")
         sys.exit(1)
 
-    fname = sys.argv[1]
-    csv_path = sys.argv[2] if len(sys.argv) > 2 else None
+    parser = argparse.ArgumentParser(description="SEG-Y extractor and GPR localization")
+    parser.add_argument('segy_file', help='Path to SEG-Y file (.sgy)')
+    parser.add_argument('scan_csv', nargs='?', default=None, help='Optional scan CSV for localization')
+    # Localization and thresholds
+    parser.add_argument('--spacing_m', type=float, default=0.01, help='Along-track spacing for A-scan assignment and interest points (m)')
+    parser.add_argument('--weight_radius_m', type=float, default=None, help='Influence radius for distance-weighted averaging (m); default=spacing_m')
+    parser.add_argument('--wheel_radius_m', type=float, default=0.03, help='Drive wheel radius for revolutions-to-distance (m)')
+    parser.add_argument('--gear_ratio', type=float, default=1.0, help='Gear ratio from motor to wheel (dimensionless)')
+    parser.add_argument('--pre_window', type=int, default=5, help='Samples before start event to average initial pose')
+    parser.add_argument('--post_window', type=int, default=5, help='Samples after stop event to average stopping pose')
+    parser.add_argument('--start_label', type=str, default='GPR_MOTOR_START', help='Start event label in CSV')
+    parser.add_argument('--stop_label', type=str, default='MOTOR_STOPPING', help='Stop event label in CSV')
+
+    args = parser.parse_args()
+
+    fname = args.segy_file
+    csv_path = args.scan_csv
     ds, da = load_with_segysak(fname)
     
     A = da.values
@@ -314,20 +412,26 @@ def main():
     np.savetxt(matrix_csv, matrix, delimiter=",", header=header_cols, comments="")
     print(f"Saved radargram matrix CSV: {matrix_csv}")
 
-    # NPZ: include full matrix and axes for programmatic use
-    radar_npz = base + "_radargram.npz"
-    np.savez(radar_npz, radargram=A, cdp=cdp, twt=twt)
-    print(f"Saved radargram NPZ: {radar_npz}")
+    # Skipping NPZ save; CSV saved above in `matrix_csv`.
 
     # If a scan CSV is provided, run localization mapping pipeline
     if csv_path is not None and os.path.isfile(csv_path):
         scan = load_scan_csv(csv_path)
-        start_idx, stop_idx = find_event_indices(scan['event'])
+        start_idx, stop_idx = find_event_indices(scan['event'], start_label=args.start_label, stop_label=args.stop_label)
 
-        initial_gpr_pos, initial_xy, stopping_xy = compute_initial_and_stopping(scan, start_idx, stop_idx)
+        initial_gpr_pos, initial_xy, stopping_xy = compute_initial_and_stopping(scan, start_idx, stop_idx, pre_window=args.pre_window, post_window=args.post_window)
         print(f"Initial GPR pos: {initial_gpr_pos:.6f}")
         print(f"Initial XY avg: {initial_xy}")
         print(f"Stopping XY avg: {stopping_xy}")
+        # Parameter echo for traceability
+        weight_radius = (args.weight_radius_m if args.weight_radius_m is not None else args.spacing_m)
+        print("Localization parameters:")
+        print(f"  spacing_m={args.spacing_m}")
+        print(f"  weight_radius_m={weight_radius}")
+        print(f"  wheel_radius_m={args.wheel_radius_m}")
+        print(f"  gear_ratio={args.gear_ratio}")
+        print(f"  pre_window={args.pre_window}, post_window={args.post_window}")
+        print(f"  start_label='{args.start_label}', stop_label='{args.stop_label}'")
 
         # Fit heading over the SCANNING window (from start_idx to stop_idx)
         lo = start_idx if start_idx >= 0 else 0
@@ -343,16 +447,54 @@ def main():
             stop_idx,
             initial_xy,
             initial_gpr_pos=initial_gpr_pos,
-            wheel_radius_m=0.03,
-            gear_ratio=1.0,
-            spacing_m=0.005,
+            wheel_radius_m=args.wheel_radius_m,
+            gear_ratio=args.gear_ratio,
+            spacing_m=args.spacing_m,
         )
         # Compose output structure at interest locations via distance-weighted average
-        interest_locs = generate_locations_along_heading(initial_xy, stopping_xy, spacing_m=0.005)
-        result = build_output_matrix(A.T, asc_locs, interest_locs, spacing_m=0.005)
-        out_npz = base + "_localized.npz"
-        np.savez(out_npz, amplitudes=result['amplitudes'], locations_xy=result['locations_xy'], twt=result['twt'])
-        print(f"Saved localized NPZ: {out_npz}")
+        interest_locs = generate_locations_along_heading(initial_xy, stopping_xy, spacing_m=args.spacing_m)
+        result = build_output_matrix(A.T, asc_locs, interest_locs, spacing_m=weight_radius)
+
+        # Stats: counts and amplitude ranges before/after processing
+        pre_min = float(np.min(A.T)) if A.size > 0 else float('nan')
+        pre_max = float(np.max(A.T)) if A.size > 0 else float('nan')
+        num_initial_traces = int(A.shape[0])
+        num_localized_points = int(result['amplitudes'].shape[1]) if result['amplitudes'].size > 0 else 0
+        if result['amplitudes'].size > 0:
+            post_min = float(np.min(result['amplitudes']))
+            post_max = float(np.max(result['amplitudes']))
+        else:
+            post_min = float('nan')
+            post_max = float('nan')
+
+        print("---- GPR Localization Stats ----")
+        print(f"Initial A-scan/CDP count: {num_initial_traces}")
+        print(f"Localized points considered: {num_localized_points}")
+        print(f"Amplitude min/max before: {pre_min:.6g} / {pre_max:.6g}")
+        print(f"Amplitude min/max after:  {post_min:.6g} / {post_max:.6g}")
+        # Save localized results as CSVs (amplitudes and locations)
+        localized_ampl_csv = base + "_localized_amplitudes.csv"
+        m = result['amplitudes'].shape[1]
+        header_cols = "twt," + ",".join(f"loc{i}" for i in range(m))
+        ampl_mat = np.column_stack((result['twt'], result['amplitudes']))
+        np.savetxt(localized_ampl_csv, ampl_mat, delimiter=",", header=header_cols, comments="")
+        print(f"Saved localized amplitudes CSV: {localized_ampl_csv}")
+
+        localized_xy_csv = base + "_localized_locations_xy.csv"
+        loc_idx = np.arange(m, dtype=int)
+        loc_mat = np.column_stack((loc_idx, result['locations_xy']))
+        np.savetxt(localized_xy_csv, loc_mat, delimiter=",", header="loc_index,x,y", comments="")
+        print(f"Saved localized locations CSV: {localized_xy_csv}")
+
+        # Plot localized radargram using along-track distance on x-axis
+        distances = compute_along_track_distances(result['locations_xy'])
+        plot_matrix_with_distance(
+            result['amplitudes'],
+            result['twt'],
+            distances,
+            title=f"GPR Radargram (Localized, ~{args.spacing_m*1000:.0f} mm along-track)",
+            xlabel="Along-track distance (m)",
+        )
 
     # Display radargram
     plot_radargram(da, title="GPR Radargram")
