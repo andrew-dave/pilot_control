@@ -115,6 +115,8 @@ class PoseController(Node):
         self.current_vyaw = 0.0
         self.pose_initialized = False
         self.last_odom_time = self.get_clock().now()
+        # Throttled logging state
+        self._last_log_time_ns = {}
         
         # Target pose
         self.target_x = 0.0
@@ -283,21 +285,14 @@ class PoseController(Node):
         
         # Check if odometry is initialized
         if not self.pose_initialized:
-            self.get_logger().warn_throttle(
-                5.0,
-                '⚠️  Waiting for odometry from Fast-LIO2...'
-            )
+            self.warn_throttled('waiting_odom', '⚠️  Waiting for odometry from Fast-LIO2...', 5.0)
             self.publish_zero_velocity()
             return
         
         # Check odometry timeout
         time_since_odom = (self.get_clock().now() - self.last_odom_time).nanoseconds / 1e6
         if time_since_odom > self.odom_timeout_ms:
-            self.get_logger().warn_throttle(
-                2.0,
-                f'⚠️  Odometry timeout ({time_since_odom:.1f} ms > {self.odom_timeout_ms} ms). '
-                'Stopping motors.'
-            )
+            self.warn_throttled('odom_timeout', f'⚠️  Odometry timeout ({time_since_odom:.1f} ms > {self.odom_timeout_ms} ms). Stopping motors.', 2.0)
             self.publish_zero_velocity()
             return
         
@@ -633,7 +628,12 @@ class PoseController(Node):
         """
         Cleanup when node is destroyed - send zero velocity.
         """
-        self.publish_zero_velocity()
+        try:
+            # Avoid publishing after shutdown/destruction
+            if hasattr(self, 'left_pub') and hasattr(self, 'right_pub'):
+                self.publish_zero_velocity()
+        except Exception:
+            pass
 
     # ============================================================
     # STARTUP: ARM MOTORS HELPERS
@@ -647,7 +647,7 @@ class PoseController(Node):
         # Ensure service availability
         if not (self.left_axis_client.service_is_ready() and self.right_axis_client.service_is_ready() and
                 self.left_clear_client.service_is_ready() and self.right_clear_client.service_is_ready()):
-            self.get_logger().warn_throttle(5.0, 'Waiting for ODrive CAN services to be ready...')
+            self.warn_throttled('odrive_services', 'Waiting for ODrive CAN services to be ready...', 5.0)
             return
 
         try:
@@ -668,6 +668,16 @@ class PoseController(Node):
             self._arm_timer.cancel()
         except Exception as e:
             self.get_logger().warn(f'Arm attempt failed: {e}')
+
+    # ============================================================
+    # LOGGING: SIMPLE THROTTLED WARNING
+    # ============================================================
+    def warn_throttled(self, key: str, message: str, period_sec: float) -> None:
+        now_ns = self.get_clock().now().nanoseconds
+        last_ns = self._last_log_time_ns.get(key, 0)
+        if last_ns == 0 or (now_ns - last_ns) >= int(period_sec * 1e9):
+            self._last_log_time_ns[key] = now_ns
+            self.get_logger().warning(message)
 
 
 def main(args=None):
