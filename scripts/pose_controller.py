@@ -14,12 +14,10 @@ Features:
 Usage:
   ros2 run pilot_control pose_controller.py
 
-Services:
-  /set_target_pose (geometry_msgs/PoseStamped) - Set new target pose
-  
 Topics:
   Subscribed:
     - /Odometry (nav_msgs/Odometry) - Fast-LIO2 localization
+    - /set_target_pose (geometry_msgs/PoseStamped) - Target pose input
   Published:
     - /left/control_message (odrive_can/ControlMessage) - Left wheel velocity
     - /right/control_message (odrive_can/ControlMessage) - Right wheel velocity
@@ -151,13 +149,14 @@ class PoseController(Node):
             10
         )
         
-        # Service to set target pose
-        self.set_target_srv = self.create_service(
+        # Subscriber to set target pose (PoseStamped topic)
+        self.set_target_sub = self.create_subscription(
             PoseStamped,
             '/set_target_pose',
-            self.set_target_callback
+            self.set_target_callback,
+            10
         )
-        
+
         # Service to enable/disable controller
         self.enable_srv = self.create_service(
             Trigger,
@@ -532,18 +531,18 @@ class PoseController(Node):
     # SERVICE CALLBACKS
     # ============================================================
     
-    def set_target_callback(self, request, response):
+    def set_target_callback(self, msg: PoseStamped):
         """
-        Service callback to set a new target pose.
+        Topic callback to set a new target pose via PoseStamped message.
         """
-        self.target_x = request.pose.position.x
-        self.target_y = request.pose.position.y
+        self.target_x = msg.pose.position.x
+        self.target_y = msg.pose.position.y
         
         # Extract yaw from quaternion
-        qx = request.pose.orientation.x
-        qy = request.pose.orientation.y
-        qz = request.pose.orientation.z
-        qw = request.pose.orientation.w
+        qx = msg.pose.orientation.x
+        qy = msg.pose.orientation.y
+        qz = msg.pose.orientation.z
+        qw = msg.pose.orientation.w
         self.target_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
         
         self.has_target = True
@@ -552,8 +551,6 @@ class PoseController(Node):
             f'🎯 New target set: x={self.target_x:.2f}m, y={self.target_y:.2f}m, '
             f'yaw={math.degrees(self.target_yaw):.1f}°'
         )
-        
-        return response
     
     def enable_callback(self, request, response):
         """
