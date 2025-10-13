@@ -233,7 +233,7 @@ class GPRScanController(Node):
             
             # Apply inversion if needed
             if self.invert_third:
-                motor_turns_per_sec = -motor_turns_per_sec
+                motor_turns_per_sec = motor_turns_per_sec
             
             # Send velocity command
             msg = ControlMessage()
