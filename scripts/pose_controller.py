@@ -57,10 +57,10 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.01) # m
         self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
 
-        self.declare_parameter('Kp_linear', 10)
+        self.declare_parameter('Kp_linear', 30)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 10)
+        self.declare_parameter('Kp_angular', 30)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
