@@ -107,7 +107,7 @@ class PoseController(Node):
         # ============================================================
         
         # Current pose from Fast-LIO2
-        self.current_x = 0.0
+        self.current_x = 3.0
         self.current_y = 0.0
         self.current_yaw = 0.0
         self.current_vx = 0.0
