@@ -28,7 +28,9 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from odrive_can.msg import ControlMessage
+from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
+from std_srvs.srv import Empty
 import math
 import numpy as np
 from typing import Tuple, Optional
@@ -173,6 +175,18 @@ class PoseController(Node):
         # Control loop timer (10 Hz by default)
         control_period = 1.0 / self.control_freq
         self.control_timer = self.create_timer(control_period, self.control_loop)
+
+        # ============================================================
+        # STARTUP: ARM MOTORS (CLOSED-LOOP) VIA ODRIVE CAN SERVICES
+        # ============================================================
+        self.left_axis_client = self.create_client(AxisState, '/left/request_axis_state')
+        self.right_axis_client = self.create_client(AxisState, '/right/request_axis_state')
+        self.left_clear_client = self.create_client(Empty, '/left/clear_errors')
+        self.right_clear_client = self.create_client(Empty, '/right/clear_errors')
+
+        self._arm_attempts = 0
+        self._arm_max_attempts = 5
+        self._arm_timer = self.create_timer(1.0, self._attempt_arm_motors)
         
         # ============================================================
         # LOGGING
@@ -620,6 +634,40 @@ class PoseController(Node):
         Cleanup when node is destroyed - send zero velocity.
         """
         self.publish_zero_velocity()
+
+    # ============================================================
+    # STARTUP: ARM MOTORS HELPERS
+    # ============================================================
+    def _attempt_arm_motors(self):
+        if self._arm_attempts >= self._arm_max_attempts:
+            self._arm_timer.cancel()
+            return
+        self._arm_attempts += 1
+
+        # Ensure service availability
+        if not (self.left_axis_client.service_is_ready() and self.right_axis_client.service_is_ready() and
+                self.left_clear_client.service_is_ready() and self.right_clear_client.service_is_ready()):
+            self.get_logger().warn_throttle(5.0, 'Waiting for ODrive CAN services to be ready...')
+            return
+
+        try:
+            # Clear errors first
+            self.left_clear_client.call_async(Empty.Request())
+            self.right_clear_client.call_async(Empty.Request())
+
+            # Request CLOSED_LOOP_CONTROL (8 per ODrive enums)
+            req_left = AxisState.Request()
+            req_left.axis_requested_state = 8
+            req_right = AxisState.Request()
+            req_right.axis_requested_state = 8
+
+            self.left_axis_client.call_async(req_left)
+            self.right_axis_client.call_async(req_right)
+            self.get_logger().info('Arming ODrive axes (CLOSED_LOOP_CONTROL requested)')
+            # Stop timer after successful dispatch
+            self._arm_timer.cancel()
+        except Exception as e:
+            self.get_logger().warn(f'Arm attempt failed: {e}')
 
 
 def main(args=None):
