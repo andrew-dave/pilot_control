@@ -27,6 +27,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
@@ -66,10 +67,10 @@ class PoseController(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 15)
+        self.declare_parameter('Kp_linear', 5)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 15)
+        self.declare_parameter('Kp_angular', 5)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -199,6 +200,14 @@ class PoseController(Node):
             '/pose_control/wheel_vel',
             10
         )
+        # Individually labeled publishers for rqt_plot
+        self.err_dx_pub = self.create_publisher(Float64, '/pose_control/error_dx', 10)
+        self.err_dy_pub = self.create_publisher(Float64, '/pose_control/error_dy', 10)
+        self.err_e_lat_pub = self.create_publisher(Float64, '/pose_control/error_e_lat', 10)
+        self.err_v_e_pub = self.create_publisher(Float64, '/pose_control/error_v_e', 10)
+        self.err_dyaw_pub = self.create_publisher(Float64, '/pose_control/error_dyaw', 10)
+        self.left_rps_pub = self.create_publisher(Float64, '/pose_control/left_rps', 10)
+        self.right_rps_pub = self.create_publisher(Float64, '/pose_control/right_rps', 10)
         
         # Subscriber to set target pose (Float64MultiArray: [x,y,z,yaw])
         self.set_target_sub = self.create_subscription(
@@ -517,7 +526,7 @@ class PoseController(Node):
         )
 
         ## Minimum velocity threshold
-        
+
         
         # Store for logging
         self.left_wheel_velocity = left_vel
@@ -545,6 +554,13 @@ class PoseController(Node):
             ]
             self.errors_pub.publish(err_msg)
 
+            # Individually labeled errors
+            dx_msg = Float64(); dx_msg.data = float(diag.get('dx', 0.0)); self.err_dx_pub.publish(dx_msg)
+            dy_msg = Float64(); dy_msg.data = float(diag.get('dy', 0.0)); self.err_dy_pub.publish(dy_msg)
+            el_msg = Float64(); el_msg.data = float(diag.get('e_lat', 0.0)); self.err_e_lat_pub.publish(el_msg)
+            ve_msg = Float64(); ve_msg.data = float(diag.get('v_e', 0.0)); self.err_v_e_pub.publish(ve_msg)
+            yw_msg = Float64(); yw_msg.data = float(diag.get('dyaw', 0.0)); self.err_dyaw_pub.publish(yw_msg)
+
             # Command v, w
             tw = Twist()
             tw.linear.x = float(linear_vel)
@@ -555,6 +571,10 @@ class PoseController(Node):
             wheels_msg = Float64MultiArray()
             wheels_msg.data = [float(left_vel), float(right_vel)]
             self.wheels_pub.publish(wheels_msg)
+
+            # Individually labeled wheel velocities
+            l_msg = Float64(); l_msg.data = float(left_vel); self.left_rps_pub.publish(l_msg)
+            r_msg = Float64(); r_msg.data = float(right_vel); self.right_rps_pub.publish(r_msg)
         except Exception:
             pass
         
