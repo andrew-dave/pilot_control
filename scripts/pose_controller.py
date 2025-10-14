@@ -58,16 +58,16 @@ class PoseController(Node):
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
         self.declare_parameter('max_angular_velocity', 1.5) # rad/s
         self.declare_parameter('position_tolerance', 0.01) # m
-        self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
+        self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 30)
+        self.declare_parameter('Kp_linear', 20)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 30)
+        self.declare_parameter('Kp_angular', 20)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -79,6 +79,7 @@ class PoseController(Node):
         self.declare_parameter('odometry_topic', '/Odometry')
         self.declare_parameter('left_control_topic', '/left/control_message')
         self.declare_parameter('right_control_topic', '/right/control_message')
+        self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected')
         
         # Get parameters
         self.wheel_radius = self.get_parameter('wheel_radius').value
@@ -109,6 +110,7 @@ class PoseController(Node):
         odometry_topic = self.get_parameter('odometry_topic').value
         left_control_topic = self.get_parameter('left_control_topic').value
         right_control_topic = self.get_parameter('right_control_topic').value
+        corrected_odom_topic = self.get_parameter('corrected_odometry_topic').value
         
         # ============================================================
         # STATE VARIABLES
@@ -170,6 +172,12 @@ class PoseController(Node):
         self.right_pub = self.create_publisher(
             ControlMessage,
             right_control_topic,
+            10
+        )
+        # Publisher for tilt-corrected odometry
+        self.odom_corr_pub = self.create_publisher(
+            Odometry,
+            corrected_odom_topic,
             10
         )
         
@@ -292,6 +300,31 @@ class PoseController(Node):
         
         # Update last odometry time
         self.last_odom_time = self.get_clock().now()
+
+        # Publish corrected odometry
+        try:
+            odom_corr = Odometry()
+            odom_corr.header.stamp = msg.header.stamp
+            odom_corr.header.frame_id = msg.header.frame_id
+            # child_frame_id preserved
+            try:
+                odom_corr.child_frame_id = msg.child_frame_id
+            except Exception:
+                odom_corr.child_frame_id = ''
+            odom_corr.pose.pose.position.x = self.current_x
+            odom_corr.pose.pose.position.y = self.current_y
+            odom_corr.pose.pose.position.z = float(self.rotate_vector_by_quat(
+                np.array([0.0, 0.0, msg.pose.pose.position.z], dtype=float), self.align_quat
+            )[2])
+            odom_corr.pose.pose.orientation.x = corr_q[0]
+            odom_corr.pose.pose.orientation.y = corr_q[1]
+            odom_corr.pose.pose.orientation.z = corr_q[2]
+            odom_corr.pose.pose.orientation.w = corr_q[3]
+            # Pass-through twist (not rotated)
+            odom_corr.twist = msg.twist
+            self.odom_corr_pub.publish(odom_corr)
+        except Exception:
+            pass
 
     # =============================
     # Tilt Correction Utilities
@@ -565,8 +598,18 @@ class PoseController(Node):
         # Error terms
         dx = x_next - current_x
         dy = y_next - current_y
-        dyaw = self.normalize_angle(target_yaw - current_yaw)
+
+        #posiion error thresholding
+        if np.linalg.norm([dx, dy]) < self.pos_tolerance:
+            dx=0
+            dy=0
         
+
+        dyaw = self.normalize_angle(target_yaw - current_yaw)
+
+        #yaw error thresholding
+        if abs(dyaw) < self.ori_tolerance:
+            dyaw=0
         # Lateral error (perpendicular to robot heading)
         e_lat = np.dot([-np.sin(current_yaw), np.cos(current_yaw)], [dx, dy])
         
@@ -579,6 +622,7 @@ class PoseController(Node):
             w_e = dyaw
         else:
             w_e = np.arctan(e_lat) + (abs(e_lat) / 10.0) * dyaw
+            w_e/=2
 
         # PID control (currently just proportional)
         linear_vel = self.Kp_linear * v_e
