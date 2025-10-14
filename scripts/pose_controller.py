@@ -17,7 +17,7 @@ Usage:
 Topics:
   Subscribed:
     - /Odometry (nav_msgs/Odometry) - Fast-LIO2 localization
-    - /set_target_pose (geometry_msgs/PoseStamped) - Target pose input
+    - /set_target_pose (std_msgs/Float64MultiArray) - [x, y, z, yaw(rad)]
   Published:
     - /left/control_message (odrive_can/ControlMessage) - Left wheel velocity
     - /right/control_message (odrive_can/ControlMessage) - Right wheel velocity
@@ -26,7 +26,7 @@ Topics:
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Float64MultiArray
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
@@ -64,10 +64,10 @@ class PoseController(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 20)
+        self.declare_parameter('Kp_linear', 30)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 20)
+        self.declare_parameter('Kp_angular', 30)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -117,7 +117,7 @@ class PoseController(Node):
         # ============================================================
         
         # Current pose from Fast-LIO2
-        self.current_x = 3.0
+        self.current_x = 0.0
         self.current_y = 0.0
         self.current_yaw = 0.0
         self.current_vx = 0.0
@@ -181,9 +181,9 @@ class PoseController(Node):
             10
         )
         
-        # Subscriber to set target pose (PoseStamped topic)
+        # Subscriber to set target pose (Float64MultiArray: [x,y,z,yaw])
         self.set_target_sub = self.create_subscription(
-            PoseStamped,
+            Float64MultiArray,
             '/set_target_pose',
             self.set_target_callback,
             10
@@ -715,19 +715,23 @@ class PoseController(Node):
     # SERVICE CALLBACKS
     # ============================================================
     
-    def set_target_callback(self, msg: PoseStamped):
+    def set_target_callback(self, msg: Float64MultiArray):
         """
-        Topic callback to set a new target pose via PoseStamped message.
+        Topic callback to set a new target pose via Float64MultiArray [x, y, z, yaw(rad)].
         """
-        self.target_x = msg.pose.position.x
-        self.target_y = msg.pose.position.y
-        
-        # Extract yaw from quaternion
-        qx = msg.pose.orientation.x
-        qy = msg.pose.orientation.y
-        qz = msg.pose.orientation.z
-        qw = msg.pose.orientation.w
-        self.target_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
+        try:
+            data = list(msg.data)
+            if len(data) < 4:
+                self.get_logger().warning('set_target_pose requires 4 elements: [x,y,z,yaw]')
+                return
+            self.target_x = float(data[0])
+            self.target_y = float(data[1])
+            # z currently unused in control but stored for completeness
+            self.target_z = float(data[2]) if hasattr(self, 'target_z') else float(data[2])
+            self.target_yaw = float(data[3])
+        except Exception as e:
+            self.get_logger().warning(f'Invalid set_target_pose payload: {e}')
+            return
         
         self.has_target = True
         # Auto-enable controller on first target if disabled
