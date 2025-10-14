@@ -67,10 +67,10 @@ class PoseController(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 4)
+        self.declare_parameter('Kp_linear', 10)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 4)
+        self.declare_parameter('Kp_angular', 10)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
