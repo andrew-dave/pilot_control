@@ -67,10 +67,10 @@ class PoseController(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 5)
+        self.declare_parameter('Kp_linear', 1.5)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 5)
+        self.declare_parameter('Kp_angular', 1.5)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -507,11 +507,11 @@ class PoseController(Node):
         # VELOCITY RESCALING 
         # ============================================================
         # Scale down velocities proportionally if either exceeds limits
-        linear_scale = abs(linear_vel) / self.max_linear_vel if self.max_linear_vel > 0 else 0
-        angular_scale = abs(angular_vel) / self.max_angular_vel if self.max_angular_vel > 0 else 0
-
+        linear_scale = abs(linear_vel) / self.max_linear_vel if self.max_linear_vel > 0 else 0.0
+        angular_scale = abs(angular_vel) / self.max_angular_vel if self.max_angular_vel > 0 else 0.0
         vel_factor = max(linear_scale, angular_scale)
-        
+        if not np.isfinite(vel_factor) or vel_factor < 1.0:
+            vel_factor = 1.0
         linear_vel = linear_vel / vel_factor
         angular_vel = angular_vel / vel_factor
 
