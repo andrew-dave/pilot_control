@@ -8,7 +8,6 @@ import argparse
 import numpy as np
 # Matplotlib is imported lazily inside plotting functions to avoid
 # environment issues where system matplotlib is incompatible with numpy.
-import csv
 
 try:
     import segysak.segy as sgy
