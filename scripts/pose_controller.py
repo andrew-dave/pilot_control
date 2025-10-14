@@ -34,6 +34,7 @@ from std_srvs.srv import Empty
 import math
 import numpy as np
 from typing import Tuple, Optional
+from sensor_msgs.msg import Imu
 
 
 class PoseController(Node):
@@ -58,6 +59,10 @@ class PoseController(Node):
         self.declare_parameter('max_angular_velocity', 1.5) # rad/s
         self.declare_parameter('position_tolerance', 0.01) # m
         self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
+        # Tilt correction parameters (similar to gpr_scan_controller)
+        self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
+        self.declare_parameter('accel_topic', '/livox/imu')
+        self.declare_parameter('accel_samples', 10)
 
         self.declare_parameter('Kp_linear', 30)
         self.declare_parameter('Ki_linear', 0)
@@ -88,6 +93,9 @@ class PoseController(Node):
         self.max_angular_vel = self.get_parameter('max_angular_velocity').value
         self.pos_tolerance = self.get_parameter('position_tolerance').value
         self.ori_tolerance = self.get_parameter('orientation_tolerance').value
+        self.pitch_rad = float(self.get_parameter('pitch_rad').value)
+        self.accel_topic = str(self.get_parameter('accel_topic').value)
+        self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
         self.Kp_linear = self.get_parameter('Kp_linear').value
         self.Ki_linear = self.get_parameter('Ki_linear').value
         self.Kd_linear = self.get_parameter('Kd_linear').value
@@ -117,6 +125,11 @@ class PoseController(Node):
         self.last_odom_time = self.get_clock().now()
         # Throttled logging state
         self._last_log_time_ns = {}
+        # Tilt correction state
+        self.accel_initialized = False
+        self.accel_sum = np.zeros(3, dtype=float)
+        self.accel_count = 0
+        self.align_quat = self.quat_from_axis_angle([0.0, 1.0, 0.0], self.pitch_rad)  # (x,y,z,w)
         
         # Target pose
         self.target_x = 0.0
@@ -137,6 +150,13 @@ class PoseController(Node):
             Odometry,
             odometry_topic,
             self.odometry_callback,
+            10
+        )
+        # IMU subscription for gravity-based tilt correction
+        self.imu_sub = self.create_subscription(
+            Imu,
+            self.accel_topic,
+            self.imu_callback,
             10
         )
         
@@ -235,19 +255,27 @@ class PoseController(Node):
         Callback for Fast-LIO2 odometry messages.
         Extracts x, y, yaw from the odometry message.
         """
-        # Extract position (x, y, z)
-        self.current_x = msg.pose.pose.position.x
-        self.current_y = msg.pose.pose.position.y
-        # z is available but not used for 2D control
-        
-        # Extract orientation (quaternion -> yaw)
-        qx = msg.pose.pose.orientation.x
-        qy = msg.pose.pose.orientation.y
-        qz = msg.pose.pose.orientation.z
-        qw = msg.pose.pose.orientation.w
-        
-        # Convert quaternion to yaw (Euler angle around Z-axis)
-        self.current_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
+        # Extract and tilt-correct pose immediately
+        raw_pos = np.array([
+            float(msg.pose.pose.position.x),
+            float(msg.pose.pose.position.y),
+            float(msg.pose.pose.position.z),
+        ], dtype=float)
+        raw_q = (
+            float(msg.pose.pose.orientation.x),
+            float(msg.pose.pose.orientation.y),
+            float(msg.pose.pose.orientation.z),
+            float(msg.pose.pose.orientation.w),
+        )
+        q_align = self.align_quat
+        corr_pos = self.rotate_vector_by_quat(raw_pos, q_align)
+        corr_q = self.quat_multiply(q_align, raw_q)
+        corr_q = self.quat_normalize(corr_q)
+
+        self.current_x = float(corr_pos[0])
+        self.current_y = float(corr_pos[1])
+        # z not used
+        self.current_yaw = self.quaternion_to_yaw(corr_q[0], corr_q[1], corr_q[2], corr_q[3])
         
         # Extract velocities (linear and angular)
         self.current_vx = msg.twist.twist.linear.x
@@ -264,6 +292,109 @@ class PoseController(Node):
         
         # Update last odometry time
         self.last_odom_time = self.get_clock().now()
+
+    # =============================
+    # Tilt Correction Utilities
+    # =============================
+    @staticmethod
+    def quat_normalize(q):
+        x, y, z, w = q
+        n = math.sqrt(x*x + y*y + z*z + w*w)
+        if n <= 1e-12:
+            return (0.0, 0.0, 0.0, 1.0)
+        return (x/n, y/n, z/n, w/n)
+
+    @staticmethod
+    def quat_from_axis_angle(axis, angle_rad):
+        ax = np.asarray(axis, dtype=float)
+        norm = np.linalg.norm(ax)
+        if norm <= 1e-12:
+            return (0.0, 0.0, 0.0, 1.0)
+        ax = ax / norm
+        s = math.sin(angle_rad * 0.5)
+        c = math.cos(angle_rad * 0.5)
+        return (ax[0]*s, ax[1]*s, ax[2]*s, c)
+
+    @staticmethod
+    def quat_multiply(q1, q2):
+        x1, y1, z1, w1 = q1
+        x2, y2, z2, w2 = q2
+        x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+        y = w1*y2 - x1*z2 + y1*w2 + z1*x2
+        z = w1*z2 + x1*y2 - y1*x2 + z1*w2
+        w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+        return (x, y, z, w)
+
+    @staticmethod
+    def rotate_vector_by_quat(v, q):
+        x, y, z = v
+        qx, qy, qz, qw = q
+        tx = 2.0 * (qy * z - qz * y)
+        ty = 2.0 * (qz * x - qx * z)
+        tz = 2.0 * (qx * y - qy * x)
+        vx = x + qw * tx + (qy * tz - qz * ty)
+        vy = y + qw * ty + (qz * tx - qx * tz)
+        vz = z + qw * tz + (qx * ty - qy * tx)
+        return np.array([vx, vy, vz], dtype=float)
+
+    @staticmethod
+    def compute_alignment_quat(from_vec, to_vec):
+        v1 = np.asarray(from_vec, dtype=float)
+        v2 = np.asarray(to_vec, dtype=float)
+        n1 = np.linalg.norm(v1)
+        n2 = np.linalg.norm(v2)
+        if n1 <= 1e-12 or n2 <= 1e-12:
+            return (0.0, 0.0, 0.0, 1.0)
+        v1 = v1 / n1
+        v2 = v2 / n2
+        cos_theta = float(np.clip(v1.dot(v2), -1.0, 1.0))
+        if cos_theta > 1.0 - 1e-9:
+            return (0.0, 0.0, 0.0, 1.0)
+        if cos_theta < -1.0 + 1e-9:
+            axis = np.array([1.0, 0.0, 0.0])
+            if abs(v1[0]) > 0.9:
+                axis = np.array([0.0, 1.0, 0.0])
+            axis = axis - v1 * v1.dot(axis)
+            if np.linalg.norm(axis) < 1e-12:
+                axis = np.array([0.0, 0.0, 1.0])
+            axis = axis / (np.linalg.norm(axis) + 1e-12)
+            return PoseController.quat_from_axis_angle(axis, math.pi)
+        axis = np.cross(v1, v2)
+        s = math.sqrt((1.0 + cos_theta) * 2.0)
+        invs = 1.0 / s
+        w = 0.5 * s
+        x = axis[0] * invs
+        y = axis[1] * invs
+        z = axis[2] * invs
+        return PoseController.quat_normalize((x, y, z, w))
+
+    def imu_callback(self, msg: Imu):
+        if self.accel_initialized:
+            return
+        a = np.array([
+            float(msg.linear_acceleration.x),
+            float(msg.linear_acceleration.y),
+            float(msg.linear_acceleration.z),
+        ], dtype=float)
+        if not np.all(np.isfinite(a)):
+            return
+        # Match laser_map_rotator conventions
+        a[0] = -a[0]
+        a[2] = -a[2]
+        self.accel_sum += a
+        self.accel_count += 1
+        if self.accel_count < self.accel_samples_target:
+            return
+        avg = self.accel_sum / float(self.accel_count)
+        norm = float(np.linalg.norm(avg))
+        if norm < 1e-3:
+            self.warn_throttled('imu_avg', 'Average acceleration too small; waiting…', 5.0)
+            return
+        # Align avg acceleration to -Z
+        self.align_quat = self.compute_alignment_quat(avg, np.array([0.0, 0.0, -1.0]))
+        self.accel_initialized = True
+        self.get_logger().info(
+            f'Pose tilt correction initialized with {self.accel_count} samples')
     
     # ============================================================
     # CALLBACK: CONTROL LOOP (10 Hz)
