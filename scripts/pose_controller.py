@@ -60,15 +60,16 @@ class PoseController(Node):
         self.declare_parameter('max_angular_velocity', 1.5) # rad/s
         self.declare_parameter('position_tolerance', 0.01) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
+        self.declare_parameter('min_wheel_rps', 0.2) # rps
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
 
-        self.declare_parameter('Kp_linear', 30)
+        self.declare_parameter('Kp_linear', 15)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 30)
+        self.declare_parameter('Kp_angular', 15)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -104,6 +105,7 @@ class PoseController(Node):
         self.Kp_angular = self.get_parameter('Kp_angular').value
         self.Ki_angular = self.get_parameter('Ki_angular').value
         self.Kd_angular = self.get_parameter('Kd_angular').value
+        self.min_wheel_rps = self.get_parameter('min_wheel_rps').value
         
         self.controller_enabled = self.get_parameter('enable_controller').value
         self.odom_timeout_ms = self.get_parameter('odometry_timeout_ms').value
@@ -498,10 +500,13 @@ class PoseController(Node):
         # Scale down velocities proportionally if either exceeds limits
         linear_scale = abs(linear_vel) / self.max_linear_vel if self.max_linear_vel > 0 else 0
         angular_scale = abs(angular_vel) / self.max_angular_vel if self.max_angular_vel > 0 else 0
-        vel_factor = max(linear_scale, angular_scale, 1.0)
+
+        vel_factor = max(linear_scale, angular_scale)
         
         linear_vel = linear_vel / vel_factor
         angular_vel = angular_vel / vel_factor
+
+
         
         # ============================================================
         # CONVERT TO WHEEL VELOCITIES
@@ -510,6 +515,9 @@ class PoseController(Node):
         left_vel, right_vel = self.diff_drive_inverse_kinematics(
             linear_vel, angular_vel
         )
+
+        ## Minimum velocity threshold
+        
         
         # Store for logging
         self.left_wheel_velocity = left_vel
