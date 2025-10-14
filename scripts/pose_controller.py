@@ -27,6 +27,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
+from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
@@ -178,6 +179,22 @@ class PoseController(Node):
         self.odom_corr_pub = self.create_publisher(
             Odometry,
             corrected_odom_topic,
+            10
+        )
+        # Diagnostic publishers: errors, v/w command, wheel velocities
+        self.errors_pub = self.create_publisher(
+            Float64MultiArray,
+            '/pose_control/errors',
+            10
+        )
+        self.cmd_pub = self.create_publisher(
+            Twist,
+            '/pose_control/cmd_twist',
+            10
+        )
+        self.wheels_pub = self.create_publisher(
+            Float64MultiArray,
+            '/pose_control/wheel_vel',
             10
         )
         
@@ -470,7 +487,7 @@ class PoseController(Node):
         # CALL CONTROL FUNCTION
         # ============================================================
         
-        linear_vel, angular_vel = self.control_function(
+        linear_vel, angular_vel, diag = self.control_function(
             self.current_x, self.current_y, self.current_yaw,
             self.target_x, self.target_y, self.target_yaw
         )
@@ -503,6 +520,35 @@ class PoseController(Node):
         # ============================================================
         
         self.publish_wheel_velocities(left_vel, right_vel)
+
+        # ============================================================
+        # PUBLISH DIAGNOSTICS
+        # ============================================================
+        try:
+            # Errors
+            err_msg = Float64MultiArray()
+            # Order: dx, dy, e_lat, v_e, dyaw
+            err_msg.data = [
+                float(diag.get('dx', 0.0)),
+                float(diag.get('dy', 0.0)),
+                float(diag.get('e_lat', 0.0)),
+                float(diag.get('v_e', 0.0)),
+                float(diag.get('dyaw', 0.0)),
+            ]
+            self.errors_pub.publish(err_msg)
+
+            # Command v, w
+            tw = Twist()
+            tw.linear.x = float(linear_vel)
+            tw.angular.z = float(angular_vel)
+            self.cmd_pub.publish(tw)
+
+            # Wheel velocities
+            wheels_msg = Float64MultiArray()
+            wheels_msg.data = [float(left_vel), float(right_vel)]
+            self.wheels_pub.publish(wheels_msg)
+        except Exception:
+            pass
         
         # ============================================================
         # LOGGING (every 1 second = 10 control cycles)
@@ -541,7 +587,7 @@ class PoseController(Node):
         target_x: float,
         target_y: float,
         target_yaw: float
-    ) -> Tuple[float, float]:
+    ) -> Tuple[float, float, dict]:
         """
         Control function to compute linear and angular velocities.
         
@@ -600,15 +646,15 @@ class PoseController(Node):
         dy = y_next - current_y
 
         #posiion error thresholding
-        if np.linalg.norm([dx, dy]) < self.pos_tolerance:
-            dx=0
-            dy=0
+        # if np.linalg.norm([dx, dy]) < self.pos_tolerance:
+        #     dx=0
+        #     dy=0
         
 
         dyaw = self.normalize_angle(target_yaw - current_yaw)
 
         #yaw error thresholding
-        if abs(dyaw) < self.ori_tolerance:
+        if distance_to_target<self.pos_tolerance and abs(dyaw) < self.ori_tolerance:
             dyaw=0
         # Lateral error (perpendicular to robot heading)
         e_lat = np.dot([-np.sin(current_yaw), np.cos(current_yaw)], [dx, dy])
@@ -629,7 +675,13 @@ class PoseController(Node):
         angular_vel = self.Kp_angular * w_e
 
         
-        return linear_vel, angular_vel
+        return linear_vel, angular_vel, {
+            'dx': float(dx),
+            'dy': float(dy),
+            'e_lat': float(e_lat),
+            'v_e': float(v_e),
+            'dyaw': float(dyaw),
+        }
     
     # ============================================================
     # KINEMATICS: DIFFERENTIAL DRIVE
