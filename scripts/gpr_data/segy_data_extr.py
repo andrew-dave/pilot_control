@@ -9,6 +9,7 @@ import numpy as np
 import csv
 # Matplotlib is imported lazily inside plotting functions to avoid
 # environment issues where system matplotlib is incompatible with numpy.
+import csv
 
 try:
     import segysak.segy as sgy
@@ -383,14 +384,15 @@ def main():
     parser.add_argument('segy_file', help='Path to SEG-Y file (.sgy)')
     parser.add_argument('scan_csv', nargs='?', default=None, help='Optional scan CSV for localization')
     # Localization and thresholds
-    parser.add_argument('--spacing_m', type=float, default=0.01, help='Along-track spacing for A-scan assignment and interest points (m)')
-    parser.add_argument('--weight_radius_m', type=float, default=None, help='Influence radius for distance-weighted averaging (m); default=spacing_m')
+    parser.add_argument('--spacing_m', type=float, default=0.005, help='Along-track spacing for A-scan assignment and interest points (m)')
+    parser.add_argument('--weight_radius_m', type=float, default=0.0001, help='Influence radius for distance-weighted averaging (m); default=spacing_m')
     parser.add_argument('--wheel_radius_m', type=float, default=0.03, help='Drive wheel radius for revolutions-to-distance (m)')
     parser.add_argument('--gear_ratio', type=float, default=1.0, help='Gear ratio from motor to wheel (dimensionless)')
     parser.add_argument('--pre_window', type=int, default=5, help='Samples before start event to average initial pose')
     parser.add_argument('--post_window', type=int, default=5, help='Samples after stop event to average stopping pose')
     parser.add_argument('--start_label', type=str, default='GPR_MOTOR_START', help='Start event label in CSV')
     parser.add_argument('--stop_label', type=str, default='MOTOR_STOPPING', help='Stop event label in CSV')
+    parser.add_argument('--placement', type=str, choices=['fixed', 'revs'], default='fixed', help="XY assignment method: 'fixed' uses constant scan spacing; 'revs' uses wheel turns")
 
     args = parser.parse_args()
 
