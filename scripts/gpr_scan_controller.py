@@ -120,6 +120,9 @@ class GPRScanController(Node):
         # Event tracking
         self.current_event = None
         self.gpr_motor_started = False  # Flag to track if GPR motor has started
+        # Left/Right ODrive wheel encoder positions (turns)
+        self.left_position = 0.0
+        self.right_position = 0.0
         
         # Timers (initialized to None, will be created when needed)
         self.motor_start_timer = None
@@ -147,6 +150,11 @@ class GPRScanController(Node):
         # Subscribe to GPR motor status for position/velocity feedback
         self.gpr_status_sub = self.create_subscription(
             ControllerStatus, '/gpr/controller_status', self.gpr_status_callback, 10)
+        # Subscribe to left/right wheel controller status for encoder positions
+        self.left_status_sub = self.create_subscription(
+            ControllerStatus, '/left/controller_status', self.left_status_callback, 10)
+        self.right_status_sub = self.create_subscription(
+            ControllerStatus, '/right/controller_status', self.right_status_callback, 10)
 
         # Buffer recent GPR samples (timestamp, position, velocity) at 100 Hz
         self.gpr_samples = deque(maxlen=300)
@@ -185,6 +193,18 @@ class GPRScanController(Node):
         self.get_logger().info(f'Service available: /gpr_scan/toggle')
         self.get_logger().info('')
         self.get_logger().info('💡 Press assigned key in teleop to start/stop scanning')
+
+    def left_status_callback(self, msg: ControllerStatus):
+        try:
+            self.left_position = float(msg.pos_estimate)
+        except Exception:
+            pass
+
+    def right_status_callback(self, msg: ControllerStatus):
+        try:
+            self.right_position = float(msg.pos_estimate)
+        except Exception:
+            pass
 
     # =============================
     # Tilt Correction Utilities
@@ -340,6 +360,55 @@ class GPRScanController(Node):
             self.gpr_samples.append((self.gpr_timestamp_us, self.gpr_position, self.gpr_velocity))
         except Exception:
             pass
+
+        # 100 Hz logging on GPR status callback
+        if not self.logging_active or not self.csv_writer:
+            return
+
+        # Determine event
+        if self.current_event:
+            event = self.current_event
+            self.current_event = None
+        elif self.stopping:
+            event = 'POST_STOP'
+        elif not self.motor_enabled:
+            event = 'PRE_MOTOR'
+        elif self.scanning:
+            event = 'SCANNING'
+        else:
+            event = 'UNKNOWN'
+
+        # Use latest Fast-LIO timestamp (may be older than GPR stamp)
+        fast_ts = self.fastlio_timestamp_us
+
+        try:
+            data_row = [
+                self.log_count,
+                event,
+                fast_ts,
+                self.gpr_timestamp_us,
+                f"{self.fastlio_pose_filt['pos_x']:.6f}",
+                f"{self.fastlio_pose_filt['pos_y']:.6f}",
+                f"{self.fastlio_pose_filt['pos_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_x']:.6f}",
+                f"{self.fastlio_pose_filt['quat_y']:.6f}",
+                f"{self.fastlio_pose_filt['quat_z']:.6f}",
+                f"{self.fastlio_pose_filt['quat_w']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_lin_z']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_x']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_y']:.6f}",
+                f"{self.fastlio_pose_filt['vel_ang_z']:.6f}",
+                f'{self.gpr_position:.6f}',
+                f'{self.gpr_velocity:.6f}',
+                f'{self.left_position:.6f}',
+                f'{self.right_position:.6f}',
+            ]
+            self.csv_writer.writerow(data_row)
+            self.log_count += 1
+        except Exception as e:
+            self.get_logger().error(f'Error logging GPR row: {e}')
     
     def toggle_scan_callback(self, request, response):
         """Toggle GPR scanning on/off"""
@@ -411,7 +480,8 @@ class GPRScanController(Node):
                 'quat_x', 'quat_y', 'quat_z', 'quat_w',
                 'vel_lin_x', 'vel_lin_y', 'vel_lin_z',
                 'vel_ang_x', 'vel_ang_y', 'vel_ang_z',
-                'gpr_position', 'gpr_velocity'
+                'gpr_position', 'gpr_velocity',
+                'left_position', 'right_position'
             ])
             
             self.get_logger().info(f'✓ Log file created: {self.current_log_file}')
@@ -623,7 +693,7 @@ class GPRScanController(Node):
             self.gpr_motor_pub.publish(msg)
     
     def fastlio_callback(self, msg):
-        """On each Fast-LIO odometry, pick nearest GPR sample and write one aligned row."""
+        """On each Fast-LIO odometry, update filtered pose (logging moved to GPR callback)."""
         # Use measurement time from header (ROS time domain)
         self.fastlio_timestamp_us = msg.header.stamp.sec * 1_000_000 + msg.header.stamp.nanosec // 1000
 
@@ -698,67 +768,7 @@ class GPRScanController(Node):
             # On any error, fall back to raw
             self.fastlio_pose_filt = dict(self.fastlio_pose)
 
-        # Write one row per Fast-LIO tick, using nearest GPR sample
-        if not self.logging_active or not self.csv_writer:
-            return
-
-        # Determine event
-        if self.current_event:
-            event = self.current_event
-            self.current_event = None
-        elif self.stopping:
-            event = 'POST_STOP'
-        elif not self.motor_enabled:
-            event = 'PRE_MOTOR'
-        elif self.scanning:
-            event = 'SCANNING'
-        else:
-            event = 'UNKNOWN'
-
-        # Nearest-neighbor match on time
-        g_ts = 0
-        g_pos = 0.0
-        g_vel = 0.0
-        if self.gpr_samples:
-            try:
-                nearest = min(self.gpr_samples, key=lambda s: abs(s[0] - self.fastlio_timestamp_us))
-                g_ts, g_pos, g_vel = nearest
-            except Exception:
-                pass
-
-        try:
-            data_row = [
-                self.log_count,
-                event,
-                self.fastlio_timestamp_us,
-                g_ts,
-                f"{self.fastlio_pose_filt['pos_x']:.6f}",
-                f"{self.fastlio_pose_filt['pos_y']:.6f}",
-                f"{self.fastlio_pose_filt['pos_z']:.6f}",
-                f"{self.fastlio_pose_filt['quat_x']:.6f}",
-                f"{self.fastlio_pose_filt['quat_y']:.6f}",
-                f"{self.fastlio_pose_filt['quat_z']:.6f}",
-                f"{self.fastlio_pose_filt['quat_w']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_x']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_y']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_z']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_x']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_y']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_z']:.6f}",
-                f'{g_pos:.6f}',
-                f'{g_vel:.6f}'
-            ]
-            self.csv_writer.writerow(data_row)
-            self.log_count += 1
-
-            if self.scanning and self.log_count % 50 == 0 and self.scan_start_time:
-                elapsed = time.time() - self.scan_start_time
-                if elapsed > 0:
-                    self.get_logger().info(
-                        f'📝 Logged {self.log_count} samples | {elapsed:.1f}s | {self.log_count/elapsed:.1f} Hz'
-                    )
-        except Exception as e:
-            self.get_logger().error(f'Error logging nearest-match row: {e}')
+        # Logging now happens in gpr_status_callback at ~100 Hz
 
     def log_event_now(self, event: str):
         """Write an immediate event row using latest cached data (no waiting for next tick)."""
