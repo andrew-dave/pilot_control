@@ -123,6 +123,8 @@ class GPRScanController(Node):
         # Left/Right ODrive wheel encoder positions (turns)
         self.left_position = 0.0
         self.right_position = 0.0
+        # Last Fast-LIO timestamp that was written to CSV (to avoid duplicates)
+        self.last_fastlio_logged_ts_us = 0
         
         # Timers (initialized to None, will be created when needed)
         self.motor_start_timer = None
@@ -361,7 +363,8 @@ class GPRScanController(Node):
         except Exception:
             pass
 
-        # 100 Hz logging on GPR status callback
+        # 100 Hz trigger on GPR status; log only when new Fast-LIO data is available,
+        # except for immediate event rows which we force to log on this tick.
         if not self.logging_active or not self.csv_writer:
             return
 
@@ -381,25 +384,29 @@ class GPRScanController(Node):
         # Use latest Fast-LIO timestamp (may be older than GPR stamp)
         fast_ts = self.fastlio_timestamp_us
 
+        # Decide how to fill Fast-LIO fields: if no new sample, leave Fast-LIO fields empty
+        # but still log GPR/encoder data.
+        new_fastlio = (fast_ts != 0 and fast_ts != self.last_fastlio_logged_ts_us)
+
         try:
             data_row = [
                 self.log_count,
                 event,
-                fast_ts,
+                (fast_ts if new_fastlio else ''),
                 self.gpr_timestamp_us,
-                f"{self.fastlio_pose_filt['pos_x']:.6f}",
-                f"{self.fastlio_pose_filt['pos_y']:.6f}",
-                f"{self.fastlio_pose_filt['pos_z']:.6f}",
-                f"{self.fastlio_pose_filt['quat_x']:.6f}",
-                f"{self.fastlio_pose_filt['quat_y']:.6f}",
-                f"{self.fastlio_pose_filt['quat_z']:.6f}",
-                f"{self.fastlio_pose_filt['quat_w']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_x']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_y']:.6f}",
-                f"{self.fastlio_pose_filt['vel_lin_z']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_x']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_y']:.6f}",
-                f"{self.fastlio_pose_filt['vel_ang_z']:.6f}",
+                (f"{self.fastlio_pose_filt['pos_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['pos_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['pos_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['quat_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['quat_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['quat_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['quat_w']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_lin_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_lin_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_lin_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_ang_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_ang_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose_filt['vel_ang_z']:.6f}" if new_fastlio else ''),
                 f'{self.gpr_position:.6f}',
                 f'{self.gpr_velocity:.6f}',
                 f'{self.left_position:.6f}',
@@ -407,6 +414,8 @@ class GPRScanController(Node):
             ]
             self.csv_writer.writerow(data_row)
             self.log_count += 1
+            if new_fastlio:
+                self.last_fastlio_logged_ts_us = fast_ts
         except Exception as e:
             self.get_logger().error(f'Error logging GPR row: {e}')
     
@@ -543,9 +552,8 @@ class GPRScanController(Node):
             self.motor_start_timer.cancel()
             self.motor_start_timer = None
         
-        # Log GPR_MOTOR_START event, then enable motor publishing
-        self.log_event_now('GPR_MOTOR_START')
-        self.current_event = None
+        # Tag next GPR status row with GPR_MOTOR_START to log at ~100 Hz aligned to GPR timing
+        self.current_event = 'GPR_MOTOR_START'
         self.motor_enabled = True
         self.get_logger().info('⏳ Starting GPR motor rotation...')
         
