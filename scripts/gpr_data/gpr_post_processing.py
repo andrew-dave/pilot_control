@@ -510,6 +510,26 @@ def main():
         print(f"  pre_window={args.pre_window}, post_window={args.post_window}")
         print(f"  start_label='{args.start_label}', stop_label='{args.stop_label}'")
 
+        # Expected vs actual A-scan counts
+        lo = start_idx if start_idx >= 0 else 0
+        hi = (stop_idx + 1) if (stop_idx is not None and stop_idx >= 0) else len(scan_proc.get('gpr_position', []))
+        lo = max(0, min(lo, len(scan_proc.get('gpr_position', []))))
+        hi = max(lo, min(hi, len(scan_proc.get('gpr_position', []))))
+        motor_window = np.asarray(scan_proc.get('gpr_position', np.array([]))[lo:hi], dtype=float)
+        if motor_window.size > 0:
+            delta_motor = float(motor_window[-1] - float(initial_gpr_angle))
+            # Convert motor delta to wheel revolutions using gear ratio
+            wheel_revs = abs(delta_motor) / float(args.gear_ratio if args.gear_ratio else 1.0)
+            circumference = 2.0 * np.pi * float(args.wheel_radius_m if args.wheel_radius_m else 1.0)
+            revs_per_ascan = (float(args.spacing_m) / circumference) if circumference > 0 else 0.0
+            expected_ascans = int(np.floor(wheel_revs / revs_per_ascan)) if revs_per_ascan > 0 else 0
+        else:
+            expected_ascans = 0
+        actual_ascans = int(A.shape[0])
+        print("---- A-scan Counts ----")
+        print(f"Expected (in window, ~{args.spacing_m*1000:.0f} mm): {expected_ascans}")
+        print(f"Actual (SEG-Y CDP traces): {actual_ascans}")
+
         # Assign XYZ per A-scan using angle-based thresholds
         locs_xyz = assign_locations_by_angle(
             A_T,

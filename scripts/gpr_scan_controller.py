@@ -591,10 +591,10 @@ class GPRScanController(Node):
         self.current_event = None
         self.get_logger().info('✓ KEY_PRESS_STOP logged - 50Hz logging continues')
         
-        # Step 2: Log MOTOR_STOPPING and stop GPR motor
-        #self.current_event = 'MOTOR_STOPPING'
-        self.log_event_now('MOTOR_STOPPING')
-        self.current_event = None
+        # Step 2: Tag MOTOR_STOPPING to be logged on the very next GPR status tick (~100 Hz)
+        # This aligns the event timestamp with the GPR stream and avoids delays from
+        # searching the nearest prior sample.
+        self.current_event = 'MOTOR_STOPPING'
         self.scanning = False
         self.stopping = True  # Enable post-stop logging phase
         self.post_stop_time = time.time()  # Mark when motor stopped
