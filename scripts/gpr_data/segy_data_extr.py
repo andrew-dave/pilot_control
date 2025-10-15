@@ -6,6 +6,7 @@ import sys
 import os
 import argparse
 import numpy as np
+import csv
 # Matplotlib is imported lazily inside plotting functions to avoid
 # environment issues where system matplotlib is incompatible with numpy.
 
