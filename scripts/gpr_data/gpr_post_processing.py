@@ -204,118 +204,156 @@ def interpolate_fastlio_by_wheels(scan: dict, invert_right: bool = True) -> dict
     return out
 
 
+def relocate_fastlio_to_nearest_gpr(scan: dict) -> dict:
+    """Relocate sparse Fast-LIO poses onto nearest GPR-timestamped rows.
+
+    - Identify rows with fastlio_time_us>0 (sources) and rows with gpr_time_us>0 (targets).
+    - For each source, find nearest target by timestamp and assign its pos_x/pos_y/pos_z to that target.
+    - Clear pos_x/pos_y/pos_z at all non-target rows (including original source rows).
+    - If multiple sources map to the same target, keep the closest (by |dt|).
+    """
+    out = dict(scan)
+    ft = np.asarray(scan.get('fastlio_time_us', np.array([])), dtype=float)
+    gt = np.asarray(scan.get('gpr_time_us', np.array([])), dtype=float)
+    pos_x = np.asarray(scan.get('pos_x', np.array([])), dtype=float)
+    pos_y = np.asarray(scan.get('pos_y', np.array([])), dtype=float)
+    pos_z = np.asarray(scan.get('pos_z', np.array([])), dtype=float)
+
+    n = gt.size
+    if n == 0 or ft.size == 0:
+        return out
+
+    src_idx = np.where(np.isfinite(ft) & (ft > 0))[0]
+    tgt_idx = np.where(np.isfinite(gt) & (gt > 0))[0]
+    if src_idx.size == 0 or tgt_idx.size == 0:
+        return out
+
+    gt_valid = gt[tgt_idx]
+    order = np.argsort(gt_valid)
+    gt_sorted = gt_valid[order]
+    tgt_sorted = tgt_idx[order]
+
+    # Compute nearest target and distance for each source
+    pairs = []  # (abs_dt, src, tgt)
+    for s in src_idx:
+        t = ft[s]
+        j = int(np.searchsorted(gt_sorted, t, side='left'))
+        if j <= 0:
+            sel = 0
+        elif j >= gt_sorted.size:
+            sel = gt_sorted.size - 1
+        else:
+            sel = j if abs(gt_sorted[j] - t) < abs(gt_sorted[j-1] - t) else (j - 1)
+        tgt = int(tgt_sorted[sel])
+        pairs.append((abs(gt_sorted[sel] - t), int(s), tgt))
+
+    # Resolve collisions by choosing smallest |dt| first
+    pairs.sort(key=lambda x: x[0])
+    chosen_tgt = set()
+    assignment = []  # (src, tgt)
+    for _, s, t in pairs:
+        if t in chosen_tgt:
+            continue
+        chosen_tgt.add(t)
+        assignment.append((s, t))
+
+    # Build new arrays: zeros everywhere, fill at assigned targets
+    px_new = np.zeros(n, dtype=float)
+    py_new = np.zeros(n, dtype=float)
+    pz_new = np.zeros(n, dtype=float)
+    ft_new = np.zeros(n, dtype=float)
+    for s, t in assignment:
+        if s < pos_x.size and t < n:
+            px_new[t] = float(pos_x[s])
+            py_new[t] = float(pos_y[s])
+            pz_new[t] = float(pos_z[s])
+            if s < ft.size:
+                ft_new[t] = float(ft[s])
+
+    out['pos_x'] = px_new
+    out['pos_y'] = py_new
+    out['pos_z'] = pz_new
+    out['fastlio_time_us'] = ft_new
+    return out
+
 def find_event_indices(events, start_label: str = 'GPR_MOTOR_START', stop_label: str = 'MOTOR_STOPPING'):
-    """Return indices (start_idx, stop_idx) of first occurrence of the given events; -1 if not found."""
+    """Return indices (start_idx, stop_idx) of first occurrence of the given events; -1 if not found.
+
+    Note: Kept for compatibility, but not used in global indexing mode.
+    """
     start_idx = next((i for i, e in enumerate(events) if e == start_label), -1)
     stop_idx = next((i for i, e in enumerate(events) if e == stop_label), -1)
     return start_idx, stop_idx
 
 
-def compute_initial_and_stopping(data: dict, start_idx: int, stop_idx: int, pre_window: int = 5, post_window: int = 5):
-    """Compute initial GPR angle and average XY around events.
+def compute_initial_from_first_five(data: dict) -> float:
+    """Compute initial GPR position as the average of the first five gpr_position values.
 
-    - initial_gpr_angle: mean gpr_position over the pre_window samples before start_idx
-    - initial_xy: mean (x,y) over the same window
-    - stopping_xy: mean (x,y) over post_window samples after stop_idx
+    Falls back to mean of available values; returns 0.0 if none are present.
     """
-    n = len(data.get('event', []))
-    init_slice = slice(max(0, start_idx - pre_window), max(0, start_idx)) if start_idx > 0 else slice(0, 0)
-    stop_slice = slice(min(n, stop_idx + 1), min(n, stop_idx + 1 + post_window)) if 0 <= stop_idx < n - 1 else slice(n, n)
-
     gpr_pos = np.asarray(data.get('gpr_position', np.array([])), dtype=float)
-    pos_x = np.asarray(data.get('pos_x', np.array([])), dtype=float)
-    pos_y = np.asarray(data.get('pos_y', np.array([])), dtype=float)
-
-    initial_gpr_angle = float(np.mean(gpr_pos[init_slice])) if (init_slice.stop - init_slice.start) > 0 else float(gpr_pos[start_idx] if start_idx >= 0 and start_idx < gpr_pos.size else 0.0)
-    initial_xy = (
-        float(np.mean(pos_x[init_slice])) if (init_slice.stop - init_slice.start) > 0 else float(pos_x[start_idx] if start_idx >= 0 and start_idx < pos_x.size else 0.0),
-        float(np.mean(pos_y[init_slice])) if (init_slice.stop - init_slice.start) > 0 else float(pos_y[start_idx] if start_idx >= 0 and start_idx < pos_y.size else 0.0),
-    )
-    stopping_xy = (
-        float(np.mean(pos_x[stop_slice])) if (stop_slice.stop - stop_slice.start) > 0 else float(pos_x[stop_idx] if stop_idx >= 0 and stop_idx < pos_x.size else 0.0),
-        float(np.mean(pos_y[stop_slice])) if (stop_slice.stop - stop_slice.start) > 0 else float(pos_y[stop_idx] if stop_idx >= 0 and stop_idx < pos_y.size else 0.0),
-    )
-    return initial_gpr_angle, initial_xy, stopping_xy
+    if gpr_pos.size == 0:
+        return 0.0
+    n = int(min(5, gpr_pos.size))
+    return float(np.mean(gpr_pos[:n]))
 
 
-def assign_locations_by_angle(matrix_T: np.ndarray,
-                              scan: dict,
-                              start_idx: int,
-                              stop_idx: int,
-                              initial_gpr_angle: float,
-                              wheel_radius_m: float = 0.03,
-                              gear_ratio: float = 1.0,
-                              spacing_m: float = 0.005) -> np.ndarray:
-    """Assign XYZ per A-scan using revolutions thresholds equivalent to angle crossings.
+def assign_locations_by_global_progress(matrix_T: np.ndarray,
+                                        scan: dict,
+                                        initial_gpr_pos: float,
+                                        wheel_radius_m: float = 0.03,
+                                        gear_ratio: float = 1.0,
+                                        spacing_m: float = 0.005) -> np.ndarray:
+    """Assign XYZ per A-scan by global gpr_position indexing.
 
-    - matrix_T: amplitudes with shape (twt_len, n_cols)
-    - Uses gpr_position as motor position; wheel_turns = (gpr_position - initial)/gear_ratio
-    - Revs per A-scan = spacing_m / (2*pi*wheel_radius_m)
-    - For each target rev multiple, select nearest CSV row in [start_idx:stop_idx] by |wheel_turns|
-    Returns array of shape (n_cols, 3) with (px,py,pz) per column.
+    - For each CSV row k, compute trace index idx_k = floor(max(0, (gpr[k]-initial)/motor_turns_per_trace)).
+    - motor_turns_per_trace = gear_ratio * (spacing_m / (2*pi*wheel_radius_m)).
+    - For each trace i, choose the earliest CSV row with idx_k == i.
+    - If missing, carry forward the last available pose.
+    Returns array of shape (n_cols, 3).
     """
     n_cols = int(matrix_T.shape[1]) if matrix_T.ndim == 2 else 0
     if n_cols <= 0:
         return np.zeros((0, 3), dtype=float)
 
-    lo = start_idx if start_idx is not None and start_idx >= 0 else 0
-    hi = stop_idx + 1 if stop_idx is not None and stop_idx >= 0 else len(scan.get('gpr_position', []))
-    lo = max(0, min(lo, len(scan.get('gpr_position', []))))
-    hi = max(lo, min(hi, len(scan.get('gpr_position', []))))
-    if hi - lo < 1:
-        # Fallback: replicate first pose
-        px0 = float(scan.get('pos_x', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        py0 = float(scan.get('pos_y', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        pz0 = float(scan.get('pos_z', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        return np.tile(np.array([px0, py0, pz0], dtype=float), (n_cols, 1))
+    gpr = np.asarray(scan.get('gpr_position', np.array([])), dtype=float)
+    xs = np.asarray(scan.get('pos_x', np.array([])), dtype=float)
+    ys = np.asarray(scan.get('pos_y', np.array([])), dtype=float)
+    zs = np.asarray(scan.get('pos_z', np.array([])), dtype=float)
 
-    motor_pos = np.asarray(scan.get('gpr_position', np.array([]))[lo:hi], dtype=float)
-    if motor_pos.size == 0:
-        px0 = float(scan.get('pos_x', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        py0 = float(scan.get('pos_y', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        pz0 = float(scan.get('pos_z', [0.0])[start_idx]) if start_idx is not None and start_idx >= 0 else 0.0
-        return np.tile(np.array([px0, py0, pz0], dtype=float), (n_cols, 1))
+    if gpr.size == 0 or xs.size == 0 or ys.size == 0:
+        # Fallback to zeros
+        return np.zeros((n_cols, 3), dtype=float)
 
-    # Convert to wheel revolutions and absolute travel
-    baseline_motor = float(initial_gpr_angle)
-    revs = (motor_pos - baseline_motor) / float(gear_ratio if gear_ratio else 1.0)
-    revs_abs = np.abs(revs)
-
-    # Revolutions per A-scan for spacing_m travel: spacing / circumference
     circumference = 2.0 * np.pi * float(wheel_radius_m if wheel_radius_m else 1.0)
-    revs_per_ascan = float(spacing_m) / (circumference if circumference > 0 else 1.0)
-    if revs_per_ascan <= 0.0 or not np.isfinite(revs_per_ascan):
-        revs_per_ascan = 1.0
+    wheel_revs_per_trace = float(spacing_m) / (circumference if circumference > 0 else 1.0)
+    motor_revs_per_trace = float(gear_ratio if gear_ratio else 1.0) * wheel_revs_per_trace
+    if motor_revs_per_trace <= 0 or not np.isfinite(motor_revs_per_trace):
+        motor_revs_per_trace = 1.0
 
-    targets = revs_per_ascan * np.arange(1, n_cols + 1, dtype=float)
+    idxs = np.floor(np.maximum(0.0, (gpr - float(initial_gpr_pos)) / motor_revs_per_trace)).astype(int)
 
-    xs = np.asarray(scan.get('pos_x', np.array([]))[lo:hi], dtype=float)
-    ys = np.asarray(scan.get('pos_y', np.array([]))[lo:hi], dtype=float)
-    zs = np.asarray(scan.get('pos_z', np.array([]))[lo:hi], dtype=float)
+    selected = np.full(n_cols, -1, dtype=int)
+    for k, idx in enumerate(idxs):
+        if 0 <= idx < n_cols and selected[idx] == -1:
+            selected[idx] = k
+
     locs = np.zeros((n_cols, 3), dtype=float)
+    # Seed with first available row if any
+    first_row = int(selected[0]) if selected[0] >= 0 else 0
+    locs[0, 0] = float(xs[first_row]) if first_row < xs.size else 0.0
+    locs[0, 1] = float(ys[first_row]) if first_row < ys.size else 0.0
+    locs[0, 2] = float(zs[first_row]) if first_row < zs.size else 0.0
 
-    # Initialize first column with pose at start of motion window if available
-    if xs.size > 0:
-        locs[0, 0] = xs[0]
-        locs[0, 1] = ys[0]
-        locs[0, 2] = zs[0] if zs.size > 0 else 0.0
-
-    k = 0
-    for i, t in enumerate(targets[:n_cols-1], start=1):
-        j = int(np.searchsorted(revs_abs, t, side='left'))
-        if j <= 0:
-            sel = 0
-        elif j >= revs_abs.size:
-            sel = revs_abs.size - 1
+    for i in range(1, n_cols):
+        sel = int(selected[i])
+        if sel >= 0 and sel < xs.size and sel < ys.size and sel < zs.size:
+            locs[i, 0] = float(xs[sel])
+            locs[i, 1] = float(ys[sel])
+            locs[i, 2] = float(zs[sel])
         else:
-            sel = j if abs(revs_abs[j] - t) < abs(revs_abs[j-1] - t) else (j - 1)
-        locs[i, 0] = xs[sel] if xs.size > 0 else 0.0
-        locs[i, 1] = ys[sel] if ys.size > 0 else 0.0
-        locs[i, 2] = zs[sel] if zs.size > 0 else 0.0
-        k = i
-
-    if k + 1 < n_cols:
-        locs[k + 1:, :] = locs[k, :]
+            # carry forward last known
+            locs[i, :] = locs[i - 1, :]
     return locs
 
 def write_processed_csv(input_csv_path: str, scan: dict, output_csv_path: str = None) -> str:
@@ -384,7 +422,8 @@ def plot_radargram_with_pose_per_trace(A_T: np.ndarray,
                                        cdp: np.ndarray,
                                        locs_xyz: np.ndarray,
                                        title: str = "GPR Radargram with Pose per Trace",
-                                       save_path: str = None) -> None:
+                                       save_path: str = None,
+                                       interactive: bool = False) -> None:
     """Plot radargram (TWT x trace index/CDP) and overlay px/py/pz at each trace.
 
     - x-axis: trace index/CDP (no along-track distance).
@@ -444,6 +483,26 @@ def plot_radargram_with_pose_per_trace(A_T: np.ndarray,
         ax2.set_ylabel("Position (m)")
         ax2.legend(loc='upper right')
 
+        if interactive:
+            # Initialize selection markers and text readout
+            sel_line = ax.axvline(x[0], color='y', linewidth=0.8, alpha=0.7)
+            info = ax2.text(0.01, 0.98,
+                            f"trace=0  px={px[0]:.4f}  py={py[0]:.4f}  pz={pz[0]:.4f}",
+                            transform=ax2.transAxes, va='top', ha='left',
+                            fontsize=9, bbox=dict(boxstyle='round', fc='white', ec='0.7', alpha=0.8))
+
+            def on_move(event):
+                if event.inaxes not in (ax, ax2) or event.xdata is None:
+                    return
+                # Nearest trace by x
+                j = int(np.argmin(np.abs(x - float(event.xdata))))
+                j = max(0, min(j, m - 1))
+                sel_line.set_xdata([x[j], x[j]])
+                info.set_text(f"trace={j}  px={px[j]:.4f}  py={py[j]:.4f}  pz={pz[j]:.4f}")
+                fig.canvas.draw_idle()
+
+            fig.canvas.mpl_connect('motion_notify_event', on_move)
+
     plt.tight_layout()
     if save_path is not None and len(str(save_path)) > 0:
         try:
@@ -469,6 +528,7 @@ def main():
     # Plotting
     parser.add_argument('--plot', action='store_true', help='Display radargram overlaid with px/py/pz per trace')
     parser.add_argument('--save_plot', type=str, default=None, help='Optional path to save the per-trace overlaid plot (PNG)')
+    parser.add_argument('--interactive', action='store_true', help='Enable interactive px/py/pz readout by cursor (per trace)')
     args = parser.parse_args()
 
     if not os.path.isfile(args.segy_file):
@@ -488,8 +548,10 @@ def main():
         scan = load_scan_csv(args.scan_csv)
         print(f"Loaded scan CSV: rows={len(scan['event'])}")
         print(f"Available keys: {list(scan.keys())}")
-        # 1) Moving window average on Fast-LIO localization
-        scan_filt = moving_average_fastlio(scan, window_size=5)
+        # 0) Relocate sparse Fast-LIO data to nearest GPR timestamp rows
+        scan_relocated = relocate_fastlio_to_nearest_gpr(scan)
+        # 1) Moving window average on Fast-LIO localization (disabled)
+        scan_filt = scan_relocated
         # 2) Interpolate missing Fast-LIO poses by wheel encoder average (invert right)
         scan_proc = interpolate_fastlio_by_wheels(scan_filt, invert_right=True)
         # Brief summary
@@ -497,46 +559,28 @@ def main():
         valid_after = int(np.sum(np.asarray(scan_proc.get('fastlio_time_us', np.array([]))) > 0))
         print(f"Fast-LIO valid rows (time_us>0): before={valid_before}, after={valid_after} (timestamps unchanged)")
 
-        # 3) Focus on motion event window and assign localization to A-scans by angle thresholds
-        start_idx, stop_idx = find_event_indices(scan_proc.get('event', []), start_label=args.start_label, stop_label=args.stop_label)
-        initial_gpr_angle, initial_xy, stopping_xy = compute_initial_and_stopping(scan_proc, start_idx, stop_idx, pre_window=args.pre_window, post_window=args.post_window)
-        print(f"Initial GPR angle: {initial_gpr_angle:.6f}")
-        print(f"Initial XY avg: {initial_xy}")
-        print(f"Stopping XY avg: {stopping_xy}")
-        print("Localization parameters:")
-        print(f"  spacing_m={args.spacing_m}")
-        print(f"  wheel_radius_m={args.wheel_radius_m}")
-        print(f"  gear_ratio={args.gear_ratio}")
-        print(f"  pre_window={args.pre_window}, post_window={args.post_window}")
-        print(f"  start_label='{args.start_label}', stop_label='{args.stop_label}'")
-
-        # Expected vs actual A-scan counts
-        lo = start_idx if start_idx >= 0 else 0
-        hi = (stop_idx + 1) if (stop_idx is not None and stop_idx >= 0) else len(scan_proc.get('gpr_position', []))
-        lo = max(0, min(lo, len(scan_proc.get('gpr_position', []))))
-        hi = max(lo, min(hi, len(scan_proc.get('gpr_position', []))))
-        motor_window = np.asarray(scan_proc.get('gpr_position', np.array([]))[lo:hi], dtype=float)
-        if motor_window.size > 0:
-            delta_motor = float(motor_window[-1] - float(initial_gpr_angle))
-            # Convert motor delta to wheel revolutions using gear ratio
-            wheel_revs = abs(delta_motor) / float(args.gear_ratio if args.gear_ratio else 1.0)
-            circumference = 2.0 * np.pi * float(args.wheel_radius_m if args.wheel_radius_m else 1.0)
-            revs_per_ascan = (float(args.spacing_m) / circumference) if circumference > 0 else 0.0
-            expected_ascans = int(np.floor(wheel_revs / revs_per_ascan)) if revs_per_ascan > 0 else 0
+        # 3) Global mode: compute initial from first five and map all rows to traces via global gpr_position
+        initial_gpr_pos = compute_initial_from_first_five(scan_proc)
+        print(f"Initial GPR position (avg first 5): {initial_gpr_pos:.6f}")
+        circumference = 2.0 * np.pi * float(args.wheel_radius_m if args.wheel_radius_m else 1.0)
+        wheel_revs_per_trace = float(args.spacing_m) / (circumference if circumference > 0 else 1.0)
+        motor_revs_per_trace = float(args.gear_ratio if args.gear_ratio else 1.0) * wheel_revs_per_trace
+        gpr = np.asarray(scan_proc.get('gpr_position', np.array([])), dtype=float)
+        if gpr.size > 0 and motor_revs_per_trace > 0:
+            total_revs = float(np.maximum(0.0, np.max(gpr) - initial_gpr_pos))
+            expected_ascans = int(np.floor(total_revs / motor_revs_per_trace))
         else:
             expected_ascans = 0
         actual_ascans = int(A.shape[0])
-        print("---- A-scan Counts ----")
-        print(f"Expected (in window, ~{args.spacing_m*1000:.0f} mm): {expected_ascans}")
+        print("---- A-scan Counts (Global) ----")
+        print(f"Expected (~{args.spacing_m*1000:.0f} mm): {expected_ascans}")
         print(f"Actual (SEG-Y CDP traces): {actual_ascans}")
 
-        # Assign XYZ per A-scan using angle-based thresholds
-        locs_xyz = assign_locations_by_angle(
+        # Assign XYZ per A-scan using global progress
+        locs_xyz = assign_locations_by_global_progress(
             A_T,
             scan_proc,
-            start_idx,
-            stop_idx,
-            initial_gpr_angle,
+            initial_gpr_pos,
             wheel_radius_m=args.wheel_radius_m,
             gear_ratio=args.gear_ratio,
             spacing_m=args.spacing_m,
@@ -567,7 +611,7 @@ def main():
 
         if args.plot or (args.save_plot is not None and len(str(args.save_plot)) > 0):
             plot_title = f"GPR Radargram (A.T) with Pose per Trace (~{args.spacing_m*1000:.0f} mm spacing)"
-            plot_radargram_with_pose_per_trace(A_T, twt, cdp, locs_xyz, title=plot_title, save_path=args.save_plot)
+            plot_radargram_with_pose_per_trace(A_T, twt, cdp, locs_xyz, title=plot_title, save_path=args.save_plot, interactive=args.interactive)
 
         # Also write processed localization CSV for reference
         out_csv = write_processed_csv(args.scan_csv, scan_proc)

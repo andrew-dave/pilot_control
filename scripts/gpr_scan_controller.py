@@ -394,19 +394,19 @@ class GPRScanController(Node):
                 event,
                 (fast_ts if new_fastlio else ''),
                 self.gpr_timestamp_us,
-                (f"{self.fastlio_pose_filt['pos_x']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['pos_y']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['pos_z']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['quat_x']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['quat_y']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['quat_z']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['quat_w']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_lin_x']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_lin_y']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_lin_z']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_ang_x']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_ang_y']:.6f}" if new_fastlio else ''),
-                (f"{self.fastlio_pose_filt['vel_ang_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['pos_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['pos_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['pos_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['quat_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['quat_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['quat_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['quat_w']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_lin_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_lin_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_lin_z']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_ang_x']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_ang_y']:.6f}" if new_fastlio else ''),
+                (f"{self.fastlio_pose['vel_ang_z']:.6f}" if new_fastlio else ''),
                 f'{self.gpr_position:.6f}',
                 f'{self.gpr_velocity:.6f}',
                 f'{self.left_position:.6f}',
@@ -738,43 +738,8 @@ class GPRScanController(Node):
         self.fastlio_pose['vel_ang_y'] = msg.twist.twist.angular.y
         self.fastlio_pose['vel_ang_z'] = msg.twist.twist.angular.z
 
-        # Update moving average buffer
-        try:
-            self.fastlio_buffer.append(dict(self.fastlio_pose))
-            n = len(self.fastlio_buffer)
-            if n > 0:
-                # Average scalar components
-                def avg(key):
-                    return sum(sample[key] for sample in self.fastlio_buffer) / float(n)
-                self.fastlio_pose_filt['pos_x']     = avg('pos_x')
-                self.fastlio_pose_filt['pos_y']     = avg('pos_y')
-                self.fastlio_pose_filt['pos_z']     = avg('pos_z')
-                self.fastlio_pose_filt['vel_lin_x'] = avg('vel_lin_x')
-                self.fastlio_pose_filt['vel_lin_y'] = avg('vel_lin_y')
-                self.fastlio_pose_filt['vel_lin_z'] = avg('vel_lin_z')
-                self.fastlio_pose_filt['vel_ang_x'] = avg('vel_ang_x')
-                self.fastlio_pose_filt['vel_ang_y'] = avg('vel_ang_y')
-                self.fastlio_pose_filt['vel_ang_z'] = avg('vel_ang_z')
-                # Average quaternion and renormalize
-                qx = avg('quat_x')
-                qy = avg('quat_y')
-                qz = avg('quat_z')
-                qw = avg('quat_w')
-                norm = (qx*qx + qy*qy + qz*qz + qw*qw) ** 0.5
-                if norm > 1e-9:
-                    self.fastlio_pose_filt['quat_x'] = qx / norm
-                    self.fastlio_pose_filt['quat_y'] = qy / norm
-                    self.fastlio_pose_filt['quat_z'] = qz / norm
-                    self.fastlio_pose_filt['quat_w'] = qw / norm
-                else:
-                    # Fallback to latest raw quaternion
-                    self.fastlio_pose_filt['quat_x'] = self.fastlio_pose['quat_x']
-                    self.fastlio_pose_filt['quat_y'] = self.fastlio_pose['quat_y']
-                    self.fastlio_pose_filt['quat_z'] = self.fastlio_pose['quat_z']
-                    self.fastlio_pose_filt['quat_w'] = self.fastlio_pose['quat_w']
-        except Exception:
-            # On any error, fall back to raw
-            self.fastlio_pose_filt = dict(self.fastlio_pose)
+        # Filtering disabled: use raw pose directly (no moving average).
+        self.fastlio_pose_filt = dict(self.fastlio_pose)
 
         # Logging now happens in gpr_status_callback at ~100 Hz
 
