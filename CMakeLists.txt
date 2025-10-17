@@ -19,6 +19,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
@@ -38,6 +39,16 @@ find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs)
 add_executable(diff_drive_controller src/diff_drive_controller.cpp)
 ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
 install(TARGETS diff_drive_controller DESTINATION lib/${PROJECT_NAME})
+
+# === POSE CONTROLLER ===
+add_executable(pose_controller src/pose_controller.cpp)
+target_include_directories(pose_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(pose_controller PUBLIC cxx_std_17)
+ament_target_dependencies(pose_controller rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs std_srvs odrive_can)
+target_link_libraries(pose_controller Eigen3::Eigen)
+install(TARGETS pose_controller DESTINATION lib/${PROJECT_NAME})
 
 # === PCD PROCESSOR (laptop-side map processing) ===
 add_executable(pcd_processor src/pcd_processor.cpp)
