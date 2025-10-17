@@ -7,6 +7,7 @@
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <gst/gst.h>
+#include <gst/app/gstappsink.h>
 #include <glib.h>
 
 #include <opencv2/opencv.hpp>
@@ -438,8 +439,8 @@ private:
     if (ev == SEEKCAMERA_MANAGER_EVENT_CONNECT) {
       thermal_cam_ = cam;
       seekcamera_set_pipeline_mode(thermal_cam_, cfg_.use_seekvision_mode
-                                        ? SEEKCAMERA_PIPELINE_MODE_IMAGE_SEEKVISION
-                                        : SEEKCAMERA_PIPELINE_MODE_IMAGE_LEGACY);
+                                        ? SEEKCAMERA_IMAGE_SEEKVISION
+                                        : SEEKCAMERA_IMAGE_LEGACY);
 
       uint32_t fmts = SEEKCAMERA_FRAME_FORMAT_THERMOGRAPHY_FLOAT;
       if (cfg_.save_color_png) fmts |= SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888;
@@ -488,7 +489,8 @@ private:
         cv::Mat argb32(h,w,CV_8UC4,const_cast<uint8_t*>(p));
         std::vector<cv::Mat> ch; ch.reserve(4);
         cv::split(argb32, ch);
-        cv::Mat bgra; cv::merge({ch[3],ch[2],ch[1],ch[0]}, bgra);
+        std::vector<cv::Mat> bgra_channels = {ch[3],ch[2],ch[1],ch[0]}; // B,G,R,A
+        cv::Mat bgra; cv::merge(bgra_channels, bgra);
         cv::cvtColor(bgra, f.color_bgr, cv::COLOR_BGRA2BGR);
       }
     }
@@ -651,7 +653,12 @@ private:
     cv::Mat image_copy = image.clone();
     
     CameraFrame frame;
-    frame.ts_ns = gst_clock_get_time(gst_element_get_clock(appsink)) * 1000; // Convert to ns
+    // Use buffer timestamp if available, otherwise current time
+    GstClockTime timestamp = GST_BUFFER_PTS(buffer);
+    if (timestamp == GST_CLOCK_TIME_NONE) {
+      timestamp = gst_clock_get_time(gst_element_get_clock(appsink));
+    }
+    frame.ts_ns = timestamp; // Already in nanoseconds
     frame.image = image_copy;
     frame.camera_label = camera;
     

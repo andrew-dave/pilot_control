@@ -120,7 +120,7 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
   target_include_directories(unified_data_collector PUBLIC 
     ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
   target_link_libraries(unified_data_collector 
-    ${GSTREAMER_LIBRARIES} ${GLIB2_LIBRARIES} ${OpenCV_LIBS}
+    ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES} ${GLIB2_LIBRARIES} ${OpenCV_LIBS}
     seekcamera)
   install(TARGETS unified_data_collector DESTINATION lib/${PROJECT_NAME})
 else()
