@@ -38,27 +38,33 @@ def generate_launch_description():
         description='A multiplier to tune the robot turning speed.'
     )
 
-    # Video streamer (GStreamer tee: recording + streaming)
-    video_streamer_gst_node = Node(
+    # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
+    unified_data_collector_node = Node(
         package='pilot_control',
-        executable='video_streamer_gst',
-        name='video_streamer_gst',
+        executable='unified_data_collector',
+        name='unified_data_collector',
         output='screen',
         respawn=True,
         respawn_delay=2.0,
         parameters=[{
-            # Lock to the specific See3CAM by-id (maps to /dev/video1 on your system)
-            # 'left_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
-            # 'right_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
-            'right_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
+            # Odometry and thermal camera settings
+            'fastlio_odom_topic': '/Odometry',
+            'log_directory': os.path.join(os.path.expanduser('~'), 'unified_scans'),
+            'use_seekvision_mode': True,
+            'save_color_png': True,
+            'csv_flush_every_rows': 50,
+            
+            # Camera device paths (See3CAM)
             'left_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',
-            'camera_label': 'cam_left',
-            'camera_label_right': 'cam_right',
-            'output_dir': os.path.join(os.path.expanduser('~'), 'scan_videos'),
-            'fourcc': 'MJPG',
-            'fps': 60.0,
-            'start_recording': False,
-            'enable_record_service': True,
+            'right_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
+            
+            # Streaming settings
+            'stream_host': '172.16.14.195', # TODO: change to 172.16.14.195 (R) / 172.16.13.122 (A)
+            'stream_port': 5602, # TODO: change to 5602 (R) / 5600 (A)
+            'stream_bitrate_kbps': 800,
+            'rtp_mtu': 1200,
+            
+            # Video capture settings
             'use_mjpeg_pipeline': True,
             'cap_w': 1920,
             'cap_h': 1080,
@@ -67,11 +73,6 @@ def generate_launch_description():
             'raw_w': 1280,
             'raw_h': 720,
             'raw_fps': 60,
-            'stream_host': '172.16.14.195', # TODO: change to 172.16.14.195 (R) / 172.16.13.122 (A)
-            'stream_port': 5602, # TODO: change to 5602 (R) / 5600 (A)
-            'stream_bitrate_kbps': 800,
-            'rtp_mtu': 1200,
-            'enable_record_service': True,
         }]
     )
 
@@ -319,7 +320,7 @@ def generate_launch_description():
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
-                video_streamer_gst_node,
+                unified_data_collector_node,
                 
                 gpr_serial_bridge_node,
                 gpr_scan_controller_node,
