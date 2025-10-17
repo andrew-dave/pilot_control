@@ -31,8 +31,8 @@ endif()
 # Find SDL2 for teleop
 find_package(SDL2 QUIET)
 
-# OpenCV for video_recorder
-find_package(OpenCV QUIET COMPONENTS core imgproc videoio)
+# OpenCV for video_recorder and unified_data_collector
+find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs)
 
 # === DIFFERENTIAL DRIVE CONTROLLER ===
 add_executable(diff_drive_controller src/diff_drive_controller.cpp)
@@ -110,6 +110,21 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND)
   install(TARGETS video_streamer_gst DESTINATION lib/${PROJECT_NAME})
 else()
   message(WARNING "GStreamer not found — video_streamer_gst will not be built")
+endif()
+
+# === UNIFIED DATA COLLECTOR (Thermal + Dual Cameras + Odometry) ===
+if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
+  add_executable(unified_data_collector src/unified_data_collector.cpp)
+  target_compile_features(unified_data_collector PUBLIC cxx_std_17)
+  ament_target_dependencies(unified_data_collector rclcpp nav_msgs std_srvs)
+  target_include_directories(unified_data_collector PUBLIC 
+    ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(unified_data_collector 
+    ${GSTREAMER_LIBRARIES} ${GLIB2_LIBRARIES} ${OpenCV_LIBS}
+    seekcamera)
+  install(TARGETS unified_data_collector DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "GStreamer, OpenCV, or SeekCamera not found — unified_data_collector will not be built")
 endif()
 
 # Install launch and config files

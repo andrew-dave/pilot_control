@@ -1,0 +1,740 @@
+#include <seekcamera/seekcamera.h>
+#include <seekcamera/seekcamera_manager.h>
+#include <seekcamera/seekcamera_frame.h>
+
+#include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <std_srvs/srv/set_bool.hpp>
+
+#include <gst/gst.h>
+#include <glib.h>
+
+#include <opencv2/opencv.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <cstdint>
+#include <cstring>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+// ==== SDK compat shims (handle older enum names) ====
+#ifndef SEEKCAMERA_PIPELINE_MODE_IMAGE_LITE
+  #ifdef SEEKCAMERA_IMAGE_LITE
+    #define SEEKCAMERA_PIPELINE_MODE_IMAGE_LITE SEEKCAMERA_IMAGE_LITE
+  #endif
+#endif
+#ifndef SEEKCAMERA_PIPELINE_MODE_IMAGE_LEGACY
+  #ifdef SEEKCAMERA_IMAGE_LEGACY
+    #define SEEKCAMERA_PIPELINE_MODE_IMAGE_LEGACY SEEKCAMERA_IMAGE_LEGACY
+  #endif
+#endif
+#ifndef SEEKCAMERA_PIPELINE_MODE_IMAGE_SEEKVISION
+  #ifdef SEEKCAMERA_IMAGE_SEEKVISION
+    #define SEEKCAMERA_PIPELINE_MODE_IMAGE_SEEKVISION SEEKCAMERA_IMAGE_SEEKVISION
+  #endif
+#endif
+
+// ========================= Config =========================
+struct Config {
+  std::string odom_topic      = "/Odometry";
+  std::string log_directory   = std::string(getenv("HOME")?getenv("HOME"):".") + "/unified_scans";
+  bool use_seekvision_mode    = true;   // SeekVision pipeline for colorized stream
+  bool save_color_png         = true;   // write *_color.png alongside float32 bin
+  int  csv_flush_every_rows   = 50;     // batch CSV flush, no per-row flush
+  size_t frame_ring_size      = 24;     // ~2–3 s @ 9 Hz camera
+  
+  // Video streaming params
+  std::string left_device     = "/dev/v4l/by-id/See3CAM_Left-video-index0";
+  std::string right_device    = "/dev/v4l/by-id/See3CAM_Right-video-index0";
+  std::string stream_host     = "172.16.10.121";
+  int stream_port            = 5600;
+  int stream_bitrate_kbps    = 800;
+  int rtp_mtu               = 1200;
+  bool use_mjpeg_pipeline    = true;
+  int cap_w                 = 1920;
+  int cap_h                 = 1080;
+  int cap_fps               = 30;
+  std::string raw_format     = "UYVY";
+  int raw_w                 = 1280;
+  int raw_h                 = 720;
+  int raw_fps               = 60;
+};
+
+// ==================== Frame containers ====================
+struct ThermFrame {
+  uint64_t ts_ns = 0;  // SDK UTC timestamp (ns)
+  int w = 0, h = 0;
+  std::vector<float> thermo;   // °C, size w*h
+  cv::Mat color_bgr;           // colorized display (optional)
+};
+
+struct CameraFrame {
+  uint64_t ts_ns = 0;  // timestamp (ns)
+  cv::Mat image;       // BGR image
+  std::string camera_label;
+};
+
+class FrameRing {
+public:
+  explicit FrameRing(size_t cap) : cap_(cap) {}
+  
+  void push(ThermFrame&& f) {
+    std::lock_guard<std::mutex> lk(m_);
+    thermo_q_.emplace_back(std::move(f));
+    while (thermo_q_.size() > cap_) thermo_q_.pop_front();
+  }
+  
+  void push(CameraFrame&& f) {
+    std::lock_guard<std::mutex> lk(m_);
+    if (f.camera_label == "left") {
+      left_q_.emplace_back(std::move(f));
+      while (left_q_.size() > cap_) left_q_.pop_front();
+    } else if (f.camera_label == "right") {
+      right_q_.emplace_back(std::move(f));
+      while (right_q_.size() > cap_) right_q_.pop_front();
+    }
+  }
+  
+  bool nearest_thermal(uint64_t target_ns, ThermFrame& out, uint64_t& dt_abs_ns) {
+    std::lock_guard<std::mutex> lk(m_);
+    if (thermo_q_.empty()) return false;
+    size_t best = 0; uint64_t bestdt = UINT64_MAX;
+    for (size_t i=0;i<thermo_q_.size();++i) {
+      uint64_t a=thermo_q_[i].ts_ns,b=target_ns; uint64_t d=(a>b)?(a-b):(b-a);
+      if (d<bestdt){ bestdt=d; best=i; }
+    }
+    out = thermo_q_[best]; dt_abs_ns = bestdt; return true;
+  }
+  
+  bool nearest_camera(uint64_t target_ns, const std::string& camera, CameraFrame& out, uint64_t& dt_abs_ns) {
+    std::lock_guard<std::mutex> lk(m_);
+    std::deque<CameraFrame>* q = (camera == "left") ? &left_q_ : &right_q_;
+    if (q->empty()) return false;
+    size_t best = 0; uint64_t bestdt = UINT64_MAX;
+    for (size_t i=0;i<q->size();++i) {
+      uint64_t a=(*q)[i].ts_ns,b=target_ns; uint64_t d=(a>b)?(a-b):(b-a);
+      if (d<bestdt){ bestdt=d; best=i; }
+    }
+    out = (*q)[best]; dt_abs_ns = bestdt; return true;
+  }
+
+private:
+  std::mutex m_;
+  std::deque<ThermFrame> thermo_q_;
+  std::deque<CameraFrame> left_q_;
+  std::deque<CameraFrame> right_q_;
+  size_t cap_;
+};
+
+// ==================== Async writer ====================
+struct CsvJob {
+  uint64_t odom_ns{}, cam_ns{}, left_ns{}, right_ns{};
+  double dt_thermal_ms{}, dt_left_ms{}, dt_right_ms{};
+  // pose / orientation
+  double px{},py{},pz{}, qx{},qy{},qz{},qw{};
+  // twist
+  double vx{},vy{},vz{}, wx{},wy{},wz{};
+  // data
+  ThermFrame thermal_frame;
+  CameraFrame left_frame;
+  CameraFrame right_frame;
+  fs::path out_dir;                            // session_dir/frames
+  std::shared_ptr<std::ofstream> csv;          // session_dir/unified_log.csv
+};
+
+class CsvWriter {
+public:
+  explicit CsvWriter(int flush_every_rows) : flush_every_rows_(flush_every_rows) {}
+  ~CsvWriter(){ stop(); }
+
+  void start(){ running_=true; th_=std::thread([this]{ run(); }); }
+  void stop(){ running_=false; cv_.notify_all(); if (th_.joinable()) th_.join(); }
+  void enqueue(CsvJob&& j){ { std::lock_guard<std::mutex> lk(m_); q_.emplace_back(std::move(j)); } cv_.notify_one(); }
+
+private:
+  static std::string save_float32_bin(const ThermFrame& f, const fs::path& dir, const std::string& stem) {
+    fs::create_directories(dir);
+    fs::path p = dir / (stem + "_thermo_f32.bin");
+    std::ofstream ofs(p, std::ios::binary);
+    int32_t w=f.w,h=f.h;
+    ofs.write(reinterpret_cast<const char*>(&w),4);
+    ofs.write(reinterpret_cast<const char*>(&h),4);
+    ofs.write(reinterpret_cast<const char*>(f.thermo.data()), f.w*f.h*sizeof(float));
+    return p.string();
+  }
+  
+  static std::string save_color_png(const ThermFrame& f, const fs::path& dir, const std::string& stem) {
+    if (f.color_bgr.empty()) return "";
+    fs::create_directories(dir);
+    fs::path p = dir / (stem + "_thermal_color.png");
+    cv::imwrite(p.string(), f.color_bgr);
+    return p.string();
+  }
+  
+  static std::string save_camera_png(const CameraFrame& f, const fs::path& dir, const std::string& stem) {
+    if (f.image.empty()) return "";
+    fs::create_directories(dir);
+    fs::path p = dir / (stem + "_" + f.camera_label + ".png");
+    cv::imwrite(p.string(), f.image);
+    return p.string();
+  }
+
+  void run(){
+    int rows_since_flush = 0;
+    while (running_) {
+      CsvJob job;
+      {
+        std::unique_lock<std::mutex> lk(m_);
+        cv_.wait(lk,[&]{ return !q_.empty() || !running_; });
+        if (!running_ && q_.empty()) break;
+        job = std::move(q_.front()); q_.pop_front();
+      }
+      
+      std::ostringstream s; s << "odom" << job.odom_ns << "_thermal" << job.cam_ns 
+                             << "_left" << job.left_ns << "_right" << job.right_ns;
+      const std::string stem = s.str();
+
+      const std::string thermo_bin = save_float32_bin(job.thermal_frame, job.out_dir, stem);
+      std::string thermal_color_png;
+      if (!job.thermal_frame.color_bgr.empty()) thermal_color_png = save_color_png(job.thermal_frame, job.out_dir, stem);
+      
+      const std::string left_png = save_camera_png(job.left_frame, job.out_dir, stem);
+      const std::string right_png = save_camera_png(job.right_frame, job.out_dir, stem);
+
+      auto& csv = *job.csv;
+      csv << job.odom_ns << "," << job.cam_ns << "," << job.left_ns << "," << job.right_ns << ","
+          << std::fixed << std::setprecision(3) << job.dt_thermal_ms << ","
+          << std::fixed << std::setprecision(3) << job.dt_left_ms << ","
+          << std::fixed << std::setprecision(3) << job.dt_right_ms << ","
+          << job.px << "," << job.py << "," << job.pz << ","
+          << job.qx << "," << job.qy << "," << job.qz << "," << job.qw << ","
+          << job.vx << "," << job.vy << "," << job.vz << ","
+          << job.wx << "," << job.wy << "," << job.wz << ","
+          << thermo_bin << "," << thermal_color_png << ","
+          << left_png << "," << right_png << "\n";
+
+      if (++rows_since_flush >= flush_every_rows_) { csv.flush(); rows_since_flush = 0; }
+    }
+  }
+
+  std::thread th_;
+  std::mutex m_; std::condition_variable cv_; std::deque<CsvJob> q_;
+  std::atomic<bool> running_{false};
+  int flush_every_rows_;
+};
+
+// ==================== Unified Node ====================
+class UnifiedDataCollector : public rclcpp::Node {
+public:
+  UnifiedDataCollector()
+      : rclcpp::Node("unified_data_collector"),
+        recording_active_(false),
+        shutting_down_(false),
+        ring_(cfg_.frame_ring_size),
+        writer_(cfg_.csv_flush_every_rows) {
+    
+    // Parameters
+    declare_parameters();
+    get_parameters();
+    
+    // Session directory
+    session_dir_ = fs::path(cfg_.log_directory) / ("dataset_" + timestampStr());
+    fs::create_directories(session_dir_ / "frames");
+    
+    // CSV setup
+    csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
+                                                  std::ios::out | std::ios::trunc);
+    *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
+                    "dt_thermal_ms,dt_left_ms,dt_right_ms,"
+                    "px,py,pz,qx,qy,qz,qw,"
+                    "vx,vy,vz,wx,wy,wz,"
+                    "thermo_f32_bin,thermal_color_png,left_image_png,right_image_png\n";
+
+    // Service for recording control
+    record_srv_ = this->create_service<std_srvs::srv::SetBool>(
+        "/video_record_set",
+        std::bind(&UnifiedDataCollector::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
+    RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
+
+    // ROS wiring
+    auto qos = rclcpp::SensorDataQoS().keep_last(100);
+    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(cfg_.odom_topic, qos,
+                 std::bind(&UnifiedDataCollector::onOdom, this, std::placeholders::_1));
+
+    // Initialize components
+    initGStreamer();
+    createCameraManager();
+    writer_.start();
+
+    RCLCPP_INFO(get_logger(), "UnifiedDataCollector ready. Odom: %s", cfg_.odom_topic.c_str());
+    RCLCPP_INFO(get_logger(), "Session: %s", session_dir_.c_str());
+  }
+
+  ~UnifiedDataCollector() override {
+    shutting_down_.store(true);
+    writer_.stop();
+    if (csv_stream_ && csv_stream_->is_open()) { csv_stream_->flush(); csv_stream_->close(); }
+    destroyCameraManager();
+    stopGStreamer();
+  }
+
+private:
+  void declare_parameters() {
+    // Thermal/odometry params
+    this->declare_parameter<std::string>("fastlio_odom_topic", cfg_.odom_topic);
+    this->declare_parameter<std::string>("log_directory", cfg_.log_directory);
+    this->declare_parameter<bool>("use_seekvision_mode", cfg_.use_seekvision_mode);
+    this->declare_parameter<bool>("save_color_png", cfg_.save_color_png);
+    this->declare_parameter<int>("csv_flush_every_rows", cfg_.csv_flush_every_rows);
+    
+    // Video streaming params
+    this->declare_parameter<std::string>("left_device", cfg_.left_device);
+    this->declare_parameter<std::string>("right_device", cfg_.right_device);
+    this->declare_parameter<std::string>("stream_host", cfg_.stream_host);
+    this->declare_parameter<int>("stream_port", cfg_.stream_port);
+    this->declare_parameter<int>("stream_bitrate_kbps", cfg_.stream_bitrate_kbps);
+    this->declare_parameter<int>("rtp_mtu", cfg_.rtp_mtu);
+    this->declare_parameter<bool>("use_mjpeg_pipeline", cfg_.use_mjpeg_pipeline);
+    this->declare_parameter<int>("cap_w", cfg_.cap_w);
+    this->declare_parameter<int>("cap_h", cfg_.cap_h);
+    this->declare_parameter<int>("cap_fps", cfg_.cap_fps);
+    this->declare_parameter<std::string>("raw_format", cfg_.raw_format);
+    this->declare_parameter<int>("raw_w", cfg_.raw_w);
+    this->declare_parameter<int>("raw_h", cfg_.raw_h);
+    this->declare_parameter<int>("raw_fps", cfg_.raw_fps);
+  }
+  
+  void get_parameters() {
+    this->get_parameter("fastlio_odom_topic", cfg_.odom_topic);
+    this->get_parameter("log_directory", cfg_.log_directory);
+    this->get_parameter("use_seekvision_mode", cfg_.use_seekvision_mode);
+    this->get_parameter("save_color_png", cfg_.save_color_png);
+    this->get_parameter("csv_flush_every_rows", cfg_.csv_flush_every_rows);
+    
+    this->get_parameter("left_device", cfg_.left_device);
+    this->get_parameter("right_device", cfg_.right_device);
+    this->get_parameter("stream_host", cfg_.stream_host);
+    this->get_parameter("stream_port", cfg_.stream_port);
+    this->get_parameter("stream_bitrate_kbps", cfg_.stream_bitrate_kbps);
+    this->get_parameter("rtp_mtu", cfg_.rtp_mtu);
+    this->get_parameter("use_mjpeg_pipeline", cfg_.use_mjpeg_pipeline);
+    this->get_parameter("cap_w", cfg_.cap_w);
+    this->get_parameter("cap_h", cfg_.cap_h);
+    this->get_parameter("cap_fps", cfg_.cap_fps);
+    this->get_parameter("raw_format", cfg_.raw_format);
+    this->get_parameter("raw_w", cfg_.raw_w);
+    this->get_parameter("raw_h", cfg_.raw_h);
+    this->get_parameter("raw_fps", cfg_.raw_fps);
+  }
+
+  // ---------- Odom -> enqueue one row ----------
+  void onOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    if (!recording_active_) return;
+    
+    const uint64_t odom_ns = (uint64_t)msg->header.stamp.sec*1000000000ULL
+                           + (uint64_t)msg->header.stamp.nanosec;
+
+    ThermFrame thermal_f; uint64_t dt_thermal=0;
+    CameraFrame left_f; uint64_t dt_left=0;
+    CameraFrame right_f; uint64_t dt_right=0;
+    
+    if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) return;
+    if (!ring_.nearest_camera(odom_ns, "left", left_f, dt_left)) return;
+    if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) return;
+
+    CsvJob job;
+    job.odom_ns = odom_ns;
+    job.cam_ns  = thermal_f.ts_ns;
+    job.left_ns = left_f.ts_ns;
+    job.right_ns = right_f.ts_ns;
+    job.dt_thermal_ms = (double)dt_thermal / 1e6;
+    job.dt_left_ms = (double)dt_left / 1e6;
+    job.dt_right_ms = (double)dt_right / 1e6;
+    job.thermal_frame = std::move(thermal_f);
+    job.left_frame = std::move(left_f);
+    job.right_frame = std::move(right_f);
+    job.out_dir = session_dir_ / "frames";
+    job.csv = csv_stream_;
+
+    // Pose
+    job.px = msg->pose.pose.position.x;
+    job.py = msg->pose.pose.position.y;
+    job.pz = msg->pose.pose.position.z;
+    job.qx = msg->pose.pose.orientation.x;
+    job.qy = msg->pose.pose.orientation.y;
+    job.qz = msg->pose.pose.orientation.z;
+    job.qw = msg->pose.pose.orientation.w;
+
+    // Twist
+    job.vx = msg->twist.twist.linear.x;
+    job.vy = msg->twist.twist.linear.y;
+    job.vz = msg->twist.twist.linear.z;
+    job.wx = msg->twist.twist.angular.x;
+    job.wy = msg->twist.twist.angular.y;
+    job.wz = msg->twist.twist.angular.z;
+
+    writer_.enqueue(std::move(job));
+  }
+
+  // ---------- Recording control ----------
+  void onSetRecording(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
+                      std::shared_ptr<std_srvs::srv::SetBool::Response> resp) {
+    std::lock_guard<std::mutex> lk(mu_);
+    if (req->data) {
+      if (recording_active_) {
+        resp->success = true;
+        resp->message = "Already recording";
+        return;
+      }
+      recording_active_ = true;
+      resp->success = true;
+      resp->message = "Recording started";
+      RCLCPP_INFO(get_logger(), "Recording started - collecting synchronized data");
+    } else {
+      if (!recording_active_) {
+        resp->success = true;
+        resp->message = "Already stopped";
+        return;
+      }
+      recording_active_ = false;
+      resp->success = true;
+      resp->message = "Recording stopped";
+      RCLCPP_INFO(get_logger(), "Recording stopped");
+    }
+  }
+
+  // ---------- Thermal Camera plumbing ----------
+  void createCameraManager() {
+    if (seekcamera_manager_create(&mgr_, SEEKCAMERA_IO_TYPE_USB) != SEEKCAMERA_SUCCESS)
+      throw std::runtime_error("Failed to create seekcamera manager");
+    seekcamera_manager_register_event_callback(mgr_, &UnifiedDataCollector::onThermalEventStatic, this);
+  }
+  
+  void destroyCameraManager() {
+    if (thermal_cam_) seekcamera_capture_session_stop(thermal_cam_);
+    if (mgr_) seekcamera_manager_destroy(&mgr_);
+    thermal_cam_ = nullptr; mgr_ = nullptr;
+  }
+
+  static void onThermalEventStatic(seekcamera_t* cam, seekcamera_manager_event_t ev, seekcamera_error_t status, void* user){
+    static_cast<UnifiedDataCollector*>(user)->onThermalEvent(cam, ev, status);
+  }
+  
+  void onThermalEvent(seekcamera_t* cam, seekcamera_manager_event_t ev, seekcamera_error_t status){
+    (void)status;
+    if (ev == SEEKCAMERA_MANAGER_EVENT_CONNECT) {
+      thermal_cam_ = cam;
+      seekcamera_set_pipeline_mode(thermal_cam_, cfg_.use_seekvision_mode
+                                        ? SEEKCAMERA_PIPELINE_MODE_IMAGE_SEEKVISION
+                                        : SEEKCAMERA_PIPELINE_MODE_IMAGE_LEGACY);
+
+      uint32_t fmts = SEEKCAMERA_FRAME_FORMAT_THERMOGRAPHY_FLOAT;
+      if (cfg_.save_color_png) fmts |= SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888;
+
+      seekcamera_register_frame_available_callback(thermal_cam_, &UnifiedDataCollector::onThermalFrameStatic, this);
+      auto err = seekcamera_capture_session_start(thermal_cam_, fmts);
+      if (err == SEEKCAMERA_SUCCESS) RCLCPP_INFO(get_logger(), "[Thermal] Streaming.");
+      else RCLCPP_ERROR(get_logger(), "[Thermal] capture start failed: %d", (int)err);
+    } else if (ev == SEEKCAMERA_MANAGER_EVENT_DISCONNECT) {
+      RCLCPP_WARN(get_logger(), "[Thermal] Disconnected.");
+      if (thermal_cam_) seekcamera_capture_session_stop(thermal_cam_);
+      thermal_cam_ = nullptr;
+    } else if (ev == SEEKCAMERA_MANAGER_EVENT_READY_TO_PAIR) {
+      seekcamera_store_calibration_data(cam, nullptr, nullptr, nullptr);
+    }
+  }
+
+  static void onThermalFrameStatic(seekcamera_t* cam, seekcamera_frame_t* cam_frame, void* user){
+    static_cast<UnifiedDataCollector*>(user)->onThermalFrame(cam, cam_frame);
+  }
+  
+  void onThermalFrame(seekcamera_t* cam, seekcamera_frame_t* cam_frame){
+    (void)cam;
+    seekcamera_frame_lock(cam_frame);
+
+    ThermFrame f;
+
+    seekframe_t* therm=nullptr;
+    if (seekcamera_frame_get_frame_by_format(cam_frame,
+        SEEKCAMERA_FRAME_FORMAT_THERMOGRAPHY_FLOAT, &therm) == SEEKCAMERA_SUCCESS && therm) {
+      const float* px = static_cast<const float*>(seekframe_get_data(therm));
+      f.w = (int)seekframe_get_width(therm);
+      f.h = (int)seekframe_get_height(therm);
+      f.thermo.assign(px, px + f.w * f.h);
+
+      if (auto hdr = static_cast<const seekcamera_frame_header_t*>(seekframe_get_header(therm)))
+        f.ts_ns = hdr->timestamp_utc_ns;
+    }
+
+    if (cfg_.save_color_png) {
+      seekframe_t* argb=nullptr;
+      if (seekcamera_frame_get_frame_by_format(cam_frame,
+          SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888, &argb) == SEEKCAMERA_SUCCESS && argb) {
+        int w=(int)seekframe_get_width(argb), h=(int)seekframe_get_height(argb);
+        const uint8_t* p = static_cast<const uint8_t*>(seekframe_get_data(argb));
+        cv::Mat argb32(h,w,CV_8UC4,const_cast<uint8_t*>(p));
+        std::vector<cv::Mat> ch; ch.reserve(4);
+        cv::split(argb32, ch);
+        cv::Mat bgra; cv::merge({ch[3],ch[2],ch[1],ch[0]}, bgra);
+        cv::cvtColor(bgra, f.color_bgr, cv::COLOR_BGRA2BGR);
+      }
+    }
+
+    seekcamera_frame_unlock(cam_frame);
+    if (!f.thermo.empty()) ring_.push(std::move(f));
+  }
+
+  // ---------- GStreamer plumbing ----------
+  void initGStreamer() {
+    static std::once_flag gst_once;
+    std::call_once(gst_once, [] { gst_init(nullptr, nullptr); });
+    
+    buildStreamingPipeline();
+    startStreamingLoop();
+  }
+  
+  void stopGStreamer() {
+    if (pipeline_) gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
+    if (loop_) {
+      g_main_loop_quit(loop_);
+      if (loop_thread_.joinable()) loop_thread_.join();
+      g_main_loop_unref(loop_);
+      loop_ = nullptr;
+    }
+    if (context_) {
+      g_main_context_unref(context_);
+      context_ = nullptr;
+    }
+    if (bus_) {
+      gst_object_unref(bus_);
+      bus_ = nullptr;
+    }
+    pipeline_.reset();
+  }
+
+  void buildStreamingPipeline() {
+    std::ostringstream oss;
+    
+    // LEFT camera (stream + frame capture)
+    if (cfg_.use_mjpeg_pipeline) {
+      oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
+          << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
+          << "! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
+    } else {
+      oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
+          << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
+          << "! videoconvert ! video/x-raw,format=BGR ";
+    }
+    oss << "! tee name=T_left ";
+
+    // Stream branch
+    oss << " T_left. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
+        << "! videorate ! video/x-raw,framerate=15/1 "
+        << "! videoscale ! video/x-raw,width=640,height=480 "
+        << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps << " key-int-max=30 bframes=0 "
+        << "! video/x-h264,stream-format=byte-stream,alignment=au "
+        << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
+        << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
+
+    // Frame capture branch (appsink for left)
+    oss << " T_left. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
+        << "! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
+
+    // RIGHT camera (frame capture only)
+    if (cfg_.use_mjpeg_pipeline) {
+      oss << "\n"
+          << "v4l2src device=" << cfg_.right_device << " do-timestamp=true "
+          << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
+          << "! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
+    } else {
+      oss << "\n"
+          << "v4l2src device=" << cfg_.right_device << " do-timestamp=true "
+          << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
+          << "! videoconvert ! video/x-raw,format=BGR ";
+    }
+    oss << "! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
+        << "! appsink name=right_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
+
+    pipeline_str_ = oss.str();
+    RCLCPP_INFO(this->get_logger(), "Launching GStreamer pipeline:\n%s", pipeline_str_.c_str());
+
+    GError* err = nullptr;
+    GstElement* pipe = gst_parse_launch(pipeline_str_.c_str(), &err);
+    if (!pipe || err) {
+      if (err) {
+        RCLCPP_FATAL(this->get_logger(), "gst_parse_launch error: %s", err->message);
+        g_error_free(err);
+      } else {
+        RCLCPP_FATAL(this->get_logger(), "Failed to create pipeline");
+      }
+      if (pipe) gst_object_unref(pipe);
+      throw std::runtime_error("Failed to create GStreamer pipeline");
+    }
+    pipeline_.reset(pipe);
+
+    // Setup appsinks
+    left_appsink_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "left_appsink"));
+    right_appsink_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "right_appsink"));
+    
+    if (!left_appsink_ || !right_appsink_) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to retrieve appsinks");
+      throw std::runtime_error("Missing appsinks");
+    }
+
+    g_signal_connect(left_appsink_, "new-sample", G_CALLBACK(onNewLeftFrame), this);
+    g_signal_connect(right_appsink_, "new-sample", G_CALLBACK(onNewRightFrame), this);
+  }
+
+  void startStreamingLoop() {
+    bus_ = gst_element_get_bus(pipeline_.get());
+    if (!bus_) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to get pipeline bus");
+      throw std::runtime_error("No bus");
+    }
+
+    context_ = g_main_context_new();
+    loop_ = g_main_loop_new(context_, FALSE);
+
+    loop_thread_ = std::thread([this]() {
+      g_main_context_push_thread_default(context_);
+      bus_watch_id_ = gst_bus_add_watch(bus_, &UnifiedDataCollector::bus_func, this);
+      auto ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
+      if (ret == GST_STATE_CHANGE_FAILURE) {
+        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING");
+      }
+      g_main_loop_run(loop_);
+      if (bus_watch_id_) {
+        g_source_remove(bus_watch_id_);
+        bus_watch_id_ = 0;
+      }
+      g_main_context_pop_thread_default(context_);
+    });
+  }
+
+  static GstFlowReturn onNewLeftFrame(GstElement* appsink, gpointer user_data) {
+    return static_cast<UnifiedDataCollector*>(user_data)->onNewFrame(appsink, "left");
+  }
+  
+  static GstFlowReturn onNewRightFrame(GstElement* appsink, gpointer user_data) {
+    return static_cast<UnifiedDataCollector*>(user_data)->onNewFrame(appsink, "right");
+  }
+  
+  GstFlowReturn onNewFrame(GstElement* appsink, const std::string& camera) {
+    GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
+    if (!sample) return GST_FLOW_ERROR;
+
+    GstBuffer* buffer = gst_sample_get_buffer(sample);
+    GstCaps* caps = gst_sample_get_caps(sample);
+    GstStructure* structure = gst_caps_get_structure(caps, 0);
+    
+    gint width, height;
+    gst_structure_get_int(structure, "width", &width);
+    gst_structure_get_int(structure, "height", &height);
+    
+    GstMapInfo map;
+    gst_buffer_map(buffer, &map, GST_MAP_READ);
+    
+    cv::Mat image(height, width, CV_8UC3, map.data, cv::Mat::AUTO_STEP);
+    cv::Mat image_copy = image.clone();
+    
+    CameraFrame frame;
+    frame.ts_ns = gst_clock_get_time(gst_element_get_clock(appsink)) * 1000; // Convert to ns
+    frame.image = image_copy;
+    frame.camera_label = camera;
+    
+    ring_.push(std::move(frame));
+    
+    gst_buffer_unmap(buffer, &map);
+    gst_sample_unref(sample);
+    
+    return GST_FLOW_OK;
+  }
+
+  static gboolean bus_func(GstBus* /*bus*/, GstMessage* msg, gpointer user_data) {
+    auto* self = static_cast<UnifiedDataCollector*>(user_data);
+    switch (GST_MESSAGE_TYPE(msg)) {
+      case GST_MESSAGE_ERROR: {
+        GError* err = nullptr; gchar* dbg = nullptr;
+        gst_message_parse_error(msg, &err, &dbg);
+        RCLCPP_ERROR(self->get_logger(), "GStreamer ERROR from %s: %s",
+                     GST_OBJECT_NAME(msg->src), err ? err->message : "unknown");
+        if (dbg) { RCLCPP_ERROR(self->get_logger(), "Debug: %s", dbg); g_free(dbg); }
+        if (err) g_error_free(err);
+        break;
+      }
+      default:
+        break;
+    }
+    return TRUE;
+  }
+
+  static std::string timestampStr(){
+    const auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm,&t);
+#else
+    localtime_r(&t,&tm);
+#endif
+    char buf[32]; std::strftime(buf,sizeof(buf),"%Y%m%d_%H%M%S",&tm);
+    return std::string(buf);
+  }
+
+private:
+  Config cfg_;
+  std::mutex mu_;
+  std::atomic<bool> recording_active_;
+  std::atomic<bool> shutting_down_;
+
+  FrameRing ring_;
+  CsvWriter writer_;
+
+  fs::path session_dir_;
+  std::shared_ptr<std::ofstream> csv_stream_;
+
+  // ROS
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_srv_;
+
+  // Thermal Camera
+  seekcamera_manager_t* mgr_ = nullptr;
+  seekcamera_t* thermal_cam_ = nullptr;
+
+  // GStreamer
+  struct GstElementDeleter { void operator()(GstElement* p) const { if (p) gst_object_unref(p); } };
+  std::unique_ptr<GstElement, GstElementDeleter> pipeline_;
+  std::string pipeline_str_;
+  GstElement* left_appsink_{nullptr};
+  GstElement* right_appsink_{nullptr};
+  GstBus* bus_{nullptr};
+  guint bus_watch_id_{0};
+  GMainContext* context_{nullptr};
+  GMainLoop* loop_{nullptr};
+  std::thread loop_thread_;
+};
+
+int main(int argc, char** argv){
+  rclcpp::init(argc, argv);
+  try { 
+    auto node = std::make_shared<UnifiedDataCollector>();
+    rclcpp::spin(node);
+  }
+  catch(const std::exception& e){ 
+    std::cerr<<"Fatal: "<<e.what()<<"\n"; 
+  }
+  rclcpp::shutdown(); 
+  return 0;
+}
