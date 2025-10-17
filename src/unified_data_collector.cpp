@@ -534,18 +534,18 @@ private:
     if (cfg_.use_mjpeg_pipeline) {
       oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
           << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
-          << "! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
+          << "! jpegdec ! videoconvert ! video/x-raw,format=I420 ";
     } else {
       oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
           << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
-          << "! videoconvert ! video/x-raw,format=BGR ";
+          << "! videoconvert ! video/x-raw,format=I420 ";
     }
     oss << "! tee name=T_left ";
 
     // Stream branch
     oss << " T_left. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
         << "! videorate ! video/x-raw,framerate=15/1 "
-        << "! videoscale ! video/x-raw,width=640,height=480 "
+        << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
         << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps << " key-int-max=30 bframes=0 "
         << "! video/x-h264,stream-format=byte-stream,alignment=au "
         << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
@@ -553,6 +553,7 @@ private:
 
     // Frame capture branch (appsink for left)
     oss << " T_left. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
+        << "! videoconvert ! video/x-raw,format=BGR "
         << "! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
     // RIGHT camera (frame capture only)
