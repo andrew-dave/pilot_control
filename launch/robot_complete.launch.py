@@ -285,7 +285,11 @@ def generate_launch_description():
         ]
     )
 
-    # Video recorder removed
+    # Auto-start data collection after unified_data_collector is ready
+    # start_recording = ExecuteProcess(
+    #     cmd=['ros2', 'service', 'call', '/video_record_set', 'std_srvs/srv/SetBool', '{data: true}'],
+    #     output='screen'
+    # )
 
     return LaunchDescription([
         # Launch arguments
@@ -326,4 +330,10 @@ def generate_launch_description():
                 gpr_scan_controller_node,
             ]
         ),
+        
+        # Auto-start data collection (with delay to ensure unified_data_collector is ready)
+        # TimerAction(
+        #     period=8.0,
+        #     actions=[start_recording]
+        # ),
     ]) 
