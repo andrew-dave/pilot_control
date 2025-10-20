@@ -190,7 +190,13 @@ private:
     if (f.image.empty()) return "";
     fs::create_directories(dir);
     fs::path p = dir / (stem + "_" + f.camera_label + ".png");
-    cv::imwrite(p.string(), f.image);
+    
+    // Maximum PNG compression (lossless)
+    std::vector<int> compression_params;
+    compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
+    compression_params.push_back(5); // 0-9, 9 = maximum compression
+    
+    cv::imwrite(p.string(), f.image, compression_params);
     return p.string();
   }
 
