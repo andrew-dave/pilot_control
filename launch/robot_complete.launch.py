@@ -53,6 +53,7 @@ def generate_launch_description():
             'use_seekvision_mode': True,
             'save_color_png': True,
             'csv_flush_every_rows': 50,
+            'log_frequency_hz': 5.0,
             
             # Camera device paths (See3CAM)
             'left_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0',

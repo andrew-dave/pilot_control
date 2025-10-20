@@ -56,6 +56,7 @@ struct Config {
   bool save_color_png         = true;   // write *_color.png alongside float32 bin
   int  csv_flush_every_rows   = 50;     // batch CSV flush, no per-row flush
   size_t frame_ring_size      = 24;     // ~2–3 s @ 9 Hz camera
+  double log_frequency_hz     = 5.0;    // logging frequency in Hz
   
   // Video streaming params
   std::string left_device     = "/dev/v4l/by-id/See3CAM_Left-video-index0";
@@ -244,6 +245,7 @@ public:
       : rclcpp::Node("unified_data_collector"),
         recording_active_(false),
         shutting_down_(false),
+        last_log_time_(std::chrono::steady_clock::now()),
         ring_(cfg_.frame_ring_size),
         writer_(cfg_.csv_flush_every_rows) {
     
@@ -300,6 +302,7 @@ private:
     this->declare_parameter<bool>("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->declare_parameter<bool>("save_color_png", cfg_.save_color_png);
     this->declare_parameter<int>("csv_flush_every_rows", cfg_.csv_flush_every_rows);
+    this->declare_parameter<double>("log_frequency_hz", cfg_.log_frequency_hz);
     
     // Video streaming params
     this->declare_parameter<std::string>("left_device", cfg_.left_device);
@@ -324,6 +327,7 @@ private:
     this->get_parameter("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->get_parameter("save_color_png", cfg_.save_color_png);
     this->get_parameter("csv_flush_every_rows", cfg_.csv_flush_every_rows);
+    this->get_parameter("log_frequency_hz", cfg_.log_frequency_hz);
     
     this->get_parameter("left_device", cfg_.left_device);
     this->get_parameter("right_device", cfg_.right_device);
@@ -344,6 +348,14 @@ private:
   // ---------- Odom -> enqueue one row ----------
   void onOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
     if (!recording_active_) return;
+    
+    // Throttle to configured frequency
+    auto now = std::chrono::steady_clock::now();
+    auto min_interval_ms = static_cast<int>(1000.0 / cfg_.log_frequency_hz);
+    if (now - last_log_time_ < std::chrono::milliseconds(min_interval_ms)) {
+      return; // Skip this odometry message
+    }
+    last_log_time_ = now;
     
     const uint64_t odom_ns = (uint64_t)msg->header.stamp.sec*1000000000ULL
                            + (uint64_t)msg->header.stamp.nanosec;
@@ -709,6 +721,7 @@ private:
   std::mutex mu_;
   std::atomic<bool> recording_active_;
   std::atomic<bool> shutting_down_;
+  std::chrono::steady_clock::time_point last_log_time_;
 
   FrameRing ring_;
   CsvWriter writer_;
