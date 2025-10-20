@@ -443,7 +443,7 @@ private:
                                         : SEEKCAMERA_IMAGE_LEGACY);
 
       // Set color palette to Spectra (rainbow spectrum)
-      seekcamera_set_color_palette(thermal_cam_, SEEKCAMERA_COLOR_PALETTE_PRISM);
+      seekcamera_set_color_palette(thermal_cam_, SEEKCAMERA_COLOR_PALETTE_SPECTRA);
 
       uint32_t fmts = SEEKCAMERA_FRAME_FORMAT_THERMOGRAPHY_FLOAT;
       if (cfg_.save_color_png) fmts |= SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888;
