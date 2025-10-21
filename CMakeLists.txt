@@ -125,6 +125,9 @@ endif()
 
 # === UNIFIED DATA COLLECTOR (Thermal + Dual Cameras + Odometry) ===
 if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
+  # Find JPEG XL library
+  pkg_check_modules(LIBJXL QUIET libjxl)
+  
   add_executable(unified_data_collector src/unified_data_collector.cpp)
   target_compile_features(unified_data_collector PUBLIC cxx_std_17)
   ament_target_dependencies(unified_data_collector rclcpp nav_msgs std_srvs)
@@ -133,6 +136,25 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
   target_link_libraries(unified_data_collector 
     ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES} ${GLIB2_LIBRARIES} ${OpenCV_LIBS}
     seekcamera)
+  
+  # Add JPEG XL support using custom-built library
+  set(JXL_ROOT_DIR "/home/avenblake/libjxl")
+  set(JXL_INCLUDE_DIR "${JXL_ROOT_DIR}/build/lib/include")
+  set(JXL_LIB_DIR "${JXL_ROOT_DIR}/build/lib")
+  
+  if(EXISTS "${JXL_INCLUDE_DIR}/jxl/encode.h" AND EXISTS "${JXL_LIB_DIR}/libjxl.so")
+    target_include_directories(unified_data_collector PUBLIC ${JXL_INCLUDE_DIR})
+    target_link_libraries(unified_data_collector 
+      ${JXL_LIB_DIR}/libjxl.so
+      ${JXL_LIB_DIR}/libjxl_threads.so
+      ${JXL_LIB_DIR}/libjxl_cms.so)
+    target_compile_definitions(unified_data_collector PRIVATE HAVE_JPEGXL=1)
+    message(STATUS "JPEG XL support enabled for unified_data_collector (custom build)")
+  else()
+    message(WARNING "JPEG XL library not found — will use fallback PNG compression")
+    target_compile_definitions(unified_data_collector PRIVATE HAVE_JPEGXL=0)
+  endif()
+  
   install(TARGETS unified_data_collector DESTINATION lib/${PROJECT_NAME})
 else()
   message(WARNING "GStreamer, OpenCV, or SeekCamera not found — unified_data_collector will not be built")

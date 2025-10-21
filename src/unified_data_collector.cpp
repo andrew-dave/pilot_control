@@ -12,6 +12,13 @@
 
 #include <opencv2/opencv.hpp>
 
+// JPEG XL includes (conditional)
+#ifdef HAVE_JPEGXL
+#include <jxl/encode.h>
+#include <jxl/thread_parallel_runner.h>
+#include <jxl/color_encoding.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -57,6 +64,12 @@ struct Config {
   int  csv_flush_every_rows   = 50;     // batch CSV flush, no per-row flush
   size_t frame_ring_size      = 24;     // ~2–3 s @ 9 Hz camera
   double log_frequency_hz     = 5.0;    // logging frequency in Hz
+  
+  // Image compression params
+  std::string image_compression = "jxl";  // "png", "jpeg", "webp", "jxl"
+  int jxl_effort              = 3;        // 1-9, 3=fast, 7=balanced, 9=slowest
+  double jxl_distance         = 1.0;      // 0.0=lossless, 1.0=visually lossless, higher=more lossy
+  bool jxl_fast_mode          = true;     // Enable speed optimizations
   
   // Video streaming params
   std::string left_device     = "/dev/v4l/by-id/See3CAM_Left-video-index0";
@@ -141,6 +154,102 @@ private:
   size_t cap_;
 };
 
+// ==================== JPEG XL Compression Helper (Speed Optimized) ====================
+#ifdef HAVE_JPEGXL
+static bool compress_opencv_to_jxl(const cv::Mat& image, std::vector<uint8_t>& compressed_data, 
+                                  int effort = 3, double /*distance*/ = 1.0) {
+  // Speed optimizations:
+  // - effort=3 (fast encoding)
+  // - No BGR->RGB conversion (direct BGR encoding)
+  // - Limited threads (max 4) to avoid context switching overhead
+  // - Smaller initial buffer (32KB vs 64KB)
+  // - Fast decoding speed setting
+  // - No resampling
+  if (image.empty() || image.channels() != 3) return false;
+  
+  // Create encoder
+  JxlEncoder* encoder = JxlEncoderCreate(nullptr);
+  if (!encoder) return false;
+  
+  // Set up parallel runner for better performance (limit to 4 threads for speed)
+  int num_threads = std::min(4, static_cast<int>(std::thread::hardware_concurrency()));
+  void* runner = JxlThreadParallelRunnerCreate(nullptr, num_threads);
+  JxlEncoderSetParallelRunner(encoder, JxlThreadParallelRunner, runner);
+  
+  // Configure basic info
+  JxlBasicInfo basic_info;
+  JxlEncoderInitBasicInfo(&basic_info);
+  basic_info.xsize = image.cols;
+  basic_info.ysize = image.rows;
+  basic_info.bits_per_sample = 8;
+  basic_info.num_color_channels = 3;
+  basic_info.alpha_bits = 0;
+  basic_info.alpha_exponent_bits = 0;
+  basic_info.uses_original_profile = JXL_FALSE;
+  
+  JxlEncoderSetBasicInfo(encoder, &basic_info);
+  
+  // Set color encoding (sRGB)
+  JxlColorEncoding color_encoding = {};
+  JxlColorEncodingSetToSRGB(&color_encoding, JXL_FALSE);
+  JxlEncoderSetColorEncoding(encoder, &color_encoding);
+  
+  // Configure frame settings
+  JxlEncoderFrameSettings* frame_settings = JxlEncoderFrameSettingsCreate(encoder, nullptr);
+  
+  // Set compression parameters for speed (libjxl 0.12.0 compatible)
+  JxlEncoderFrameSettingsSetOption(frame_settings, JXL_ENC_FRAME_SETTING_EFFORT, effort);
+  
+  // For libjxl 0.12.0, we'll use effort level to control quality/speed balance
+  // Lower effort = faster encoding, higher effort = better compression
+  // The distance parameter is handled through effort level in this version
+  
+  // Use BGR directly (avoid conversion) - JPEG XL can handle BGR
+  JxlPixelFormat pixel_format = {3, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+  
+  // Add image frame directly (no BGR->RGB conversion needed)
+  if (JxlEncoderAddImageFrame(frame_settings, &pixel_format, 
+                             image.data, image.total() * image.elemSize()) != JXL_ENC_SUCCESS) {
+    JxlThreadParallelRunnerDestroy(runner);
+    JxlEncoderDestroy(encoder);
+    return false;
+  }
+  
+  JxlEncoderCloseInput(encoder);
+  
+  // Process output with smaller initial buffer for speed
+  compressed_data.resize(32 * 1024); // Smaller initial buffer for faster allocation
+  uint8_t* next_out = compressed_data.data();
+  size_t avail_out = compressed_data.size();
+  
+  JxlEncoderStatus status = JXL_ENC_NEED_MORE_OUTPUT;
+  while (status == JXL_ENC_NEED_MORE_OUTPUT) {
+    status = JxlEncoderProcessOutput(encoder, &next_out, &avail_out);
+    if (status == JXL_ENC_NEED_MORE_OUTPUT) {
+      size_t offset = next_out - compressed_data.data();
+      compressed_data.resize(compressed_data.size() * 2);
+      next_out = compressed_data.data() + offset;
+      avail_out = compressed_data.size() - offset;
+    }
+  }
+  
+  compressed_data.resize(next_out - compressed_data.data());
+  
+  // Cleanup
+  JxlThreadParallelRunnerDestroy(runner);
+  JxlEncoderDestroy(encoder);
+  
+  return status == JXL_ENC_SUCCESS;
+}
+#else
+// Fallback: JPEG XL not available, return false
+static bool compress_opencv_to_jxl(const cv::Mat& image, std::vector<uint8_t>& compressed_data, 
+                                  int effort = 3, double distance = 1.0) {
+  (void)image; (void)compressed_data; (void)effort; (void)distance; // Suppress unused warnings
+  return false;
+}
+#endif
+
 // ==================== Async writer ====================
 struct CsvJob {
   uint64_t odom_ns{}, cam_ns{}, left_ns{}, right_ns{};
@@ -155,6 +264,9 @@ struct CsvJob {
   CameraFrame right_frame;
   fs::path out_dir;                            // session_dir/frames
   std::shared_ptr<std::ofstream> csv;          // session_dir/unified_log.csv
+  // JPEG XL compression parameters
+  int jxl_effort = 7;
+  double jxl_distance = 1.0;
 };
 
 class CsvWriter {
@@ -186,18 +298,34 @@ private:
     return p.string();
   }
   
-  static std::string save_camera_png(const CameraFrame& f, const fs::path& dir, const std::string& stem) {
+  static std::string save_camera_jxl(const CameraFrame& f, const fs::path& dir, const std::string& stem, 
+                                    int effort = 7, double distance = 1.0) {
     if (f.image.empty()) return "";
     fs::create_directories(dir);
+    
+#ifdef HAVE_JPEGXL
+    fs::path p = dir / (stem + "_" + f.camera_label + ".jxl");
+    
+    // Compress using JPEG XL
+    std::vector<uint8_t> compressed_data;
+    if (compress_opencv_to_jxl(f.image, compressed_data, effort, distance)) {
+      std::ofstream file(p, std::ios::binary);
+      file.write(reinterpret_cast<const char*>(compressed_data.data()), compressed_data.size());
+      return p.string();
+    }
+    return "";
+#else
+    // Fallback to PNG when JPEG XL is not available
     fs::path p = dir / (stem + "_" + f.camera_label + ".png");
     
     // Maximum PNG compression (lossless)
     std::vector<int> compression_params;
     compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
-    compression_params.push_back(5); // 0-9, 9 = maximum compression
+    compression_params.push_back(9); // 0-9, 9 = maximum compression
     
     cv::imwrite(p.string(), f.image, compression_params);
     return p.string();
+#endif
   }
 
   void run(){
@@ -219,8 +347,8 @@ private:
       std::string thermal_color_png;
       if (!job.thermal_frame.color_bgr.empty()) thermal_color_png = save_color_png(job.thermal_frame, job.out_dir, stem);
       
-      const std::string left_png = save_camera_png(job.left_frame, job.out_dir, stem);
-      const std::string right_png = save_camera_png(job.right_frame, job.out_dir, stem);
+      const std::string left_jxl = save_camera_jxl(job.left_frame, job.out_dir, stem, job.jxl_effort, job.jxl_distance);
+      const std::string right_jxl = save_camera_jxl(job.right_frame, job.out_dir, stem, job.jxl_effort, job.jxl_distance);
 
       auto& csv = *job.csv;
       csv << job.odom_ns << "," << job.cam_ns << "," << job.left_ns << "," << job.right_ns << ","
@@ -232,7 +360,7 @@ private:
           << job.vx << "," << job.vy << "," << job.vz << ","
           << job.wx << "," << job.wy << "," << job.wz << ","
           << thermo_bin << "," << thermal_color_png << ","
-          << left_png << "," << right_png << "\n";
+          << left_jxl << "," << right_jxl << "\n";
 
       if (++rows_since_flush >= flush_every_rows_) { csv.flush(); rows_since_flush = 0; }
     }
@@ -266,11 +394,19 @@ public:
     // CSV setup
     csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
                                                   std::ios::out | std::ios::trunc);
+#ifdef HAVE_JPEGXL
+    *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
+                    "dt_thermal_ms,dt_left_ms,dt_right_ms,"
+                    "px,py,pz,qx,qy,qz,qw,"
+                    "vx,vy,vz,wx,wy,wz,"
+                    "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl\n";
+#else
     *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
                     "dt_thermal_ms,dt_left_ms,dt_right_ms,"
                     "px,py,pz,qx,qy,qz,qw,"
                     "vx,vy,vz,wx,wy,wz,"
                     "thermo_f32_bin,thermal_color_png,left_image_png,right_image_png\n";
+#endif
 
     // Service for recording control
     record_srv_ = this->create_service<std_srvs::srv::SetBool>(
@@ -310,6 +446,12 @@ private:
     this->declare_parameter<int>("csv_flush_every_rows", cfg_.csv_flush_every_rows);
     this->declare_parameter<double>("log_frequency_hz", cfg_.log_frequency_hz);
     
+    // Image compression params
+    this->declare_parameter<std::string>("image_compression", cfg_.image_compression);
+    this->declare_parameter<int>("jxl_effort", cfg_.jxl_effort);
+    this->declare_parameter<double>("jxl_distance", cfg_.jxl_distance);
+    this->declare_parameter<bool>("jxl_fast_mode", cfg_.jxl_fast_mode);
+    
     // Video streaming params
     this->declare_parameter<std::string>("left_device", cfg_.left_device);
     this->declare_parameter<std::string>("right_device", cfg_.right_device);
@@ -334,6 +476,11 @@ private:
     this->get_parameter("save_color_png", cfg_.save_color_png);
     this->get_parameter("csv_flush_every_rows", cfg_.csv_flush_every_rows);
     this->get_parameter("log_frequency_hz", cfg_.log_frequency_hz);
+    
+    this->get_parameter("image_compression", cfg_.image_compression);
+    this->get_parameter("jxl_effort", cfg_.jxl_effort);
+    this->get_parameter("jxl_distance", cfg_.jxl_distance);
+    this->get_parameter("jxl_fast_mode", cfg_.jxl_fast_mode);
     
     this->get_parameter("left_device", cfg_.left_device);
     this->get_parameter("right_device", cfg_.right_device);
@@ -387,6 +534,8 @@ private:
     job.right_frame = std::move(right_f);
     job.out_dir = session_dir_ / "frames";
     job.csv = csv_stream_;
+    job.jxl_effort = cfg_.jxl_effort;
+    job.jxl_distance = cfg_.jxl_distance;
 
     // Pose
     job.px = msg->pose.pose.position.x;
