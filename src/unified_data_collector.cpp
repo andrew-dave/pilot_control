@@ -823,6 +823,11 @@ private:
     cv::Mat image(height, width, CV_8UC3, map.data, cv::Mat::AUTO_STEP);
     cv::Mat image_copy = image.clone();
     
+    // Rotate right camera image by 180 degrees
+    if (camera == "right") {
+      cv::rotate(image_copy, image_copy, cv::ROTATE_180);
+    }
+    
     CameraFrame frame;
     // Use buffer timestamp if available, otherwise current time
     GstClockTime timestamp = GST_BUFFER_PTS(buffer);
