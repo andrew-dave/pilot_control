@@ -138,7 +138,7 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
     seekcamera)
   
   # Add JPEG XL support using custom-built library
-  set(JXL_ROOT_DIR "/home/avenblake/libjxl")
+  set(JXL_ROOT_DIR "/home/$USER/libjxl")
   set(JXL_INCLUDE_DIR "${JXL_ROOT_DIR}/build/lib/include")
   set(JXL_LIB_DIR "${JXL_ROOT_DIR}/build/lib")
   
