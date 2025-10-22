@@ -3,6 +3,9 @@
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
+#include <thread>
+#include <fstream>
+#include <chrono>
 
 // JPEG XL includes (conditional)
 #if HAVE_JPEGXL
