@@ -315,16 +315,8 @@ private:
     }
     return "";
 #else
-    // Fallback to PNG when JPEG XL is not available
-    fs::path p = dir / (stem + "_" + f.camera_label + ".png");
-    
-    // Maximum PNG compression (lossless)
-    std::vector<int> compression_params;
-    compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
-    compression_params.push_back(9); // 0-9, 9 = maximum compression
-    
-    cv::imwrite(p.string(), f.image, compression_params);
-    return p.string();
+    // JPEG XL not available - skip camera image saving
+    return "";
 #endif
   }
 
@@ -394,19 +386,11 @@ public:
     // CSV setup
     csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
                                                   std::ios::out | std::ios::trunc);
-#if HAVE_JPEGXL
     *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
                     "dt_thermal_ms,dt_left_ms,dt_right_ms,"
                     "px,py,pz,qx,qy,qz,qw,"
                     "vx,vy,vz,wx,wy,wz,"
                     "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl\n";
-#else
-    *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
-                    "dt_thermal_ms,dt_left_ms,dt_right_ms,"
-                    "px,py,pz,qx,qy,qz,qw,"
-                    "vx,vy,vz,wx,wy,wz,"
-                    "thermo_f32_bin,thermal_color_png,left_image_png,right_image_png\n";
-#endif
 
     // Service for recording control
     record_srv_ = this->create_service<std_srvs::srv::SetBool>(

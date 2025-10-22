@@ -33,7 +33,7 @@ endif()
 find_package(SDL2 QUIET)
 
 # OpenCV for video_recorder and unified_data_collector
-find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs)
+find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs highgui)
 
 # === DIFFERENTIAL DRIVE CONTROLLER ===
 add_executable(diff_drive_controller src/diff_drive_controller.cpp)
@@ -158,6 +158,66 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
   install(TARGETS unified_data_collector DESTINATION lib/${PROJECT_NAME})
 else()
   message(WARNING "GStreamer, OpenCV, or SeekCamera not found — unified_data_collector will not be built")
+endif()
+
+# === SIMPLE CAMERA CAPTURE ===
+if(OpenCV_FOUND)
+  add_executable(simple_camera_capture src/simple_camera_capture.cpp)
+  target_compile_features(simple_camera_capture PUBLIC cxx_std_17)
+  target_include_directories(simple_camera_capture PUBLIC ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(simple_camera_capture ${OpenCV_LIBS})
+  
+  # Add JPEG XL support using custom-built library
+  set(JXL_ROOT_DIR "/home/$USER/libjxl")
+  set(JXL_INCLUDE_DIR "${JXL_ROOT_DIR}/build/lib/include")
+  set(JXL_LIB_DIR "${JXL_ROOT_DIR}/build/lib")
+  
+  if(EXISTS "${JXL_INCLUDE_DIR}/jxl/encode.h" AND EXISTS "${JXL_LIB_DIR}/libjxl.so")
+    target_include_directories(simple_camera_capture PUBLIC ${JXL_INCLUDE_DIR})
+    target_link_libraries(simple_camera_capture 
+      ${JXL_LIB_DIR}/libjxl.so
+      ${JXL_LIB_DIR}/libjxl_threads.so
+      ${JXL_LIB_DIR}/libjxl_cms.so)
+    target_compile_definitions(simple_camera_capture PRIVATE HAVE_JPEGXL=1)
+    message(STATUS "JPEG XL support enabled for simple_camera_capture (custom build)")
+  else()
+    message(WARNING "JPEG XL library not found — simple_camera_capture will only save PNG")
+    target_compile_definitions(simple_camera_capture PRIVATE HAVE_JPEGXL=0)
+  endif()
+  
+  install(TARGETS simple_camera_capture DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "OpenCV not found — simple_camera_capture will not be built")
+endif()
+
+# === JPEG XL TEST SIMPLE ===
+if(OpenCV_FOUND)
+  add_executable(jpegxl_test_simple src/jpegxl_test_simple.cpp)
+  target_compile_features(jpegxl_test_simple PUBLIC cxx_std_17)
+  target_include_directories(jpegxl_test_simple PUBLIC ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(jpegxl_test_simple ${OpenCV_LIBS})
+  
+  # Add JPEG XL support using custom-built library
+  set(JXL_ROOT_DIR "/home/$USER/libjxl")
+  set(JXL_INCLUDE_DIR "${JXL_ROOT_DIR}/build/lib/include")
+  set(JXL_LIB_DIR "${JXL_ROOT_DIR}/build/lib")
+  
+  if(EXISTS "${JXL_INCLUDE_DIR}/jxl/encode.h" AND EXISTS "${JXL_LIB_DIR}/libjxl.so")
+    target_include_directories(jpegxl_test_simple PUBLIC ${JXL_INCLUDE_DIR})
+    target_link_libraries(jpegxl_test_simple 
+      ${JXL_LIB_DIR}/libjxl.so
+      ${JXL_LIB_DIR}/libjxl_threads.so
+      ${JXL_LIB_DIR}/libjxl_cms.so)
+    target_compile_definitions(jpegxl_test_simple PRIVATE HAVE_JPEGXL=1)
+    message(STATUS "JPEG XL support enabled for jpegxl_test_simple (custom build)")
+  else()
+    message(WARNING "JPEG XL library not found — jpegxl_test_simple will only save PNG")
+    target_compile_definitions(jpegxl_test_simple PRIVATE HAVE_JPEGXL=0)
+  endif()
+  
+  install(TARGETS jpegxl_test_simple DESTINATION lib/${PROJECT_NAME})
+else()
+  message(WARNING "OpenCV not found — jpegxl_test_simple will not be built")
 endif()
 
 # Install launch and config files
