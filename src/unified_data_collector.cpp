@@ -13,7 +13,7 @@
 #include <opencv2/opencv.hpp>
 
 // JPEG XL includes (conditional)
-#ifdef HAVE_JPEGXL
+#if HAVE_JPEGXL
 #include <jxl/encode.h>
 #include <jxl/thread_parallel_runner.h>
 #include <jxl/color_encoding.h>
@@ -155,7 +155,7 @@ private:
 };
 
 // ==================== JPEG XL Compression Helper (Speed Optimized) ====================
-#ifdef HAVE_JPEGXL
+#if HAVE_JPEGXL
 static bool compress_opencv_to_jxl(const cv::Mat& image, std::vector<uint8_t>& compressed_data, 
                                   int effort = 3, double /*distance*/ = 1.0) {
   // Speed optimizations:
@@ -303,7 +303,7 @@ private:
     if (f.image.empty()) return "";
     fs::create_directories(dir);
     
-#ifdef HAVE_JPEGXL
+#if HAVE_JPEGXL
     fs::path p = dir / (stem + "_" + f.camera_label + ".jxl");
     
     // Compress using JPEG XL
@@ -394,7 +394,7 @@ public:
     // CSV setup
     csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
                                                   std::ios::out | std::ios::trunc);
-#ifdef HAVE_JPEGXL
+#if HAVE_JPEGXL
     *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
                     "dt_thermal_ms,dt_left_ms,dt_right_ms,"
                     "px,py,pz,qx,qy,qz,qw,"
