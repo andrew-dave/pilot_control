@@ -58,7 +58,7 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
-        self.declare_parameter('max_angular_velocity', 2.0) # rad/s
+        self.declare_parameter('max_angular_velocity', 1.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
@@ -66,8 +66,8 @@ class PoseController(Node):
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.005)  # 5mm - start strong yaw correction
-        self.declare_parameter('r_far', 0.1)     # 10cm - pure go-to-point steering beyond this
-        self.declare_parameter('K_lat', 50.0)    # lateral correction gain
+        self.declare_parameter('r_far', 0.03)     # 10cm - pure go-to-point steering beyond this
+        self.declare_parameter('K_lat', 10.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 10.0)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
         # Tilt correction parameters (similar to gpr_scan_controller)
@@ -969,8 +969,8 @@ class PoseController(Node):
             Tuple[left_wheel_rps, right_wheel_rps]: Wheel velocities in motor turns/s
         """
         # Differential drive kinematics
-        v_left = linear_vel - 2*(angular_vel * self.wheel_base / 2)
-        v_right = linear_vel + 2*(angular_vel * self.wheel_base / 2)
+        v_left = linear_vel - (angular_vel * self.wheel_base / 2)
+        v_right = linear_vel +(angular_vel * self.wheel_base / 2)
         
         left_wheel_mps = v_left
         right_wheel_mps = v_right
