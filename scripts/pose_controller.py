@@ -58,19 +58,34 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
-        self.declare_parameter('max_angular_velocity', 1.5) # rad/s
+        self.declare_parameter('max_angular_velocity', 2) # rad/s
         self.declare_parameter('position_tolerance', 0.01) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
+        self.declare_parameter('lookahead_distance', 0.05) # m (5cm)
+        
+        # Error computation parameters
+        self.declare_parameter('r_close', 0.005)  # 5mm - start strong yaw correction
+        self.declare_parameter('r_far', 0.1)     # 10cm - pure go-to-point steering beyond this
+        self.declare_parameter('K_lat', 50.0)    # lateral correction gain
+        self.declare_parameter('K_yaw', 10.0)    # yaw correction gain when close
+        self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
+        self.declare_parameter('roll_rad', 0.0)  # Roll correction (rad)
+        self.declare_parameter('yaw_rad', 0.0)  # Yaw correction (rad)
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
+        
+        # IMU coordinate transformation parameters
+        self.declare_parameter('imu_flip_x', True)  # Negate X-axis
+        self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
+        self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 25)
+        self.declare_parameter('Kp_linear', 10)
         self.declare_parameter('Ki_linear', 0)
         self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 25)
+        self.declare_parameter('Kp_angular', 10)
         self.declare_parameter('Ki_angular', 0)
         self.declare_parameter('Kd_angular', 0)
 
@@ -97,9 +112,24 @@ class PoseController(Node):
         self.max_angular_vel = self.get_parameter('max_angular_velocity').value
         self.pos_tolerance = self.get_parameter('position_tolerance').value
         self.ori_tolerance = self.get_parameter('orientation_tolerance').value
+        self.lookahead_distance = self.get_parameter('lookahead_distance').value
+        
+        # Error computation parameters
+        self.r_close = self.get_parameter('r_close').value
+        self.r_far = self.get_parameter('r_far').value
+        self.K_lat = self.get_parameter('K_lat').value
+        self.K_yaw = self.get_parameter('K_yaw').value
+        self.yaw_tol = self.get_parameter('yaw_tol').value
         self.pitch_rad = float(self.get_parameter('pitch_rad').value)
+        self.roll_rad = float(self.get_parameter('roll_rad').value)
+        self.yaw_rad = float(self.get_parameter('yaw_rad').value)
         self.accel_topic = str(self.get_parameter('accel_topic').value)
         self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
+        
+        # IMU coordinate transformation parameters
+        self.imu_flip_x = self.get_parameter('imu_flip_x').value
+        self.imu_flip_y = self.get_parameter('imu_flip_y').value
+        self.imu_flip_z = self.get_parameter('imu_flip_z').value
         self.Kp_linear = self.get_parameter('Kp_linear').value
         self.Ki_linear = self.get_parameter('Ki_linear').value
         self.Kd_linear = self.get_parameter('Kd_linear').value
@@ -135,13 +165,27 @@ class PoseController(Node):
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
         self.accel_count = 0
-        self.align_quat = self.quat_from_axis_angle([0.0, 1.0, 0.0], self.pitch_rad)  # (x,y,z,w)
+        # Initialize fallback alignment quaternion with full 3D correction
+        # Order: Roll (X), Pitch (Y), Yaw (Z) - applied in sequence
+        roll_quat = self.quat_from_axis_angle([1.0, 0.0, 0.0], self.roll_rad)
+        pitch_quat = self.quat_from_axis_angle([0.0, 1.0, 0.0], self.pitch_rad)
+        yaw_quat = self.quat_from_axis_angle([0.0, 0.0, 1.0], self.yaw_rad)
+        # Combine rotations: yaw * pitch * roll (applied in reverse order)
+        self.align_quat = self.quat_multiply(yaw_quat, self.quat_multiply(pitch_quat, roll_quat))
         
         # Target pose
         self.target_x = 0.0
         self.target_y = 0.0
         self.target_yaw = 0.0
         self.has_target = False
+        self.target_achieved = False
+        self.zero_velocity_sent = False
+        
+        # Starting pose when target was received (for line-following)
+        self.start_x = 0.0
+        self.start_y = 0.0
+        self.start_yaw = 0.0
+        self.start_pose_set = False
         
         # Control outputs
         self.left_wheel_velocity = 0.0   # rad/s (motor turns/s)
@@ -265,6 +309,15 @@ class PoseController(Node):
         self.get_logger().info(f'  Max angular velocity: {self.max_angular_vel:.2f} rad/s')
         self.get_logger().info(f'  Position tolerance: {self.pos_tolerance:.3f} m')
         self.get_logger().info(f'  Orientation tolerance: {self.ori_tolerance:.3f} rad')
+        self.get_logger().info(f'  Lookahead distance: {self.lookahead_distance:.3f} m')
+        self.get_logger().info(f'  Error computation: r_close={self.r_close:.3f}m, r_far={self.r_far:.3f}m')
+        self.get_logger().info(f'  Error gains: K_lat={self.K_lat:.1f}, K_yaw={self.K_yaw:.1f}')
+        self.get_logger().info(f'')
+        self.get_logger().info(f'Tilt Correction Parameters:')
+        self.get_logger().info(f'  Roll correction: {math.degrees(self.roll_rad):.1f}°')
+        self.get_logger().info(f'  Pitch correction: {math.degrees(self.pitch_rad):.1f}°')
+        self.get_logger().info(f'  Yaw correction: {math.degrees(self.yaw_rad):.1f}°')
+        self.get_logger().info(f'  IMU coordinate flips: X={self.imu_flip_x}, Y={self.imu_flip_y}, Z={self.imu_flip_z}')
         self.get_logger().info(f'')
         self.get_logger().info(f'Topics:')
         self.get_logger().info(f'  Odometry: {odometry_topic}')
@@ -304,7 +357,10 @@ class PoseController(Node):
             float(msg.pose.pose.orientation.w),
         )
         q_align = self.align_quat
+        # Transform position: rotate raw position by alignment quaternion
         corr_pos = self.rotate_vector_by_quat(raw_pos, q_align)
+        # Transform orientation: q_align * raw_q (alignment applied first, then raw orientation)
+        # This order means: first apply alignment correction, then apply the raw orientation
         corr_q = self.quat_multiply(q_align, raw_q)
         corr_q = self.quat_normalize(corr_q)
 
@@ -313,9 +369,16 @@ class PoseController(Node):
         # z not used
         self.current_yaw = self.quaternion_to_yaw(corr_q[0], corr_q[1], corr_q[2], corr_q[3])
         
-        # Extract velocities (linear and angular)
-        self.current_vx = msg.twist.twist.linear.x
-        self.current_vy = msg.twist.twist.linear.y
+        # Extract and transform velocities for consistency with pose transformation
+        raw_vel = np.array([
+            float(msg.twist.twist.linear.x),
+            float(msg.twist.twist.linear.y),
+            0.0  # Z velocity not used in 2D control
+        ], dtype=float)
+        corr_vel = self.rotate_vector_by_quat(raw_vel, q_align)
+        self.current_vx = float(corr_vel[0])
+        self.current_vy = float(corr_vel[1])
+        # Angular velocity is not transformed (rotation around Z-axis is preserved)
         self.current_vyaw = msg.twist.twist.angular.z
         
         # Mark pose as initialized
@@ -439,9 +502,13 @@ class PoseController(Node):
         ], dtype=float)
         if not np.all(np.isfinite(a)):
             return
-        # Match laser_map_rotator conventions
-        a[0] = -a[0]
-        a[2] = -a[2]
+        # Apply configurable IMU coordinate transformation
+        if self.imu_flip_x:
+            a[0] = -a[0]
+        if self.imu_flip_y:
+            a[1] = -a[1]
+        if self.imu_flip_z:
+            a[2] = -a[2]
         self.accel_sum += a
         self.accel_count += 1
         if self.accel_count < self.accel_samples_target:
@@ -490,13 +557,26 @@ class PoseController(Node):
         
         # Check if target is set
         if not self.has_target:
-            # No target - hold position (send zero velocity)
-            self.publish_zero_velocity()
+            # No target - send zero velocity once and wait
+            if not self.zero_velocity_sent:
+                self.publish_zero_velocity()
+                self.zero_velocity_sent = True
+            return
+        
+        # Check if target is achieved
+        if self.target_achieved:
+            # Target achieved - send zero velocity once and wait for new target
+            if not self.zero_velocity_sent:
+                self.publish_zero_velocity()
+                self.zero_velocity_sent = True
             return
         
         # ============================================================
         # CALL CONTROL FUNCTION
         # ============================================================
+        
+        # Reset zero velocity flag since we're actively controlling
+        self.zero_velocity_sent = False
         
         linear_vel, angular_vel, diag = self.control_function(
             self.current_x, self.current_y, self.current_yaw,
@@ -604,6 +684,154 @@ class PoseController(Node):
         #     )
     
     # ============================================================
+    # LOCAL WAYPOINT GENERATION
+    # ============================================================
+    
+    def generate_local_waypoint(
+        self,
+        current_x: float,
+        current_y: float,
+        current_yaw: float,
+        target_x: float,
+        target_y: float,
+        target_yaw: float
+    ) -> Tuple[float, float]:
+        """
+        Generate the next local waypoint using line-following with lookahead distance.
+        
+        The path is a straight line from start pose to target pose. The waypoint is
+        the point on this line that is closest to current pose, plus lookahead distance.
+        
+        Args:
+            current_x: Current x position (m)
+            current_y: Current y position (m)
+            current_yaw: Current yaw angle (rad)
+            target_x: Target x position (m)
+            target_y: Target y position (m)
+            target_yaw: Target yaw angle (rad)
+        
+        Returns:
+            Tuple[next_x, next_y]: Next local waypoint coordinates
+        """
+        # If starting pose not set, use current pose as starting point
+        if not self.start_pose_set:
+            self.start_x = current_x
+            self.start_y = current_y
+            self.start_yaw = current_yaw
+            self.start_pose_set = True
+        
+        # Vector from start to target
+        line_vector = np.array([target_x - self.start_x, target_y - self.start_y])
+        line_length = np.linalg.norm(line_vector)
+        
+        # Handle edge case: start and target are the same point
+        if line_length < 1e-6:
+            return target_x, target_y
+        
+        # Normalize line direction vector
+        line_direction = line_vector / line_length
+        
+        # Vector from start to current position
+        current_vector = np.array([current_x - self.start_x, current_y - self.start_y])
+        
+        # Project current position onto the line (distance along line parameter)
+        distance_along_line = np.dot(current_vector, line_direction)
+        
+        # Clamp to line segment [0, line_length]
+        distance_along_line = np.clip(distance_along_line, 0.0, line_length)
+        
+        # Point on line closest to current position
+        closest_point_on_line = self.start_x + line_direction[0] * distance_along_line, \
+                               self.start_y + line_direction[1] * distance_along_line
+        
+        # Calculate next waypoint: closest point + lookahead distance
+        next_distance = distance_along_line + self.lookahead_distance
+        
+        # If next waypoint goes beyond target, use target as waypoint
+        if next_distance >= line_length:
+            return target_x, target_y
+        
+        # Calculate next waypoint coordinates
+        next_x = self.start_x + line_direction[0] * next_distance
+        next_y = self.start_y + line_direction[1] * next_distance
+        
+        return next_x, next_y
+    
+    # ============================================================
+    # ERROR COMPUTATION FUNCTION
+    # ============================================================
+    
+    def compute_errors(self, waypoint_x: float, waypoint_y: float, waypoint_yaw: float,
+                      current_x: float, current_y: float, current_yaw: float) -> Tuple[float, float, float, float]:
+        """
+        Compute linear and angular errors for waypoint navigation with smooth transition
+        between position and orientation control.
+        
+        Based on MATLAB reference implementation.
+        
+        Args:
+            waypoint_x: Next waypoint x position (m)
+            waypoint_y: Next waypoint y position (m) 
+            waypoint_yaw: Target yaw angle (rad)
+            current_x: Current x position (m)
+            current_y: Current y position (m)
+            current_yaw: Current yaw angle (rad)
+        
+        Returns:
+            Tuple[v_e, w_e, e_lat, d_yaw]:
+                - v_e: Forward error (m)
+                - w_e: Angular velocity command (rad/s)
+                - e_lat: Lateral error (m)
+                - d_yaw: Yaw error (rad)
+        """
+        # Initialize
+        v_e = 0.0
+        w_e = 0.0
+        e_lat = 0.0
+        d_yaw = 0.0
+        
+        # Pose deltas
+        dx = waypoint_x - current_x
+        dy = waypoint_y - current_y
+        d_yaw = waypoint_yaw - current_yaw
+        yaw = current_yaw
+        
+        # Wrap yaw error to [-pi, pi]
+        while abs(d_yaw) > math.pi:
+            d_yaw = d_yaw - math.copysign(2*math.pi, d_yaw)
+        
+        # Compute lateral and longitudinal errors in robot frame
+        e_lat = -math.sin(yaw) * dx + math.cos(yaw) * dy  # lateral error
+        v_e = math.cos(yaw) * dx + math.sin(yaw) * dy     # forward distance (toward waypoint)
+        r = math.sqrt(dx*dx + dy*dy)                      # distance to waypoint
+        
+        # Compute steering components
+        # Lateral control: large when far from target
+        w_lat = self.K_lat * math.atan(e_lat)
+        
+        # Orientation correction: stronger as we get closer
+        w_yaw = self.K_yaw * d_yaw
+        
+        # Distance-based blending
+        # blend = 0 → full lateral control (far away)
+        # blend = 1 → full yaw correction (very close)
+        blend = (self.r_far - r) / max((self.r_far - self.r_close), 1e-6)
+        blend = max(min(blend, 1.0), 0.0)  # clamp 0–1
+        
+        # Smoothstep for gradual transition: 3*t^2 - 2*t^3
+        blend = 3*blend*blend - 2*blend*blend*blend
+        
+        # Combine the two steering components
+        w_e = (1.0 - blend) * w_lat + blend * w_yaw
+        
+        # Final yaw fine-tuning
+        if r < self.r_close and abs(d_yaw) < self.yaw_tol:
+            # Within goal tolerance → no further rotation
+            w_e = 0.0
+        
+        return v_e, w_e, e_lat, d_yaw
+    
+    # ============================================================
     # CONTROL FUNCTION (TO BE IMPLEMENTED)
     # ============================================================
     
@@ -647,68 +875,45 @@ class PoseController(Node):
         angular_vel = 0.0
         current_yaw = self.normalize_angle(current_yaw)
 
-        # Compute distance to target
+        # Check if target is achieved
         distance_to_target = np.linalg.norm([target_x - current_x, target_y - current_y])
-        
-        # Next local waypoint
-        if distance_to_target < self.pos_tolerance:
-            # Already at target position
-            x_next = current_x
-            y_next = current_y
-        else:
-            # Compute direction to target
-            x_dir = target_x - current_x
-            y_dir = target_y - current_y
-            dir_norm = np.linalg.norm([x_dir, y_dir])
-            
-            # Normalize direction vector
-            x_dir = x_dir / dir_norm
-            y_dir = y_dir / dir_norm
-            
-            # Compute next waypoint (one tolerance distance ahead)
-            x_next = current_x + x_dir * self.pos_tolerance
-            y_next = current_y + y_dir * self.pos_tolerance
-
-        # Error terms
-        dx = x_next - current_x
-        dy = y_next - current_y
-
-        #posiion error thresholding
-        # if np.linalg.norm([dx, dy]) < self.pos_tolerance:
-        #     dx=0
-        #     dy=0
-        
-
         dyaw = self.normalize_angle(target_yaw - current_yaw)
-
-        #yaw error thresholding
-        if distance_to_target<self.pos_tolerance and abs(dyaw) < self.ori_tolerance:
-            dyaw=0
-        # Lateral error (perpendicular to robot heading)
-        e_lat = np.dot([-np.sin(current_yaw), np.cos(current_yaw)], [dx, dy])
         
-        # Forward error (along robot heading)
-        v_e = np.dot([np.cos(current_yaw), np.sin(current_yaw)], [dx, dy])
+        if distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance:
+            # Target achieved - mark as achieved and return zero velocities
+            self.target_achieved = True
+            self.zero_velocity_sent = False  # Reset flag for next target
+            return linear_vel, angular_vel, {
+                'dx': 0.0,
+                'dy': 0.0,
+                'e_lat': 0.0,
+                'v_e': 0.0,
+                'dyaw': 0.0,
+            }
         
-        # Angular error with lateral error influence
-        # Avoid division by zero when e_lat is very small
-        if abs(e_lat) < 1e-6:
-            w_e = dyaw
-        else:
-            w_e = np.arctan(e_lat) + (abs(e_lat) / 10.0) * dyaw
-            w_e/=2
+        # Generate local waypoint
+        x_next, y_next = self.generate_local_waypoint(
+            current_x, current_y, current_yaw,
+            target_x, target_y, target_yaw
+        )
 
-        # PID control (currently just proportional)
+        # Calculate errors using new error computation function
+        v_e, w_e, e_lat, d_yaw = self.compute_errors(
+            x_next, y_next, target_yaw,
+            current_x, current_y, current_yaw
+        )
+
+        # PID control for linear velocity (currently just proportional)
         linear_vel = self.Kp_linear * v_e
-        angular_vel = self.Kp_angular * w_e
+        angular_vel = w_e  # Angular velocity already computed in error function
 
         
         return linear_vel, angular_vel, {
-            'dx': float(dx),
-            'dy': float(dy),
+            'dx': float(x_next - current_x),
+            'dy': float(y_next - current_y),
             'e_lat': float(e_lat),
             'v_e': float(v_e),
-            'dyaw': float(dyaw),
+            'dyaw': float(d_yaw),
         }
     
     # ============================================================
@@ -814,6 +1019,9 @@ class PoseController(Node):
             return
         
         self.has_target = True
+        self.target_achieved = False  # Reset target achievement status
+        self.zero_velocity_sent = False  # Reset zero velocity flag
+        self.start_pose_set = False  # Reset starting pose for new target
         # Auto-enable controller on first target if disabled
         if not self.controller_enabled:
             self.controller_enabled = True

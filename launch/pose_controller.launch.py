@@ -34,26 +34,34 @@ def generate_launch_description():
         'max_angular_velocity', default_value='1.5', description='Max angular velocity (rad/s)'
     )
 
+    # Tilt correction parameters
+    roll_rad = DeclareLaunchArgument(
+        'roll_rad', default_value='0.0', description='Roll correction angle (rad)'
+    )
+    pitch_rad = DeclareLaunchArgument(
+        'pitch_rad', default_value='-0.2617993878', description='Pitch correction angle (rad)'
+    )
+    yaw_rad = DeclareLaunchArgument(
+        'yaw_rad', default_value='0.0', description='Yaw correction angle (rad)'
+    )
+
+    # IMU coordinate transformation parameters
+    imu_flip_x = DeclareLaunchArgument(
+        'imu_flip_x', default_value='true', description='Flip IMU X-axis'
+    )
+    imu_flip_y = DeclareLaunchArgument(
+        'imu_flip_y', default_value='false', description='Flip IMU Y-axis'
+    )
+    imu_flip_z = DeclareLaunchArgument(
+        'imu_flip_z', default_value='true', description='Flip IMU Z-axis'
+    )
+
     # CAN interface args
     can_interface = DeclareLaunchArgument(
         'can_interface', default_value='can0', description='CAN interface name'
     )
     can_bitrate = DeclareLaunchArgument(
         'can_bitrate', default_value='250000', description='CAN bitrate'
-    )
-
-    # Core controller parameters (exposed for convenience)
-    enable_controller = DeclareLaunchArgument(
-        'enable_controller', default_value='true', description='Start controller enabled'
-    )
-    control_frequency = DeclareLaunchArgument(
-        'control_frequency', default_value='10.0', description='Control loop frequency (Hz)'
-    )
-    max_linear_velocity = DeclareLaunchArgument(
-        'max_linear_velocity', default_value='0.3', description='Max linear velocity (m/s)'
-    )
-    max_angular_velocity = DeclareLaunchArgument(
-        'max_angular_velocity', default_value='1.5', description='Max angular velocity (rad/s)'
     )
 
     # Pose controller node
@@ -71,6 +79,12 @@ def generate_launch_description():
             'control_frequency': LaunchConfiguration('control_frequency'),
             'max_linear_velocity': LaunchConfiguration('max_linear_velocity'),
             'max_angular_velocity': LaunchConfiguration('max_angular_velocity'),
+            'roll_rad': LaunchConfiguration('roll_rad'),
+            'pitch_rad': LaunchConfiguration('pitch_rad'),
+            'yaw_rad': LaunchConfiguration('yaw_rad'),
+            'imu_flip_x': LaunchConfiguration('imu_flip_x'),
+            'imu_flip_y': LaunchConfiguration('imu_flip_y'),
+            'imu_flip_z': LaunchConfiguration('imu_flip_z'),
         }],
     )
 
@@ -150,6 +164,12 @@ def generate_launch_description():
         control_frequency,
         max_linear_velocity,
         max_angular_velocity,
+        roll_rad,
+        pitch_rad,
+        yaw_rad,
+        imu_flip_x,
+        imu_flip_y,
+        imu_flip_z,
 
         # Bring up CAN, then start hardware-related nodes and controller
         TimerAction(period=1.0, actions=[can_setup]),
