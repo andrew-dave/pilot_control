@@ -59,8 +59,8 @@ class PoseController(Node):
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
         self.declare_parameter('max_angular_velocity', 2.0) # rad/s
-        self.declare_parameter('position_tolerance', 0.01) # m
-        self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
+        self.declare_parameter('position_tolerance', 0.05) # m
+        self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
         self.declare_parameter('lookahead_distance', 0.05) # m (5cm)
         
@@ -936,8 +936,8 @@ class PoseController(Node):
             Tuple[left_wheel_rps, right_wheel_rps]: Wheel velocities in motor turns/s
         """
         # Differential drive kinematics
-        v_left = linear_vel - (angular_vel * self.wheel_base / 2)
-        v_right = linear_vel + (angular_vel * self.wheel_base / 2)
+        v_left = linear_vel - 2*(angular_vel * self.wheel_base / 2)
+        v_right = linear_vel + 2*(angular_vel * self.wheel_base / 2)
         
         left_wheel_mps = v_left
         right_wheel_mps = v_right
