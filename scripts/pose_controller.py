@@ -82,12 +82,12 @@ class PoseController(Node):
         self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
         self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 10)
-        self.declare_parameter('Ki_linear', 0)
-        self.declare_parameter('Kd_linear', 0)
-        self.declare_parameter('Kp_angular', 10)
-        self.declare_parameter('Ki_angular', 0)
-        self.declare_parameter('Kd_angular', 0)
+        self.declare_parameter('Kp_linear', 1.0)
+        self.declare_parameter('Ki_linear', 0.0)
+        self.declare_parameter('Kd_linear', 0.0)
+        self.declare_parameter('Kp_angular', 0.5)
+        self.declare_parameter('Ki_angular', 0.0)
+        self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
         self.declare_parameter('enable_controller', True) # Start enabled by default
