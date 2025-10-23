@@ -104,6 +104,7 @@ class PoseController(Node):
         self.declare_parameter('pwm_send_hz', 100.0)
         self.declare_parameter('pwm_pulse_rps', 5.0)
         self.declare_parameter('pwm_window_len', 100)
+        self.declare_parameter('pwm_debug_log', False)
         
         # Get parameters
         self.wheel_radius = self.get_parameter('wheel_radius').value
@@ -157,6 +158,7 @@ class PoseController(Node):
         self.pwm_hz = float(self.get_parameter('pwm_send_hz').value)
         self.pwm_pulse_rps = float(self.get_parameter('pwm_pulse_rps').value)
         self.pwm_window_len = max(1, int(self.get_parameter('pwm_window_len').value))
+        self.pwm_debug_log = bool(self.get_parameter('pwm_debug_log').value)
         
         # ============================================================
         # STATE VARIABLES
@@ -1212,6 +1214,13 @@ class PoseController(Node):
 
         self._pwm_idx += 1
         if self._pwm_idx >= N:
+            if self.pwm_debug_log:
+                try:
+                    self.get_logger().info(
+                        f"PWM window: cmds(L,R)={self._last_left_cmd:.3f},{self._last_right_cmd:.3f} rps | "
+                        f"duty(L,R)={dL:.2f},{dR:.2f} | amp={amp:.2f} rps | send(L,R)={sendL:.2f},{sendR:.2f}")
+                except Exception:
+                    pass
             self._pwm_idx = 0
 
 
