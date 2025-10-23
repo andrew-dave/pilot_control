@@ -99,6 +99,12 @@ class PoseController(Node):
         self.declare_parameter('right_control_topic', '/right/control_message')
         self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected')
         
+        # High-rate PWM command layer (optional)
+        self.declare_parameter('pwm_send_enabled', False)
+        self.declare_parameter('pwm_send_hz', 100.0)
+        self.declare_parameter('pwm_pulse_rps', 5.0)
+        self.declare_parameter('pwm_window_len', 100)
+        
         # Get parameters
         self.wheel_radius = self.get_parameter('wheel_radius').value
         self.wheel_base = self.get_parameter('wheel_base').value
@@ -146,6 +152,12 @@ class PoseController(Node):
         right_control_topic = self.get_parameter('right_control_topic').value
         corrected_odom_topic = self.get_parameter('corrected_odometry_topic').value
         
+        # PWM parameters
+        self.pwm_enabled = bool(self.get_parameter('pwm_send_enabled').value)
+        self.pwm_hz = float(self.get_parameter('pwm_send_hz').value)
+        self.pwm_pulse_rps = float(self.get_parameter('pwm_pulse_rps').value)
+        self.pwm_window_len = max(1, int(self.get_parameter('pwm_window_len').value))
+        
         # ============================================================
         # STATE VARIABLES
         # ============================================================
@@ -161,6 +173,10 @@ class PoseController(Node):
         self.last_odom_time = self.get_clock().now()
         # Throttled logging state
         self._last_log_time_ns = {}
+        # PWM state
+        self._last_left_cmd = 0.0
+        self._last_right_cmd = 0.0
+        self._pwm_idx = 0
         # Tilt correction state
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
@@ -277,6 +293,11 @@ class PoseController(Node):
         # Control loop timer (10 Hz by default)
         control_period = 1.0 / self.control_freq
         self.control_timer = self.create_timer(control_period, self.control_loop)
+
+        # High-rate PWM command sender timer
+        self.pwm_timer = None
+        if self.pwm_enabled and self.pwm_hz > 0.0:
+            self.pwm_timer = self.create_timer(1.0 / float(self.pwm_hz), self._pwm_send_step)
 
         # ============================================================
         # STARTUP: ARM MOTORS (CLOSED-LOOP) VIA ODRIVE CAN SERVICES
@@ -613,10 +634,15 @@ class PoseController(Node):
         self.right_wheel_velocity = right_vel
         
         # ============================================================
-        # PUBLISH COMMANDS
+        # PUBLISH COMMANDS (direct or via PWM layer)
         # ============================================================
         
-        self.publish_wheel_velocities(left_vel, right_vel)
+        if self.pwm_enabled and self.pwm_timer is not None:
+            # Defer actual publish to high-rate PWM timer
+            self._last_left_cmd = float(left_vel)
+            self._last_right_cmd = float(right_vel)
+        else:
+            self.publish_wheel_velocities(left_vel, right_vel)
 
         # ============================================================
         # PUBLISH DIAGNOSTICS
@@ -994,6 +1020,9 @@ class PoseController(Node):
         """
         Send zero velocity commands (coast to stop).
         """
+        self._last_left_cmd = 0.0
+        self._last_right_cmd = 0.0
+        self._pwm_idx = 0
         self.publish_wheel_velocities(0.0, 0.0)
     
     # ============================================================
@@ -1145,6 +1174,45 @@ class PoseController(Node):
         if last_ns == 0 or (now_ns - last_ns) >= int(period_sec * 1e9):
             self._last_log_time_ns[key] = now_ns
             self.get_logger().warning(message)
+
+    # ============================================================
+    # HIGH-RATE PWM COMMAND SENDER
+    # ============================================================
+    def _pwm_send_step(self):
+        # Gate: only send PWM if controller wants motion and odometry is valid
+        if (not self.controller_enabled) or (not self.pose_initialized):
+            self.publish_zero_velocity()
+            self._pwm_idx = 0
+            return
+
+        if (not self.has_target) or self.target_achieved:
+            self.publish_zero_velocity()
+            self._pwm_idx = 0
+            return
+
+        amp = max(1e-6, float(self.pwm_pulse_rps))
+        N = max(1, int(self.pwm_window_len))
+
+        def duty_and_sign(cmd: float):
+            mag = abs(float(cmd))
+            duty = min(1.0, mag / amp)
+            sgn = 0.0 if mag == 0.0 else (1.0 if cmd > 0.0 else -1.0)
+            return duty, sgn
+
+        dL, sL = duty_and_sign(self._last_left_cmd)
+        dR, sR = duty_and_sign(self._last_right_cmd)
+
+        onL = int(round(dL * N))
+        onR = int(round(dR * N))
+
+        sendL = sL * amp if self._pwm_idx < onL else 0.0
+        sendR = sR * amp if self._pwm_idx < onR else 0.0
+
+        self.publish_wheel_velocities(sendL, sendR)
+
+        self._pwm_idx += 1
+        if self._pwm_idx >= N:
+            self._pwm_idx = 0
 
 
 def main(args=None):
