@@ -1001,7 +1001,7 @@ class PoseController(Node):
         # Create left motor command
         left_msg = ControlMessage()
         left_msg.control_mode = 2  # VELOCITY_CONTROL
-        left_msg.input_mode = 2    # VEL_RAMP
+        left_msg.input_mode = 1    # PASSTHROUGH
         left_msg.input_vel = float(left_cmd)
         left_msg.input_torque = 0.0
         left_msg.input_pos = 0.0
@@ -1009,7 +1009,7 @@ class PoseController(Node):
         # Create right motor command
         right_msg = ControlMessage()
         right_msg.control_mode = 2  # VELOCITY_CONTROL
-        right_msg.input_mode = 2    # VEL_RAMP
+        right_msg.input_mode = 1    # PASSTHROUGH
         right_msg.input_vel = float(right_cmd)
         right_msg.input_torque = 0.0
         right_msg.input_pos = 0.0
