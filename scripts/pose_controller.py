@@ -790,7 +790,8 @@ class PoseController(Node):
     # ============================================================
     
     def compute_errors(self, waypoint_x: float, waypoint_y: float, waypoint_yaw: float,
-                      current_x: float, current_y: float, current_yaw: float) -> Tuple[float, float, float, float]:
+                      current_x: float, current_y: float, current_yaw: float,
+                      r_goal: float) -> Tuple[float, float, float, float]:
         """
         Compute linear and angular errors for waypoint navigation with smooth transition
         between position and orientation control.
@@ -804,6 +805,7 @@ class PoseController(Node):
             current_x: Current x position (m)
             current_y: Current y position (m)
             current_yaw: Current yaw angle (rad)
+            r_goal: Distance to the global goal (m)
         
         Returns:
             Tuple[v_e, w_e, e_lat, d_yaw]:
@@ -831,7 +833,7 @@ class PoseController(Node):
         # Compute lateral and longitudinal errors in robot frame
         e_lat = -math.sin(yaw) * dx + math.cos(yaw) * dy  # lateral error
         v_e = math.cos(yaw) * dx + math.sin(yaw) * dy     # forward distance (toward waypoint)
-        r = math.sqrt(dx*dx + dy*dy)                      # distance to waypoint
+        r = math.sqrt(dx*dx + dy*dy)                      # distance to local waypoint (for reference)
         
         # Compute steering components
         # Lateral control: large when far from target
@@ -840,10 +842,10 @@ class PoseController(Node):
         # Orientation correction: stronger as we get closer
         w_yaw = self.K_yaw * d_yaw
         
-        # Distance-based blending
-        # blend = 0 → full lateral control (far away)
-        # blend = 1 → full yaw correction (very close)
-        blend = (self.r_far - r) / max((self.r_far - self.r_close), 1e-6)
+        # Distance-based blending (use distance to GLOBAL goal)
+        # blend = 0 → full lateral control (far from global goal)
+        # blend = 1 → full yaw correction (very close to global goal)
+        blend = (self.r_far - r_goal) / max((self.r_far - self.r_close), 1e-6)
         blend = max(min(blend, 1.0), 0.0)  # clamp 0–1
         
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
@@ -926,9 +928,12 @@ class PoseController(Node):
         )
 
         # Calculate errors using new error computation function
+        # Distance to GLOBAL goal
+        r_goal = float(np.linalg.norm([target_x - current_x, target_y - current_y]))
         v_e, w_e, e_lat, d_yaw = self.compute_errors(
             x_next, y_next, target_yaw,
-            current_x, current_y, current_yaw
+            current_x, current_y, current_yaw,
+            r_goal
         )
 
         # PID control for linear velocity (currently just proportional)
