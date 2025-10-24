@@ -56,7 +56,7 @@ def generate_launch_description():
     )
     declare_max_angular_velocity_arg = DeclareLaunchArgument(
         'max_angular_velocity',
-        default_value='1.5',
+        default_value='2.0',
         description='Max angular velocity (rad/s)'
     )
     declare_roll_rad_arg = DeclareLaunchArgument(
@@ -88,17 +88,17 @@ def generate_launch_description():
     )
     declare_r_far_arg = DeclareLaunchArgument(
         'r_far',
-        default_value='0.1',
+        default_value='0.03',
         description='Far distance threshold for lateral control (m)'
     )
     declare_K_lat_arg = DeclareLaunchArgument(
         'K_lat',
-        default_value='50.0',
+        default_value='0.5',
         description='Lateral correction gain'
     )
     declare_K_yaw_arg = DeclareLaunchArgument(
         'K_yaw',
-        default_value='10.0',
+        default_value='1.0',
         description='Yaw correction gain'
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
