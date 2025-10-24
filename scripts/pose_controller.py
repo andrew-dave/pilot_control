@@ -851,7 +851,7 @@ class PoseController(Node):
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
         blend = 3*blend*blend - 2*blend*blend*blend
 
-        blend = 0 # DEBUG: always use yaw correction
+        #blend = 0 # DEBUG: always use yaw correction
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
