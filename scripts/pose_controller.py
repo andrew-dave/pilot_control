@@ -58,7 +58,7 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
-        self.declare_parameter('max_angular_velocity', 1.0) # rad/s
+        self.declare_parameter('max_angular_velocity', 2.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
@@ -67,8 +67,8 @@ class PoseController(Node):
         # Error computation parameters
         self.declare_parameter('r_close', 0.005)  # 5mm - start strong yaw correction
         self.declare_parameter('r_far', 0.03)     # 10cm - pure go-to-point steering beyond this
-        self.declare_parameter('K_lat', 1.0)    # lateral correction gain
-        self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
+        self.declare_parameter('K_lat', 0.5)    # lateral correction gain
+        self.declare_parameter('K_yaw', 1)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
@@ -85,7 +85,7 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 1.0)
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 0.5)
+        self.declare_parameter('Kp_angular', 1)
         self.declare_parameter('Ki_angular', 0.0)
         self.declare_parameter('Kd_angular', 0.0)
 
@@ -850,6 +850,8 @@ class PoseController(Node):
         
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
         blend = 3*blend*blend - 2*blend*blend*blend
+
+        blend = 0 # DEBUG: always use yaw correction
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
