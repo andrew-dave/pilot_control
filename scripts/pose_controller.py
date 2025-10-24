@@ -67,7 +67,7 @@ class PoseController(Node):
         # Error computation parameters
         self.declare_parameter('r_close', 0.03)  # 5mm - start strong yaw correction
         self.declare_parameter('r_far', 0.05)     # 10cm - pure go-to-point steering beyond this
-        self.declare_parameter('K_lat', 1.00)    # lateral correction gain
+        self.declare_parameter('K_lat', 1.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
         self.declare_parameter('blend_prefixed', 1.0) # blend factor for yaw correction
@@ -84,10 +84,10 @@ class PoseController(Node):
         self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
         self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 5.0) # 5.0
+        self.declare_parameter('Kp_linear', 4.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 3.0) # 1.0
+        self.declare_parameter('Kp_angular', 1.0) # 1.0
         self.declare_parameter('Ki_angular', 0.0)
         self.declare_parameter('Kd_angular', 0.0)
 
@@ -839,7 +839,7 @@ class PoseController(Node):
         
         # Compute steering components
         # Lateral control: large when far from target
-        w_lat = self.K_lat * math.atan(e_lat)
+        w_lat = self.K_lat * math.atan(1*e_lat)
         
         # Orientation correction: stronger as we get closer
         w_yaw = self.K_yaw * d_yaw
@@ -853,7 +853,7 @@ class PoseController(Node):
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
         blend = 3*blend*blend - 2*blend*blend*blend
 
-        blend = self.blend_prefixed # DEBUG: always use yaw correction
+        #blend = self.blend_prefixed # DEBUG: always use yaw correction
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw

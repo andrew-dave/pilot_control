@@ -83,22 +83,22 @@ def generate_launch_description():
     )
     declare_r_close_arg = DeclareLaunchArgument(
         'r_close',
-        default_value='0.005',
+        default_value='0.03',
         description='Close distance threshold for yaw correction (m)'
     )
     declare_r_far_arg = DeclareLaunchArgument(
         'r_far',
-        default_value='0.03',
+        default_value='0.05',
         description='Far distance threshold for lateral control (m)'
     )
     declare_K_lat_arg = DeclareLaunchArgument(
         'K_lat',
-        default_value='0.5',
+        default_value='1.5',
         description='Lateral correction gain'
     )
     declare_K_yaw_arg = DeclareLaunchArgument(
         'K_yaw',
-        default_value='1.0',
+        default_value='3.0',
         description='Yaw correction gain'
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
