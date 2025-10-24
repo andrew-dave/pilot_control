@@ -58,7 +58,7 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
-        self.declare_parameter('max_angular_velocity', 1.5) # rad/s
+        self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
@@ -67,9 +67,11 @@ class PoseController(Node):
         # Error computation parameters
         self.declare_parameter('r_close', 0.03)  # 5mm - start strong yaw correction
         self.declare_parameter('r_far', 0.05)     # 10cm - pure go-to-point steering beyond this
-        self.declare_parameter('K_lat', 0.5)    # lateral correction gain
+        self.declare_parameter('K_lat', 1.00)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
+        self.declare_parameter('blend_prefixed', 1.0) # blend factor for yaw correction
+        
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
         self.declare_parameter('roll_rad', 0.0)  # Roll correction (rad)
@@ -82,10 +84,10 @@ class PoseController(Node):
         self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
         self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 5.0)
+        self.declare_parameter('Kp_linear', 5.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 1.0)
+        self.declare_parameter('Kp_angular', 3.0) # 1.0
         self.declare_parameter('Ki_angular', 0.0)
         self.declare_parameter('Kd_angular', 0.0)
 
@@ -102,8 +104,8 @@ class PoseController(Node):
         # High-rate PWM command layer (optional)
         self.declare_parameter('pwm_send_enabled', False)
         self.declare_parameter('pwm_send_hz', 100.0)
-        self.declare_parameter('pwm_pulse_rps', 5.0)
-        self.declare_parameter('pwm_window_len', 100)
+        self.declare_parameter('pwm_pulse_rps', 2.0)
+        self.declare_parameter('pwm_window_len', 10)
         self.declare_parameter('pwm_debug_log', False)
         
         # Get parameters
@@ -132,7 +134,7 @@ class PoseController(Node):
         self.yaw_rad = float(self.get_parameter('yaw_rad').value)
         self.accel_topic = str(self.get_parameter('accel_topic').value)
         self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
-        
+        self.blend_prefixed = self.get_parameter('blend_prefixed').value
         # IMU coordinate transformation parameters
         self.imu_flip_x = self.get_parameter('imu_flip_x').value
         self.imu_flip_y = self.get_parameter('imu_flip_y').value
@@ -851,7 +853,7 @@ class PoseController(Node):
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
         blend = 3*blend*blend - 2*blend*blend*blend
 
-        blend = 0 # DEBUG: always use yaw correction
+        blend = self.blend_prefixed # DEBUG: always use yaw correction
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
@@ -940,7 +942,7 @@ class PoseController(Node):
 
         # PID control for linear velocity (currently just proportional)
         linear_vel = self.Kp_linear * v_e
-        angular_vel = w_e  # Angular velocity already computed in error function
+        angular_vel =self.Kp_angular * w_e  # Angular velocity already computed in error function
 
         
         return linear_vel, angular_vel, {
