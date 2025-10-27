@@ -65,8 +65,8 @@ class PoseController(Node):
         self.declare_parameter('lookahead_distance', 0.05) # m (5cm)
         
         # Error computation parameters
-        self.declare_parameter('r_close', 0.03)  # 5mm - start strong yaw correction
-        self.declare_parameter('r_far', 0.05)     # 10cm - pure go-to-point steering beyond this
+        self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
+        self.declare_parameter('r_far', 0.03)     # 10cm - pure go-to-point steering beyond this
         self.declare_parameter('K_lat', 1.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
@@ -839,7 +839,7 @@ class PoseController(Node):
         
         # Compute steering components
         # Lateral control: large when far from target
-        w_lat = self.K_lat * math.atan(1*e_lat)
+        w_lat = self.K_lat * (math.atan2(dy,dx) - yaw)
         
         # Orientation correction: stronger as we get closer
         w_yaw = self.K_yaw * d_yaw
