@@ -93,12 +93,12 @@ def generate_launch_description():
     )
     declare_K_lat_arg = DeclareLaunchArgument(
         'K_lat',
-        default_value='1.5',
+        default_value='1.0',
         description='Lateral correction gain'
     )
     declare_K_yaw_arg = DeclareLaunchArgument(
         'K_yaw',
-        default_value='3.0',
+        default_value='1.0',
         description='Yaw correction gain'
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
