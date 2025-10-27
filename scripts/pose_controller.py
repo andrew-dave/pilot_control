@@ -62,7 +62,7 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 0.05) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.4) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
@@ -84,11 +84,11 @@ class PoseController(Node):
         self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
         self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 4.0) # 5.0
+        self.declare_parameter('Kp_linear', 2.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 0.1) # 1.0
-        self.declare_parameter('Ki_angular', 0.0)
+        self.declare_parameter('Kp_angular', 2.0) # 1.0
+        self.declare_parameter('Ki_angular', 0.05)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
@@ -145,6 +145,11 @@ class PoseController(Node):
         self.Kp_angular = self.get_parameter('Kp_angular').value
         self.Ki_angular = self.get_parameter('Ki_angular').value
         self.Kd_angular = self.get_parameter('Kd_angular').value
+        # If I/D gains unset, derive simple defaults from P gain for reasonable behavior
+        #if (self.Ki_angular is None) or (float(self.Ki_angular) == 0.0):
+        #    self.Ki_angular = 0 * float(self.Kp_angular)
+        #if (self.Kd_angular is None) or (float(self.Kd_angular) == 0.0):
+        #    self.Kd_angular = 0 * float(self.Kp_angular)
         self.min_wheel_rps = self.get_parameter('min_wheel_rps').value
         
         self.controller_enabled = self.get_parameter('enable_controller').value
@@ -181,6 +186,11 @@ class PoseController(Node):
         self._last_left_cmd = 0.0
         self._last_right_cmd = 0.0
         self._pwm_idx = 0
+        # Angular PID state
+        self._ang_integral = 0.0
+        self._ang_prev_err = 0.0
+        self._ang_prev_time_ns = None
+        self._ang_integral_limit = 2.0  # anti-windup clamp
         # Tilt correction state
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
@@ -793,6 +803,7 @@ class PoseController(Node):
     
     def compute_errors(self, waypoint_x: float, waypoint_y: float, waypoint_yaw: float,
                       current_x: float, current_y: float, current_yaw: float,
+                      target_x: float, target_y: float, target_yaw: float,
                       r_goal: float) -> Tuple[float, float, float, float]:
         """
         Compute linear and angular errors for waypoint navigation with smooth transition
@@ -942,13 +953,35 @@ class PoseController(Node):
         r_goal = float(np.linalg.norm([target_x - current_x, target_y - current_y]))
         v_e, w_e, e_lat, d_yaw = self.compute_errors(
             x_next, y_next, target_yaw,
-            current_x, current_y, current_yaw,
+            current_x, current_y, current_yaw,target_x, target_y, target_yaw,
             r_goal
         )
 
-        # PID control for linear velocity (currently just proportional)
+        # PID control for linear velocity (currently proportional)
         linear_vel = self.Kp_linear * v_e
-        angular_vel =self.Kp_angular * w_e  # Angular velocity already computed in error function
+        # Angular PID on w_e with anti-windup and derivative
+        now_ns = self.get_clock().now().nanoseconds
+        if self._ang_prev_time_ns is None:
+            dt = 1.0 / float(max(1e-6, self.control_freq))
+        else:
+            dt = max(1e-6, (now_ns - self._ang_prev_time_ns) / 1e9)
+        err_a = float(w_e)
+        # Integrator
+        self._ang_integral += err_a * dt
+        # Anti-windup
+        if self._ang_integral > self._ang_integral_limit:
+            self._ang_integral = self._ang_integral_limit
+        elif self._ang_integral < -self._ang_integral_limit:
+            self._ang_integral = -self._ang_integral_limit
+        # Derivative (on measurement)
+        d_err = (err_a - self._ang_prev_err) / dt if dt > 0.0 else 0.0
+        angular_vel = (
+            float(self.Kp_angular) * err_a +
+            float(self.Ki_angular) * self._ang_integral +
+            float(self.Kd_angular) * d_err
+        )
+        self._ang_prev_err = err_a
+        self._ang_prev_time_ns = now_ns
 
         
         return linear_vel, angular_vel, {
