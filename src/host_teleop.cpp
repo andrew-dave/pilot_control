@@ -481,9 +481,9 @@ private:
             cmd_vel_msg.linear.x = -0.4; // Backward
         }
         if (keys[SDL_SCANCODE_A]) {
-            cmd_vel_msg.angular.z = 3.5; // Left
+            cmd_vel_msg.angular.z = 0.1; // Left
         } else if (keys[SDL_SCANCODE_D]) {
-            cmd_vel_msg.angular.z = -3.5; // Right
+            cmd_vel_msg.angular.z = -0.1; // Right
         }
 
         cmd_vel_pub_->publish(cmd_vel_msg);
