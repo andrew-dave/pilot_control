@@ -87,7 +87,7 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 4.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 0.1) # 1.0
+        self.declare_parameter('Kp_angular', 0.5) # 1.0
         self.declare_parameter('Ki_angular', 0.0)
         self.declare_parameter('Kd_angular', 0.0)
 
@@ -832,6 +832,9 @@ class PoseController(Node):
         while abs(d_yaw) > math.pi:
             d_yaw = d_yaw - math.copysign(2*math.pi, d_yaw)
         
+        while abs(yaw) > math.pi:
+            yaw = yaw - math.copysign(2*math.pi, yaw)
+        
         # Compute lateral and longitudinal errors in robot frame
         e_lat = -math.sin(yaw) * dx + math.cos(yaw) * dy  # lateral error
         v_e = math.cos(yaw) * dx + math.sin(yaw) * dy     # forward distance (toward waypoint)
@@ -839,7 +842,10 @@ class PoseController(Node):
         
         # Compute steering components
         # Lateral control: large when far from target
-        w_lat = self.K_lat * (math.atan2(dy,dx) - yaw);#*math.sqrt(dx*dx + dy*dy)/self.lookahead_distance;
+        heading_error = math.atan2(dy,dx) - yaw
+        while abs(heading_error) > math.pi:
+            heading_error = heading_error - math.copysign(2*math.pi, heading_error)
+        w_lat = self.K_lat * heading_error;#*math.sqrt(dx*dx + dy*dy)/self.lookahead_distance;
         
         # Orientation correction: stronger as we get closer
         w_yaw = self.K_yaw * d_yaw
