@@ -37,6 +37,16 @@ import math
 import numpy as np
 from typing import Tuple, Optional
 from sensor_msgs.msg import Imu
+from rclpy.qos import qos_profile_sensor_data
+from rclpy.executors import MultiThreadedExecutor
+import threading
+import sys
+import os
+import signal
+import time
+import select
+import termios
+import tty
 
 
 class PoseController(Node):
@@ -58,7 +68,7 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.3) # m/s
-        self.declare_parameter('max_angular_velocity', 4.0) # rad/s
+        self.declare_parameter('max_angular_velocity', 20.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
@@ -70,7 +80,7 @@ class PoseController(Node):
         self.declare_parameter('K_lat', 1.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
         self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
-        self.declare_parameter('blend_prefixed', 0.0) # blend factor for yaw correction
+        self.declare_parameter('blend_prefixed', 1.0) # blend factor for yaw correction
         
         # Tilt correction parameters (similar to gpr_scan_controller)
         self.declare_parameter('pitch_rad', -0.2617993878)  # ~ -15 deg fallback
@@ -84,11 +94,11 @@ class PoseController(Node):
         self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
         self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
 
-        self.declare_parameter('Kp_linear', 2.0) # 5.0
+        self.declare_parameter('Kp_linear', 0.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 1.9) # 1.0
-        self.declare_parameter('Ki_angular', 0.67)
+        self.declare_parameter('Kp_angular', 4.0) # 1.0
+        self.declare_parameter('Ki_angular', 0.2)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
@@ -190,7 +200,7 @@ class PoseController(Node):
         self._ang_integral = 0.0
         self._ang_prev_err = 0.0
         self._ang_prev_time_ns = None
-        self._ang_integral_limit = 2.0  # anti-windup clamp
+        self._ang_integral_limit = 20.0  # anti-windup clamp
         # Tilt correction state
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
@@ -230,14 +240,14 @@ class PoseController(Node):
             Odometry,
             odometry_topic,
             self.odometry_callback,
-            10
+            qos_profile_sensor_data
         )
         # IMU subscription for gravity-based tilt correction
         self.imu_sub = self.create_subscription(
             Imu,
             self.accel_topic,
             self.imu_callback,
-            10
+            qos_profile_sensor_data
         )
         
         # Publishers for wheel velocities
@@ -303,6 +313,13 @@ class PoseController(Node):
             '/disable_controller',
             self.disable_callback
         )
+
+        # Service to trigger graceful shutdown (zero torque → disarm → stop nodes)
+        self.soft_shutdown_srv = self.create_service(
+            Trigger,
+            '/pose_controller/soft_shutdown',
+            self._soft_shutdown_service
+        )
         
         # Control loop timer (10 Hz by default)
         control_period = 1.0 / self.control_freq
@@ -320,6 +337,9 @@ class PoseController(Node):
         self.right_axis_client = self.create_client(AxisState, '/right/request_axis_state')
         self.left_clear_client = self.create_client(Empty, '/left/clear_errors')
         self.right_clear_client = self.create_client(Empty, '/right/clear_errors')
+        # Shutdown mapping service (optional)
+        from std_srvs.srv import Trigger as _Trigger
+        self.shutdown_client = self.create_client(_Trigger, '/shutdown_mapping')
 
         self._arm_attempts = 0
         self._arm_max_attempts = 5
@@ -369,6 +389,16 @@ class PoseController(Node):
         
         if not self.controller_enabled:
             self.get_logger().info('Controller is currently disabled; it will auto-enable on first target pose.')
+
+        # Start keyboard watcher for ESC-triggered shutdown (if stdin is a TTY)
+        try:
+            if sys.stdin.isatty():
+                self._kb_thread = threading.Thread(target=self._keyboard_watch, daemon=True)
+                self._kb_thread.start()
+            else:
+                self.get_logger().info('Keyboard not attached to this process (no TTY); ESC shutdown disabled')
+        except Exception:
+            pass
     
     # ============================================================
     # CALLBACK: ODOMETRY
@@ -587,7 +617,7 @@ class PoseController(Node):
         time_since_odom = (self.get_clock().now() - self.last_odom_time).nanoseconds / 1e6
         if time_since_odom > self.odom_timeout_ms:
             self.warn_throttled('odom_timeout', f'⚠️  Odometry timeout ({time_since_odom:.1f} ms > {self.odom_timeout_ms} ms). Stopping motors.', 2.0)
-            self.publish_zero_velocity()
+            #self.publish_zero_velocity()
             return
         
         # Check if target is set
@@ -1188,6 +1218,119 @@ class PoseController(Node):
             pass
 
     # ============================================================
+    # ESC KEY WATCHER AND GRACEFUL SHUTDOWN
+    # ============================================================
+    def _keyboard_watch(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while rclpy.ok():
+                rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if sys.stdin in rlist:
+                    ch = sys.stdin.read(1)
+                    if ch == '\x1b':  # ESC
+                        self._on_escape_shutdown()
+                        break
+        except Exception:
+            pass
+        finally:
+            try:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            except Exception:
+                pass
+
+    def _on_escape_shutdown(self):
+        self.get_logger().warning('ESC pressed → initiating graceful shutdown: zero torque, disarm, stop nodes')
+        try:
+            self._send_zero_torque()
+            self._disarm_odrives()
+            self._call_shutdown_service()
+        except Exception as e:
+            try:
+                self.get_logger().warning(f'Shutdown sequence encountered an error: {e}')
+            except Exception:
+                pass
+        # Attempt to signal parent (launch) to stop
+        try:
+            os.kill(os.getppid(), signal.SIGINT)
+        except Exception:
+            pass
+        # Also stop this node
+        try:
+            self.publish_zero_velocity()
+            time.sleep(0.1)
+        except Exception:
+            pass
+        try:
+            rclpy.shutdown()
+        except Exception:
+            pass
+
+    def _soft_shutdown_service(self, request, response):
+        del request
+        self.get_logger().warning('Soft shutdown service called → zero torque, disarm, stop nodes')
+        try:
+            self._send_zero_torque()
+            self._disarm_odrives()
+            self._call_shutdown_service()
+            # Signal parent launch to stop
+            try:
+                os.kill(os.getppid(), signal.SIGINT)
+            except Exception:
+                pass
+            response.success = True
+            response.message = 'Shutdown initiated'
+        except Exception as e:
+            response.success = False
+            response.message = f'Error during shutdown: {e}'
+        return response
+
+    def _send_zero_torque(self):
+        # Publish torque=0 in TORQUE_CONTROL a few times to ensure delivery
+        msg_left = ControlMessage()
+        msg_left.control_mode = 1  # TORQUE_CONTROL
+        msg_left.input_mode = 1    # PASSTHROUGH
+        msg_left.input_torque = 0.0
+        msg_left.input_vel = 0.0
+        msg_left.input_pos = 0.0
+
+        msg_right = ControlMessage()
+        msg_right.control_mode = 1  # TORQUE_CONTROL
+        msg_right.input_mode = 1    # PASSTHROUGH
+        msg_right.input_torque = 0.0
+        msg_right.input_vel = 0.0
+        msg_right.input_pos = 0.0
+
+        for _ in range(3):
+            self.left_pub.publish(msg_left)
+            self.right_pub.publish(msg_right)
+            time.sleep(0.02)
+
+    def _disarm_odrives(self):
+        # Request IDLE (1) for both axes
+        try:
+            req_idle = AxisState.Request()
+            req_idle.axis_requested_state = 1  # IDLE
+            self.left_axis_client.call_async(req_idle)
+            self.right_axis_client.call_async(req_idle)
+            time.sleep(0.2)
+        except Exception:
+            pass
+
+    def _call_shutdown_service(self):
+        try:
+            if self.shutdown_client.service_is_ready():
+                self.shutdown_client.call_async(type(self.shutdown_client).srv.Request())
+            else:
+                # Try to wait briefly
+                self.shutdown_client.wait_for_service(timeout_sec=0.5)
+                if self.shutdown_client.service_is_ready():
+                    self.shutdown_client.call_async(type(self.shutdown_client).srv.Request())
+        except Exception:
+            pass
+
+    # ============================================================
     # STARTUP: ARM MOTORS HELPERS
     # ============================================================
     def _attempt_arm_motors(self):
@@ -1281,9 +1424,10 @@ class PoseController(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = PoseController()
-    
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         node.get_logger().info('\n⚠️  Interrupted by user')
     finally:

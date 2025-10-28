@@ -56,7 +56,7 @@ def generate_launch_description():
     )
     declare_max_angular_velocity_arg = DeclareLaunchArgument(
         'max_angular_velocity',
-        default_value='4.0',
+        default_value='20.0',
         description='Max angular velocity (rad/s)'
     )
     declare_roll_rad_arg = DeclareLaunchArgument(
@@ -430,19 +430,19 @@ def generate_launch_description():
                 gpr_odrive_node,
                 pose_controller_node,  # Pose controller for autonomous navigation
                 # diff_drive_controller EXCLUDED - pose controller provides navigation instead
-                foxglove_bridge,
+                #foxglove_bridge,
                 livox_driver,
                 fast_lio_node,
-                laser_map_rotator_node,
-                body_to_foot_transform,
-                camera_init_to_foot_init_transform,
-                raw_map_saver,
-                octomap_server_node,
+                #laser_map_rotator_node,
+                #body_to_foot_transform,
+                #camera_init_to_foot_init_transform,
+                #raw_map_saver,
+                #octomap_server_node,
                 shutdown_service_node,
-                unified_data_collector_node,
+                #unified_data_collector_node,
                 
-                gpr_serial_bridge_node,
-                gpr_scan_controller_node,
+                #gpr_serial_bridge_node
+                #gpr_scan_controller_node,
             ]
         ),
     ])

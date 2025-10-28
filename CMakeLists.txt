@@ -234,6 +234,7 @@ install(
   scripts/test_gpr_position.py
   scripts/gpr_scan_controller.py
   scripts/pose_controller.py
+  scripts/odom_gap_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
