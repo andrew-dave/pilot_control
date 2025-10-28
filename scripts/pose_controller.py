@@ -87,8 +87,8 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 2.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 2.0) # 1.0
-        self.declare_parameter('Ki_angular', 0.05)
+        self.declare_parameter('Kp_angular', 1.9) # 1.0
+        self.declare_parameter('Ki_angular', 0.67)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
@@ -788,8 +788,8 @@ class PoseController(Node):
         next_distance = distance_along_line + self.lookahead_distance
         
         # If next waypoint goes beyond target, use target as waypoint
-        if next_distance >= line_length:
-            return target_x, target_y
+        #if next_distance >= line_length:
+        #    return target_x, target_y
         
         # Calculate next waypoint coordinates
         next_x = self.start_x + line_direction[0] * next_distance
@@ -836,6 +836,8 @@ class PoseController(Node):
         # Pose deltas
         dx = waypoint_x - current_x
         dy = waypoint_y - current_y
+        dx_targ = target_x - current_x
+        dy_targ = target_y - current_y
         d_yaw = waypoint_yaw - current_yaw
         yaw = current_yaw
         
@@ -849,6 +851,10 @@ class PoseController(Node):
         # Compute lateral and longitudinal errors in robot frame
         e_lat = -math.sin(yaw) * dx + math.cos(yaw) * dy  # lateral error
         v_e = math.cos(yaw) * dx + math.sin(yaw) * dy     # forward distance (toward waypoint)
+        v_e_targ = math.cos(yaw) * dx_targ + math.sin(yaw) * dy_targ
+        if abs(v_e_targ) < abs(v_e):
+            v_e = v_e_targ
+
         r = math.sqrt(dx*dx + dy*dy)                      # distance to local waypoint (for reference)
         
         # Compute steering components
