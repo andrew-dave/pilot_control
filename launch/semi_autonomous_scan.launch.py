@@ -172,7 +172,7 @@ def generate_launch_description():
     left_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix=['taskset', '-c', '5'],
+        prefix='taskset -c 5',
         namespace='left',
         name='odrive_can_left',
         parameters=[{
@@ -185,7 +185,7 @@ def generate_launch_description():
     right_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix=['taskset', '-c', '5'],
+        prefix='taskset -c 5',
         namespace='right',
         name='odrive_can_right',
         parameters=[{
@@ -199,7 +199,7 @@ def generate_launch_description():
     gpr_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix=['taskset', '-c', '5'],
+        prefix='taskset -c 5',
         namespace='gpr',
         name='odrive_can_gpr',
         parameters=[{
@@ -213,7 +213,7 @@ def generate_launch_description():
     pose_controller_node = Node(
         package='pilot_control',
         executable='pose_controller.py',
-        prefix=['taskset', '-c', '5'],
+        prefix='taskset -c 5',
         name='pose_controller',
         output='screen',
         parameters=[{
@@ -265,7 +265,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
-        prefix=['taskset', '-c', '5'],
+        prefix='taskset -c 5',
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
