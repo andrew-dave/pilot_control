@@ -19,7 +19,6 @@ public:
     // Declare & read parameters
     this->declare_parameter<std::string>("input_topic", "/Laser_map");
     this->declare_parameter<std::string>("output_topic", "/Laser_map_rotated");
-    //this->declare_parameter<double>("pitch_rad", -0.2617993878); // 15 deg default
     this->declare_parameter<std::string>("output_frame", "foot_init");
     this->declare_parameter<double>("max_height", 0.5);
     this->declare_parameter<double>("min_height", -0.15);
@@ -28,7 +27,6 @@ public:
 
     input_topic_  = this->get_parameter("input_topic").as_string();
     output_topic_ = this->get_parameter("output_topic").as_string();
-    pitch_rad_    = this->get_parameter("pitch_rad").as_double();
     output_frame_ = this->get_parameter("output_frame").as_string();
     min_height_  = this->get_parameter("min_height").as_double();
     max_height_  = this->get_parameter("max_height").as_double();
@@ -39,17 +37,11 @@ public:
       accel_samples_target_ = param_samples;
     }
 
-    // Initialize transform with fixed pitch as a fallback until IMU-based init completes
-    Eigen::AngleAxisf roll_rot(pitch_rad_, Eigen::Vector3f::UnitY());
-    transform_ = Eigen::Affine3f(roll_rot);
-
-    tf2::Quaternion q;
-    q.setRPY(0.0, pitch_rad_, 0.0);
-    q.normalize();
-    tf2_transform_.transform.rotation.x = q.x();
-    tf2_transform_.transform.rotation.y = q.y();
-    tf2_transform_.transform.rotation.z = q.z();
-    tf2_transform_.transform.rotation.w = q.w();
+    // Initialize transform as identity - will be updated by IMU data
+    tf2_transform_.transform.rotation.x = 0.0;
+    tf2_transform_.transform.rotation.y = 0.0;
+    tf2_transform_.transform.rotation.z = 0.0;
+    tf2_transform_.transform.rotation.w = 1.0;
     tf2_transform_.transform.translation.x = 0.0;
     tf2_transform_.transform.translation.y = 0.0;
     tf2_transform_.transform.translation.z = 0.0;
@@ -153,11 +145,21 @@ private:
     tf2_transform_.transform.rotation.w = q_align.w();
 
     accel_initialized_ = true;
+    
+    // Convert quaternion to roll, pitch, yaw for logging
+    tf2::Matrix3x3 m(q_align);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    
     // Optionally reset subscription to free resources; keep it alive but no-op is fine
     RCLCPP_INFO(this->get_logger(),
                 "IMU-based alignment initialized with %d samples. avg=[%.4f %.4f %.4f], q=[%.4f %.4f %.4f %.4f]",
                 accel_count_, avg.x(), avg.y(), avg.z(),
                 q_align.x(), q_align.y(), q_align.z(), q_align.w());
+    
+    RCLCPP_INFO(this->get_logger(),
+                "Computed rotation (degrees): Roll=%.2f°, Pitch=%.2f°, Yaw=%.2f°",
+                roll * 180.0 / M_PI, pitch * 180.0 / M_PI, yaw * 180.0 / M_PI);
   }
 
   void pointcloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -212,8 +214,6 @@ private:
   std::string input_topic_;
   std::string output_topic_;
   std::string output_frame_;
-  double pitch_rad_{};
-  Eigen::Affine3f transform_;
   geometry_msgs::msg::TransformStamped tf2_transform_;
   double min_height_{0.03};
   double max_height_{1.0};
