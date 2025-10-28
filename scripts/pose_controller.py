@@ -98,7 +98,7 @@ class PoseController(Node):
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
         self.declare_parameter('Kp_angular', 4.0) # 1.0
-        self.declare_parameter('Ki_angular', 0.2)
+        self.declare_parameter('Ki_angular', 0.3)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters

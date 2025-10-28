@@ -281,7 +281,8 @@ def generate_launch_description():
     fast_lio_node = Node(
         package='fast_lio',
         executable='fastlio_mapping',
-        prefix=['chrt', '-f', '80', 'taskset', '-c', '3,7'], 
+        #prefix=['chrt', '-f', '80', 'taskset', '-c', '5'], 
+        prefix='taskset -c 5',
         parameters=[PathJoinSubstitution([
             FindPackageShare('fast_lio'), 'config', 'mid360.yaml'
         ]), {
