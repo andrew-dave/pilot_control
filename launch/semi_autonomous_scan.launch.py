@@ -172,6 +172,7 @@ def generate_launch_description():
     left_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='left',
         name='odrive_can_left',
         parameters=[{
@@ -184,6 +185,7 @@ def generate_launch_description():
     right_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='right',
         name='odrive_can_right',
         parameters=[{
@@ -197,6 +199,7 @@ def generate_launch_description():
     gpr_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='gpr',
         name='odrive_can_gpr',
         parameters=[{
@@ -210,6 +213,7 @@ def generate_launch_description():
     pose_controller_node = Node(
         package='pilot_control',
         executable='pose_controller.py',
+        prefix=['taskset', '-c', '5'],
         name='pose_controller',
         output='screen',
         parameters=[{
@@ -261,6 +265,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
+        prefix=['taskset', '-c', '5'],
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
@@ -427,14 +432,14 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
-                left_odrive_node,
-                right_odrive_node,
-                gpr_odrive_node,
-                pose_controller_node,  # Pose controller for autonomous navigation
+                left_odrive_node, # taskset -c 5
+                right_odrive_node, # taskset -c 5
+                gpr_odrive_node, # taskset -c 5
+                pose_controller_node, # taskset -c 5  # Pose controller for autonomous navigation
                 # diff_drive_controller EXCLUDED - pose controller provides navigation instead
                 #foxglove_bridge,
-                livox_driver,
-                fast_lio_node,
+                livox_driver, # taskset -c 5
+                fast_lio_node, # taskset -c 5
                 #laser_map_rotator_node,
                 #body_to_foot_transform,
                 #camera_init_to_foot_init_transform,

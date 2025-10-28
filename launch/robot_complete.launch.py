@@ -42,6 +42,7 @@ def generate_launch_description():
     unified_data_collector_node = Node(
         package='pilot_control',
         executable='unified_data_collector',
+        prefix=['taskset', '-c', '6'],
         name='unified_data_collector',
         output='screen',
         respawn=True,
@@ -88,6 +89,7 @@ def generate_launch_description():
     left_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='left',
         name='odrive_can_left',
         parameters=[{
@@ -100,6 +102,7 @@ def generate_launch_description():
     right_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='right',
         name='odrive_can_right',
         parameters=[{
@@ -113,6 +116,7 @@ def generate_launch_description():
     gpr_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
+        prefix=['taskset', '-c', '5'],
         namespace='gpr',
         name='odrive_can_gpr',
         parameters=[{
@@ -127,6 +131,7 @@ def generate_launch_description():
     diff_drive_controller = Node(
         package='pilot_control',
         executable='diff_drive_controller',
+        prefix=['taskset', '-c', '5'],
         name='diff_drive_controller',
         output='screen',
         parameters=[{
@@ -160,6 +165,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
+        prefix=['taskset', '-c', '5'],
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
@@ -180,6 +186,7 @@ def generate_launch_description():
     fast_lio_node = Node(
         package='fast_lio',
         executable='fastlio_mapping',
+        prefix=['taskset', '-c', '5'],
         parameters=[PathJoinSubstitution([
             FindPackageShare('fast_lio'), 'config', 'mid360.yaml'
         ]), {
@@ -244,6 +251,7 @@ def generate_launch_description():
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
+        prefix=['taskset', '-c', '6'],
         name='gpr_scan_controller',
         output='screen',
         parameters=[{
@@ -267,7 +275,7 @@ def generate_launch_description():
         parameters=[{
             'input_topic': '/Laser_map',
             'output_topic': '/Laser_map_rotated',
-            'pitch_rad': 0.2617993878,  # 15 degrees
+            # 'pitch_rad': 0.2617993878,  # 15 degrees
             'output_frame': 'foot_init'
         }]
     )
@@ -312,23 +320,22 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
-                left_odrive_node,
-                right_odrive_node,
-                gpr_odrive_node,
-                diff_drive_controller,
-                foxglove_bridge,
-                livox_driver,
-                fast_lio_node,
-                laser_map_rotator_node,
+                left_odrive_node, # taskset -c 5
+                right_odrive_node, # taskset -c 5
+                gpr_odrive_node, # taskset -c 5
+                diff_drive_controller, # taskset -c 5
+                livox_driver, # taskset -c 5
+                fast_lio_node, # taskset -c 5
+                laser_map_rotator_node, 
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
-                unified_data_collector_node,
+                unified_data_collector_node, # taskset -c 6
                 
                 gpr_serial_bridge_node,
-                gpr_scan_controller_node,
+                gpr_scan_controller_node, # taskset -c 6
             ]
         ),
         
