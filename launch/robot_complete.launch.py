@@ -251,7 +251,6 @@ def generate_launch_description():
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
-        prefix='taskset -c 6',
         name='gpr_scan_controller',
         output='screen',
         parameters=[{
