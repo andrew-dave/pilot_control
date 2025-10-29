@@ -72,7 +72,7 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 0.2) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.1) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
@@ -97,8 +97,8 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 3.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 4.0) # 1.0
-        self.declare_parameter('Ki_angular', 0)
+        self.declare_parameter('Kp_angular', 1.0) # 1.0
+        self.declare_parameter('Ki_angular', 0.05)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
@@ -681,12 +681,13 @@ class PoseController(Node):
         # PUBLISH COMMANDS (direct or via PWM layer)
         # ============================================================
         
-        if self.pwm_enabled and self.pwm_timer is not None:
-            # Defer actual publish to high-rate PWM timer
-            self._last_left_cmd = float(left_vel)
-            self._last_right_cmd = float(right_vel)
-        else:
-            self.publish_wheel_velocities(left_vel, right_vel)
+        #if self.pwm_enabled and self.pwm_timer is not None:
+        #    # Defer actual publish to high-rate PWM timer
+        #    self._last_left_cmd = float(left_vel)
+        #    self._last_right_cmd = float(right_vel)
+        #else:
+        #    self.publish_wheel_velocities(left_vel, right_vel)
+        self.publish_wheel_velocities(left_vel, right_vel)
 
         # ============================================================
         # PUBLISH DIAGNOSTICS
