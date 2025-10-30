@@ -214,6 +214,7 @@ class PoseController(Node):
         self.R_align_world = np.eye(3, dtype=float)  # world -> flat-world
         self.last_raw_q = (0.0, 0.0, 0.0, 1.0)
         self.last_raw_pos = np.zeros(3, dtype=float)
+        self.alignment_set = False
         self.origin_set = False
         self.p0_flat = np.zeros(3, dtype=float)
         self.R0_flat_b = np.eye(3, dtype=float)
@@ -445,8 +446,31 @@ class PoseController(Node):
         self.last_raw_pos = raw_pos
         R_wb = self.quat_to_matrix(raw_q)
 
+        # Establish leveling rotation at first odom using accel_avg and current body orientation
+        if self.accel_initialized and not self.alignment_set:
+            try:
+                a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+                R_wb_curr = self.quat_to_matrix(raw_q)
+                a_world = R_wb_curr @ a_norm
+            except Exception:
+                a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
+            self.align_quat = q_align_world
+            self.R_align_world = self.quat_to_matrix(q_align_world)
+            self.alignment_set = True
+            try:
+                qx, qy, qz, qw = q_align_world
+                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
+                a_flat_dbg = self.R_align_world @ a_world
+                self.get_logger().info(
+                    f'Leveling set at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
+                    f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f}; '
+                    f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
+            except Exception:
+                pass
+
         # Establish origin in leveled world with yaw-only removal
-        if not self.origin_set:
+        if not self.origin_set and self.alignment_set:
             self.p0_world = raw_pos.copy()
             q_flat0 = self.quat_multiply(self.align_quat, raw_q)
             self.yaw0 = self.quaternion_to_yaw(q_flat0[0], q_flat0[1], q_flat0[2], q_flat0[3])
@@ -678,7 +702,7 @@ class PoseController(Node):
         if self.imu_flip_z:
             a[2] = -a[2]
 
-        # Initialize gravity average once while stationary; then freeze
+        # Initialize gravity average once while stationary; do not set leveling here
         if not self.accel_initialized:
             self.accel_sum += a
             self.accel_count += 1
@@ -686,41 +710,22 @@ class PoseController(Node):
                 return
             avg = self.accel_sum / float(max(1, self.accel_count))
             self.accel_avg = avg
-            # Compute alignment: world -> flat using last known orientation
-            try:
-                R_wb = self.quat_to_matrix(self.last_raw_q)
-                a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-                a_world = R_wb @ a_norm
-            except Exception:
-                a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
-            self.align_quat = q_align_world
-            self.R_align_world = self.quat_to_matrix(q_align_world)
             self.accel_initialized = True
             try:
                 self.get_logger().info(
                     f'Pose tilt correction initialized with {self.accel_count} samples')
-                # Debug: report IMU flips, averaged accel (after flips), a_world, and alignment RPY
+                # Debug: report IMU flips and averaged accel (after flips)
                 try:
-                    qx, qy, qz, qw = q_align_world
-                    roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                    a_flat = self.R_align_world @ a_world
                     self.get_logger().info(
                         f'IMU flips (x,y,z)=({self.imu_flip_x},{self.imu_flip_y},{self.imu_flip_z}); '
                         f'accel_avg={self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f}; '
-                        f'a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
-                        f'a_flat={a_flat[0]:.3f},{a_flat[1]:.3f},{a_flat[2]:.3f}; '
-                        f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
+                        f'waiting for first odom to set leveling')
                 except Exception:
                     pass
             except Exception:
                 pass
-            # If origin already set (rare), refresh transform once
-            if self.origin_set:
-                self.A_world_to_local = self.R0_flat_b.T @ self.R_align_world
-                self.b_world_to_local = - self.R0_flat_b.T @ self.p0_flat
         else:
-            # Do not update alignment during motion to avoid contamination
+            # After initialization, ignore further IMU updates for leveling
             return
     
     # ============================================================
