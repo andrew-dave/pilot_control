@@ -209,6 +209,19 @@ class PoseController(Node):
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
         self.accel_count = 0
+        self.accel_avg = None  # store averaged acceleration for world-frame leveling
+        # Alignment and origin transforms (matrix form)
+        self.R_align_world = np.eye(3, dtype=float)  # world -> flat-world
+        self.last_raw_q = (0.0, 0.0, 0.0, 1.0)
+        self.last_raw_pos = np.zeros(3, dtype=float)
+        self.origin_set = False
+        self.p0_flat = np.zeros(3, dtype=float)
+        self.R0_flat_b = np.eye(3, dtype=float)
+        self.A_world_to_local = np.eye(3, dtype=float)  # p_local = A * p_world + b
+        self.b_world_to_local = np.zeros(3, dtype=float)
+        # Yaw-only origin in leveled world
+        self.p0_world = np.zeros(3, dtype=float)
+        self.yaw0 = 0.0
         # Initialize fallback alignment quaternion with full 3D correction
         # Order: Roll (X), Pitch (Y), Yaw (Z) - applied in sequence
         roll_quat = self.quat_from_axis_angle([1.0, 0.0, 0.0], self.roll_rad)
@@ -413,7 +426,10 @@ class PoseController(Node):
         Callback for Fast-LIO2 odometry messages.
         Extracts x, y, yaw from the odometry message.
         """
-        # Extract and tilt-correct pose immediately
+        # Gate processing until IMU-based tilt alignment has completed
+        if not self.accel_initialized:
+            return
+        # Extract raw pose
         raw_pos = np.array([
             float(msg.pose.pose.position.x),
             float(msg.pose.pose.position.y),
@@ -425,29 +441,30 @@ class PoseController(Node):
             float(msg.pose.pose.orientation.z),
             float(msg.pose.pose.orientation.w),
         )
-        q_align = self.align_quat
-        # Transform position: rotate raw position by alignment quaternion
-        corr_pos = self.rotate_vector_by_quat(raw_pos, q_align)
-        # Transform orientation: q_align * raw_q (alignment applied first, then raw orientation)
-        # This order means: first apply alignment correction, then apply the raw orientation
-        corr_q = self.quat_multiply(q_align, raw_q)
-        corr_q = self.quat_normalize(corr_q)
+        self.last_raw_q = raw_q
+        self.last_raw_pos = raw_pos
+        R_wb = self.quat_to_matrix(raw_q)
 
-        # Establish origin (first tilt-corrected pose)
-        if not self.frame_origin_set:
-            try:
-                self.frame_origin_pos = np.array([float(corr_pos[0]), float(corr_pos[1]), float(corr_pos[2])], dtype=float)
-                self.frame_origin_quat = (float(corr_q[0]), float(corr_q[1]), float(corr_q[2]), float(corr_q[3]))
-            except Exception:
-                self.frame_origin_pos = np.array([0.0, 0.0, 0.0], dtype=float)
-                self.frame_origin_quat = (0.0, 0.0, 0.0, 1.0)
-            self.frame_origin_set = True
+        # Establish origin in leveled world with yaw-only removal
+        if not self.origin_set:
+            self.p0_world = raw_pos.copy()
+            q_flat0 = self.quat_multiply(self.align_quat, raw_q)
+            self.yaw0 = self.quaternion_to_yaw(q_flat0[0], q_flat0[1], q_flat0[2], q_flat0[3])
+            self.origin_set = True
 
-        # Transform corrected pose into the initial corrected frame: p' = R0^T (p - p0), q' = R0^* q
-        p_delta = np.array([float(corr_pos[0]), float(corr_pos[1]), float(corr_pos[2])], dtype=float) - self.frame_origin_pos
-        q0_conj = self.quat_conjugate(self.frame_origin_quat)
-        p_local = self.rotate_vector_by_quat(p_delta, q0_conj)
-        q_local = self.quat_multiply(q0_conj, (float(corr_q[0]), float(corr_q[1]), float(corr_q[2]), float(corr_q[3])))
+        # Leveled world position
+        p_flat = self.R_align_world @ (raw_pos - self.p0_world)
+        # Remove initial yaw only
+        cy = math.cos(-self.yaw0)
+        sy = math.sin(-self.yaw0)
+        Rz_neg_yaw0 = np.array([[cy, -sy, 0.0],
+                                [sy,  cy, 0.0],
+                                [0.0, 0.0, 1.0]], dtype=float)
+        p_local = Rz_neg_yaw0 @ p_flat
+        # Orientation: q_local = Rz(-yaw0) * (q_align * q_raw)
+        q_flat = self.quat_multiply(self.align_quat, raw_q)
+        qz_neg_yaw0 = self.quat_from_axis_angle([0.0, 0.0, 1.0], -self.yaw0)
+        q_local = self.quat_multiply(qz_neg_yaw0, q_flat)
 
         self.current_x = float(p_local[0])
         self.current_y = float(p_local[1])
@@ -458,10 +475,10 @@ class PoseController(Node):
         raw_vel = np.array([
             float(msg.twist.twist.linear.x),
             float(msg.twist.twist.linear.y),
-            0.0  # Z velocity not used in 2D control
+            float(msg.twist.twist.linear.z)
         ], dtype=float)
-        corr_vel = self.rotate_vector_by_quat(raw_vel, q_align)
-        vel_local = self.rotate_vector_by_quat(corr_vel, q0_conj)
+        v_flat = self.R_align_world @ raw_vel
+        vel_local = Rz_neg_yaw0 @ v_flat
         self.current_vx = float(vel_local[0])
         self.current_vy = float(vel_local[1])
         # Angular velocity is not transformed (rotation around Z-axis is preserved)
@@ -504,8 +521,18 @@ class PoseController(Node):
             odom_corr.pose.pose.orientation.y = q_local[1]
             odom_corr.pose.pose.orientation.z = q_local[2]
             odom_corr.pose.pose.orientation.w = q_local[3]
-            # Pass-through twist (not rotated)
-            odom_corr.twist = msg.twist
+            # Rotate linear twist into the flat, tilt-corrected local frame
+            # (use the already computed vel_local)
+            try:
+                odom_corr.twist.twist.linear.x = float(vel_local[0])
+                odom_corr.twist.twist.linear.y = float(vel_local[1])
+                odom_corr.twist.twist.linear.z = 0.0
+            except Exception:
+                odom_corr.twist.twist.linear.x = 0.0
+                odom_corr.twist.twist.linear.y = 0.0
+                odom_corr.twist.twist.linear.z = 0.0
+            # Keep angular twist as-is (planar control uses z)
+            odom_corr.twist.twist.angular = msg.twist.twist.angular
             self.odom_corr_pub.publish(odom_corr)
         except Exception:
             pass
@@ -590,9 +617,52 @@ class PoseController(Node):
         z = axis[2] * invs
         return PoseController.quat_normalize((x, y, z, w))
 
+    @staticmethod
+    def quat_to_matrix(q):
+        x, y, z, w = q
+        xx = x * x; yy = y * y; zz = z * z
+        xy = x * y; xz = x * z; yz = y * z
+        wx = w * x; wy = w * y; wz = w * z
+        R = np.array([
+            [1.0 - 2.0 * (yy + zz),     2.0 * (xy - wz),         2.0 * (xz + wy)],
+            [    2.0 * (xy + wz),   1.0 - 2.0 * (xx + zz),       2.0 * (yz - wx)],
+            [    2.0 * (xz - wy),       2.0 * (yz + wx),     1.0 - 2.0 * (xx + yy)]
+        ], dtype=float)
+        return R
+
+    @staticmethod
+    def matrix_to_quat(R):
+        m00, m01, m02 = float(R[0,0]), float(R[0,1]), float(R[0,2])
+        m10, m11, m12 = float(R[1,0]), float(R[1,1]), float(R[1,2])
+        m20, m21, m22 = float(R[2,0]), float(R[2,1]), float(R[2,2])
+        tr = m00 + m11 + m22
+        if tr > 0.0:
+            S = math.sqrt(tr + 1.0) * 2.0
+            w = 0.25 * S
+            x = (m21 - m12) / S
+            y = (m02 - m20) / S
+            z = (m10 - m01) / S
+        elif (m00 > m11) and (m00 > m22):
+            S = math.sqrt(1.0 + m00 - m11 - m22) * 2.0
+            w = (m21 - m12) / S
+            x = 0.25 * S
+            y = (m01 + m10) / S
+            z = (m02 + m20) / S
+        elif m11 > m22:
+            S = math.sqrt(1.0 + m11 - m00 - m22) * 2.0
+            w = (m02 - m20) / S
+            x = (m01 + m10) / S
+            y = 0.25 * S
+            z = (m12 + m21) / S
+        else:
+            S = math.sqrt(1.0 + m22 - m00 - m11) * 2.0
+            w = (m10 - m01) / S
+            x = (m02 + m20) / S
+            y = (m12 + m21) / S
+            z = 0.25 * S
+        return (x, y, z, w)
+
     def imu_callback(self, msg: Imu):
-        if self.accel_initialized:
-            return
         a = np.array([
             float(msg.linear_acceleration.x),
             float(msg.linear_acceleration.y),
@@ -607,20 +677,51 @@ class PoseController(Node):
             a[1] = -a[1]
         if self.imu_flip_z:
             a[2] = -a[2]
-        self.accel_sum += a
-        self.accel_count += 1
-        if self.accel_count < self.accel_samples_target:
+
+        # Initialize gravity average once while stationary; then freeze
+        if not self.accel_initialized:
+            self.accel_sum += a
+            self.accel_count += 1
+            if self.accel_count < self.accel_samples_target:
+                return
+            avg = self.accel_sum / float(max(1, self.accel_count))
+            self.accel_avg = avg
+            # Compute alignment: world -> flat using last known orientation
+            try:
+                R_wb = self.quat_to_matrix(self.last_raw_q)
+                a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+                a_world = R_wb @ a_norm
+            except Exception:
+                a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
+            self.align_quat = q_align_world
+            self.R_align_world = self.quat_to_matrix(q_align_world)
+            self.accel_initialized = True
+            try:
+                self.get_logger().info(
+                    f'Pose tilt correction initialized with {self.accel_count} samples')
+                # Debug: report IMU flips, averaged accel (after flips), a_world, and alignment RPY
+                try:
+                    qx, qy, qz, qw = q_align_world
+                    roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
+                    a_flat = self.R_align_world @ a_world
+                    self.get_logger().info(
+                        f'IMU flips (x,y,z)=({self.imu_flip_x},{self.imu_flip_y},{self.imu_flip_z}); '
+                        f'accel_avg={self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f}; '
+                        f'a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
+                        f'a_flat={a_flat[0]:.3f},{a_flat[1]:.3f},{a_flat[2]:.3f}; '
+                        f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            # If origin already set (rare), refresh transform once
+            if self.origin_set:
+                self.A_world_to_local = self.R0_flat_b.T @ self.R_align_world
+                self.b_world_to_local = - self.R0_flat_b.T @ self.p0_flat
+        else:
+            # Do not update alignment during motion to avoid contamination
             return
-        avg = self.accel_sum / float(self.accel_count)
-        norm = float(np.linalg.norm(avg))
-        if norm < 1e-3:
-            self.warn_throttled('imu_avg', 'Average acceleration too small; waiting…', 5.0)
-            return
-        # Align avg acceleration to -Z
-        self.align_quat = self.compute_alignment_quat(avg, np.array([0.0, 0.0, -1.0]))
-        self.accel_initialized = True
-        self.get_logger().info(
-            f'Pose tilt correction initialized with {self.accel_count} samples')
     
     # ============================================================
     # CALLBACK: CONTROL LOOP (10 Hz)
