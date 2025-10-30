@@ -196,6 +196,10 @@ class PoseController(Node):
         self._last_left_cmd = 0.0
         self._last_right_cmd = 0.0
         self._pwm_idx = 0
+        # Frame origin (initial tilt-corrected pose defines global origin)
+        self.frame_origin_set = False
+        self.frame_origin_pos = np.zeros(3, dtype=float)
+        self.frame_origin_quat = (0.0, 0.0, 0.0, 1.0)
         # Angular PID state
         self._ang_integral = 0.0
         self._ang_prev_err = 0.0
@@ -429,10 +433,26 @@ class PoseController(Node):
         corr_q = self.quat_multiply(q_align, raw_q)
         corr_q = self.quat_normalize(corr_q)
 
-        self.current_x = float(corr_pos[0])
-        self.current_y = float(corr_pos[1])
+        # Establish origin (first tilt-corrected pose)
+        if not self.frame_origin_set:
+            try:
+                self.frame_origin_pos = np.array([float(corr_pos[0]), float(corr_pos[1]), float(corr_pos[2])], dtype=float)
+                self.frame_origin_quat = (float(corr_q[0]), float(corr_q[1]), float(corr_q[2]), float(corr_q[3]))
+            except Exception:
+                self.frame_origin_pos = np.array([0.0, 0.0, 0.0], dtype=float)
+                self.frame_origin_quat = (0.0, 0.0, 0.0, 1.0)
+            self.frame_origin_set = True
+
+        # Transform corrected pose into the initial corrected frame: p' = R0^T (p - p0), q' = R0^* q
+        p_delta = np.array([float(corr_pos[0]), float(corr_pos[1]), float(corr_pos[2])], dtype=float) - self.frame_origin_pos
+        q0_conj = self.quat_conjugate(self.frame_origin_quat)
+        p_local = self.rotate_vector_by_quat(p_delta, q0_conj)
+        q_local = self.quat_multiply(q0_conj, (float(corr_q[0]), float(corr_q[1]), float(corr_q[2]), float(corr_q[3])))
+
+        self.current_x = float(p_local[0])
+        self.current_y = float(p_local[1])
         # z not used
-        self.current_yaw = self.quaternion_to_yaw(corr_q[0], corr_q[1], corr_q[2], corr_q[3])
+        self.current_yaw = self.quaternion_to_yaw(q_local[0], q_local[1], q_local[2], q_local[3])
         
         # Extract and transform velocities for consistency with pose transformation
         raw_vel = np.array([
@@ -441,8 +461,9 @@ class PoseController(Node):
             0.0  # Z velocity not used in 2D control
         ], dtype=float)
         corr_vel = self.rotate_vector_by_quat(raw_vel, q_align)
-        self.current_vx = float(corr_vel[0])
-        self.current_vy = float(corr_vel[1])
+        vel_local = self.rotate_vector_by_quat(corr_vel, q0_conj)
+        self.current_vx = float(vel_local[0])
+        self.current_vy = float(vel_local[1])
         # Angular velocity is not transformed (rotation around Z-axis is preserved)
         self.current_vyaw = msg.twist.twist.angular.z
         
@@ -478,13 +499,11 @@ class PoseController(Node):
                 odom_corr.child_frame_id = ''
             odom_corr.pose.pose.position.x = self.current_x
             odom_corr.pose.pose.position.y = self.current_y
-            odom_corr.pose.pose.position.z = float(self.rotate_vector_by_quat(
-                np.array([0.0, 0.0, msg.pose.pose.position.z], dtype=float), self.align_quat
-            )[2])
-            odom_corr.pose.pose.orientation.x = corr_q[0]
-            odom_corr.pose.pose.orientation.y = corr_q[1]
-            odom_corr.pose.pose.orientation.z = corr_q[2]
-            odom_corr.pose.pose.orientation.w = corr_q[3]
+            odom_corr.pose.pose.position.z = float(p_local[2])
+            odom_corr.pose.pose.orientation.x = q_local[0]
+            odom_corr.pose.pose.orientation.y = q_local[1]
+            odom_corr.pose.pose.orientation.z = q_local[2]
+            odom_corr.pose.pose.orientation.w = q_local[3]
             # Pass-through twist (not rotated)
             odom_corr.twist = msg.twist
             self.odom_corr_pub.publish(odom_corr)
@@ -522,6 +541,11 @@ class PoseController(Node):
         z = w1*z2 + x1*y2 - y1*x2 + z1*w2
         w = w1*w2 - x1*x2 - y1*y2 - z1*z2
         return (x, y, z, w)
+
+    @staticmethod
+    def quat_conjugate(q):
+        x, y, z, w = q
+        return (-float(x), -float(y), -float(z), float(w))
 
     @staticmethod
     def rotate_vector_by_quat(v, q):
