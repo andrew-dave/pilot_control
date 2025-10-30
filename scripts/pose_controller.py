@@ -453,6 +453,15 @@ class PoseController(Node):
                 f'✓ Odometry initialized: x={self.current_x:.3f}, '
                 f'y={self.current_y:.3f}, yaw={math.degrees(self.current_yaw):.1f}°'
             )
+            try:
+                qx, qy, qz, qw = self.align_quat
+                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
+                self.get_logger().info(
+                    f'align_quat: q=({qx:.4f}, {qy:.4f}, {qz:.4f}, {qw:.4f}) | '
+                    f'rpy=({math.degrees(roll):.1f}°, {math.degrees(pitch):.1f}°, {math.degrees(yaw):.1f}°)'
+                )
+            except Exception:
+                pass
         
         # Update last odometry time
         self.last_odom_time = self.get_clock().now()
@@ -1190,6 +1199,31 @@ class PoseController(Node):
         cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return yaw
+    
+    @staticmethod
+    def quaternion_to_rpy(qx: float, qy: float, qz: float, qw: float) -> Tuple[float, float, float]:
+        """
+        Convert quaternion to roll, pitch, yaw (radians).
+        Returns (roll, pitch, yaw).
+        """
+        # roll (x-axis rotation)
+        sinr_cosp = 2.0 * (qw * qx + qy * qz)
+        cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy)
+        roll = math.atan2(sinr_cosp, cosr_cosp)
+
+        # pitch (y-axis rotation)
+        sinp = 2.0 * (qw * qy - qz * qx)
+        if abs(sinp) >= 1.0:
+            pitch = math.copysign(math.pi / 2.0, sinp)
+        else:
+            pitch = math.asin(sinp)
+
+        # yaw (z-axis rotation)
+        siny_cosp = 2.0 * (qw * qz + qx * qy)
+        cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+
+        return roll, pitch, yaw
     
     @staticmethod
     def normalize_angle(angle: float) -> float:
