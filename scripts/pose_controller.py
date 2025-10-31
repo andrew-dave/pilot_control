@@ -89,10 +89,7 @@ class PoseController(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
         
-        # IMU coordinate transformation parameters
-        self.declare_parameter('imu_flip_x', True)  # Negate X-axis
-        self.declare_parameter('imu_flip_y', False)  # Negate Y-axis
-        self.declare_parameter('imu_flip_z', True)  # Negate Z-axis
+        # IMU coordinate transformation parameters (no axis flips applied)
 
         self.declare_parameter('Kp_linear', 3.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
@@ -145,10 +142,7 @@ class PoseController(Node):
         self.accel_topic = str(self.get_parameter('accel_topic').value)
         self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
         self.blend_prefixed = self.get_parameter('blend_prefixed').value
-        # IMU coordinate transformation parameters
-        self.imu_flip_x = self.get_parameter('imu_flip_x').value
-        self.imu_flip_y = self.get_parameter('imu_flip_y').value
-        self.imu_flip_z = self.get_parameter('imu_flip_z').value
+        # IMU coordinate transformation parameters (no axis flips used)
         self.Kp_linear = self.get_parameter('Kp_linear').value
         self.Ki_linear = self.get_parameter('Ki_linear').value
         self.Kd_linear = self.get_parameter('Kd_linear').value
@@ -390,7 +384,7 @@ class PoseController(Node):
         self.get_logger().info(f'  Roll correction: {math.degrees(self.roll_rad):.1f}°')
         self.get_logger().info(f'  Pitch correction: {math.degrees(self.pitch_rad):.1f}°')
         self.get_logger().info(f'  Yaw correction: {math.degrees(self.yaw_rad):.1f}°')
-        self.get_logger().info(f'  IMU coordinate flips: X={self.imu_flip_x}, Y={self.imu_flip_y}, Z={self.imu_flip_z}')
+        # No IMU axis flips applied; using raw IMU axes
         self.get_logger().info(f'')
         self.get_logger().info(f'Topics:')
         self.get_logger().info(f'  Odometry: {odometry_topic}')
@@ -454,41 +448,45 @@ class PoseController(Node):
                 a_world = R_wb_curr @ a_norm
             except Exception:
                 a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
+            R_flip = np.array([[-1.0, 0.0, 0.0],
+                               [ 0.0, 1.0, 0.0],
+                               [ 0.0, 0.0,-1.0]], dtype=float)
+            a_world_flip = R_flip @ a_world
+            q_align_world = self.compute_alignment_quat(a_world_flip, np.array([0.0, 0.0, -1.0]))
             self.align_quat = q_align_world
-            self.R_align_world = self.quat_to_matrix(q_align_world)
+            rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
+            R_align = self.rpy_to_matrix(rx, ry, rz)
+            self.R_map = R_align @ R_flip
             self.alignment_set = True
             try:
                 qx, qy, qz, qw = q_align_world
                 roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                a_flat_dbg = self.R_align_world @ a_world
+                a_flat_dbg = self.R_map @ a_world
                 self.get_logger().info(
-                    f'Leveling set at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
+                    f'Flip+align at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
                     f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f}; '
                     f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
             except Exception:
                 pass
 
-        # Establish origin in leveled world with yaw-only removal
+        # Establish origin in leveled world
         if not self.origin_set and self.alignment_set:
             self.p0_world = raw_pos.copy()
-            q_flat0 = self.quat_multiply(self.align_quat, raw_q)
-            self.yaw0 = self.quaternion_to_yaw(q_flat0[0], q_flat0[1], q_flat0[2], q_flat0[3])
             self.origin_set = True
 
-        # Leveled world position
-        p_flat = self.R_align_world @ (raw_pos - self.p0_world)
-        # Remove initial yaw only
-        cy = math.cos(-self.yaw0)
-        sy = math.sin(-self.yaw0)
-        Rz_neg_yaw0 = np.array([[cy, -sy, 0.0],
-                                [sy,  cy, 0.0],
-                                [0.0, 0.0, 1.0]], dtype=float)
-        p_local = Rz_neg_yaw0 @ p_flat
-        # Orientation: q_local = Rz(-yaw0) * (q_align * q_raw)
-        q_flat = self.quat_multiply(self.align_quat, raw_q)
-        qz_neg_yaw0 = self.quat_from_axis_angle([0.0, 0.0, 1.0], -self.yaw0)
-        q_local = self.quat_multiply(qz_neg_yaw0, q_flat)
+        # Leveled world position and orientation (matrix-based) with flip+align mapping
+        p_local = self.R_map @ (raw_pos - self.p0_world)
+        try:
+            R_wb_curr = self.quat_to_matrix(raw_q)
+            R_fb = self.R_map @ R_wb_curr
+            q_local = self.matrix_to_quat(R_fb)
+            rL, pL, yL = self.quaternion_to_rpy(q_local[0], q_local[1], q_local[2], q_local[3])
+            if not hasattr(self, '_logged_q_choice'):
+                self.get_logger().info(
+                    f'Orientation mapping: R_fb = R_align * R_wb (roll,pitch deg)={math.degrees(rL):.2f},{math.degrees(pL):.2f}')
+                self._logged_q_choice = True
+        except Exception:
+            q_local = self.quat_multiply(self.align_quat, raw_q)
 
         self.current_x = float(p_local[0])
         self.current_y = float(p_local[1])
@@ -501,8 +499,15 @@ class PoseController(Node):
             float(msg.twist.twist.linear.y),
             float(msg.twist.twist.linear.z)
         ], dtype=float)
-        v_flat = self.R_align_world @ raw_vel
-        vel_local = Rz_neg_yaw0 @ v_flat
+        vel_local = self.R_map @ raw_vel
+        try:
+            # One-time diagnostic: check z vs x slope sign changes by logging the ratio
+            if not hasattr(self, '_logged_slope_hint') and abs(float(p_local[0])) > 1e-6:
+                slope = float(p_local[2]) / float(p_local[0])
+                self.get_logger().info(f'Leveled frame slope hint: dz/dx={slope:.4f}')
+                self._logged_slope_hint = True
+        except Exception:
+            pass
         self.current_vx = float(vel_local[0])
         self.current_vy = float(vel_local[1])
         # Angular velocity is not transformed (rotation around Z-axis is preserved)
@@ -642,6 +647,17 @@ class PoseController(Node):
         return PoseController.quat_normalize((x, y, z, w))
 
     @staticmethod
+    def rpy_to_matrix(roll: float, pitch: float, yaw: float):
+        cr = math.cos(roll);  sr = math.sin(roll)
+        cp = math.cos(pitch); sp = math.sin(pitch)
+        cy = math.cos(yaw);   sy = math.sin(yaw)
+        # R = Rz(yaw) * Ry(pitch) * Rx(roll)
+        Rz = np.array([[cy, -sy, 0.0], [sy, cy, 0.0], [0.0, 0.0, 1.0]], dtype=float)
+        Ry = np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]], dtype=float)
+        Rx = np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]], dtype=float)
+        return Rz @ Ry @ Rx
+
+    @staticmethod
     def quat_to_matrix(q):
         x, y, z, w = q
         xx = x * x; yy = y * y; zz = z * z
@@ -694,13 +710,7 @@ class PoseController(Node):
         ], dtype=float)
         if not np.all(np.isfinite(a)):
             return
-        # Apply configurable IMU coordinate transformation
-        if self.imu_flip_x:
-            a[0] = -a[0]
-        if self.imu_flip_y:
-            a[1] = -a[1]
-        if self.imu_flip_z:
-            a[2] = -a[2]
+        # No axis flips: use IMU raw axes
 
         # Initialize gravity average once while stationary; do not set leveling here
         if not self.accel_initialized:
@@ -714,10 +724,9 @@ class PoseController(Node):
             try:
                 self.get_logger().info(
                     f'Pose tilt correction initialized with {self.accel_count} samples')
-                # Debug: report IMU flips and averaged accel (after flips)
+                # Debug: report averaged accel (raw axes)
                 try:
                     self.get_logger().info(
-                        f'IMU flips (x,y,z)=({self.imu_flip_x},{self.imu_flip_y},{self.imu_flip_z}); '
                         f'accel_avg={self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f}; '
                         f'waiting for first odom to set leveling')
                 except Exception:
