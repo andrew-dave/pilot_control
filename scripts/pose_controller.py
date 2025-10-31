@@ -451,19 +451,19 @@ class PoseController(Node):
             R_flip = np.array([[-1.0, 0.0, 0.0],
                                [ 0.0, 1.0, 0.0],
                                [ 0.0, 0.0,-1.0]], dtype=float)
-            a_world_flip = R_flip @ a_world
-            q_align_world = self.compute_alignment_quat(a_world_flip, np.array([0.0, 0.0, -1.0]))
+            # Perform alignment first in world frame, then apply fixed flip in mapping
+            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
             self.align_quat = q_align_world
             rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
             R_align = self.rpy_to_matrix(rx, ry, rz)
-            self.R_map = R_align @ R_flip
+            self.R_map = R_flip @ R_align
             self.alignment_set = True
             try:
                 qx, qy, qz, qw = q_align_world
                 roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
                 a_flat_dbg = self.R_map @ a_world
                 self.get_logger().info(
-                    f'Flip+align at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
+                    f'Align+flip at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
                     f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f}; '
                     f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
             except Exception:
@@ -483,7 +483,7 @@ class PoseController(Node):
             rL, pL, yL = self.quaternion_to_rpy(q_local[0], q_local[1], q_local[2], q_local[3])
             if not hasattr(self, '_logged_q_choice'):
                 self.get_logger().info(
-                    f'Orientation mapping: R_fb = R_align * R_wb (roll,pitch deg)={math.degrees(rL):.2f},{math.degrees(pL):.2f}')
+                    f'Orientation mapping: R_fb = R_map * R_wb (roll,pitch deg)={math.degrees(rL):.2f},{math.degrees(pL):.2f}')
                 self._logged_q_choice = True
         except Exception:
             q_local = self.quat_multiply(self.align_quat, raw_q)
