@@ -133,6 +133,9 @@ class GPRScanController(Node):
         # Publishers
         self.gpr_motor_pub = self.create_publisher(
             ControlMessage, '/gpr/control_message', 10)
+        # Tilt-corrected odometry publisher
+        self.odom_tc_pub = self.create_publisher(
+            Odometry, 'Odom_tc_gpr_sc', 10)
         
         # Subscribers
         self.fastlio_sub = self.create_subscription(
@@ -722,6 +725,43 @@ class GPRScanController(Node):
         corr_pos = self.rotate_vector_by_quat(raw_pos, q_align)
         corr_q = self.quat_multiply(q_align, raw_q)
         corr_q = self.quat_normalize(corr_q)
+
+        # Publish tilt-corrected odometry
+        try:
+            odom_corr = Odometry()
+            odom_corr.header.stamp = msg.header.stamp
+            odom_corr.header.frame_id = msg.header.frame_id
+            try:
+                odom_corr.child_frame_id = msg.child_frame_id
+            except Exception:
+                odom_corr.child_frame_id = ''
+            odom_corr.pose.pose.position.x = float(corr_pos[0])
+            odom_corr.pose.pose.position.y = float(corr_pos[1])
+            odom_corr.pose.pose.position.z = float(corr_pos[2])
+            odom_corr.pose.pose.orientation.x = corr_q[0]
+            odom_corr.pose.pose.orientation.y = corr_q[1]
+            odom_corr.pose.pose.orientation.z = corr_q[2]
+            odom_corr.pose.pose.orientation.w = corr_q[3]
+            # Rotate linear twist into the tilt-corrected frame
+            try:
+                v_lin = np.array([
+                    float(msg.twist.twist.linear.x),
+                    float(msg.twist.twist.linear.y),
+                    float(msg.twist.twist.linear.z)
+                ], dtype=float)
+                v_lin_corr = self.rotate_vector_by_quat(v_lin, q_align)
+                odom_corr.twist.twist.linear.x = float(v_lin_corr[0])
+                odom_corr.twist.twist.linear.y = float(v_lin_corr[1])
+                odom_corr.twist.twist.linear.z = float(v_lin_corr[2])
+            except Exception:
+                odom_corr.twist.twist.linear.x = 0.0
+                odom_corr.twist.twist.linear.y = 0.0
+                odom_corr.twist.twist.linear.z = 0.0
+            # Keep angular twist as-is
+            odom_corr.twist.twist.angular = msg.twist.twist.angular
+            self.odom_tc_pub.publish(odom_corr)
+        except Exception:
+            pass
 
         # Cache corrected pose and twist
         self.fastlio_pose['pos_x']     = float(corr_pos[0])
