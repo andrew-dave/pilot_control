@@ -235,6 +235,7 @@ install(
   scripts/gpr_scan_controller.py
   scripts/pose_controller.py
   scripts/odom_gap_monitor.py
+  scripts/F2C/f2c_check.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
