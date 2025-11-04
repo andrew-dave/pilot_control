@@ -160,7 +160,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
-        prefix='chrt -f 70 taskset -c 4,5',
+        prefix='chrt -f 80 taskset -c 4,5',
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
