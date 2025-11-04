@@ -42,7 +42,6 @@ def generate_launch_description():
     unified_data_collector_node = Node(
         package='pilot_control',
         executable='unified_data_collector',
-        prefix='chrt -f 60 taskset -c 4,5',
         name='unified_data_collector',
         output='screen',
         respawn=True,
@@ -89,7 +88,6 @@ def generate_launch_description():
     left_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix='chrt -f 60 taskset -c 6',
         namespace='left',
         name='odrive_can_left',
         parameters=[{
@@ -102,7 +100,6 @@ def generate_launch_description():
     right_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix='chrt -f 60 taskset -c 6',
         namespace='right',
         name='odrive_can_right',
         parameters=[{
@@ -116,7 +113,6 @@ def generate_launch_description():
     gpr_odrive_node = Node(
         package='odrive_can',
         executable='odrive_can_node',
-        prefix='chrt -f 60 taskset -c 6',
         namespace='gpr',
         name='odrive_can_gpr',
         parameters=[{
@@ -131,7 +127,6 @@ def generate_launch_description():
     diff_drive_controller = Node(
         package='pilot_control',
         executable='diff_drive_controller',
-        prefix='chrt -f 60 taskset -c 6',
         name='diff_drive_controller',
         output='screen',
         parameters=[{
@@ -251,7 +246,6 @@ def generate_launch_description():
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
-        prefix='chrt -f 60 taskset -c 4,5',
         name='gpr_scan_controller',
         output='screen',
         parameters=[{
