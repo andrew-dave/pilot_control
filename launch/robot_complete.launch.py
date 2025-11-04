@@ -42,7 +42,6 @@ def generate_launch_description():
     unified_data_collector_node = Node(
         package='pilot_control',
         executable='unified_data_collector',
-        prefix='taskset -c 4,6',
         name='unified_data_collector',
         output='screen',
         respawn=True,
@@ -251,7 +250,6 @@ def generate_launch_description():
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
-        prefix='taskset -c 4,6',
         name='gpr_scan_controller',
         output='screen',
         parameters=[{
