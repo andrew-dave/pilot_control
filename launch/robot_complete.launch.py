@@ -42,7 +42,7 @@ def generate_launch_description():
     unified_data_collector_node = Node(
         package='pilot_control',
         executable='unified_data_collector',
-        prefix='taskset -c 6',
+        prefix='taskset -c 4,6',
         name='unified_data_collector',
         output='screen',
         respawn=True,
@@ -251,6 +251,7 @@ def generate_launch_description():
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
+        prefix='taskset -c 4,6',
         name='gpr_scan_controller',
         output='screen',
         parameters=[{
@@ -331,10 +332,10 @@ def generate_launch_description():
                 raw_map_saver,
                 octomap_server_node,
                 shutdown_service_node,
-                unified_data_collector_node, # taskset -c 6
+                unified_data_collector_node, # taskset -c 4,6
                 
                 gpr_serial_bridge_node,
-                gpr_scan_controller_node, # taskset -c 6
+                gpr_scan_controller_node, # taskset -c 4,6
             ]
         ),
         
