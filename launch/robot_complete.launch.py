@@ -47,12 +47,12 @@ def generate_launch_description():
     
     declare_base_data_directory_arg = DeclareLaunchArgument(
         'base_data_directory',
-        default_value=os.path.join(os.path.expanduser('~'), 'robot_data'),
+        default_value='/R_DATA',
         description='Base directory for all robot data collection.'
     )
 
     # Setup folder structure for this session
-    base_data_dir = os.path.join(os.path.expanduser('~'), 'robot_data')
+    base_data_dir = '/R_DATA'
     folder_paths = setup_data_folders(base_data_dir)
     
     print("\n" + "="*70)
@@ -63,7 +63,7 @@ def generate_launch_description():
     print(f"Visual Data:    {folder_paths['visual_data_folder']}")
     print(f"GPR Scan Data:  {folder_paths['gpr_scan_folder']}")
     print("="*70 + "\n")
-
+    print("Raj is a baaaaad boy")
     # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
     unified_data_collector_node = Node(
         package='pilot_control',
@@ -75,7 +75,7 @@ def generate_launch_description():
         parameters=[{
             # Odometry and thermal camera settings
             'fastlio_odom_topic': '/Odometry',
-            'log_directory': os.path.join(os.path.expanduser('~'), 'unified_scans'),  # Fallback
+            'log_directory': '/R_DATA/unified_scans',  # Fallback
             'visual_data_directory': folder_paths['visual_data_folder'],  # Session-specific
             'use_seekvision_mode': True,
             'save_color_png': True,
@@ -283,7 +283,7 @@ def generate_launch_description():
             'invert_third': True,                # GPR motor direction inversion
             'fastlio_odom_topic': '/Odometry',
             'log_frequency_hz': 50.0,            # 50 Hz logging
-            'log_directory': os.path.join(os.path.expanduser('~'), 'gpr_scans'),  # Fallback
+            'log_directory': '/R_DATA/gpr_scans',  # Fallback
             'gpr_scan_data_directory': folder_paths['gpr_scan_folder']  # Session-specific
         }]
     )
