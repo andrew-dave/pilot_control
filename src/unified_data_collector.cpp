@@ -381,19 +381,6 @@ public:
     // Parameters
     declare_parameters();
     get_parameters();
-    
-    // Session directory
-    session_dir_ = fs::path(cfg_.log_directory) / ("dataset_" + timestampStr());
-    fs::create_directories(session_dir_ / "frames");
-    
-    // CSV setup
-    csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
-                                                  std::ios::out | std::ios::trunc);
-    *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
-                    "dt_thermal_ms,dt_left_ms,dt_right_ms,"
-                    "px,py,pz,qx,qy,qz,qw,"
-                    "vx,vy,vz,wx,wy,wz,"
-                    "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl\n";
 
     // Service for recording control
     record_srv_ = this->create_service<std_srvs::srv::SetBool>(
@@ -412,7 +399,7 @@ public:
     writer_.start();
 
     RCLCPP_INFO(get_logger(), "UnifiedDataCollector ready. Odom: %s", cfg_.odom_topic.c_str());
-    RCLCPP_INFO(get_logger(), "Session: %s", session_dir_.c_str());
+    RCLCPP_INFO(get_logger(), "Call /video_record_set service to start/stop recording");
   }
 
   ~UnifiedDataCollector() override {
@@ -551,13 +538,36 @@ private:
     if (req->data) {
       if (recording_active_) {
         resp->success = true;
-        resp->message = "Already recording";
+        resp->message = "Already recording to: " + session_dir_.string();
         return;
       }
+      
+      // Create new session directory with timestamp
+      session_dir_ = fs::path(cfg_.log_directory) / ("dataset_" + timestampStr());
+      fs::create_directories(session_dir_ / "frames");
+      
+      // Create and open CSV file
+      csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
+                                                    std::ios::out | std::ios::trunc);
+      if (!csv_stream_->is_open()) {
+        resp->success = false;
+        resp->message = "Failed to create CSV file";
+        RCLCPP_ERROR(get_logger(), "Failed to create CSV file: %s", (session_dir_ / "unified_log.csv").c_str());
+        return;
+      }
+      
+      // Write CSV header
+      *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
+                      "dt_thermal_ms,dt_left_ms,dt_right_ms,"
+                      "px,py,pz,qx,qy,qz,qw,"
+                      "vx,vy,vz,wx,wy,wz,"
+                      "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl\n";
+      csv_stream_->flush();
+      
       recording_active_ = true;
       resp->success = true;
-      resp->message = "Recording started";
-      RCLCPP_INFO(get_logger(), "Recording started - collecting synchronized data");
+      resp->message = "Recording started to: " + session_dir_.string();
+      RCLCPP_INFO(get_logger(), "Recording started - Session: %s", session_dir_.c_str());
     } else {
       if (!recording_active_) {
         resp->success = true;
@@ -565,9 +575,16 @@ private:
         return;
       }
       recording_active_ = false;
+      
+      // Close CSV file
+      if (csv_stream_ && csv_stream_->is_open()) {
+        csv_stream_->flush();
+        csv_stream_->close();
+      }
+      
       resp->success = true;
-      resp->message = "Recording stopped";
-      RCLCPP_INFO(get_logger(), "Recording stopped");
+      resp->message = "Recording stopped. Data saved to: " + session_dir_.string();
+      RCLCPP_INFO(get_logger(), "Recording stopped - Data saved to: %s", session_dir_.c_str());
     }
   }
 
