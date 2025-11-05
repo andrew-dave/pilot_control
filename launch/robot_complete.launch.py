@@ -6,10 +6,21 @@ from launch_ros.substitutions import FindPackageShare
 import os
 import sys
 from pathlib import Path
+from ament_index_python.packages import get_package_share_directory
 
 # Import the folder setup script
-script_dir = Path(__file__).parent.parent / 'scripts'
-sys.path.insert(0, str(script_dir))
+# Get the package installation directory and add scripts to path
+package_dir = Path(get_package_share_directory('pilot_control'))
+# Try source directory first (for development)
+source_script_dir = Path(__file__).parent.parent / 'scripts'
+if source_script_dir.exists():
+    sys.path.insert(0, str(source_script_dir))
+else:
+    # Fall back to installed location
+    # Scripts are installed to lib/pilot_control, navigate there
+    install_script_dir = package_dir.parent.parent / 'lib' / 'pilot_control'
+    sys.path.insert(0, str(install_script_dir))
+
 from setup_data_folders import setup_data_folders
 
 def generate_launch_description():
