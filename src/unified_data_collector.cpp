@@ -281,21 +281,23 @@ public:
 private:
   static std::string save_float32_bin(const ThermFrame& f, const fs::path& dir, const std::string& stem) {
     fs::create_directories(dir);
-    fs::path p = dir / (stem + "_thermo_f32.bin");
+    std::string filename = stem + "_thermo_f32.bin";
+    fs::path p = dir / filename;
     std::ofstream ofs(p, std::ios::binary);
     int32_t w=f.w,h=f.h;
     ofs.write(reinterpret_cast<const char*>(&w),4);
     ofs.write(reinterpret_cast<const char*>(&h),4);
     ofs.write(reinterpret_cast<const char*>(f.thermo.data()), f.w*f.h*sizeof(float));
-    return p.string();
+    return "frames/" + filename;  // Return relative path
   }
   
   static std::string save_color_png(const ThermFrame& f, const fs::path& dir, const std::string& stem) {
     if (f.color_bgr.empty()) return "";
     fs::create_directories(dir);
-    fs::path p = dir / (stem + "_thermal_color.png");
+    std::string filename = stem + "_thermal_color.png";
+    fs::path p = dir / filename;
     cv::imwrite(p.string(), f.color_bgr);
-    return p.string();
+    return "frames/" + filename;  // Return relative path
   }
   
   static std::string save_camera_jxl(const CameraFrame& f, const fs::path& dir, const std::string& stem, 
@@ -304,14 +306,15 @@ private:
     fs::create_directories(dir);
     
 #if HAVE_JPEGXL
-    fs::path p = dir / (stem + "_" + f.camera_label + ".jxl");
+    std::string filename = stem + "_" + f.camera_label + ".jxl";
+    fs::path p = dir / filename;
     
     // Compress using JPEG XL
     std::vector<uint8_t> compressed_data;
     if (compress_opencv_to_jxl(f.image, compressed_data, effort, distance)) {
       std::ofstream file(p, std::ios::binary);
       file.write(reinterpret_cast<const char*>(compressed_data.data()), compressed_data.size());
-      return p.string();
+      return "frames/" + filename;  // Return relative path
     }
     return "";
 #else
