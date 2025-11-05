@@ -289,7 +289,7 @@ def generate_launch_description():
         #prefix=['chrt', '-f', '80', 'taskset', '-c', '5'], 
         prefix='taskset -c 5',
         parameters=[PathJoinSubstitution([
-            FindPackageShare('fast_lio'), 'config', 'mid360.yaml'
+            FindPackageShare('pilot_control'), 'config', 'fastlio_mid360.yaml'
         ]), {
             'use_sim_time': False
         }],
