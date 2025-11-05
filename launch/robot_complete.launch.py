@@ -323,10 +323,10 @@ def generate_launch_description():
                 laser_map_rotator_node, 
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
-                raw_map_saver,
-                octomap_server_node,
+                #raw_map_saver,
+                #octomap_server_node,
                 shutdown_service_node,
-                #unified_data_collector_node, # taskset -c 4,6
+                unified_data_collector_node, # taskset -c 4,6
                 
                 gpr_serial_bridge_node,
                 gpr_scan_controller_node, # taskset -c 4,6
