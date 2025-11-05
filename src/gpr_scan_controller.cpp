@@ -43,6 +43,7 @@ class GPRScanController(Node):
         self.declare_parameter('fastlio_odom_topic', '/Odometry')
         self.declare_parameter('log_frequency_hz', 50.0)      # 50 Hz logging
         self.declare_parameter('log_directory', os.path.expanduser('~/gpr_scans'))
+        self.declare_parameter('gpr_scan_data_directory', '')  # Session-specific GPR_scan_data folder
         
         # Get parameters
         self.gpr_wheel_radius = self.get_parameter('gpr_wheel_radius').value
@@ -53,6 +54,11 @@ class GPRScanController(Node):
         self.fastlio_topic = self.get_parameter('fastlio_odom_topic').value
         self.log_freq = self.get_parameter('log_frequency_hz').value
         self.log_dir = self.get_parameter('log_directory').value
+        
+        # Check for session-specific GPR scan data directory
+        gpr_scan_data_dir = self.get_parameter('gpr_scan_data_directory').value
+        if gpr_scan_data_dir:
+            self.log_dir = gpr_scan_data_dir  # Override with session-specific path
         
         # Create log directory
         os.makedirs(self.log_dir, exist_ok=True)

@@ -415,6 +415,7 @@ private:
     // Thermal/odometry params
     this->declare_parameter<std::string>("fastlio_odom_topic", cfg_.odom_topic);
     this->declare_parameter<std::string>("log_directory", cfg_.log_directory);
+    this->declare_parameter<std::string>("visual_data_directory", "");  // Session-specific Visual_data folder
     this->declare_parameter<bool>("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->declare_parameter<bool>("save_color_png", cfg_.save_color_png);
     this->declare_parameter<int>("csv_flush_every_rows", cfg_.csv_flush_every_rows);
@@ -446,6 +447,14 @@ private:
   void get_parameters() {
     this->get_parameter("fastlio_odom_topic", cfg_.odom_topic);
     this->get_parameter("log_directory", cfg_.log_directory);
+    
+    // Check for session-specific visual data directory
+    std::string visual_data_dir;
+    this->get_parameter("visual_data_directory", visual_data_dir);
+    if (!visual_data_dir.empty()) {
+      cfg_.log_directory = visual_data_dir;  // Override with session-specific path
+    }
+    
     this->get_parameter("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->get_parameter("save_color_png", cfg_.save_color_png);
     this->get_parameter("csv_flush_every_rows", cfg_.csv_flush_every_rows);

@@ -1,9 +1,16 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import os
+import sys
+from pathlib import Path
+
+# Import the folder setup script
+script_dir = Path(__file__).parent.parent / 'scripts'
+sys.path.insert(0, str(script_dir))
+from setup_data_folders import setup_data_folders
 
 def generate_launch_description():
     # Declare launch arguments
@@ -37,6 +44,25 @@ def generate_launch_description():
         default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
+    
+    declare_base_data_directory_arg = DeclareLaunchArgument(
+        'base_data_directory',
+        default_value=os.path.join(os.path.expanduser('~'), 'robot_data'),
+        description='Base directory for all robot data collection.'
+    )
+
+    # Setup folder structure for this session
+    base_data_dir = os.path.join(os.path.expanduser('~'), 'robot_data')
+    folder_paths = setup_data_folders(base_data_dir)
+    
+    print("\n" + "="*70)
+    print("DATA COLLECTION SESSION SETUP")
+    print("="*70)
+    print(f"Day Folder:     {folder_paths['day_name']}")
+    print(f"Section:        {folder_paths['section_name']}")
+    print(f"Visual Data:    {folder_paths['visual_data_folder']}")
+    print(f"GPR Scan Data:  {folder_paths['gpr_scan_folder']}")
+    print("="*70 + "\n")
 
     # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
     unified_data_collector_node = Node(
@@ -49,7 +75,8 @@ def generate_launch_description():
         parameters=[{
             # Odometry and thermal camera settings
             'fastlio_odom_topic': '/Odometry',
-            'log_directory': os.path.join(os.path.expanduser('~'), 'unified_scans'),
+            'log_directory': os.path.join(os.path.expanduser('~'), 'unified_scans'),  # Fallback
+            'visual_data_directory': folder_paths['visual_data_folder'],  # Session-specific
             'use_seekvision_mode': True,
             'save_color_png': True,
             'csv_flush_every_rows': 50,
@@ -256,7 +283,8 @@ def generate_launch_description():
             'invert_third': True,                # GPR motor direction inversion
             'fastlio_odom_topic': '/Odometry',
             'log_frequency_hz': 50.0,            # 50 Hz logging
-            'log_directory': os.path.join(os.path.expanduser('~'), 'gpr_scans')
+            'log_directory': os.path.join(os.path.expanduser('~'), 'gpr_scans'),  # Fallback
+            'gpr_scan_data_directory': folder_paths['gpr_scan_folder']  # Session-specific
         }]
     )
 
@@ -302,6 +330,7 @@ def generate_launch_description():
         declare_can_bitrate_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
+        declare_base_data_directory_arg,
         
         
         # CAN setup (with delay to ensure it's ready)

@@ -49,6 +49,7 @@ class GPRScanController(Node):
         self.declare_parameter('fastlio_odom_topic', '/Odometry')
         self.declare_parameter('log_frequency_hz', 50.0)      # 50 Hz logging
         self.declare_parameter('log_directory', os.path.expanduser('~/gpr_scans'))
+        self.declare_parameter('gpr_scan_data_directory', '')  # Session-specific GPR_scan_data folder
         # Fast-LIO filtering
         self.declare_parameter('fastlio_filter_window', 5)
         # Tilt correction parameters (match laser_map_rotator behavior)
@@ -70,6 +71,12 @@ class GPRScanController(Node):
         self.fastlio_topic = self.get_parameter('fastlio_odom_topic').value
         self.log_freq = self.get_parameter('log_frequency_hz').value
         self.log_dir = self.get_parameter('log_directory').value
+        
+        # Check for session-specific GPR scan data directory
+        gpr_scan_data_dir = self.get_parameter('gpr_scan_data_directory').value
+        if gpr_scan_data_dir:
+            self.log_dir = gpr_scan_data_dir  # Override with session-specific path
+        
         self.fastlio_filter_window = int(self.get_parameter('fastlio_filter_window').value) or 1
         self.pitch_rad = float(self.get_parameter('pitch_rad').value)
         self.accel_topic = str(self.get_parameter('accel_topic').value)
