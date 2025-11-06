@@ -279,8 +279,9 @@ def generate_launch_description():
         }]
     )
 
-    # GPR Scan Controller - EXCLUSIVE GPR motor control + synchronized scan + logging
+    # GPR Scan Controller - EXCLUSIVE GPR motor control + synchronized scan + logging + rosbag recording
     # This is the ONLY node that controls the GPR motor (diff_drive_controller GPR control is disabled)
+    # Also handles rosbag recording to save resources (no separate Python process needed)
     gpr_scan_controller_node = Node(
         package='pilot_control',
         executable='gpr_scan_controller.py',
@@ -295,7 +296,17 @@ def generate_launch_description():
             'fastlio_odom_topic': '/Odometry',
             'log_frequency_hz': 50.0,            # 50 Hz logging
             'log_directory': '/R_DATA/gpr_scans',  # Fallback
-            'gpr_scan_data_directory': folder_paths['gpr_scan_folder']  # Session-specific
+            'gpr_scan_data_directory': folder_paths['section_folder'],  # Session-specific (for both GPR logs and rosbags)
+            'rosbag_topics': [
+                '/Odometry',
+                '/cmd_vel',
+                '/left/controller_status',
+                '/right/controller_status',
+                '/gpr/controller_status',
+                '/Laser_map',
+                '/tf',
+                '/tf_static',
+            ]
         }]
     )
 
@@ -369,7 +380,7 @@ def generate_launch_description():
                 unified_data_collector_node, # taskset -c 4,6
                 
                 gpr_serial_bridge_node,
-                gpr_scan_controller_node, # taskset -c 4,6
+                gpr_scan_controller_node, # taskset -c 4,6 (includes rosbag recording)
             ]
         ),
         

@@ -32,6 +32,8 @@ public:
         gpr_line_stop_client_  = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
         // GPR scan controller service
         gpr_scan_toggle_client_ = create_client<std_srvs::srv::Trigger>("/gpr_scan/toggle");
+        // Rosbag recording toggle service
+        rosbag_toggle_client_ = create_client<std_srvs::srv::Trigger>("/rosbag/toggle");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
         
@@ -58,6 +60,7 @@ public:
         RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
         RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
         RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
+        RCLCPP_INFO(get_logger(), "  B - Toggle rosbag recording");
         RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
         
         // Check if services are available (non-blocking)
@@ -126,9 +129,15 @@ public:
         } else {
             RCLCPP_WARN(get_logger(), "⚠ gpr_scan/toggle service is NOT available (G key will do nothing)");
         }
+
+        if (rosbag_toggle_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ rosbag/toggle service is available (B key)");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ rosbag/toggle service is NOT available (B key will do nothing)");
+        }
         
         RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
-        RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm, M to save map, G for GPR scan");
+        RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm, M to save map, G for GPR scan, B for rosbag");
     }
 
     ~TeleopNode() {
@@ -292,6 +301,23 @@ public:
                     RCLCPP_INFO(this->get_logger(), "✓ GPR Scan Toggle: %s", resp.get()->message.c_str());
                 } else {
                     RCLCPP_WARN(this->get_logger(), "✗ GPR scan toggle failed: %s", resp.get()->message.c_str());
+                }
+            });
+        (void)future;
+    }
+
+    void trigger_rosbag_toggle() {
+        if (!rosbag_toggle_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_WARN(get_logger(), "rosbag/toggle service not available");
+            return;
+        }
+        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = rosbag_toggle_client_->async_send_request(req,
+            [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture resp) {
+                if (resp.get()->success) {
+                    RCLCPP_INFO(this->get_logger(), "✓ Rosbag Toggle: %s", resp.get()->message.c_str());
+                } else {
+                    RCLCPP_WARN(this->get_logger(), "✗ Rosbag toggle failed: %s", resp.get()->message.c_str());
                 }
             });
         (void)future;
@@ -469,6 +495,9 @@ private:
                 } else if (event.key.keysym.sym == SDLK_t) {
                     RCLCPP_INFO(get_logger(), "T key pressed - Stop recording (both cams)");
                     send_video_record_set(false);
+                } else if (event.key.keysym.sym == SDLK_b) {
+                    RCLCPP_INFO(get_logger(), "B key pressed - Toggle Rosbag Recording");
+                    trigger_rosbag_toggle();
                 }
             }
         }
@@ -500,6 +529,7 @@ private:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_start_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_stop_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_scan_toggle_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr rosbag_toggle_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;
     

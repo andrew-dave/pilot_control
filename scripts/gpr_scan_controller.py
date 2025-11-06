@@ -34,6 +34,8 @@ import math
 import numpy as np
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import TransformStamped
+import subprocess
+import signal
 
 
 class GPRScanController(Node):
@@ -61,6 +63,17 @@ class GPRScanController(Node):
         self.declare_parameter('right_ns', 'right')
         self.declare_parameter('gpr_ns', 'gpr')
         self.declare_parameter('auto_arm_on_start', True)
+        # Rosbag recording parameters
+        self.declare_parameter('rosbag_topics', [
+            '/Odometry',
+            '/cmd_vel',
+            '/left/controller_status',
+            '/right/controller_status',
+            '/gpr/controller_status',
+            '/Laser_map',
+            '/tf',
+            '/tf_static',
+        ])
         
         # Get parameters
         self.gpr_wheel_radius = self.get_parameter('gpr_wheel_radius').value
@@ -85,6 +98,7 @@ class GPRScanController(Node):
         self.right_ns = self.get_parameter('right_ns').value
         self.gpr_ns = self.get_parameter('gpr_ns').value
         self.auto_arm_on_start = bool(self.get_parameter('auto_arm_on_start').value)
+        self.rosbag_topics = self.get_parameter('rosbag_topics').value
         
         # Create log directory
         os.makedirs(self.log_dir, exist_ok=True)
@@ -132,6 +146,11 @@ class GPRScanController(Node):
         self.right_position = 0.0
         # Last Fast-LIO timestamp that was written to CSV (to avoid duplicates)
         self.last_fastlio_logged_ts_us = 0
+        
+        # Rosbag recording state
+        self.rosbag_recording = False
+        self.rosbag_process = None
+        self.rosbag_path = None
         
         # Timers (initialized to None, will be created when needed)
         self.motor_start_timer = None
@@ -184,9 +203,11 @@ class GPRScanController(Node):
         else:
             self.arm_timer = None
         
-        # Service server (toggle scan)
+        # Service servers
         self.toggle_service = self.create_service(
             Trigger, '/gpr_scan/toggle', self.toggle_scan_callback)
+        self.rosbag_toggle_service = self.create_service(
+            Trigger, '/rosbag/toggle', self.rosbag_toggle_callback)
         
         # Timer for motor control (20 Hz)
         self.motor_timer = self.create_timer(0.05, self.update_gpr_motor)
@@ -202,9 +223,12 @@ class GPRScanController(Node):
         self.get_logger().info(f'GPR motor start delay: {self.gpr_motor_start_delay:.1f} s')
         self.get_logger().info(f'Post-stop logging duration: {self.post_stop_duration:.1f} s')
         self.get_logger().info(f'Log directory: {self.log_dir}')
-        self.get_logger().info(f'Service available: /gpr_scan/toggle')
+        self.get_logger().info(f'Services available:')
+        self.get_logger().info(f'  - /gpr_scan/toggle')
+        self.get_logger().info(f'  - /rosbag/toggle')
         self.get_logger().info('')
-        self.get_logger().info('💡 Press assigned key in teleop to start/stop scanning')
+        self.get_logger().info('💡 Press G in teleop to start/stop GPR scanning')
+        self.get_logger().info('💡 Press B in teleop to start/stop rosbag recording')
 
     def left_status_callback(self, msg: ControllerStatus):
         try:
@@ -448,6 +472,100 @@ class GPRScanController(Node):
                 response.message = f'GPR scan stopped. Logged {self.log_count} samples'
         
         return response
+    
+    def rosbag_toggle_callback(self, request, response):
+        """Toggle rosbag recording on/off"""
+        with self.lock:
+            if not self.rosbag_recording:
+                # Start recording
+                success = self.start_rosbag_recording()
+                if success:
+                    response.success = True
+                    response.message = f'Rosbag recording started: {self.rosbag_path}'
+                else:
+                    response.success = False
+                    response.message = 'Failed to start rosbag recording'
+            else:
+                # Stop recording
+                success = self.stop_rosbag_recording()
+                if success:
+                    response.success = True
+                    response.message = f'Rosbag recording stopped: {self.rosbag_path}'
+                else:
+                    response.success = False
+                    response.message = 'Failed to stop rosbag recording'
+        
+        return response
+    
+    def start_rosbag_recording(self):
+        """Start rosbag recording"""
+        try:
+            # Generate bag filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            bag_name = f'rosbag_{timestamp}'
+            self.rosbag_path = os.path.join(self.log_dir, bag_name)
+            
+            # Build ros2 bag record command
+            cmd = ['ros2', 'bag', 'record', '-o', self.rosbag_path]
+            
+            # Add topics
+            for topic in self.rosbag_topics:
+                cmd.append(topic)
+            
+            # Add compression
+            cmd.extend(['--compression-mode', 'file'])
+            cmd.extend(['--compression-format', 'zstd'])
+            
+            self.get_logger().info(f'Starting rosbag recording: {self.rosbag_path}')
+            
+            # Start the process
+            self.rosbag_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=os.setsid  # Create new process group for clean termination
+            )
+            
+            self.rosbag_recording = True
+            self.get_logger().info(f'✓ Rosbag recording started')
+            return True
+            
+        except Exception as e:
+            self.get_logger().error(f'Failed to start rosbag recording: {str(e)}')
+            return False
+    
+    def stop_rosbag_recording(self):
+        """Stop rosbag recording"""
+        try:
+            if self.rosbag_process is not None:
+                # Send SIGINT to the process group
+                os.killpg(os.getpgid(self.rosbag_process.pid), signal.SIGINT)
+                
+                # Wait for process to finish
+                self.rosbag_process.wait(timeout=10)
+                
+                self.get_logger().info(f'✓ Rosbag recording stopped: {self.rosbag_path}')
+                
+                self.rosbag_process = None
+                self.rosbag_recording = False
+                
+                return True
+            else:
+                self.get_logger().warn('No rosbag recording process to stop')
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.get_logger().error('Rosbag process did not stop gracefully, forcing termination')
+            try:
+                os.killpg(os.getpgid(self.rosbag_process.pid), signal.SIGKILL)
+                self.rosbag_process = None
+                self.rosbag_recording = False
+            except:
+                pass
+            return False
+        except Exception as e:
+            self.get_logger().error(f'Failed to stop rosbag recording: {str(e)}')
+            return False
     
     def start_scan(self):
         """Start GPR scanning sequence with continuous 50Hz logging"""
@@ -850,6 +968,13 @@ class GPRScanController(Node):
                     self.log_file_handle.close()
                 except Exception:
                     pass
+        
+        # Stop rosbag recording if active
+        if self.rosbag_recording:
+            try:
+                self.stop_rosbag_recording()
+            except Exception:
+                pass
 
 
 def main(args=None):
@@ -866,6 +991,10 @@ def main(args=None):
             if node.log_file_handle:
                 node.log_file_handle.close()
                 node.get_logger().info('✓ Log file closed due to interrupt')
+        if node.rosbag_recording:
+            # Stop rosbag recording if active
+            node.stop_rosbag_recording()
+            node.get_logger().info('✓ Rosbag recording stopped due to interrupt')
     finally:
         node.destroy_node()
         rclpy.shutdown()
