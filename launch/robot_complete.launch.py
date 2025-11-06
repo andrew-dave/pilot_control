@@ -296,7 +296,7 @@ def generate_launch_description():
             'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',  # Use tilt-corrected odometry
             'log_frequency_hz': 50.0,            # 50 Hz logging
             'log_directory': '/R_DATA/gpr_scans',  # Fallback
-            'gpr_scan_data_directory': folder_paths['section_folder'],  # Session-specific (for both GPR logs and rosbags)
+            'gpr_scan_data_directory': folder_paths['gpr_scan_folder'],  # Session-specific GPR CSV folder
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
                 #'/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller

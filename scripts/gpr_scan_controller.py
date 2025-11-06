@@ -87,6 +87,9 @@ class GPRScanController(Node):
         if gpr_scan_data_dir:
             self.log_dir = gpr_scan_data_dir  # Override with session-specific path
         
+        # Rosbag directory: save to parent of GPR scan folder (section folder)
+        self.rosbag_dir = os.path.dirname(self.log_dir) if gpr_scan_data_dir else self.log_dir
+        
         self.fastlio_filter_window = int(self.get_parameter('fastlio_filter_window').value) or 1
         self.left_ns = self.get_parameter('left_ns').value
         self.right_ns = self.get_parameter('right_ns').value
@@ -202,7 +205,8 @@ class GPRScanController(Node):
         self.get_logger().info(f'Log frequency: {self.log_freq:.1f} Hz')
         self.get_logger().info(f'GPR motor start delay: {self.gpr_motor_start_delay:.1f} s')
         self.get_logger().info(f'Post-stop logging duration: {self.post_stop_duration:.1f} s')
-        self.get_logger().info(f'Log directory: {self.log_dir}')
+        self.get_logger().info(f'GPR CSV directory: {self.log_dir}')
+        self.get_logger().info(f'Rosbag directory: {self.rosbag_dir}')
         self.get_logger().info(f'Services available:')
         self.get_logger().info(f'  - /gpr_scan/toggle')
         self.get_logger().info(f'  - /rosbag/toggle')
@@ -365,7 +369,7 @@ class GPRScanController(Node):
             # Generate bag filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             bag_name = f'rosbag_{timestamp}'
-            self.rosbag_path = os.path.join(self.log_dir, bag_name)
+            self.rosbag_path = os.path.join(self.rosbag_dir, bag_name)
             
             # Build ros2 bag record command
             cmd = ['ros2', 'bag', 'record', '-o', self.rosbag_path]
@@ -373,6 +377,10 @@ class GPRScanController(Node):
             # Add topics
             for topic in self.rosbag_topics:
                 cmd.append(topic)
+            
+            # Storage backend: Use MCAP for better performance with point clouds
+            # MCAP has 2-5x better write performance than SQLite3
+            cmd.extend(['--storage', 'mcap'])
             
             # Optimization: Use NO compression for point clouds (saves CPU)
             # Compression is CPU-intensive and competes with Fast-LIO2
@@ -382,11 +390,11 @@ class GPRScanController(Node):
             # Reduce to 50MB to be gentler on LattePanda
             cmd.extend(['--max-cache-size', '52428800'])  # 50 MB in bytes
             
-            # Set storage preset to resilient (more conservative writing)
-            cmd.extend(['--storage-preset-profile', 'resilient'])
+            # Use default storage profile (removed 'resilient' for better write performance)
+            # For point clouds, write speed is more critical than crash resilience
             
             self.get_logger().info(f'Starting rosbag recording: {self.rosbag_path}')
-            self.get_logger().info('Using NO compression and limited cache for performance')
+            self.get_logger().info('Using MCAP storage, no compression, limited cache for performance')
             
             # Start the process with lower priority (nice value)
             self.rosbag_process = subprocess.Popen(
