@@ -691,13 +691,11 @@ private:
         );
         Eigen::Vector3d vel_local = R_map_ * vel_raw;
 
-        // Angular velocity (keep Z-axis rotation as-is, zero out X and Y)
-        double angular_z = msg->twist.twist.angular.z;
+        // Angular velocity (copy full vector as-is, planar control uses z)
 
-        // Publish corrected odometry
+        // Publish corrected odometry (mirror pose_controller.py)
         nav_msgs::msg::Odometry odom_corrected;
         odom_corrected.header = msg->header;
-        odom_corrected.header.frame_id = "map";
         odom_corrected.child_frame_id = msg->child_frame_id;
 
         odom_corrected.pose.pose.position.x = p_local[0];
@@ -711,15 +709,12 @@ private:
 
         odom_corrected.twist.twist.linear.x = vel_local[0];
         odom_corrected.twist.twist.linear.y = vel_local[1];
-        odom_corrected.twist.twist.linear.z = vel_local[2];
+        odom_corrected.twist.twist.linear.z = 0.0;
 
-        odom_corrected.twist.twist.angular.x = 0.0;
-        odom_corrected.twist.twist.angular.y = 0.0;
-        odom_corrected.twist.twist.angular.z = angular_z;
+        // Keep angular twist as-is (planar control uses z)
+        odom_corrected.twist.twist.angular = msg->twist.twist.angular;
 
-        // Copy covariances if needed
-        odom_corrected.pose.covariance = msg->pose.covariance;
-        odom_corrected.twist.covariance = msg->twist.covariance;
+        // Do not set covariances to match pose_controller.py defaults
 
         odom_corrected_pub_->publish(odom_corrected);
     }
