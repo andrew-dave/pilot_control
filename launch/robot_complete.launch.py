@@ -62,6 +62,21 @@ def generate_launch_description():
         description='Base directory for all robot data collection.'
     )
 
+    # Odometry Tilt Corrector (mirrors pose_controller tilt correction; publishes corrected odom)
+    odom_tilt_corrector_node = Node(
+        package='pilot_control',
+        executable='odom_tilt_corrector.py',
+        name='odom_tilt_corrector',
+        output='screen',
+        parameters=[{
+            'odometry_topic': '/Odometry',
+            'accel_topic': '/livox/imu',
+            'accel_samples': 10,
+            # Publish on the canonical corrected topic used by consumers
+            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff'
+        }]
+    )
+
     # Setup folder structure for this session
     base_data_dir = '/R_DATA'
     folder_paths = setup_data_folders(base_data_dir)
@@ -173,6 +188,8 @@ def generate_launch_description():
             'can_interface': LaunchConfiguration('can_interface'),
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier'),
+            # Avoid publishing on the same corrected topic as the Python tilt corrector
+            'corrected_odom_topic': '/Odometry_tilt_corrected_diff_cpp'
             # GPR CONTROL DISABLED - controlled by gpr_scan_controller instead
             # 'invert_third': True  # COMMENTED OUT - no GPR control from diff_drive_controller
         }]
@@ -377,6 +394,7 @@ def generate_launch_description():
                 laser_map_rotator_node, 
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
+                odom_tilt_corrector_node,
                 #raw_map_saver,
                 #octomap_server_node,
                 shutdown_service_node,
