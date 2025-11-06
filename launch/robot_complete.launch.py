@@ -304,8 +304,8 @@ def generate_launch_description():
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                # '/Laser_map',  # Point cloud - recorded without compression to reduce CPU load
-                '/Laser_map_rotated',  # Processed cloud - recorded with compression to reduce CPU load
+                '/Laser_map',  # Point cloud - recorded without compression to reduce CPU load
+                # '/Laser_map_rotated',  # Processed cloud - recorded with compression to reduce CPU load
                 
                 # '/tf',
                 # '/tf_static',
