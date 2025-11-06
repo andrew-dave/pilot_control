@@ -59,7 +59,7 @@ class GPRScanController(Node):
         self.declare_parameter('right_ns', 'right')
         self.declare_parameter('gpr_ns', 'gpr')
         self.declare_parameter('auto_arm_on_start', True)
-        # Rosbag recording parameters
+        # Rosbag recording parameters (point clouds excluded - too heavy)
         self.declare_parameter('rosbag_topics', [
             '/Odometry',
             '/Odometry_tilt_corrected_diff',

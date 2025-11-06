@@ -215,7 +215,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
-        prefix='taskset -c 5',
+        prefix='taskset -c 0',  # Dedicated core for LiDAR driver
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
@@ -236,7 +236,7 @@ def generate_launch_description():
     fast_lio_node = Node(
         package='fast_lio',
         executable='fastlio_mapping',
-        prefix='taskset -c 5',
+        prefix='taskset -c 1-3',  # Spread across cores 1, 2, 3 for parallel processing
         parameters=[PathJoinSubstitution([
             FindPackageShare('pilot_control'), 'config', 'fastlio_mid360.yaml'
         ]), {
@@ -264,7 +264,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Raw Map Saver - Saves unprocessed maps from Fast-LIO2
+    # Raw Map Saver - Save final accumulated map on-demand (press M key in teleop)
     raw_map_saver = Node(
         package='pilot_control',
         executable='raw_map_saver',
@@ -272,7 +272,9 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'input_topic': '/Laser_map',
-            'save_directory': '/tmp/robot_maps'
+            'save_directory': folder_paths['section_folder'],  # Save to session folder
+            'auto_save_enabled': False,  # Disabled - save only when M key pressed
+            'auto_save_interval_sec': 30.0
         }]
     )
 
@@ -316,16 +318,15 @@ def generate_launch_description():
             'gpr_scan_data_directory': folder_paths['gpr_scan_folder'],  # Session-specific GPR CSV folder
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
-                #'/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
-                #'/cmd_vel',
+                '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
+                '/cmd_vel',
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                '/Laser_map',  # Point cloud - recorded without compression to reduce CPU load
-                # '/Laser_map_rotated',  # Processed cloud - recorded with compression to reduce CPU load
-                
-                # '/tf',
-                # '/tf_static',
+                # '/Laser_map',  # Too heavy - causes Fast-LIO2 failure
+                # '/Laser_map_rotated',  # Too heavy - causes Fast-LIO2 failure
+                '/tf',
+                '/tf_static',
             ]
         }]
     )
@@ -385,17 +386,17 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
-                left_odrive_node, # taskset -c 5
-                right_odrive_node, # taskset -c 5
-                gpr_odrive_node, # taskset -c 5
-                diff_drive_controller, # taskset -c 5
-                livox_driver, # taskset -c 5
-                fast_lio_node, # taskset -c 5
+                left_odrive_node,
+                right_odrive_node,
+                gpr_odrive_node,
+                diff_drive_controller,
+                livox_driver,  # Core 0 (dedicated)
+                fast_lio_node,  # Cores 1-3 (parallel processing)
                 laser_map_rotator_node, 
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_node,
-                #raw_map_saver,
+                raw_map_saver,  # Enabled - saves point clouds on-demand (press M)
                 #octomap_server_node,
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6

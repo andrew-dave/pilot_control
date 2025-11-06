@@ -19,11 +19,15 @@ public:
         this->declare_parameter("input_topic", "/Laser_map");
         this->declare_parameter("save_directory", "/tmp/robot_maps");  // Use /tmp which has write permissions
         this->declare_parameter("raw_map_filename", "");
+        this->declare_parameter("auto_save_enabled", false);  // Enable automatic periodic saving
+        this->declare_parameter("auto_save_interval_sec", 30.0);  // Save every 30 seconds
         
         // Get parameters
         input_topic_ = this->get_parameter("input_topic").as_string();
         save_directory_ = this->get_parameter("save_directory").as_string();
         raw_map_filename_ = this->get_parameter("raw_map_filename").as_string();
+        auto_save_enabled_ = this->get_parameter("auto_save_enabled").as_bool();
+        auto_save_interval_ = this->get_parameter("auto_save_interval_sec").as_double();
         
         // Create save directory
         std::filesystem::create_directories(save_directory_);
@@ -41,10 +45,20 @@ public:
             std::bind(&RawMapSaver::save_raw_map_service, this, std::placeholders::_1, std::placeholders::_2)
         );
         
+        // Create timer for automatic periodic saving if enabled
+        if (auto_save_enabled_) {
+            auto_save_timer_ = this->create_wall_timer(
+                std::chrono::duration<double>(auto_save_interval_),
+                std::bind(&RawMapSaver::auto_save_callback, this)
+            );
+            RCLCPP_INFO(this->get_logger(), "Auto-save ENABLED: saving every %.1f seconds", auto_save_interval_);
+        }
+        
         RCLCPP_INFO(this->get_logger(), "Raw Map Saver started");
         RCLCPP_INFO(this->get_logger(), "Input topic: %s", input_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "Save directory: %s", save_directory_.c_str());
         RCLCPP_INFO(this->get_logger(), "Service available at: /save_raw_map");
+        RCLCPP_INFO(this->get_logger(), "Auto-save: %s", auto_save_enabled_ ? "ENABLED" : "DISABLED");
     }
 
 private:
@@ -58,6 +72,33 @@ private:
         if (clouds_received_ % 50 == 0) {
             RCLCPP_INFO(this->get_logger(), "Received %d clouds, latest: %lu points", 
                        clouds_received_, msg->data.size() / msg->point_step);
+        }
+    }
+    
+    void auto_save_callback()
+    {
+        if (!latest_cloud_) {
+            RCLCPP_WARN(this->get_logger(), "Auto-save: No point cloud data available");
+            return;
+        }
+        
+        try {
+            RCLCPP_INFO(this->get_logger(), "Auto-save: Saving point cloud map...");
+            
+            // Generate filename with timestamp
+            std::string filename = generate_raw_filename();
+            std::string filepath = save_directory_ + "/" + filename;
+            
+            // Save the raw point cloud
+            if (pcl::io::savePCDFileBinary(filepath, *latest_cloud_) == 0) {
+                RCLCPP_INFO(this->get_logger(), "Auto-save: Map saved successfully: %s", filename.c_str());
+                auto_saves_count_++;
+            } else {
+                RCLCPP_ERROR(this->get_logger(), "Auto-save: Failed to save map");
+            }
+            
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "Auto-save error: %s", e.what());
         }
     }
     
@@ -118,13 +159,17 @@ private:
     // Member variables
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_service_;
+    rclcpp::TimerBase::SharedPtr auto_save_timer_;
     
     sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_;
     int clouds_received_ = 0;
+    int auto_saves_count_ = 0;
     
     std::string input_topic_;
     std::string save_directory_;
     std::string raw_map_filename_;
+    bool auto_save_enabled_;
+    double auto_save_interval_;
 };
 
 int main(int argc, char** argv)
