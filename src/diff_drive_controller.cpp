@@ -294,6 +294,54 @@ private:
         return quat_from_axis_angle(axis, angle);
     }
 
+    static std::array<double, 3> quat_to_rpy(const std::array<double, 4>& q) {
+        // Convert quaternion to roll, pitch, yaw (radians)
+        double x = q[0], y = q[1], z = q[2], w = q[3];
+        
+        // Roll (x-axis rotation)
+        double sinr_cosp = 2.0 * (w * x + y * z);
+        double cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
+        double roll = std::atan2(sinr_cosp, cosr_cosp);
+        
+        // Pitch (y-axis rotation)
+        double sinp = 2.0 * (w * y - z * x);
+        double pitch;
+        if (std::abs(sinp) >= 1.0) {
+            pitch = std::copysign(M_PI / 2.0, sinp);  // Use 90 degrees if out of range
+        } else {
+            pitch = std::asin(sinp);
+        }
+        
+        // Yaw (z-axis rotation)
+        double siny_cosp = 2.0 * (w * z + x * y);
+        double cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
+        double yaw = std::atan2(siny_cosp, cosy_cosp);
+        
+        return {roll, pitch, yaw};
+    }
+
+    static Eigen::Matrix3d rpy_to_matrix(double roll, double pitch, double yaw) {
+        // R = Rz(yaw) * Ry(pitch) * Rx(roll)
+        double cr = std::cos(roll),  sr = std::sin(roll);
+        double cp = std::cos(pitch), sp = std::sin(pitch);
+        double cy = std::cos(yaw),   sy = std::sin(yaw);
+        
+        Eigen::Matrix3d Rz, Ry, Rx;
+        Rz << cy, -sy, 0.0,
+              sy,  cy, 0.0,
+             0.0, 0.0, 1.0;
+        
+        Ry << cp, 0.0,  sp,
+             0.0, 1.0, 0.0,
+             -sp, 0.0,  cp;
+        
+        Rx << 1.0, 0.0, 0.0,
+             0.0,  cr, -sr,
+             0.0,  sr,  cr;
+        
+        return Rz * Ry * Rx;
+    }
+
     static Eigen::Matrix3d quat_to_matrix(const std::array<double, 4>& q) {
         double x = q[0], y = q[1], z = q[2], w = q[3];
         Eigen::Matrix3d R;
@@ -607,8 +655,10 @@ private:
                        0,  1,  0,
                        0,  0, -1;
 
-            // Compute R_align from alignment quaternion
-            Eigen::Matrix3d R_align = quat_to_matrix(align_quat_);
+            // Compute R_align from alignment quaternion via RPY (matches pose_controller.py)
+            std::array<double, 3> rpy = quat_to_rpy(align_quat_);
+            double rx = rpy[0], ry = rpy[1], rz = rpy[2];
+            Eigen::Matrix3d R_align = rpy_to_matrix(rx, ry, rz);
 
             // Compute combined map rotation: R_map = R_flip @ R_align
             R_map_ = R_flip * R_align;
@@ -618,6 +668,10 @@ private:
                         p0_world_[0], p0_world_[1], p0_world_[2]);
             RCLCPP_INFO(this->get_logger(), "  accel_world=[%.3f, %.3f, %.3f]",
                         accel_world[0], accel_world[1], accel_world[2]);
+            RCLCPP_INFO(this->get_logger(), "  align_quat=[%.4f, %.4f, %.4f, %.4f]",
+                        align_quat_[0], align_quat_[1], align_quat_[2], align_quat_[3]);
+            RCLCPP_INFO(this->get_logger(), "  align_rpy(deg)=[%.2f, %.2f, %.2f]",
+                        rx * 180.0 / M_PI, ry * 180.0 / M_PI, rz * 180.0 / M_PI);
         }
 
         // Transform position: p_local = R_map @ (p_raw - p0_world)
