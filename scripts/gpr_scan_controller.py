@@ -62,11 +62,12 @@ class GPRScanController(Node):
         # Rosbag recording parameters
         self.declare_parameter('rosbag_topics', [
             '/Odometry',
+            '/Odometry_tilt_corrected_diff',
             '/cmd_vel',
             '/left/controller_status',
             '/right/controller_status',
             '/gpr/controller_status',
-            '/Laser_map',
+            '/Laser_map',  # Point cloud - recorded without compression to save CPU
             '/tf',
             '/tf_static',
         ])
@@ -373,22 +374,30 @@ class GPRScanController(Node):
             for topic in self.rosbag_topics:
                 cmd.append(topic)
             
-            # Add compression
-            cmd.extend(['--compression-mode', 'file'])
-            cmd.extend(['--compression-format', 'zstd'])
+            # Optimization: Use NO compression for point clouds (saves CPU)
+            # Compression is CPU-intensive and competes with Fast-LIO2
+            cmd.extend(['--compression-mode', 'none'])
+            
+            # Limit cache size to prevent memory bloat (default is 100MB per topic)
+            # Reduce to 50MB to be gentler on LattePanda
+            cmd.extend(['--max-cache-size', '52428800'])  # 50 MB in bytes
+            
+            # Set storage preset to resilient (more conservative writing)
+            cmd.extend(['--storage-preset-profile', 'resilient'])
             
             self.get_logger().info(f'Starting rosbag recording: {self.rosbag_path}')
+            self.get_logger().info('Using NO compression and limited cache for performance')
             
-            # Start the process
+            # Start the process with lower priority (nice value)
             self.rosbag_process = subprocess.Popen(
-                cmd,
+                ['nice', '-n', '10'] + cmd,  # Run with lower CPU priority
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 preexec_fn=os.setsid  # Create new process group for clean termination
             )
             
             self.rosbag_recording = True
-            self.get_logger().info(f'✓ Rosbag recording started')
+            self.get_logger().info(f'✓ Rosbag recording started (low priority, no compression)')
             return True
             
         except Exception as e:
