@@ -299,14 +299,16 @@ def generate_launch_description():
             'gpr_scan_data_directory': folder_paths['section_folder'],  # Session-specific (for both GPR logs and rosbags)
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
-                '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
-                '/cmd_vel',
+                #'/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
+                #'/cmd_vel',
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                '/Laser_map',  # Point cloud - recorded without compression to reduce CPU load
-                '/tf',
-                '/tf_static',
+                # '/Laser_map',  # Point cloud - recorded without compression to reduce CPU load
+                '/Laser_map_rotated',  # Processed cloud - recorded with compression to reduce CPU load
+                
+                # '/tf',
+                # '/tf_static',
             ]
         }]
     )
