@@ -89,8 +89,12 @@ private:
             std::string filename = generate_raw_filename();
             std::string filepath = save_directory_ + "/" + filename;
             
+            pcl::PCLPointCloud2 pcl_cloud;
+            pcl_conversions::toPCL(*latest_cloud_, pcl_cloud);
+
             // Save the raw point cloud
-            if (pcl::io::savePCDFileBinary(filepath, *latest_cloud_) == 0) {
+            pcl::PCDWriter writer;
+            if (writer.writeBinary(filepath, pcl_cloud) == 0) {
                 RCLCPP_INFO(this->get_logger(), "Auto-save: Map saved successfully: %s", filename.c_str());
                 auto_saves_count_++;
             } else {
@@ -122,8 +126,12 @@ private:
             std::string filename = generate_raw_filename();
             std::string filepath = save_directory_ + "/" + filename;
             
+            pcl::PCLPointCloud2 pcl_cloud;
+            pcl_conversions::toPCL(*latest_cloud_, pcl_cloud);
+
             // Save the raw point cloud directly without any processing
-            if (pcl::io::savePCDFile(filepath, *latest_cloud_) == 0) {
+            pcl::PCDWriter writer;
+            if (writer.write(filepath, pcl_cloud) == 0) {
                 RCLCPP_INFO(this->get_logger(), "Raw map saved successfully: %s", filename.c_str());
                 RCLCPP_INFO(this->get_logger(), "Points saved: %lu", latest_cloud_->data.size() / latest_cloud_->point_step);
                 response->success = true;
