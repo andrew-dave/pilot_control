@@ -247,32 +247,45 @@ private:
         return {result[0], result[1], result[2]};
     }
 
-    static std::array<double, 4> compute_alignment_quat(const std::array<double, 3>& accel_avg) {
-        double ax = accel_avg[0];
-        double ay = accel_avg[1];
-        double az = accel_avg[2];
-        double norm = std::sqrt(ax*ax + ay*ay + az*az);
-        if (norm < 1e-6) {
+    static std::array<double, 4> compute_alignment_quat_between(const std::array<double, 3>& from_vec, 
+                                                                 const std::array<double, 3>& to_vec) {
+        // Normalize input vectors
+        double fx = from_vec[0], fy = from_vec[1], fz = from_vec[2];
+        double norm_from = std::sqrt(fx*fx + fy*fy + fz*fz);
+        if (norm_from < 1e-6) {
             return {0.0, 0.0, 0.0, 1.0};
         }
-        ax /= norm; ay /= norm; az /= norm;
+        fx /= norm_from; fy /= norm_from; fz /= norm_from;
 
-        std::array<double, 3> z_target = {0.0, 0.0, 1.0};
-        std::array<double, 3> z_current = {-ax, -ay, -az};
+        double tx = to_vec[0], ty = to_vec[1], tz = to_vec[2];
+        double norm_to = std::sqrt(tx*tx + ty*ty + tz*tz);
+        if (norm_to < 1e-6) {
+            return {0.0, 0.0, 0.0, 1.0};
+        }
+        tx /= norm_to; ty /= norm_to; tz /= norm_to;
 
+        // Compute rotation axis (cross product)
         std::array<double, 3> axis = {
-            z_target[1]*z_current[2] - z_target[2]*z_current[1],
-            z_target[2]*z_current[0] - z_target[0]*z_current[2],
-            z_target[0]*z_current[1] - z_target[1]*z_current[0]
+            fy*tz - fz*ty,
+            fz*tx - fx*tz,
+            fx*ty - fy*tx
         };
         double axis_norm = std::sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
-        double dot = z_target[0]*z_current[0] + z_target[1]*z_current[1] + z_target[2]*z_current[2];
+        double dot = fx*tx + fy*ty + fz*tz;
 
+        // Handle special cases
         if (axis_norm < 1e-6) {
             if (dot > 0) {
+                // Vectors are parallel
                 return {0.0, 0.0, 0.0, 1.0};
             } else {
-                return {0.0, 1.0, 0.0, 0.0};
+                // Vectors are opposite - 180 degree rotation
+                // Find a perpendicular axis
+                std::array<double, 3> perp_axis = {1.0, 0.0, 0.0};
+                if (std::abs(fx) > 0.9) {
+                    perp_axis = {0.0, 1.0, 0.0};
+                }
+                return quat_from_axis_angle(perp_axis, M_PI);
             }
         }
 
@@ -544,13 +557,10 @@ private:
             accel_avg_[1] = sum_y / num_samples;
             accel_avg_[2] = sum_z / num_samples;
 
-            // Compute alignment quaternion from gravity
-            align_quat_ = compute_alignment_quat(accel_avg_);
-            
             accel_initialized_ = true;
-            RCLCPP_INFO(this->get_logger(), "IMU tilt correction initialized: accel_avg=[%.3f, %.3f, %.3f], align_quat=[%.3f, %.3f, %.3f, %.3f]",
-                        accel_avg_[0], accel_avg_[1], accel_avg_[2],
-                        align_quat_[0], align_quat_[1], align_quat_[2], align_quat_[3]);
+            RCLCPP_INFO(this->get_logger(), "IMU acceleration averaged: accel_avg=[%.3f, %.3f, %.3f] (body frame)",
+                        accel_avg_[0], accel_avg_[1], accel_avg_[2]);
+            RCLCPP_INFO(this->get_logger(), "  Waiting for first odometry to compute alignment using body orientation...");
         }
     }
 
@@ -580,11 +590,22 @@ private:
             p0_world_[1] = raw_py;
             p0_world_[2] = raw_pz;
 
-            // Compute R_flip: 180-degree rotation around Z-axis
+            // Rotate acceleration from body frame to world frame using current body orientation
+            Eigen::Matrix3d R_wb = quat_to_matrix(raw_quat);
+            Eigen::Vector3d accel_body(accel_avg_[0], accel_avg_[1], accel_avg_[2]);
+            accel_body.normalize();
+            Eigen::Vector3d accel_world = R_wb * accel_body;
+
+            // Compute alignment quaternion to align world-frame acceleration to [0, 0, -1]
+            std::array<double, 3> a_world = {accel_world[0], accel_world[1], accel_world[2]};
+            std::array<double, 3> z_down = {0.0, 0.0, -1.0};
+            align_quat_ = compute_alignment_quat_between(a_world, z_down);
+
+            // Compute R_flip with correct axis flips: X flipped, Y unchanged, Z flipped
             Eigen::Matrix3d R_flip;
             R_flip << -1,  0,  0,
-                       0, -1,  0,
-                       0,  0,  1;
+                       0,  1,  0,
+                       0,  0, -1;
 
             // Compute R_align from alignment quaternion
             Eigen::Matrix3d R_align = quat_to_matrix(align_quat_);
@@ -595,6 +616,8 @@ private:
             odom_initialized_ = true;
             RCLCPP_INFO(this->get_logger(), "Fast-LIO odometry tilt correction initialized at origin [%.3f, %.3f, %.3f]",
                         p0_world_[0], p0_world_[1], p0_world_[2]);
+            RCLCPP_INFO(this->get_logger(), "  accel_world=[%.3f, %.3f, %.3f]",
+                        accel_world[0], accel_world[1], accel_world[2]);
         }
 
         // Transform position: p_local = R_map @ (p_raw - p0_world)
