@@ -57,7 +57,7 @@ namespace fs = std::filesystem;
 
 // ========================= Config =========================
 struct Config {
-  std::string odom_topic      = "/Odometry";
+  std::string odom_topic      = "/Odometry_tilt_corrected_diff";  // Use tilt-corrected odometry from diff_drive_controller
   std::string log_directory   = std::string(getenv("HOME")?getenv("HOME"):".") + "/unified_scans";
   bool use_seekvision_mode    = true;   // SeekVision pipeline for colorized stream
   bool save_color_png         = true;   // write *_color.png alongside float32 bin

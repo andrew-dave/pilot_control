@@ -84,8 +84,8 @@ def generate_launch_description():
         respawn=True,
         respawn_delay=2.0,
         parameters=[{
-            # Odometry and thermal camera settings
-            'fastlio_odom_topic': '/Odometry',
+            # Odometry and thermal camera settings (using tilt-corrected odometry)
+            'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',
             'log_directory': '/R_DATA/unified_scans',  # Fallback
             'visual_data_directory': folder_paths['visual_data_folder'],  # Session-specific
             'use_seekvision_mode': True,
@@ -221,7 +221,7 @@ def generate_launch_description():
         executable='fastlio_mapping',
         prefix='taskset -c 5',
         parameters=[PathJoinSubstitution([
-            FindPackageShare('fast_lio'), 'config', 'mid360.yaml'
+            FindPackageShare('pilot_control'), 'config', 'fastlio_mid360.yaml'
         ]), {
             'use_sim_time': False
         }],
@@ -293,12 +293,13 @@ def generate_launch_description():
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'gpr_scan_velocity_mps': 0.5,        # 0.5 m/s scanning speed
             'invert_third': True,                # GPR motor direction inversion
-            'fastlio_odom_topic': '/Odometry',
+            'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',  # Use tilt-corrected odometry
             'log_frequency_hz': 50.0,            # 50 Hz logging
             'log_directory': '/R_DATA/gpr_scans',  # Fallback
             'gpr_scan_data_directory': folder_paths['section_folder'],  # Session-specific (for both GPR logs and rosbags)
             'rosbag_topics': [
-                '/Odometry',
+                '/Odometry',  # Raw Fast-LIO odometry
+                '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
                 '/cmd_vel',
                 '/left/controller_status',
                 '/right/controller_status',

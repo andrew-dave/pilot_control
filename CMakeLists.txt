@@ -73,7 +73,8 @@ endfunction()
 
 # === DIFFERENTIAL DRIVE CONTROLLER ===
 add_executable(diff_drive_controller src/diff_drive_controller.cpp)
-ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can)
+ament_target_dependencies(diff_drive_controller rclcpp geometry_msgs nav_msgs tf2_ros odrive_can sensor_msgs std_msgs)
+target_link_libraries(diff_drive_controller Eigen3::Eigen)
 install(TARGETS diff_drive_controller DESTINATION lib/${PROJECT_NAME})
 
 # === POSE CONTROLLER ===
