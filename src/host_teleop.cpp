@@ -19,6 +19,11 @@ public:
         this->declare_parameter("teleop_mode", "keyboard");
         this->declare_parameter("max_linear_velocity", 1.0);
         this->declare_parameter("max_angular_velocity", 4.5);
+        // Load parameter values
+        max_linear_velocity_ = this->get_parameter("max_linear_velocity").as_double();
+        max_angular_velocity_ = this->get_parameter("max_angular_velocity").as_double();
+        // Initialize angular magnitude used for A/D turns
+        ang_mag_ = std::min(1.0, std::max(0.0, max_angular_velocity_));
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
@@ -498,6 +503,16 @@ private:
                 } else if (event.key.keysym.sym == SDLK_b) {
                     RCLCPP_INFO(get_logger(), "B key pressed - Toggle Rosbag Recording");
                     trigger_rosbag_toggle();
+                } else if (event.key.keysym.sym == SDLK_0) {
+                    // Increase angular velocity magnitude by 0.1 (clamped to max_angular_velocity_)
+                    double old = ang_mag_;
+                    ang_mag_ = std::min(max_angular_velocity_, ang_mag_ + 0.1);
+                    RCLCPP_INFO(get_logger(), "Angular magnitude increased: %.2f -> %.2f rad/s", old, ang_mag_);
+                } else if (event.key.keysym.sym == SDLK_9) {
+                    // Decrease angular velocity magnitude by 0.1 (clamped to >= 0)
+                    double old = ang_mag_;
+                    ang_mag_ = std::max(0.0, ang_mag_ - 0.1);
+                    RCLCPP_INFO(get_logger(), "Angular magnitude decreased: %.2f -> %.2f rad/s", old, ang_mag_);
                 }
             }
         }
@@ -510,9 +525,9 @@ private:
             cmd_vel_msg.linear.x = -0.4; // Backward
         }
         if (keys[SDL_SCANCODE_A]) {
-            cmd_vel_msg.angular.z = 1.0; // Left
+            cmd_vel_msg.angular.z = ang_mag_; // Left (adjustable)
         } else if (keys[SDL_SCANCODE_D]) {
-            cmd_vel_msg.angular.z = -1.0; // Right
+            cmd_vel_msg.angular.z = -ang_mag_; // Right (adjustable)
         }
 
         cmd_vel_pub_->publish(cmd_vel_msg);
@@ -555,6 +570,11 @@ private:
             });
         (void)future;
     }
+    
+    // Teleop tuning
+    double max_linear_velocity_{1.5};
+    double max_angular_velocity_{3.5};
+    double ang_mag_{0.5};
 };
 
 int main(int argc, char *argv[]) {
