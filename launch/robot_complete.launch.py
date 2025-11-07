@@ -65,7 +65,7 @@ def generate_launch_description():
     # Odometry Tilt Corrector (Node launch for timing consistency)
     odom_tilt_corrector_node = Node(
         package='pilot_control',
-        executable='odom_tilt_corrector.py',
+        executable='odom_tilt_corrector',
         name='odom_tilt_corrector',
         output='screen',
         parameters=[{

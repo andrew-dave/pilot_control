@@ -242,11 +242,17 @@ install(
   scripts/test_gpr_position.py
   scripts/gpr_scan_controller.py
   scripts/pose_controller.py
-  scripts/odom_tilt_corrector.py
   scripts/odom_gap_monitor.py
   scripts/setup_data_folders.py
   scripts/F2C/f2c_check.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install odom_tilt_corrector without .py suffix so it can be launched as a node name
+install(
+  PROGRAMS scripts/odom_tilt_corrector.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME odom_tilt_corrector
 )
 
 # === Lint/Tests ===
