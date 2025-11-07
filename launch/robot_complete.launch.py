@@ -396,7 +396,7 @@ def generate_launch_description():
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_proc,
-                raw_map_saver,  # Enabled - saves point clouds on-demand (press M)
+                # raw_map_saver,  # Enabled - saves point clouds on-demand (press M)
                 #octomap_server_node,
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6
