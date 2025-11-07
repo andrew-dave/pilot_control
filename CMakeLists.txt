@@ -110,6 +110,13 @@ target_include_directories(laser_map_rotator PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(laser_map_rotator ${PCL_LIBRARIES})
 install(TARGETS laser_map_rotator DESTINATION lib/${PROJECT_NAME})
 
+# === POINT CLOUD DOWNSAMPLER ===
+add_executable(point_cloud_downsampler src/point_cloud_downsampler.cpp)
+ament_target_dependencies(point_cloud_downsampler rclcpp sensor_msgs pcl_conversions)
+target_include_directories(point_cloud_downsampler PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(point_cloud_downsampler ${PCL_LIBRARIES})
+install(TARGETS point_cloud_downsampler DESTINATION lib/${PROJECT_NAME})
+
 # === GPR MOTION FOLLOWER (mirrors forward distance to ODrive micro) ===
 add_executable(gpr_motion_follower src/gpr_motion_follower.cpp)
 ament_target_dependencies(gpr_motion_follower rclcpp geometry_msgs nav_msgs odrive_can)
