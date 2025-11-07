@@ -325,7 +325,7 @@ def generate_launch_description():
                 '/right/controller_status',
                 '/gpr/controller_status',
                 '/path',
-                '/projected_map',  # 2D occupancy grid from octomap
+                # '/projected_map',  # 2D occupancy grid from octomap
                 '/tf',
                 '/tf_static',
             ]
@@ -393,12 +393,12 @@ def generate_launch_description():
                 diff_drive_controller,
                 livox_driver,  # Core 1 (dedicated)
                 fast_lio_node,  # Core 0 (dedicated, single-threaded SLAM)
-                laser_map_rotator_node,
+                # laser_map_rotator_node,
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_proc,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
-                octomap_server_node,  # Enabled - generates 2D projected map
+                # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6
                 
