@@ -256,9 +256,17 @@ class OdomTiltCorrector(Node):
             self.R_map = R_flip @ R_align
             self.alignment_set = True
             try:
+                a_flat_dbg = self.R_map @ a_world
                 self.get_logger().info(
                     f'Alignment set: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f} | '
+                    f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f} | '
                     f'align_rpy(deg)={math.degrees(rx):.2f},{math.degrees(ry):.2f},{math.degrees(rz):.2f}'
+                )
+                self.get_logger().info(
+                    f'R_map matrix:\n'
+                    f'  [{self.R_map[0,0]:+.6f}, {self.R_map[0,1]:+.6f}, {self.R_map[0,2]:+.6f}]\n'
+                    f'  [{self.R_map[1,0]:+.6f}, {self.R_map[1,1]:+.6f}, {self.R_map[1,2]:+.6f}]\n'
+                    f'  [{self.R_map[2,0]:+.6f}, {self.R_map[2,1]:+.6f}, {self.R_map[2,2]:+.6f}]'
                 )
             except Exception:
                 pass
@@ -268,12 +276,24 @@ class OdomTiltCorrector(Node):
             self.p0_world = raw_pos.copy()
             self.origin_set = True
 
+        # Don't publish until alignment and origin are both established
+        if not self.alignment_set or not self.origin_set:
+            return
+
         # Transform position/orientation/linear velocity
         p_local = self.R_map @ (raw_pos - self.p0_world)
         try:
             R_wb = self.quat_to_matrix(raw_q)
             R_fb = self.R_map @ R_wb
             q_local = self.matrix_to_quat(R_fb)
+            # One-time debug: verify orientation mapping
+            if not hasattr(self, '_logged_orientation_check'):
+                rL, pL, yL = self.quaternion_to_rpy(*q_local)
+                self.get_logger().info(
+                    f'Orientation mapping verified: R_fb = R_map * R_wb | '
+                    f'corrected (roll,pitch,yaw deg)=({math.degrees(rL):.2f},{math.degrees(pL):.2f},{math.degrees(yL):.2f})'
+                )
+                self._logged_orientation_check = True
         except Exception:
             q_local = self.quat_multiply(self.align_quat, raw_q)
         raw_vel = np.array([
@@ -282,6 +302,12 @@ class OdomTiltCorrector(Node):
             float(msg.twist.twist.linear.z),
         ], dtype=float)
         vel_local = self.R_map @ raw_vel
+        
+        # One-time diagnostic: check z vs x slope to verify leveling
+        if not hasattr(self, '_logged_slope_hint') and abs(float(p_local[0])) > 1e-6:
+            slope = float(p_local[2]) / float(p_local[0])
+            self.get_logger().info(f'Leveled frame slope hint: dz/dx={slope:.4f} (should be ~0 if level)')
+            self._logged_slope_hint = True
 
         # Publish corrected odometry (mirror pose_controller.py choices)
         odom_corr = Odometry()
