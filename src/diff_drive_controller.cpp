@@ -84,7 +84,7 @@ public:
         // Tilt correction parameters (matching pose_controller.py)
         this->declare_parameter<std::string>("accel_topic", "/livox/imu");
         this->declare_parameter<int>("accel_samples", 10);
-        this->declare_parameter<std::string>("corrected_odom_topic", "/Odometry_tilt_corrected_diff");
+        this->declare_parameter<std::string>("corrected_odom_topic", "/Odometry_tilt_corrected_diff_cpp");
 
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
@@ -137,7 +137,8 @@ public:
         // gpr_distance_pub_ = this->create_publisher<std_msgs::msg::Float32>("/gpr/travel_distance_m", 10);
         // gpr_fastlio_delta_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/gpr/fastlio_delta_xyz", 10);
         
-        odom_corrected_pub_ = this->create_publisher<nav_msgs::msg::Odometry>(corrected_odom_topic_, 10);
+        // Tilt-corrected odometry republishing moved to odom_tilt_corrector.py
+        // odom_corrected_pub_ = this->create_publisher<nav_msgs::msg::Odometry>(corrected_odom_topic_, 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -158,14 +159,16 @@ public:
         //     "/gpr/controller_status", 10, std::bind(&DiffDriveController::third_status_callback, this, std::placeholders::_1));
 
         // Optional: subscribe to Fast-LIO odometry for GPR speed estimation
-        if (gpr_use_fastlio_odom_) {
-            fastlio_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-                fastlio_odom_topic_, 10, std::bind(&DiffDriveController::fastlio_odom_callback, this, std::placeholders::_1));
-        }
+        // Disable Fast-LIO odom subscription for tilt-corrected republishing (handled by Python node)
+        // if (gpr_use_fastlio_odom_) {
+        //     fastlio_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        //         fastlio_odom_topic_, 10, std::bind(&DiffDriveController::fastlio_odom_callback, this, std::placeholders::_1));
+        // }
         
         // IMU subscription for gravity-based tilt correction
-        imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-            accel_topic_, 10, std::bind(&DiffDriveController::imu_callback, this, std::placeholders::_1));
+        // Disable IMU subscription for tilt-corrected republishing (handled by Python node)
+        // imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+        //     accel_topic_, 10, std::bind(&DiffDriveController::imu_callback, this, std::placeholders::_1));
 
         // Timers
         odom_timer_ = this->create_wall_timer(100ms, std::bind(&DiffDriveController::update_odometry, this)); // 10 Hz

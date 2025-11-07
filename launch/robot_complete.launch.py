@@ -328,6 +328,7 @@ def generate_launch_description():
                 # '/projected_map',  # 2D occupancy grid from octomap
                 '/tf',
                 '/tf_static',
+                '/livox/imu'
             ]
         }]
     )

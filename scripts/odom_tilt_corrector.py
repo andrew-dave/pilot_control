@@ -16,7 +16,7 @@ class OdomTiltCorrector(Node):
         self.declare_parameter('odometry_topic', '/Odometry')
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
-        self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected_bridge')
+        self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected_diff')
 
         self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.accel_topic = str(self.get_parameter('accel_topic').value)
@@ -30,8 +30,10 @@ class OdomTiltCorrector(Node):
         self.accel_avg = None
 
         self.alignment_set = False
+        self.origin_set = False
         self.R_map = np.eye(3, dtype=float)
         self.p0_world = np.zeros(3, dtype=float)
+        self.align_quat = (0.0, 0.0, 0.0, 1.0)
 
         # Subscriptions (sensor-data QoS for IMU and odometry)
         self.imu_sub = self.create_subscription(
@@ -57,6 +59,44 @@ class OdomTiltCorrector(Node):
         if n <= 1e-12:
             return (0.0, 0.0, 0.0, 1.0)
         return (x/n, y/n, z/n, w/n)
+
+    @staticmethod
+    def quat_from_axis_angle(axis, angle_rad):
+        ax = np.asarray(axis, dtype=float)
+        norm = np.linalg.norm(ax)
+        if norm <= 1e-12:
+            return (0.0, 0.0, 0.0, 1.0)
+        ax = ax / norm
+        s = math.sin(angle_rad * 0.5)
+        c = math.cos(angle_rad * 0.5)
+        return (ax[0]*s, ax[1]*s, ax[2]*s, c)
+
+    @staticmethod
+    def quat_multiply(q1, q2):
+        x1, y1, z1, w1 = q1
+        x2, y2, z2, w2 = q2
+        x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+        y = w1*y2 - x1*z2 + y1*w2 + z1*x2
+        z = w1*z2 + x1*y2 - y1*x2 + z1*w2
+        w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+        return (x, y, z, w)
+
+    @staticmethod
+    def quat_conjugate(q):
+        x, y, z, w = q
+        return (-float(x), -float(y), -float(z), float(w))
+
+    @staticmethod
+    def rotate_vector_by_quat(v, q):
+        x, y, z = v
+        qx, qy, qz, qw = q
+        tx = 2.0 * (qy * z - qz * y)
+        ty = 2.0 * (qz * x - qx * z)
+        tz = 2.0 * (qx * y - qy * x)
+        vx = x + qw * tx + (qy * tz - qz * ty)
+        vy = y + qw * ty + (qz * tx - qx * tz)
+        vz = z + qw * tz + (qx * ty - qy * tx)
+        return np.array([vx, vy, vz], dtype=float)
 
     @staticmethod
     def compute_alignment_quat(from_vec, to_vec):
@@ -146,6 +186,21 @@ class OdomTiltCorrector(Node):
             z = 0.25 * S
         return (x, y, z, w)
 
+    @staticmethod
+    def quaternion_to_yaw(qx: float, qy: float, qz: float, qw: float) -> float:
+        siny_cosp = 2.0 * (qw * qz + qx * qy)
+        cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        return yaw
+
+    @staticmethod
+    def normalize_angle(angle: float) -> float:
+        while angle > math.pi:
+            angle -= 2.0 * math.pi
+        while angle < -math.pi:
+            angle += 2.0 * math.pi
+        return angle
+
     # ---------------- IMU averaging ----------------
     def imu_callback(self, msg: Imu):
         a = np.array([
@@ -184,7 +239,7 @@ class OdomTiltCorrector(Node):
             float(msg.pose.pose.orientation.w),
         )
 
-        # Set alignment and origin on first odom after accel avg
+        # Set alignment on first odom after accel avg
         if not self.alignment_set:
             try:
                 R_wb_curr = self.quat_to_matrix(raw_q)
@@ -197,10 +252,10 @@ class OdomTiltCorrector(Node):
                                [ 0.0, 1.0, 0.0],
                                [ 0.0, 0.0,-1.0]], dtype=float)
             q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
+            self.align_quat = q_align_world
             rx, ry, rz = self.quaternion_to_rpy(*q_align_world)
             R_align = self.rpy_to_matrix(rx, ry, rz)
             self.R_map = R_flip @ R_align
-            self.p0_world = raw_pos.copy()
             self.alignment_set = True
             try:
                 self.get_logger().info(
@@ -210,11 +265,19 @@ class OdomTiltCorrector(Node):
             except Exception:
                 pass
 
+        # Establish origin in leveled world (after alignment)
+        if not self.origin_set and self.alignment_set:
+            self.p0_world = raw_pos.copy()
+            self.origin_set = True
+
         # Transform position/orientation/linear velocity
         p_local = self.R_map @ (raw_pos - self.p0_world)
-        R_wb = self.quat_to_matrix(raw_q)
-        R_fb = self.R_map @ R_wb
-        q_local = self.matrix_to_quat(R_fb)
+        try:
+            R_wb = self.quat_to_matrix(raw_q)
+            R_fb = self.R_map @ R_wb
+            q_local = self.matrix_to_quat(R_fb)
+        except Exception:
+            q_local = self.quat_multiply(self.align_quat, raw_q)
         raw_vel = np.array([
             float(msg.twist.twist.linear.x),
             float(msg.twist.twist.linear.y),
