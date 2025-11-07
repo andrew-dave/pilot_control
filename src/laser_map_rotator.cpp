@@ -20,8 +20,8 @@ public:
     this->declare_parameter<std::string>("input_topic", "/Laser_map");
     this->declare_parameter<std::string>("output_topic", "/Laser_map_rotated");
     this->declare_parameter<std::string>("output_frame", "foot_init");
-    this->declare_parameter<double>("max_height", 0.5);
-    this->declare_parameter<double>("min_height", -0.15);
+    this->declare_parameter<double>("max_height", 0.20);
+    this->declare_parameter<double>("min_height", -0.10);
     this->declare_parameter<std::string>("accel_topic", "/livox/imu");
     this->declare_parameter<int>("accel_samples", 10);
 
@@ -215,8 +215,8 @@ private:
   std::string output_topic_;
   std::string output_frame_;
   geometry_msgs::msg::TransformStamped tf2_transform_;
-  double min_height_{0.03};
-  double max_height_{1.0};
+  double min_height_{-0.10};
+  double max_height_{0.20};
   std::string accel_topic_;
   int accel_samples_target_{10};
   bool accel_initialized_{false};

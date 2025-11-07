@@ -60,7 +60,7 @@ class GPRScanController(Node):
         self.declare_parameter('right_ns', 'right')
         self.declare_parameter('gpr_ns', 'gpr')
         self.declare_parameter('auto_arm_on_start', True)
-        # Rosbag recording parameters (including downsampled point clouds)
+        # Rosbag recording parameters (no point clouds - keep it lightweight)
         self.declare_parameter('rosbag_topics', [
             '/Odometry',
             '/Odometry_tilt_corrected_diff',
@@ -68,7 +68,8 @@ class GPRScanController(Node):
             '/left/controller_status',
             '/right/controller_status',
             '/gpr/controller_status',
-            '/Laser_map_downsampled',  # Downsampled 20x - safe for recording
+            '/path',
+            '/projected_map',
             '/tf',
             '/tf_static',
         ])

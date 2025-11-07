@@ -324,7 +324,8 @@ def generate_launch_description():
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                '/Laser_map_downsampled',  # Downsampled point cloud (~20x smaller, safe to record)
+                '/path',
+                '/projected_map',  # 2D occupancy grid from octomap
                 '/tf',
                 '/tf_static',
             ]
@@ -342,20 +343,6 @@ def generate_launch_description():
             'output_topic': '/Laser_map_rotated',
             # 'pitch_rad': 0.2617993878,  # 15 degrees
             'output_frame': 'foot_init'
-        }]
-    )
-
-    # Point Cloud Downsampler - Creates memory-safe version for rosbag recording
-    point_cloud_downsampler_node = Node(
-        package='pilot_control',
-        executable='point_cloud_downsampler',
-        name='point_cloud_downsampler',
-        output='screen',
-        parameters=[{
-            'input_topic': '/Laser_map',
-            'output_topic': '/Laser_map_downsampled',
-            'voxel_size': 0.2,  # 20cm voxels = ~20x size reduction
-            'target_reduction_factor': 20
         }]
     )
 
@@ -407,12 +394,11 @@ def generate_launch_description():
                 livox_driver,  # Core 1 (dedicated)
                 fast_lio_node,  # Core 0 (dedicated, single-threaded SLAM)
                 laser_map_rotator_node,
-                point_cloud_downsampler_node,  # Creates /Laser_map_downsampled for rosbag
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_proc,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
-                #octomap_server_node,
+                octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6
                 
