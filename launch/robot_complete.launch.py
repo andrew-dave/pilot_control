@@ -62,20 +62,18 @@ def generate_launch_description():
         description='Base directory for all robot data collection.'
     )
 
-    # Odometry Tilt Corrector (run script directly via ExecuteProcess; prefers source tree)
-    odom_tilt_corrector_path_src = source_script_dir / 'odom_tilt_corrector.py'
-    odom_tilt_corrector_path_inst = install_script_dir / 'odom_tilt_corrector.py'
-    odom_tilt_corrector_path = str(odom_tilt_corrector_path_src if odom_tilt_corrector_path_src.exists() else odom_tilt_corrector_path_inst)
-    odom_tilt_corrector_proc = ExecuteProcess(
-        cmd=[
-            'python3', odom_tilt_corrector_path,
-            '--ros-args',
-            '-p', 'odometry_topic:=/Odometry',
-            '-p', 'accel_topic:=/livox/imu',
-            '-p', 'accel_samples:=10',
-            '-p', 'corrected_odometry_topic:=/Odometry_tilt_corrected_diff'
-        ],
-        output='screen'
+    # Odometry Tilt Corrector (Node launch for timing consistency)
+    odom_tilt_corrector_node = Node(
+        package='pilot_control',
+        executable='odom_tilt_corrector.py',
+        name='odom_tilt_corrector',
+        output='screen',
+        parameters=[{
+            'odometry_topic': '/Odometry',
+            'accel_topic': '/livox/imu',
+            'accel_samples': 10,
+            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff'
+        }]
     )
 
     # Setup folder structure for this session
@@ -397,7 +395,7 @@ def generate_launch_description():
                 # laser_map_rotator_node,
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,
-                odom_tilt_corrector_proc,
+                odom_tilt_corrector_node,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
