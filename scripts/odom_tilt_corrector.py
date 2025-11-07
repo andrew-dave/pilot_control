@@ -119,9 +119,7 @@ class OdomTiltCorrector(Node):
             if np.linalg.norm(axis) < 1e-12:
                 axis = np.array([0.0, 0.0, 1.0])
             axis = axis / (np.linalg.norm(axis) + 1e-12)
-            s = math.sin(math.pi * 0.5)
-            c = math.cos(math.pi * 0.5)
-            return OdomTiltCorrector.quat_normalize((axis[0]*s, axis[1]*s, axis[2]*s, c))
+            return OdomTiltCorrector.quat_from_axis_angle(axis, math.pi)
         axis = np.cross(v1, v2)
         s = math.sqrt((1.0 + cos_theta) * 2.0)
         invs = 1.0 / s
