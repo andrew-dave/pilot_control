@@ -216,7 +216,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
-        prefix='taskset -c 0',  # Dedicated core for LiDAR driver
+        prefix='taskset -c 1',  # Dedicated core for LiDAR driver
         name='livox_lidar_publisher',
         output='screen',
         parameters=[{
@@ -233,11 +233,11 @@ def generate_launch_description():
         }]
     )
 
-    # Fast-LIO2 Node (exact copy from original launch file)
+    # Fast-LIO2 Node (single-threaded SLAM, needs one fast core)
     fast_lio_node = Node(
         package='fast_lio',
         executable='fastlio_mapping',
-        prefix='taskset -c 1-3',  # Spread across cores 1, 2, 3 for parallel processing
+        prefix='taskset -c 0',  # Dedicated core 0 for Fast-LIO2 (single-threaded)
         parameters=[PathJoinSubstitution([
             FindPackageShare('pilot_control'), 'config', 'fastlio_mid360.yaml'
         ]), {
@@ -324,8 +324,7 @@ def generate_launch_description():
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                '/Laser_map',  # Too heavy - causes Fast-LIO2 failure
-                # '/Laser_map_rotated',  # Too heavy - causes Fast-LIO2 failure
+                '/Laser_map',  # Point clouds - recorded to RAM disk to avoid disk I/O bottleneck
                 '/tf',
                 '/tf_static',
             ]
@@ -391,8 +390,8 @@ def generate_launch_description():
                 right_odrive_node,
                 gpr_odrive_node,
                 diff_drive_controller,
-                livox_driver,  # Core 0 (dedicated)
-                fast_lio_node,  # Cores 1-3 (parallel processing)
+                livox_driver,  # Core 1 (dedicated)
+                fast_lio_node,  # Core 0 (dedicated, single-threaded SLAM)
                 laser_map_rotator_node, 
                 body_to_foot_transform,
                 camera_init_to_foot_init_transform,

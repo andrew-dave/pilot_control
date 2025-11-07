@@ -36,6 +36,7 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import TransformStamped
 import subprocess
 import signal
+import shutil
 
 
 class GPRScanController(Node):
@@ -59,7 +60,7 @@ class GPRScanController(Node):
         self.declare_parameter('right_ns', 'right')
         self.declare_parameter('gpr_ns', 'gpr')
         self.declare_parameter('auto_arm_on_start', True)
-        # Rosbag recording parameters (point clouds excluded - too heavy)
+        # Rosbag recording parameters (including point clouds via RAM disk)
         self.declare_parameter('rosbag_topics', [
             '/Odometry',
             '/Odometry_tilt_corrected_diff',
@@ -67,7 +68,7 @@ class GPRScanController(Node):
             '/left/controller_status',
             '/right/controller_status',
             '/gpr/controller_status',
-            '/Laser_map',  # Point cloud - recorded without compression to save CPU
+            '/Laser_map',  # Point clouds - recorded to RAM disk, moved to permanent storage on stop
             '/tf',
             '/tf_static',
         ])
@@ -87,8 +88,11 @@ class GPRScanController(Node):
         if gpr_scan_data_dir:
             self.log_dir = gpr_scan_data_dir  # Override with session-specific path
         
-        # Rosbag directory: save to parent of GPR scan folder (section folder)
-        self.rosbag_dir = os.path.dirname(self.log_dir) if gpr_scan_data_dir else self.log_dir
+        # Rosbag directory: Use RAM disk for recording, copy to permanent storage later
+        # With 32GB RAM, we can buffer rosbags in memory to avoid disk I/O bottleneck
+        self.rosbag_dir_final = os.path.dirname(self.log_dir) if gpr_scan_data_dir else self.log_dir
+        self.rosbag_dir = '/tmp/rosbag_recording'  # RAM disk location
+        os.makedirs(self.rosbag_dir, exist_ok=True)
         
         self.fastlio_filter_window = int(self.get_parameter('fastlio_filter_window').value) or 1
         self.left_ns = self.get_parameter('left_ns').value
@@ -206,7 +210,8 @@ class GPRScanController(Node):
         self.get_logger().info(f'GPR motor start delay: {self.gpr_motor_start_delay:.1f} s')
         self.get_logger().info(f'Post-stop logging duration: {self.post_stop_duration:.1f} s')
         self.get_logger().info(f'GPR CSV directory: {self.log_dir}')
-        self.get_logger().info(f'Rosbag directory: {self.rosbag_dir}')
+        self.get_logger().info(f'Rosbag RAM disk: {self.rosbag_dir}')
+        self.get_logger().info(f'Rosbag final destination: {self.rosbag_dir_final}')
         self.get_logger().info(f'Services available:')
         self.get_logger().info(f'  - /gpr_scan/toggle')
         self.get_logger().info(f'  - /rosbag/toggle')
@@ -378,23 +383,20 @@ class GPRScanController(Node):
             for topic in self.rosbag_topics:
                 cmd.append(topic)
             
-            # Storage backend: Use MCAP for better performance with point clouds
-            # MCAP has 2-5x better write performance than SQLite3
+            # Storage backend: Use MCAP for better performance
             cmd.extend(['--storage', 'mcap'])
             
-            # Optimization: Use NO compression for point clouds (saves CPU)
-            # Compression is CPU-intensive and competes with Fast-LIO2
-            cmd.extend(['--compression-mode', 'none'])
-            
-            # Limit cache size to prevent memory bloat (default is 100MB per topic)
-            # Reduce to 50MB to be gentler on LattePanda
-            cmd.extend(['--max-cache-size', '52428800'])  # 50 MB in bytes
+            # Enable compression - RAM disk eliminates disk I/O bottleneck
+            # Compression reduces RAM usage and final file size
+            cmd.extend(['--compression-mode', 'file'])
+            cmd.extend(['--compression-format', 'zstd'])
             
             # Use default storage profile (removed 'resilient' for better write performance)
-            # For point clouds, write speed is more critical than crash resilience
+            # Recording to RAM disk eliminates disk I/O bottleneck
             
-            self.get_logger().info(f'Starting rosbag recording: {self.rosbag_path}')
-            self.get_logger().info('Using MCAP storage, no compression, limited cache for performance')
+            self.get_logger().info(f'Starting rosbag recording to RAM: {self.rosbag_path}')
+            self.get_logger().info('Using MCAP storage with zstd compression')
+            self.get_logger().info('Recording to RAM disk - will move to permanent storage on stop')
             
             # Start the process with lower priority (nice value)
             self.rosbag_process = subprocess.Popen(
@@ -413,7 +415,7 @@ class GPRScanController(Node):
             return False
     
     def stop_rosbag_recording(self):
-        """Stop rosbag recording"""
+        """Stop rosbag recording and copy from RAM to permanent storage"""
         try:
             if self.rosbag_process is not None:
                 # Send SIGINT to the process group
@@ -423,6 +425,19 @@ class GPRScanController(Node):
                 self.rosbag_process.wait(timeout=10)
                 
                 self.get_logger().info(f'✓ Rosbag recording stopped: {self.rosbag_path}')
+                
+                # Copy from RAM disk to permanent storage
+                bag_name = os.path.basename(self.rosbag_path)
+                final_path = os.path.join(self.rosbag_dir_final, bag_name)
+                
+                self.get_logger().info(f'Copying rosbag from RAM to permanent storage...')
+                self.get_logger().info(f'Source: {self.rosbag_path}')
+                self.get_logger().info(f'Destination: {final_path}')
+                
+                # Use shutil.move for efficient transfer
+                shutil.move(self.rosbag_path, final_path)
+                
+                self.get_logger().info(f'✓ Rosbag moved to: {final_path}')
                 
                 self.rosbag_process = None
                 self.rosbag_recording = False
