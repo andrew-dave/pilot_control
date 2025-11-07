@@ -324,7 +324,7 @@ def generate_launch_description():
                 '/left/controller_status',
                 '/right/controller_status',
                 '/gpr/controller_status',
-                # '/Laser_map',  # Too heavy - causes Fast-LIO2 failure
+                '/Laser_map',  # Too heavy - causes Fast-LIO2 failure
                 # '/Laser_map_rotated',  # Too heavy - causes Fast-LIO2 failure
                 '/tf',
                 '/tf_static',
