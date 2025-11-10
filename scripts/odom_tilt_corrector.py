@@ -131,6 +131,52 @@ class OdomTiltCorrector(Node):
         return OdomTiltCorrector.quat_normalize((x, y, z, w))
 
     @staticmethod
+    def compute_alignment_quat_robust(a_world):
+        """
+        Compute alignment to make gravity point down in Z, robust to singularities.
+        Input: a_world = gravity direction in world frame (normalized)
+        Output: quaternion to rotate world frame so gravity is [0, 0, -1]
+        """
+        a_world = np.array(a_world, dtype=float)
+        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
+        
+        # Target: gravity should point to [0, 0, -1] (down in Z)
+        target = np.array([0.0, 0.0, -1.0])
+        
+        # If already aligned, return identity
+        dot = np.dot(a_world, target)
+        if dot > 0.9999:
+            return (0.0, 0.0, 0.0, 1.0)
+        
+        # If opposite (near 180° flip), use a specific rotation axis
+        if dot < -0.9999:
+            # Choose rotation axis perpendicular to gravity
+            # Prefer X-axis, but use Y if gravity is along X
+            if abs(a_world[0]) < 0.9:
+                axis = np.array([1.0, 0.0, 0.0])
+            else:
+                axis = np.array([0.0, 1.0, 0.0])
+            # Make axis perpendicular to a_world
+            axis = axis - np.dot(axis, a_world) * a_world
+            axis = axis / (np.linalg.norm(axis) + 1e-12)
+            # 180° rotation around this axis
+            return (axis[0], axis[1], axis[2], 0.0)
+        
+        # Normal case: use Rodrigues formula via rotation axis
+        axis = np.cross(a_world, target)
+        axis_len = np.linalg.norm(axis)
+        if axis_len < 1e-9:
+            return (0.0, 0.0, 0.0, 1.0)
+        axis = axis / axis_len
+        
+        # Half-angle for quaternion
+        half_angle = 0.5 * np.arccos(np.clip(dot, -1.0, 1.0))
+        s = np.sin(half_angle)
+        c = np.cos(half_angle)
+        
+        return (axis[0] * s, axis[1] * s, axis[2] * s, c)
+
+    @staticmethod
     def rpy_to_matrix(roll: float, pitch: float, yaw: float):
         cr = math.cos(roll);  sr = math.sin(roll)
         cp = math.cos(pitch); sp = math.sin(pitch)
@@ -248,32 +294,62 @@ class OdomTiltCorrector(Node):
         self.last_raw_pos = raw_pos
         R_wb = self.quat_to_matrix(raw_q)
 
-        # Establish leveling rotation at first odom using accel_avg and current body orientation
+        # Establish leveling rotation at first odom using hybrid approach:
+        # - Try IMU-based alignment when Fast-LIO orientation is reliable
+        # - Fall back to fixed pitch correction when unreliable
         if self.accel_initialized and not self.alignment_set:
+            # Compute gravity direction in world frame
             try:
                 a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
                 R_wb_curr = self.quat_to_matrix(raw_q)
                 a_world = R_wb_curr @ a_norm
             except Exception:
                 a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+            
+            # Fixed coordinate system flip
             R_flip = np.array([[-1.0, 0.0, 0.0],
                                [ 0.0, 1.0, 0.0],
                                [ 0.0, 0.0,-1.0]], dtype=float)
-            # Perform alignment first in world frame, then apply fixed flip in mapping
-            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
+            
+            # HYBRID APPROACH: Check if a_world is reasonable (mostly vertical)
+            # Gravity should be mostly in Z direction in world frame
+            use_imu_alignment = abs(a_world[2]) > 0.8  # Reasonable vertical component
+            
+            if use_imu_alignment:
+                # Use robust IMU-based alignment
+                q_align_world = self.compute_alignment_quat_robust(a_world)
+                alignment_method = "IMU-based (dynamic)"
+                self.get_logger().info(
+                    f'✓ Using IMU-based alignment: a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
+            else:
+                # Fall back to fixed pitch (Fast-LIO orientation is unreliable)
+                pitch_rad = -0.2617993878  # -15 degrees (known robot tilt)
+                roll_rad = 0.0
+                yaw_rad = 0.0
+                roll_quat = self.quat_from_axis_angle(np.array([1.0, 0.0, 0.0]), roll_rad)
+                pitch_quat = self.quat_from_axis_angle(np.array([0.0, 1.0, 0.0]), pitch_rad)
+                yaw_quat = self.quat_from_axis_angle(np.array([0.0, 0.0, 1.0]), yaw_rad)
+                q_align_world = self.quat_multiply(yaw_quat, self.quat_multiply(pitch_quat, roll_quat))
+                alignment_method = "Fixed pitch (fallback)"
+                self.get_logger().warn(
+                    f'⚠ IMU-based alignment unreliable (a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]), '
+                    f'using fixed 15° pitch correction')
+            
             self.align_quat = q_align_world
             rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
             R_align = self.rpy_to_matrix(rx, ry, rz)
             self.R_map = R_flip @ R_align
             self.alignment_set = True
+            
+            # Log alignment details
             try:
                 qx, qy, qz, qw = q_align_world
                 roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
                 a_flat_dbg = self.R_map @ a_world
                 self.get_logger().info(
-                    f'Align+flip at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
-                    f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f}; '
-                    f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
+                    f'Alignment set ({alignment_method}): '
+                    f'a_flat=[{a_flat_dbg[0]:.3f}, {a_flat_dbg[1]:.3f}, {a_flat_dbg[2]:.3f}]; '
+                    f'align_rpy(deg)=[{math.degrees(roll):.2f}, {math.degrees(pitch):.2f}, {math.degrees(yaw):.2f}]')
             except Exception:
                 pass
 
