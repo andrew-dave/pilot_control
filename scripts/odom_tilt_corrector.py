@@ -131,6 +131,54 @@ class OdomTiltCorrector(Node):
         return OdomTiltCorrector.quat_normalize((x, y, z, w))
 
     @staticmethod
+    def compute_tilt_correction_matrix(a_world):
+        """
+        Compute rotation matrix that ONLY corrects tilt to align gravity with -Z.
+        Preserves yaw from Fast-LIO's world frame completely.
+        
+        Method: Projects gravity onto XY plane, rotates around that direction
+        to bring gravity vertical. This naturally preserves yaw.
+        
+        Input: a_world = gravity direction in world frame (normalized)
+        Output: rotation matrix R that maps a_world to [0, 0, -1] without changing yaw
+        """
+        a_world = np.array(a_world, dtype=float)
+        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
+        
+        # Target: gravity pointing down
+        target = np.array([0.0, 0.0, -1.0])
+        
+        # If already aligned, return identity
+        if np.dot(a_world, target) > 0.9999:
+            return np.eye(3, dtype=float)
+        
+        # Rotation axis is perpendicular to both a_world and target
+        # This axis lies in the XY plane (horizontal), so rotation preserves yaw
+        axis = np.cross(a_world, target)
+        axis_len = np.linalg.norm(axis)
+        
+        if axis_len < 1e-9:
+            # Parallel or anti-parallel case
+            if np.dot(a_world, target) < 0:
+                # 180° rotation - use X-axis
+                return np.array([[ 1.0,  0.0,  0.0],
+                                [ 0.0, -1.0,  0.0],
+                                [ 0.0,  0.0, -1.0]], dtype=float)
+            return np.eye(3, dtype=float)
+        
+        # Normalize axis
+        axis = axis / axis_len
+        
+        # Rodrigues' rotation formula
+        angle = np.arctan2(axis_len, np.dot(a_world, target))
+        K = np.array([[    0.0, -axis[2],  axis[1]],
+                      [ axis[2],     0.0, -axis[0]],
+                      [-axis[1],  axis[0],     0.0]], dtype=float)
+        
+        R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
+        return R
+
+    @staticmethod
     def compute_alignment_quat_yaw_preserving(a_world):
         """
         Compute alignment to make gravity point down in Z, PRESERVING YAW.
@@ -316,40 +364,36 @@ class OdomTiltCorrector(Node):
             use_imu_alignment = abs(a_world[2]) > 0.8  # Reasonable vertical component
             
             if use_imu_alignment:
-                # Use yaw-preserving IMU-based alignment (only corrects tilt, not yaw)
-                q_align_world = self.compute_alignment_quat_yaw_preserving(a_world)
-                alignment_method = "IMU-based (yaw-preserving)"
+                # Use matrix-based tilt correction (preserves yaw from Fast-LIO)
+                R_align = self.compute_tilt_correction_matrix(a_world)
+                alignment_method = "IMU-based (tilt-only)"
                 self.get_logger().info(
-                    f'✓ Using IMU-based alignment: a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
+                    f'✓ Using IMU tilt correction: a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
             else:
-                # Fall back to fixed pitch (Fast-LIO orientation is unreliable)
-                pitch_rad = -0.2617993878  # -15 degrees (known robot tilt)
+                # Fall back to fixed pitch
+                pitch_rad = -0.2617993878  # -15 degrees
                 roll_rad = 0.0
                 yaw_rad = 0.0
                 roll_quat = self.quat_from_axis_angle(np.array([1.0, 0.0, 0.0]), roll_rad)
                 pitch_quat = self.quat_from_axis_angle(np.array([0.0, 1.0, 0.0]), pitch_rad)
                 yaw_quat = self.quat_from_axis_angle(np.array([0.0, 0.0, 1.0]), yaw_rad)
                 q_align_world = self.quat_multiply(yaw_quat, self.quat_multiply(pitch_quat, roll_quat))
+                rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
+                R_align = self.rpy_to_matrix(rx, ry, rz)
                 alignment_method = "Fixed pitch (fallback)"
                 self.get_logger().warn(
-                    f'⚠ IMU-based alignment unreliable (a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]), '
-                    f'using fixed 15° pitch correction')
+                    f'⚠ IMU unreliable (a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]), '
+                    f'using fixed 15° pitch')
             
-            self.align_quat = q_align_world
-            rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
-            R_align = self.rpy_to_matrix(rx, ry, rz)
             self.R_map = R_flip @ R_align
             self.alignment_set = True
             
-            # Log alignment details
+            # Verify the correction worked
             try:
-                qx, qy, qz, qw = q_align_world
-                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                a_flat_dbg = self.R_map @ a_world
+                a_flat = self.R_map @ a_world
                 self.get_logger().info(
-                    f'Alignment set ({alignment_method}): '
-                    f'a_flat=[{a_flat_dbg[0]:.3f}, {a_flat_dbg[1]:.3f}, {a_flat_dbg[2]:.3f}]; '
-                    f'align_rpy(deg)=[{math.degrees(roll):.2f}, {math.degrees(pitch):.2f}, {math.degrees(yaw):.2f}]')
+                    f'Tilt correction set ({alignment_method}): '
+                    f'gravity aligned to [{a_flat[0]:.3f}, {a_flat[1]:.3f}, {a_flat[2]:.3f}]')
             except Exception:
                 pass
 
