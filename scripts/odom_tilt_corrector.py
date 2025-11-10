@@ -131,11 +131,14 @@ class OdomTiltCorrector(Node):
         return OdomTiltCorrector.quat_normalize((x, y, z, w))
 
     @staticmethod
-    def compute_alignment_quat_robust(a_world):
+    def compute_alignment_quat_yaw_preserving(a_world):
         """
-        Compute alignment to make gravity point down in Z, robust to singularities.
+        Compute alignment to make gravity point down in Z, PRESERVING YAW.
+        Only corrects tilt (pitch/roll), does not rotate yaw.
+        
         Input: a_world = gravity direction in world frame (normalized)
         Output: quaternion to rotate world frame so gravity is [0, 0, -1]
+                while keeping yaw unchanged
         """
         a_world = np.array(a_world, dtype=float)
         a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
@@ -144,33 +147,30 @@ class OdomTiltCorrector(Node):
         target = np.array([0.0, 0.0, -1.0])
         
         # If already aligned, return identity
-        dot = np.dot(a_world, target)
-        if dot > 0.9999:
+        if np.dot(a_world, target) > 0.9999:
             return (0.0, 0.0, 0.0, 1.0)
         
-        # If opposite (near 180° flip), use a specific rotation axis
-        if dot < -0.9999:
-            # Choose rotation axis perpendicular to gravity
-            # Prefer X-axis, but use Y if gravity is along X
-            if abs(a_world[0]) < 0.9:
-                axis = np.array([1.0, 0.0, 0.0])
-            else:
-                axis = np.array([0.0, 1.0, 0.0])
-            # Make axis perpendicular to a_world
-            axis = axis - np.dot(axis, a_world) * a_world
-            axis = axis / (np.linalg.norm(axis) + 1e-12)
-            # 180° rotation around this axis
-            return (axis[0], axis[1], axis[2], 0.0)
-        
-        # Normal case: use Rodrigues formula via rotation axis
+        # Compute rotation axis perpendicular to both a_world and target
+        # This axis lies in the horizontal (X-Y) plane
         axis = np.cross(a_world, target)
         axis_len = np.linalg.norm(axis)
+        
         if axis_len < 1e-9:
-            return (0.0, 0.0, 0.0, 1.0)
+            # Vectors are parallel or anti-parallel
+            # If anti-parallel, rotate 180° around X-axis (preserves yaw)
+            if np.dot(a_world, target) < 0:
+                return (1.0, 0.0, 0.0, 0.0)  # 180° around X
+            return (0.0, 0.0, 0.0, 1.0)  # Identity
+        
+        # Normalize the rotation axis
         axis = axis / axis_len
         
-        # Half-angle for quaternion
-        half_angle = 0.5 * np.arccos(np.clip(dot, -1.0, 1.0))
+        # Compute rotation angle
+        # Use atan2 for better numerical stability than acos
+        angle = np.arctan2(axis_len, np.dot(a_world, target))
+        
+        # Create quaternion for this axis-angle rotation
+        half_angle = 0.5 * angle
         s = np.sin(half_angle)
         c = np.cos(half_angle)
         
@@ -316,9 +316,9 @@ class OdomTiltCorrector(Node):
             use_imu_alignment = abs(a_world[2]) > 0.8  # Reasonable vertical component
             
             if use_imu_alignment:
-                # Use robust IMU-based alignment
-                q_align_world = self.compute_alignment_quat_robust(a_world)
-                alignment_method = "IMU-based (dynamic)"
+                # Use yaw-preserving IMU-based alignment (only corrects tilt, not yaw)
+                q_align_world = self.compute_alignment_quat_yaw_preserving(a_world)
+                alignment_method = "IMU-based (yaw-preserving)"
                 self.get_logger().info(
                     f'✓ Using IMU-based alignment: a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
             else:
