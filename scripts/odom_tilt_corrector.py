@@ -133,14 +133,17 @@ class OdomTiltCorrector(Node):
     @staticmethod
     def compute_tilt_correction_matrix(a_world):
         """
-        Compute rotation matrix that corrects tilt by decomposing into
-        PURE PITCH and PURE ROLL corrections, with NO yaw component.
+        Compute PURE PITCH correction around Y-axis ONLY.
+        Assumes LiDAR is mounted with tilt only in the forward direction (pitch),
+        not sideways (roll).
         
-        This ensures that if the input orientation has zero yaw, the output
-        will also have zero yaw.
+        This gives a rotation matrix that:
+        - Corrects the forward/backward tilt (pitch around Y)
+        - Preserves yaw completely (no rotation around Z)
+        - Ignores any roll component (assumes it's sensor noise)
         
         Input: a_world = gravity direction in world frame (normalized)
-        Output: rotation matrix that levels the ground plane
+        Output: rotation matrix for pitch correction only
         """
         a_world = np.array(a_world, dtype=float)
         a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
@@ -150,39 +153,20 @@ class OdomTiltCorrector(Node):
         if a_world[2] < -0.9999:
             return np.eye(3, dtype=float)
         
-        # Decompose gravity into tilt angles without yaw
-        # Extract pitch (rotation around Y-axis): tilt in XZ plane
-        # Extract roll (rotation around X-axis): tilt in YZ plane
+        # Extract ONLY pitch (rotation around Y-axis)
+        # Project gravity onto XZ plane (forward-backward tilt)
+        # Ignore the Y component (assume no roll, just sensor noise)
+        pitch = np.arctan2(a_world[0], -a_world[2])
         
-        # Pitch angle: project gravity onto XZ plane
-        # pitch rotates around Y, so we look at X and Z components
-        pitch = np.arctan2(a_world[0], -a_world[2])  # atan2(gx, -gz)
-        
-        # Roll angle: project gravity onto YZ plane  
-        # roll rotates around X, so we look at Y and Z components
-        roll = np.arctan2(a_world[1], -a_world[2])  # atan2(gy, -gz)
-        
-        # Build rotation matrices for pure pitch and pure roll
-        # These are extrinsic rotations (applied in world frame)
+        # Build pure pitch rotation matrix around Y-axis
         cp = np.cos(pitch)
         sp = np.sin(pitch)
-        cr = np.cos(roll)
-        sr = np.sin(roll)
         
-        # Pitch rotation around Y-axis (affects X and Z)
         R_pitch = np.array([[cp,  0.0, sp],
                             [0.0, 1.0, 0.0],
                             [-sp, 0.0, cp]], dtype=float)
         
-        # Roll rotation around X-axis (affects Y and Z)
-        R_roll = np.array([[1.0,  0.0, 0.0],
-                           [0.0,  cr, -sr],
-                           [0.0,  sr,  cr]], dtype=float)
-        
-        # Combine: roll after pitch (order matters for non-commuting rotations)
-        R = R_roll @ R_pitch
-        
-        return R
+        return R_pitch
 
     @staticmethod
     def compute_alignment_quat_yaw_preserving(a_world):
@@ -370,11 +354,14 @@ class OdomTiltCorrector(Node):
             use_imu_alignment = abs(a_world[2]) > 0.8  # Reasonable vertical component
             
             if use_imu_alignment:
-                # Use matrix-based tilt correction (preserves yaw from Fast-LIO)
+                # Use pitch-only correction (strictly around Y-axis, preserves yaw)
                 R_align = self.compute_tilt_correction_matrix(a_world)
-                alignment_method = "IMU-based (tilt-only)"
+                # Compute the pitch angle for logging
+                pitch_angle = np.arctan2(a_world[0], -a_world[2])
+                alignment_method = "IMU-based (pitch-only)"
                 self.get_logger().info(
-                    f'✓ Using IMU tilt correction: a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
+                    f'✓ Using IMU pitch correction: {math.degrees(pitch_angle):.2f}° | '
+                    f'a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
             else:
                 # Fall back to fixed pitch
                 pitch_rad = -0.2617993878  # -15 degrees
