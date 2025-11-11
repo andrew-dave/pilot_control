@@ -133,49 +133,55 @@ class OdomTiltCorrector(Node):
     @staticmethod
     def compute_tilt_correction_matrix(a_world):
         """
-        Compute rotation matrix that ONLY corrects tilt to align gravity with -Z.
-        Preserves yaw from Fast-LIO's world frame completely.
+        Compute rotation matrix that corrects tilt by decomposing into
+        PURE PITCH and PURE ROLL corrections, with NO yaw component.
         
-        Method: Projects gravity onto XY plane, rotates around that direction
-        to bring gravity vertical. This naturally preserves yaw.
+        This ensures that if the input orientation has zero yaw, the output
+        will also have zero yaw.
         
         Input: a_world = gravity direction in world frame (normalized)
-        Output: rotation matrix R that maps a_world to [0, 0, -1] without changing yaw
+        Output: rotation matrix that levels the ground plane
         """
         a_world = np.array(a_world, dtype=float)
         a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
         
-        # Target: gravity pointing down
-        target = np.array([0.0, 0.0, -1.0])
-        
-        # If already aligned, return identity
-        if np.dot(a_world, target) > 0.9999:
+        # Target: gravity pointing down [0, 0, -1]
+        # Already aligned?
+        if a_world[2] < -0.9999:
             return np.eye(3, dtype=float)
         
-        # Rotation axis is perpendicular to both a_world and target
-        # This axis lies in the XY plane (horizontal), so rotation preserves yaw
-        axis = np.cross(a_world, target)
-        axis_len = np.linalg.norm(axis)
+        # Decompose gravity into tilt angles without yaw
+        # Extract pitch (rotation around Y-axis): tilt in XZ plane
+        # Extract roll (rotation around X-axis): tilt in YZ plane
         
-        if axis_len < 1e-9:
-            # Parallel or anti-parallel case
-            if np.dot(a_world, target) < 0:
-                # 180° rotation - use X-axis
-                return np.array([[ 1.0,  0.0,  0.0],
-                                [ 0.0, -1.0,  0.0],
-                                [ 0.0,  0.0, -1.0]], dtype=float)
-            return np.eye(3, dtype=float)
+        # Pitch angle: project gravity onto XZ plane
+        # pitch rotates around Y, so we look at X and Z components
+        pitch = np.arctan2(a_world[0], -a_world[2])  # atan2(gx, -gz)
         
-        # Normalize axis
-        axis = axis / axis_len
+        # Roll angle: project gravity onto YZ plane  
+        # roll rotates around X, so we look at Y and Z components
+        roll = np.arctan2(a_world[1], -a_world[2])  # atan2(gy, -gz)
         
-        # Rodrigues' rotation formula
-        angle = np.arctan2(axis_len, np.dot(a_world, target))
-        K = np.array([[    0.0, -axis[2],  axis[1]],
-                      [ axis[2],     0.0, -axis[0]],
-                      [-axis[1],  axis[0],     0.0]], dtype=float)
+        # Build rotation matrices for pure pitch and pure roll
+        # These are extrinsic rotations (applied in world frame)
+        cp = np.cos(pitch)
+        sp = np.sin(pitch)
+        cr = np.cos(roll)
+        sr = np.sin(roll)
         
-        R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
+        # Pitch rotation around Y-axis (affects X and Z)
+        R_pitch = np.array([[cp,  0.0, sp],
+                            [0.0, 1.0, 0.0],
+                            [-sp, 0.0, cp]], dtype=float)
+        
+        # Roll rotation around X-axis (affects Y and Z)
+        R_roll = np.array([[1.0,  0.0, 0.0],
+                           [0.0,  cr, -sr],
+                           [0.0,  sr,  cr]], dtype=float)
+        
+        # Combine: roll after pitch (order matters for non-commuting rotations)
+        R = R_roll @ R_pitch
+        
         return R
 
     @staticmethod
