@@ -277,6 +277,34 @@ def generate_launch_description():
         }]
     )
 
+    # PCD Processor - Process and save final maps (press M key in teleop)
+    # Uses device-agnostic paths - processes maps in ~/robot_maps (where they get copied to)
+    import os
+    home_dir = os.path.expanduser('~')
+    robot_maps_dir = os.path.join(home_dir, 'robot_maps')
+    
+    pcd_processor_node = Node(
+        package='pilot_control',
+        executable='pcd_processor',
+        name='pcd_processor',
+        output='screen',
+        parameters=[{
+            'raw_map_directory': robot_maps_dir,  # Device-agnostic: ~/robot_maps
+            'processed_map_directory': robot_maps_dir,  # Save processed maps to ~/robot_maps
+            'processing_mode': 'high_quality',  # Options: minimal, fast, high_quality
+            'voxel_size': 0.05,
+            'remove_outliers': True,
+            'outlier_std_dev': 2.0,
+            'apply_rotation_correction': True,
+            'rotation_angle': -0.2617993878,  # -15 degrees in radians (tilt correction)
+            'save_format': 'pcd',
+            'auto_shutdown': False,  # Keep running (don't shutdown after processing)
+            'max_height': 2.0,
+            'min_height': 0.1,
+            'find_latest_raw_map': True  # Automatically find the latest raw map
+        }]
+    )
+
     # Shutdown Service Node (for remote shutdown)
     shutdown_service_node = Node(
         package='pilot_control',
@@ -397,6 +425,7 @@ def generate_launch_description():
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_node,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
+                pcd_processor_node,  # Enabled - processes raw maps (M key workflow)
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6

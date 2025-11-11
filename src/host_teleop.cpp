@@ -409,19 +409,41 @@ private:
                 RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
             }
             
-            // Step 4: Copy raw map from robot to laptop
+            // Step 4: Copy raw map from robot to laptop (device-agnostic)
             workflow_step_.store(4);
             RCLCPP_INFO(get_logger(), "Step 4: Copying raw map from robot to laptop...");
             
-            // Use a simple system call with proper error handling
-            RCLCPP_INFO(get_logger(), "Executing copy script...");
-            int copy_result = std::system("/home/avenblake/pilot_ws/src/pilot_control/scripts/copy_latest_map.sh");
-            RCLCPP_INFO(get_logger(), "Copy script completed with exit code: %d", copy_result);
+            // Build device-agnostic copy command using environment variables
+            const char* home_dir = std::getenv("HOME");
+            const char* robot_user = std::getenv("ROBOT_USER");
+            const char* robot_ip = std::getenv("ROBOT_IP");
+            const char* robot_data_dir = std::getenv("ROBOT_DATA_DIR");
+            
+            // Defaults if environment variables not set
+            std::string robot_user_str = robot_user ? robot_user : "roofus";
+            std::string robot_ip_str = robot_ip ? robot_ip : "172.16.14.113";
+            std::string robot_data_dir_str = robot_data_dir ? robot_data_dir : "/R_DATA";
+            std::string local_maps_dir = std::string(home_dir ? home_dir : "/tmp") + "/robot_maps";
+            
+            // Create local directory
+            std::string mkdir_cmd = "mkdir -p " + local_maps_dir;
+            std::system(mkdir_cmd.c_str());
+            
+            // Find and copy latest raw map using SSH + rsync
+            std::string copy_cmd = 
+                "LATEST=$(ssh -o ConnectTimeout=5 " + robot_user_str + "@" + robot_ip_str + 
+                " 'find " + robot_data_dir_str + " -name \"raw_map_*.pcd\" -type f -printf \"%T@ %p\\n\" | sort -rn | head -1 | cut -d\" \" -f2-') && "
+                "[ -n \"$LATEST\" ] && rsync -avz " + robot_user_str + "@" + robot_ip_str + ":\"$LATEST\" " + local_maps_dir + "/";
+            
+            RCLCPP_INFO(get_logger(), "Copying from %s@%s:%s to %s", 
+                       robot_user_str.c_str(), robot_ip_str.c_str(), robot_data_dir_str.c_str(), local_maps_dir.c_str());
+            
+            int copy_result = std::system(copy_cmd.c_str());
             
             if (copy_result == 0) {
-                RCLCPP_INFO(get_logger(), "✓ Raw map copied to laptop successfully");
+                RCLCPP_INFO(get_logger(), "✓ Raw map copied to %s successfully", local_maps_dir.c_str());
             } else {
-                RCLCPP_ERROR(get_logger(), "✗ Failed to copy raw map to laptop (exit code: %d)", copy_result);
+                RCLCPP_ERROR(get_logger(), "✗ Failed to copy raw map (exit code: %d)", copy_result);
                 RCLCPP_ERROR(get_logger(), "Continuing with processing anyway...");
             }
             
