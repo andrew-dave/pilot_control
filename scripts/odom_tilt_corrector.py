@@ -6,6 +6,8 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 import numpy as np
 import math
+import os
+from datetime import datetime
 
 
 class OdomTiltCorrector(Node):
@@ -17,11 +19,13 @@ class OdomTiltCorrector(Node):
         self.declare_parameter('accel_topic', '/livox/imu')
         self.declare_parameter('accel_samples', 10)
         self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected_diff')
+        self.declare_parameter('save_directory', '')  # Session folder path for saving transformation
 
         self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.accel_topic = str(self.get_parameter('accel_topic').value)
         self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
         self.output_topic = str(self.get_parameter('corrected_odometry_topic').value)
+        self.save_directory = str(self.get_parameter('save_directory').value)
 
         # State
         self.accel_initialized = False
@@ -389,6 +393,17 @@ class OdomTiltCorrector(Node):
                     f'gravity aligned to [{a_flat[0]:.3f}, {a_flat[1]:.3f}, {a_flat[2]:.3f}]')
             except Exception:
                 pass
+            
+            # Save transformation details to file
+            self.save_transformation_details(
+                R_map=self.R_map,
+                R_align=R_align,
+                R_flip=R_flip,
+                a_world=a_world,
+                a_body=self.accel_avg,
+                alignment_method=alignment_method,
+                pitch_angle=pitch_angle if use_imu_alignment else -0.2617993878
+            )
 
         # Establish origin in leveled world
         if not self.origin_set and self.alignment_set:
@@ -502,6 +517,85 @@ class OdomTiltCorrector(Node):
         cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return roll, pitch, yaw
+    
+    def save_transformation_details(self, R_map, R_align, R_flip, a_world, a_body, alignment_method, pitch_angle):
+        """Save the computed transformation details to CSV and numpy files"""
+        if not self.save_directory or not os.path.exists(self.save_directory):
+            self.get_logger().warn(f'Save directory not set or does not exist: {self.save_directory}')
+            return
+        
+        try:
+            timestamp = datetime.now()
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            
+            # Save rotation matrices as numpy binary (for precise reconstruction)
+            np_file = os.path.join(self.save_directory, f'tilt_correction_matrices_{timestamp_str}.npz')
+            np.savez(
+                np_file,
+                R_map=R_map,
+                R_align=R_align,
+                R_flip=R_flip,
+                a_world=a_world,
+                a_body=a_body,
+                pitch_angle=pitch_angle,
+                timestamp=timestamp_str
+            )
+            
+            # Save human-readable CSV with transformation details
+            csv_file = os.path.join(self.save_directory, f'tilt_correction_details_{timestamp_str}.csv')
+            with open(csv_file, 'w') as f:
+                f.write('# Tilt Correction Transformation Details\n')
+                f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
+                f.write(f'# Method: {alignment_method}\n')
+                f.write(f'# Pitch Angle: {math.degrees(pitch_angle):.6f} degrees ({pitch_angle:.6f} radians)\n')
+                f.write('#\n')
+                
+                # Acceleration vectors
+                f.write('# Acceleration Body Frame (raw IMU average)\n')
+                f.write(f'accel_body_x,accel_body_y,accel_body_z\n')
+                f.write(f'{a_body[0]:.6f},{a_body[1]:.6f},{a_body[2]:.6f}\n')
+                f.write('#\n')
+                
+                f.write('# Gravity Direction World Frame (before correction)\n')
+                f.write(f'gravity_world_x,gravity_world_y,gravity_world_z\n')
+                f.write(f'{a_world[0]:.6f},{a_world[1]:.6f},{a_world[2]:.6f}\n')
+                f.write('#\n')
+                
+                # Rotation matrices
+                f.write('# R_align (Tilt Alignment Matrix)\n')
+                f.write('R_align_00,R_align_01,R_align_02\n')
+                f.write('R_align_10,R_align_11,R_align_12\n')
+                f.write('R_align_20,R_align_21,R_align_22\n')
+                for i in range(3):
+                    f.write(f'{R_align[i,0]:.8f},{R_align[i,1]:.8f},{R_align[i,2]:.8f}\n')
+                f.write('#\n')
+                
+                f.write('# R_flip (Coordinate Flip Matrix)\n')
+                f.write('R_flip_00,R_flip_01,R_flip_02\n')
+                f.write('R_flip_10,R_flip_11,R_flip_12\n')
+                f.write('R_flip_20,R_flip_21,R_flip_22\n')
+                for i in range(3):
+                    f.write(f'{R_flip[i,0]:.8f},{R_flip[i,1]:.8f},{R_flip[i,2]:.8f}\n')
+                f.write('#\n')
+                
+                f.write('# R_map (Final Transformation: R_flip @ R_align)\n')
+                f.write('R_map_00,R_map_01,R_map_02\n')
+                f.write('R_map_10,R_map_11,R_map_12\n')
+                f.write('R_map_20,R_map_21,R_map_22\n')
+                for i in range(3):
+                    f.write(f'{R_map[i,0]:.8f},{R_map[i,1]:.8f},{R_map[i,2]:.8f}\n')
+                f.write('#\n')
+                
+                # Verification: corrected gravity
+                a_corrected = R_map @ a_world
+                f.write('# Gravity After Correction (should be [0, 0, -1])\n')
+                f.write(f'gravity_corrected_x,gravity_corrected_y,gravity_corrected_z\n')
+                f.write(f'{a_corrected[0]:.6f},{a_corrected[1]:.6f},{a_corrected[2]:.6f}\n')
+            
+            self.get_logger().info(f'✓ Transformation saved to:\n  - {np_file}\n  - {csv_file}')
+            
+        except Exception as e:
+            self.get_logger().error(f'Failed to save transformation details: {e}')
 
 
 def main(args=None):

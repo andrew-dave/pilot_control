@@ -62,6 +62,10 @@ def generate_launch_description():
         description='Base directory for all robot data collection.'
     )
 
+    # Setup folder structure for this session
+    base_data_dir = '/R_DATA'
+    folder_paths = setup_data_folders(base_data_dir)
+    
     # Odometry Tilt Corrector (Node launch for timing consistency)
     odom_tilt_corrector_node = Node(
         package='pilot_control',
@@ -72,23 +76,21 @@ def generate_launch_description():
             'odometry_topic': '/Odometry',
             'accel_topic': '/livox/imu',
             'accel_samples': 10,
-            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff'
+            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
+            'save_directory': folder_paths['section_folder']  # Save transformation to session folder
         }]
     )
-
-    # Setup folder structure for this session
-    base_data_dir = '/R_DATA'
-    folder_paths = setup_data_folders(base_data_dir)
     
     print("\n" + "="*70)
     print("DATA COLLECTION SESSION SETUP")
     print("="*70)
     print(f"Day Folder:     {folder_paths['day_name']}")
     print(f"Section:        {folder_paths['section_name']}")
+    print(f"Section Path:   {folder_paths['section_folder']}")
     print(f"Visual Data:    {folder_paths['visual_data_folder']}")
     print(f"GPR Scan Data:  {folder_paths['gpr_scan_folder']}")
+    print("Note: Tilt correction transformation will be saved to Section folder")
     print("="*70 + "\n")
-    print("Raj is a baaaaad boy")
     # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
     unified_data_collector_node = Node(
         package='pilot_control',
