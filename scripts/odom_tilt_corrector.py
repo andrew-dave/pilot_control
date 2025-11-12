@@ -394,21 +394,29 @@ class OdomTiltCorrector(Node):
             except Exception:
                 pass
             
-            # Save transformation details to file
-            self.save_transformation_details(
-                R_map=self.R_map,
-                R_align=R_align,
-                R_flip=R_flip,
-                a_world=a_world,
-                a_body=self.accel_avg,
-                alignment_method=alignment_method,
-                pitch_angle=pitch_angle if use_imu_alignment else -0.2617993878
-            )
+            # Save transformation details to file (after origin is set)
+            # Note: p0_world will be saved when origin_set becomes True
+            self._transformation_data = {
+                'R_map': self.R_map,
+                'R_align': R_align,
+                'R_flip': R_flip,
+                'a_world': a_world,
+                'a_body': self.accel_avg,
+                'alignment_method': alignment_method,
+                'pitch_angle': pitch_angle if use_imu_alignment else -0.2617993878
+            }
+            self._transformation_ready_to_save = True
 
         # Establish origin in leveled world
         if not self.origin_set and self.alignment_set:
             self.p0_world = raw_pos.copy()
             self.origin_set = True
+            
+            # Now save transformation with complete origin information
+            if hasattr(self, '_transformation_ready_to_save') and self._transformation_ready_to_save:
+                self._transformation_data['p0_world'] = self.p0_world
+                self.save_transformation_details(**self._transformation_data)
+                self._transformation_ready_to_save = False  # Save only once
 
         # Leveled world position and orientation (matrix-based) with flip+align mapping
         p_local = self.R_map @ (raw_pos - self.p0_world)
@@ -518,7 +526,7 @@ class OdomTiltCorrector(Node):
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return roll, pitch, yaw
     
-    def save_transformation_details(self, R_map, R_align, R_flip, a_world, a_body, alignment_method, pitch_angle):
+    def save_transformation_details(self, R_map, R_align, R_flip, a_world, a_body, alignment_method, pitch_angle, p0_world):
         """Save the computed transformation details to CSV and numpy files"""
         if not self.save_directory or not os.path.exists(self.save_directory):
             self.get_logger().warn(f'Save directory not set or does not exist: {self.save_directory}')
@@ -538,6 +546,7 @@ class OdomTiltCorrector(Node):
                 a_world=a_world,
                 a_body=a_body,
                 pitch_angle=pitch_angle,
+                p0_world=p0_world,
                 timestamp=timestamp_str
             )
             
@@ -548,6 +557,15 @@ class OdomTiltCorrector(Node):
                 f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
                 f.write(f'# Method: {alignment_method}\n')
                 f.write(f'# Pitch Angle: {math.degrees(pitch_angle):.6f} degrees ({pitch_angle:.6f} radians)\n')
+                f.write('#\n')
+                
+                # Origin offset
+                f.write('# Origin Offset (p0_world - first raw odometry position)\n')
+                f.write(f'p0_world_x,p0_world_y,p0_world_z\n')
+                f.write(f'{p0_world[0]:.6f},{p0_world[1]:.6f},{p0_world[2]:.6f}\n')
+                f.write('#\n')
+                f.write('# Complete Transformation Formula:\n')
+                f.write('# p_corrected = R_map @ (p_raw - p0_world)\n')
                 f.write('#\n')
                 
                 # Acceleration vectors
