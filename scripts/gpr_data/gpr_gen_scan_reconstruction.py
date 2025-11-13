@@ -19,9 +19,18 @@ Pipeline:
 - Save output CSV: first col TWT, columns are POI traces; append x,y,z rows of POIs
 - Plot result with optional interactive tuning
 
+Contrast Enhancement Options:
+- percentile: Basic percentile-based amplitude clipping (default)
+- agc: Automatic Gain Control - normalizes by local RMS in sliding window
+- histeq: Histogram equalization - spreads amplitude distribution evenly
+- log: Logarithmic scaling - emphasizes weak signals
+
 Interactive Slider Mode (--sliders):
 - Adjust all processing parameters in real-time with visual feedback
-- POI spacing, tolerance, smoothing window, weight radius, contrast settings
+- POI spacing, tolerance, smoothing window, weight radius, declutter radius
+- Contrast method, AGC window, contrast percentile, colormap selection
+- Find optimal parameters before saving final reconstruction
+- Buttons to save reconstructed CSV and visualization plot
 """
 
 import sys
@@ -295,6 +304,502 @@ def apply_contrast_enhancement(data: np.ndarray, method: str = 'percentile',
     return enhanced
 
 
+def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
+    """Interactive plot with parameter sliders for real-time tuning.
+    
+    Args:
+        data_dict: dict with 'twt', 'A_T', 'px', 'py', 'pz' from load_at_with_xyz_csv
+        initial_params: dict with initial values for all parameters
+    """
+    plt = _import_matplotlib_pyplot()
+    Slider, RadioButtons, Button = _import_matplotlib_widgets()
+    if plt is None or Slider is None:
+        print("Interactive sliders require matplotlib with widgets support.")
+        return
+    
+    twt = data_dict['twt']
+    A_T = data_dict['A_T']
+    px = data_dict['px']
+    py = data_dict['py']
+    pz = data_dict['pz']
+    
+    if A_T.size == 0:
+        print("Empty data; cannot plot.")
+        return
+    
+    # Compute initial pose (doesn't change with sliders)
+    initial_k = initial_params.get('initial_k', 10)
+    initial = compute_initial_pose(px, py, pz, k=initial_k)
+    
+    # Create figure with space for sliders at bottom
+    fig = plt.figure(figsize=(14, 10))
+    
+    # Main plot takes upper portion
+    ax_main = plt.axes([0.1, 0.35, 0.75, 0.60])
+    ax_pos = plt.axes([0.87, 0.35, 0.08, 0.60])  # Position axis on right
+    
+    # Slider axes in lower portion
+    slider_height = 0.02
+    slider_spacing = 0.03
+    slider_left = 0.15
+    slider_width = 0.7
+    
+    # Reconstruction parameter sliders (top section)
+    ax_spacing = plt.axes([slider_left, 0.28, slider_width, slider_height])
+    ax_tolerance = plt.axes([slider_left, 0.25, slider_width, slider_height])
+    ax_smoothing = plt.axes([slider_left, 0.22, slider_width, slider_height])
+    ax_weight_r = plt.axes([slider_left, 0.19, slider_width, slider_height])
+    ax_declutter_r = plt.axes([slider_left, 0.16, slider_width, slider_height])
+    
+    # Contrast/visualization sliders (bottom section)
+    ax_agc_win = plt.axes([slider_left, 0.10, slider_width, slider_height])
+    ax_contrast_pct = plt.axes([slider_left, 0.07, slider_width, slider_height])
+    
+    # Contrast method selection and buttons
+    ax_contrast_method = plt.axes([0.02, 0.02, 0.15, 0.08])
+    ax_colormap = plt.axes([0.88, 0.12, 0.08, 0.10])
+    ax_inspect_mode = plt.axes([0.75, 0.02, 0.10, 0.08])
+    ax_print_button = plt.axes([0.20, 0.02, 0.12, 0.03])
+    ax_save_csv_button = plt.axes([0.35, 0.02, 0.12, 0.03])
+    ax_save_plot_button = plt.axes([0.50, 0.02, 0.12, 0.03])
+    
+    # Add section labels
+    fig.text(slider_left - 0.02, 0.30, 'Reconstruction Parameters:', 
+             fontsize=10, fontweight='bold', ha='right')
+    fig.text(slider_left - 0.02, 0.12, 'Contrast Enhancement:', 
+             fontsize=10, fontweight='bold', ha='right', color='purple')
+    fig.text(0.02, 0.105, 'Method', fontsize=9, fontweight='bold', ha='left')
+    fig.text(0.88, 0.23, 'Colormap', fontsize=9, fontweight='bold', ha='left')
+    fig.text(0.75, 0.105, 'Inspect', fontsize=9, fontweight='bold', ha='left')
+    
+    # Create sliders
+    slider_spacing_m = Slider(ax_spacing, 'POI Spacing (mm)', 1.0, 20.0, 
+                               valinit=initial_params.get('spacing_m', 0.005) * 1000, 
+                               valstep=0.5, color='skyblue')
+    slider_tolerance = Slider(ax_tolerance, 'Tolerance (±%)', 5.0, 50.0,
+                              valinit=initial_params.get('tolerance', 0.3) * 100,
+                              valstep=5.0, color='lightcyan')
+    slider_smoothing = Slider(ax_smoothing, 'Smoothing Window', 1, 15,
+                              valinit=initial_params.get('smoothing_window', 5),
+                              valstep=1, color='lightsteelblue')
+    slider_weight_r = Slider(ax_weight_r, 'Weight Radius (mm)', 0.5, 10.0, 
+                              valinit=initial_params.get('weight_radius_m', 0.0025) * 1000, 
+                              valstep=0.1, color='lightgreen')
+    slider_declutter_r = Slider(ax_declutter_r, 'Declutter Radius (mm)', 0.1, 5.0, 
+                                 valinit=initial_params.get('declutter_radius_m', 0.0010) * 1000, 
+                                 valstep=0.1, color='lightyellow')
+    slider_agc_win = Slider(ax_agc_win, 'AGC Window (samples)', 10, 200, 
+                            valinit=initial_params.get('agc_window', 50), 
+                            valstep=5, color='lightcoral')
+    slider_contrast_pct = Slider(ax_contrast_pct, 'Contrast %ile', 90.0, 99.9, 
+                                  valinit=initial_params.get('contrast_percentile', 98.0), 
+                                  valstep=0.1, color='plum')
+    
+    # Radio buttons for contrast method
+    radio_contrast = RadioButtons(ax_contrast_method, 
+                                   ('percentile', 'agc', 'histeq', 'log'),
+                                   active=['percentile', 'agc', 'histeq', 'log'].index(
+                                       initial_params.get('contrast_method', 'percentile')))
+    
+    # Radio buttons for colormap selection
+    radio_colormap = RadioButtons(ax_colormap,
+                                   ('gray', 'seismic', 'RdBu', 'viridis', 'plasma'),
+                                   active=0)
+    
+    # Radio buttons for inspect mode
+    radio_inspect = RadioButtons(ax_inspect_mode,
+                                  ('Off', 'On'),
+                                  active=0)
+    
+    # Buttons
+    btn_print = Button(ax_print_button, 'Print Params', color='lightblue', hovercolor='skyblue')
+    btn_save_csv = Button(ax_save_csv_button, 'Save CSV', color='lightgreen', hovercolor='limegreen')
+    btn_save_plot = Button(ax_save_plot_button, 'Save Plot', color='lightsalmon', hovercolor='salmon')
+    
+    # State to hold current plot objects and UI text
+    state = {
+        'im': None,
+        'pos_lines': [],
+        'colorbar': None,
+        'computing': False,
+        'param_info_text': None,
+        'A_T_reconstructed': None,  # Current reconstruction (no contrast enhancement)
+        'pois_xyz': None,  # Current POI positions
+        'twt': twt,  # TWT values (constant)
+        'first_update': True,  # Flag for first plot
+        'last_spacing_m': initial_params.get('spacing_m', 0.005),
+        'last_tolerance': initial_params.get('tolerance', 0.3),
+        'last_smoothing': initial_params.get('smoothing_window', 5),
+        'last_weight_r': initial_params.get('weight_radius_m', 0.0025),
+        'last_declutter_r': initial_params.get('declutter_radius_m', 0.0010),
+        'inspect_vline': None,  # Vertical line for trace inspection
+        'inspect_text': None,  # Text box showing location info
+        'inspect_enabled': False  # Whether inspection is active
+    }
+    
+    # Add info text for active parameters
+    state['param_info_text'] = fig.text(0.35, 0.06, '', fontsize=8, style='italic', 
+                                        color='darkblue', ha='left',
+                                        bbox=dict(boxstyle='round', fc='lightyellow', 
+                                                 ec='orange', alpha=0.7))
+    
+    def update_plot(val=None):
+        if state['computing']:
+            return
+        state['computing'] = True
+        
+        # Get current slider values
+        spacing_m = slider_spacing_m.val / 1000.0
+        tolerance = slider_tolerance.val / 100.0
+        smoothing_window = int(slider_smoothing.val)
+        weight_radius_m = slider_weight_r.val / 1000.0
+        declutter_radius_m = slider_declutter_r.val / 1000.0
+        agc_window = int(slider_agc_win.val)
+        contrast_percentile = slider_contrast_pct.val
+        contrast_method = radio_contrast.value_selected
+        colormap = radio_colormap.value_selected
+        
+        # Check if processing parameters changed (these affect reconstruction/POI generation)
+        processing_params_changed = (
+            abs(spacing_m - state['last_spacing_m']) > 1e-9 or
+            abs(tolerance - state['last_tolerance']) > 1e-9 or
+            smoothing_window != state['last_smoothing'] or
+            abs(weight_radius_m - state['last_weight_r']) > 1e-9 or
+            abs(declutter_radius_m - state['last_declutter_r']) > 1e-9
+        )
+        
+        # Store current view's LEFT and RIGHT boundary physical locations BEFORE regenerating
+        old_pois_xyz = state['pois_xyz']
+        view_left_xy = None
+        view_right_xy = None
+        if processing_params_changed and not state['first_update'] and old_pois_xyz is not None and len(old_pois_xyz) > 0:
+            # Get current x-axis limits (trace indices at left and right edges of view)
+            xlim = ax_main.get_xlim()
+            left_idx = int(np.clip(np.round(xlim[0]), 0, len(old_pois_xyz) - 1))
+            right_idx = int(np.clip(np.round(xlim[1]), 0, len(old_pois_xyz) - 1))
+            
+            # Store the physical XY positions at the view boundaries
+            view_left_xy = old_pois_xyz[left_idx, :2].copy()
+            view_right_xy = old_pois_xyz[right_idx, :2].copy()
+        
+        # Recompute POIs using direct-distance method
+        pois_xyz, poi_indices = generate_pois_direct_distance(
+            px, py, pz, initial, spacing_m, tolerance, smoothing_window
+        )
+        
+        # Recompute reconstruction
+        pois_xy = pois_xyz[:, :2]
+        A_T_out = compute_decluttered_weighted_average(
+            A_T, px, py, pois_xy,
+            radius_m=weight_radius_m,
+            declutter_r_m=declutter_radius_m,
+        )
+        
+        # Store reconstruction and POIs in state (for saving)
+        state['A_T_reconstructed'] = A_T_out
+        state['pois_xyz'] = pois_xyz
+        
+        # Apply contrast enhancement
+        A_T_enhanced = apply_contrast_enhancement(A_T_out, method=contrast_method, 
+                                                  percentile=contrast_percentile, 
+                                                  agc_window=agc_window)
+        
+        x = np.arange(A_T_enhanced.shape[1], dtype=float)
+        v = np.percentile(np.abs(A_T_enhanced), contrast_percentile) if np.isfinite(A_T_enhanced).any() else 1.0
+        
+        # Update main image
+        if state['im'] is None:
+            state['im'] = ax_main.imshow(
+                A_T_enhanced,
+                aspect="auto",
+                cmap=colormap,
+                vmin=-v,
+                vmax=v,
+                extent=[float(x[0]), float(x[-1]) if x.size > 1 else 1.0, 
+                        float(twt[-1]) if twt.size > 1 else 1.0, float(twt[0])],
+            )
+            ax_main.set_xlabel("POI index", fontsize=10)
+            ax_main.set_ylabel("TWT (ms)", fontsize=10)
+            if state['colorbar'] is None:
+                state['colorbar'] = plt.colorbar(state['im'], ax=ax_main, label="Amplitude")
+        else:
+            state['im'].set_data(A_T_enhanced)
+            state['im'].set_extent([float(x[0]), float(x[-1]) if x.size > 1 else 1.0, 
+                                    float(twt[-1]) if twt.size > 1 else 1.0, float(twt[0])])
+            state['im'].set_clim(-v, v)
+            state['im'].set_cmap(colormap)
+        
+        # Update title
+        title = f"General Trajectory Radargram ({spacing_m*1000:.1f} mm spacing, {A_T_out.shape[1]} POIs)"
+        if contrast_method != 'percentile':
+            title += f" [{contrast_method.upper()}]"
+        ax_main.set_title(title, fontsize=11)
+        
+        # Update parameter info text based on active contrast method
+        if contrast_method == 'agc':
+            info_str = f"AGC: Using window={agc_window} samples, clipping at {contrast_percentile:.1f}%ile"
+        elif contrast_method == 'percentile':
+            info_str = f"Percentile: Clipping at {contrast_percentile:.1f}%ile"
+        elif contrast_method == 'histeq':
+            info_str = f"Histogram Eq: Using {contrast_percentile:.1f}%ile for final clipping"
+        elif contrast_method == 'log':
+            info_str = f"Logarithmic: Using {contrast_percentile:.1f}%ile for final clipping"
+        else:
+            info_str = ""
+        state['param_info_text'].set_text(f"Active: {info_str}")
+        
+        # Update position plot
+        for line in state['pos_lines']:
+            line.remove()
+        state['pos_lines'] = []
+        
+        if pois_xyz.size > 0:
+            state['pos_lines'].append(ax_pos.plot(pois_xyz[:, 0], x, 'r-', linewidth=1.0, label='x')[0])
+            state['pos_lines'].append(ax_pos.plot(pois_xyz[:, 1], x, 'g-', linewidth=1.0, label='y')[0])
+            state['pos_lines'].append(ax_pos.plot(pois_xyz[:, 2], x, 'b-', linewidth=1.0, label='z')[0])
+            ax_pos.set_xlabel("Position (m)", fontsize=9)
+            ax_pos.set_ylabel("POI index", fontsize=9)
+            ax_pos.legend(loc='upper right', fontsize=8)
+            ax_pos.grid(True, alpha=0.3)
+        
+        # Restore view to anchor the same physical locations at left and right edges
+        if view_left_xy is not None and view_right_xy is not None and len(pois_xyz) > 0:
+            # Find NEW trace indices that are closest to the OLD physical boundary positions
+            distances_left = np.linalg.norm(pois_xyz[:, :2] - view_left_xy[None, :], axis=1)
+            distances_right = np.linalg.norm(pois_xyz[:, :2] - view_right_xy[None, :], axis=1)
+            
+            new_left_idx = int(np.argmin(distances_left))
+            new_right_idx = int(np.argmin(distances_right))
+            
+            # Ensure valid range
+            if new_left_idx > new_right_idx:
+                new_left_idx, new_right_idx = new_right_idx, new_left_idx
+            
+            # Add small margin to avoid exactly zero-width view
+            if new_left_idx == new_right_idx:
+                new_left_idx = max(0, new_left_idx - 1)
+                new_right_idx = min(len(pois_xyz) - 1, new_right_idx + 1)
+            
+            # Set x-axis limits to show the same physical region
+            ax_main.set_xlim(new_left_idx, new_right_idx)
+            ax_pos.set_ylim(new_left_idx, new_right_idx)
+        
+        # Update last parameter values if processing params changed
+        if processing_params_changed:
+            state['last_spacing_m'] = spacing_m
+            state['last_tolerance'] = tolerance
+            state['last_smoothing'] = smoothing_window
+            state['last_weight_r'] = weight_radius_m
+            state['last_declutter_r'] = declutter_radius_m
+        
+        # Mark that first update is complete
+        if state['first_update']:
+            state['first_update'] = False
+        
+        fig.canvas.draw_idle()
+        state['computing'] = False
+    
+    def print_params(event):
+        """Print current parameter values to console."""
+        print("\n" + "="*60)
+        print("CURRENT PARAMETER VALUES:")
+        print("="*60)
+        print(f"  --spacing_m {slider_spacing_m.val / 1000.0:.6f}")
+        print(f"  --tolerance {slider_tolerance.val / 100.0:.3f}")
+        print(f"  --smoothing_window {int(slider_smoothing.val)}")
+        print(f"  --weight_radius_m {slider_weight_r.val / 1000.0:.6f}")
+        print(f"  --declutter_radius_m {slider_declutter_r.val / 1000.0:.6f}")
+        print(f"  --agc_window {int(slider_agc_win.val)}")
+        print(f"  --contrast_percentile {slider_contrast_pct.val:.2f}")
+        print(f"  --contrast {radio_contrast.value_selected}")
+        print("="*60)
+        print("Copy these values to use in command line for batch processing.")
+        print("="*60 + "\n")
+    
+    def save_csv_callback(event):
+        """Save reconstructed CSV with current processing parameters."""
+        if state['A_T_reconstructed'] is None or state['pois_xyz'] is None:
+            print("No reconstruction data available to save.")
+            return
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        spacing_str = f"{slider_spacing_m.val:.1f}mm"
+        output_path = f"gen_reconstructed_{spacing_str}_{timestamp}.csv"
+        
+        # Save using the same format as save_output_csv
+        A_T_out = state['A_T_reconstructed']
+        pois_xyz = state['pois_xyz']
+        twt = state['twt']
+        
+        header_cols = ["twt"] + [f"poi{i}" for i in range(A_T_out.shape[1])]
+        mat = np.column_stack((twt, A_T_out))
+        # Append x,y,z rows with blank in first cell
+        x_row = np.concatenate(([np.nan], pois_xyz[:, 0]))
+        y_row = np.concatenate(([np.nan], pois_xyz[:, 1]))
+        z_row = np.concatenate(([np.nan], pois_xyz[:, 2]))
+        out_mat = np.vstack((mat, x_row[None, :], y_row[None, :], z_row[None, :]))
+        
+        try:
+            with open(output_path, 'w', newline='') as f:
+                w = csv.writer(f, lineterminator='\n')
+                w.writerow(header_cols)
+                for r in out_mat:
+                    w.writerow([f"{v:.10g}" if np.isfinite(v) else "" for v in r])
+            print(f"\n✓ Saved reconstructed CSV: {output_path}")
+            print(f"  Parameters: spacing={slider_spacing_m.val:.1f}mm, "
+                  f"tolerance=±{slider_tolerance.val:.0f}%, smoothing={int(slider_smoothing.val)}")
+            print(f"  Shape: {A_T_out.shape[0]} samples × {A_T_out.shape[1]} POIs\n")
+        except Exception as e:
+            print(f"✗ Failed to save CSV: {e}")
+    
+    def save_plot_callback(event):
+        """Save current radargram visualization (main plot only, no UI controls)."""
+        if state['A_T_reconstructed'] is None:
+            print("No reconstruction data available to save.")
+            return
+        
+        # Generate filename with timestamp and parameters
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        spacing_str = f"{slider_spacing_m.val:.1f}mm"
+        contrast_str = radio_contrast.value_selected
+        output_path = f"gen_radargram_{spacing_str}_{contrast_str}_{timestamp}.png"
+        
+        try:
+            # Create a new figure with just the radargram
+            save_fig, save_ax = plt.subplots(figsize=(12, 6))
+            
+            # Get current visualization parameters
+            spacing_m = slider_spacing_m.val / 1000.0
+            agc_window = int(slider_agc_win.val)
+            contrast_percentile = slider_contrast_pct.val
+            contrast_method = radio_contrast.value_selected
+            colormap = radio_colormap.value_selected
+            
+            # Apply contrast enhancement
+            A_T_enhanced = apply_contrast_enhancement(state['A_T_reconstructed'], 
+                                                     method=contrast_method, 
+                                                     percentile=contrast_percentile, 
+                                                     agc_window=agc_window)
+            
+            x = np.arange(A_T_enhanced.shape[1], dtype=float)
+            v = np.percentile(np.abs(A_T_enhanced), contrast_percentile) if np.isfinite(A_T_enhanced).any() else 1.0
+            twt = state['twt']
+            
+            # Plot radargram
+            im = save_ax.imshow(
+                A_T_enhanced,
+                aspect="auto",
+                cmap=colormap,
+                vmin=-v,
+                vmax=v,
+                extent=[float(x[0]), float(x[-1]) if x.size > 1 else 1.0, 
+                        float(twt[-1]) if twt.size > 1 else 1.0, float(twt[0])],
+            )
+            save_ax.set_xlabel("POI index", fontsize=11)
+            save_ax.set_ylabel("TWT (ms)", fontsize=11)
+            
+            title = f"General Trajectory Radargram ({spacing_m*1000:.1f} mm spacing, {A_T_enhanced.shape[1]} POIs)"
+            if contrast_method != 'percentile':
+                title += f" [{contrast_method.upper()}]"
+            save_ax.set_title(title, fontsize=12)
+            save_fig.colorbar(im, ax=save_ax, label="Amplitude")
+            
+            plt.tight_layout()
+            save_fig.savefig(output_path, dpi=300, bbox_inches='tight')
+            plt.close(save_fig)
+            
+            print(f"\n✓ Saved radargram plot: {output_path}")
+            print(f"  Visualization: {contrast_method} with {colormap} colormap")
+            print(f"  Resolution: 300 DPI\n")
+        except Exception as e:
+            print(f"✗ Failed to save plot: {e}")
+    
+    def toggle_inspect_mode(label):
+        """Toggle trace inspection mode on/off."""
+        state['inspect_enabled'] = (label == 'On')
+        if not state['inspect_enabled']:
+            # Remove inspection visuals when turned off
+            if state['inspect_vline'] is not None:
+                state['inspect_vline'].remove()
+                state['inspect_vline'] = None
+            if state['inspect_text'] is not None:
+                state['inspect_text'].remove()
+                state['inspect_text'] = None
+            fig.canvas.draw_idle()
+    
+    def on_mouse_move(event):
+        """Handle mouse motion for trace inspection."""
+        if not state['inspect_enabled'] or event.inaxes != ax_main:
+            return
+        
+        if state['pois_xyz'] is None or len(state['pois_xyz']) == 0:
+            return
+        
+        if event.xdata is None:
+            return
+        
+        # Find nearest trace index
+        trace_idx = int(np.clip(np.round(event.xdata), 0, len(state['pois_xyz']) - 1))
+        
+        # Get location for this trace
+        x_pos = state['pois_xyz'][trace_idx, 0]
+        y_pos = state['pois_xyz'][trace_idx, 1]
+        z_pos = state['pois_xyz'][trace_idx, 2]
+        
+        # Update or create vertical line
+        if state['inspect_vline'] is None:
+            state['inspect_vline'] = ax_main.axvline(trace_idx, color='yellow', linewidth=1.5, 
+                                                     alpha=0.8, linestyle='--')
+        else:
+            state['inspect_vline'].set_xdata([trace_idx, trace_idx])
+        
+        # Update or create text box
+        info_str = f"Trace: {trace_idx}\nX: {x_pos:.4f} m\nY: {y_pos:.4f} m\nZ: {z_pos:.4f} m"
+        
+        if state['inspect_text'] is None:
+            state['inspect_text'] = ax_main.text(0.02, 0.98, info_str,
+                                                 transform=ax_main.transAxes,
+                                                 verticalalignment='top',
+                                                 fontsize=9,
+                                                 bbox=dict(boxstyle='round', facecolor='wheat', 
+                                                          alpha=0.9, edgecolor='orange', linewidth=2))
+        else:
+            state['inspect_text'].set_text(info_str)
+        
+        fig.canvas.draw_idle()
+    
+    # Connect sliders and controls to update function
+    slider_spacing_m.on_changed(update_plot)
+    slider_tolerance.on_changed(update_plot)
+    slider_smoothing.on_changed(update_plot)
+    slider_weight_r.on_changed(update_plot)
+    slider_declutter_r.on_changed(update_plot)
+    slider_agc_win.on_changed(update_plot)
+    slider_contrast_pct.on_changed(update_plot)
+    radio_contrast.on_clicked(update_plot)
+    radio_colormap.on_clicked(update_plot)
+    radio_inspect.on_clicked(toggle_inspect_mode)
+    
+    # Connect mouse motion event for inspection
+    fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
+    
+    # Connect buttons
+    btn_print.on_clicked(print_params)
+    btn_save_csv.on_clicked(save_csv_callback)
+    btn_save_plot.on_clicked(save_plot_callback)
+    
+    # Initial plot
+    update_plot()
+    
+    # Add instruction text
+    fig.text(0.5, 0.005, 
+             "Adjust sliders to tune parameters | 'Save CSV' saves reconstruction data | 'Save Plot' saves radargram image (300 DPI)",
+             ha='center', fontsize=9, style='italic', color='gray')
+    
+    plt.show()
+
+
 def plot_trajectory_and_pois(px: np.ndarray, py: np.ndarray, pois_xyz: np.ndarray):
     """Plot the trajectory path and POI positions for verification."""
     plt = _import_matplotlib_pyplot()
@@ -413,9 +918,11 @@ def main():
     parser.add_argument('--plot', action='store_true', help='Display reconstructed radargram')
     parser.add_argument('--plot_trajectory', action='store_true', help='Display trajectory with POI placement')
     parser.add_argument('--save_plot', type=str, default=None, help='Optional path to save radargram plot')
+    parser.add_argument('--sliders', action='store_true', 
+                        help='Enable interactive sliders for real-time parameter tuning (overrides --plot and --save_plot)')
     parser.add_argument('--contrast', type=str, default='percentile', 
                         choices=['percentile', 'agc', 'histeq', 'log'],
-                        help='Contrast enhancement method')
+                        help='Contrast enhancement method: percentile (default), agc, histeq, or log')
     parser.add_argument('--contrast_percentile', type=float, default=98.0,
                         help='Percentile for amplitude clipping (default: 98.0)')
     parser.add_argument('--agc_window', type=int, default=50,
@@ -440,6 +947,24 @@ def main():
 
     print(f"Loaded {A_T.shape[0]} time samples × {A_T.shape[1]} traces")
 
+    # Interactive slider mode - skip saving and jump to interactive tuning
+    if args.sliders:
+        print("Launching interactive slider mode for parameter tuning...")
+        initial_params = {
+            'spacing_m': args.spacing_m,
+            'tolerance': args.tolerance,
+            'smoothing_window': args.smoothing_window,
+            'weight_radius_m': args.weight_radius_m,
+            'declutter_radius_m': args.declutter_radius_m,
+            'initial_k': args.initial_k,
+            'agc_window': args.agc_window,
+            'contrast_percentile': args.contrast_percentile,
+            'contrast_method': args.contrast,
+        }
+        plot_result_interactive_sliders(data, initial_params)
+        return
+
+    # Normal mode - compute reconstruction and save
     # Compute initial pose
     initial = compute_initial_pose(px, py, pz, k=args.initial_k)
     print(f"Initial pose: x={initial[0]:.4f}, y={initial[1]:.4f}, z={initial[2]:.4f}")

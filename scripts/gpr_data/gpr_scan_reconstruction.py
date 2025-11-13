@@ -316,6 +316,7 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
     # Contrast method selection and buttons
     ax_contrast_method = plt.axes([0.02, 0.02, 0.15, 0.08])
     ax_colormap = plt.axes([0.88, 0.16, 0.08, 0.10])
+    ax_inspect_mode = plt.axes([0.75, 0.02, 0.10, 0.08])
     ax_print_button = plt.axes([0.20, 0.05, 0.12, 0.04])
     ax_save_csv_button = plt.axes([0.35, 0.05, 0.12, 0.04])
     ax_save_plot_button = plt.axes([0.50, 0.05, 0.12, 0.04])
@@ -327,6 +328,7 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
              fontsize=10, fontweight='bold', ha='right', color='purple')
     fig.text(0.02, 0.105, 'Method', fontsize=9, fontweight='bold', ha='left')
     fig.text(0.88, 0.27, 'Colormap', fontsize=9, fontweight='bold', ha='left')
+    fig.text(0.75, 0.105, 'Inspect', fontsize=9, fontweight='bold', ha='left')
     
     # Create sliders
     slider_spacing_m = Slider(ax_spacing, 'POI Spacing (mm)', 1.0, 20.0, 
@@ -356,6 +358,11 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
                                    ('gray', 'seismic', 'RdBu', 'viridis', 'plasma'),
                                    active=0)
     
+    # Radio buttons for inspect mode
+    radio_inspect = RadioButtons(ax_inspect_mode,
+                                  ('Off', 'On'),
+                                  active=0)
+    
     # Buttons
     btn_print = Button(ax_print_button, 'Print Params', color='lightblue', hovercolor='skyblue')
     btn_save_csv = Button(ax_save_csv_button, 'Save CSV', color='lightgreen', hovercolor='limegreen')
@@ -370,7 +377,14 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
         'param_info_text': None,
         'A_T_reconstructed': None,  # Current reconstruction (no contrast enhancement)
         'pois_xyz': None,  # Current POI positions
-        'twt': twt  # TWT values (constant)
+        'twt': twt,  # TWT values (constant)
+        'first_update': True,  # Flag for first plot
+        'last_spacing_m': initial_params.get('spacing_m', 0.005),
+        'last_weight_r': initial_params.get('weight_radius_m', 0.0025),
+        'last_declutter_r': initial_params.get('declutter_radius_m', 0.0010),
+        'inspect_vline': None,  # Vertical line for trace inspection
+        'inspect_text': None,  # Text box showing location info
+        'inspect_enabled': False  # Whether inspection is active
     }
     
     # Add info text for active parameters
@@ -392,6 +406,27 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
         contrast_percentile = slider_contrast_pct.val
         contrast_method = radio_contrast.value_selected
         colormap = radio_colormap.value_selected
+        
+        # Check if processing parameters changed (these affect reconstruction/POI generation)
+        processing_params_changed = (
+            abs(spacing_m - state['last_spacing_m']) > 1e-9 or
+            abs(weight_radius_m - state['last_weight_r']) > 1e-9 or
+            abs(declutter_radius_m - state['last_declutter_r']) > 1e-9
+        )
+        
+        # Store current view's LEFT and RIGHT boundary physical locations BEFORE regenerating
+        old_pois_xyz = state['pois_xyz']
+        view_left_xy = None
+        view_right_xy = None
+        if processing_params_changed and not state['first_update'] and old_pois_xyz is not None and len(old_pois_xyz) > 0:
+            # Get current x-axis limits (trace indices at left and right edges of view)
+            xlim = ax_main.get_xlim()
+            left_idx = int(np.clip(np.round(xlim[0]), 0, len(old_pois_xyz) - 1))
+            right_idx = int(np.clip(np.round(xlim[1]), 0, len(old_pois_xyz) - 1))
+            
+            # Store the physical XY positions at the view boundaries
+            view_left_xy = old_pois_xyz[left_idx, :2].copy()
+            view_right_xy = old_pois_xyz[right_idx, :2].copy()
         
         # Recompute POIs
         pois_xy = generate_pois((initial[0], initial[1]), heading, spacing_m, px, py)
@@ -470,6 +505,38 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
             ax_pos.set_ylabel("POI index", fontsize=9)
             ax_pos.legend(loc='upper right', fontsize=8)
             ax_pos.grid(True, alpha=0.3)
+        
+        # Restore view to anchor the same physical locations at left and right edges
+        if view_left_xy is not None and view_right_xy is not None and len(pois_xyz) > 0:
+            # Find NEW trace indices that are closest to the OLD physical boundary positions
+            distances_left = np.linalg.norm(pois_xyz[:, :2] - view_left_xy[None, :], axis=1)
+            distances_right = np.linalg.norm(pois_xyz[:, :2] - view_right_xy[None, :], axis=1)
+            
+            new_left_idx = int(np.argmin(distances_left))
+            new_right_idx = int(np.argmin(distances_right))
+            
+            # Ensure valid range
+            if new_left_idx > new_right_idx:
+                new_left_idx, new_right_idx = new_right_idx, new_left_idx
+            
+            # Add small margin to avoid exactly zero-width view
+            if new_left_idx == new_right_idx:
+                new_left_idx = max(0, new_left_idx - 1)
+                new_right_idx = min(len(pois_xyz) - 1, new_right_idx + 1)
+            
+            # Set x-axis limits to show the same physical region
+            ax_main.set_xlim(new_left_idx, new_right_idx)
+            ax_pos.set_ylim(new_left_idx, new_right_idx)
+        
+        # Update last parameter values if processing params changed
+        if processing_params_changed:
+            state['last_spacing_m'] = spacing_m
+            state['last_weight_r'] = weight_radius_m
+            state['last_declutter_r'] = declutter_radius_m
+        
+        # Mark that first update is complete
+        if state['first_update']:
+            state['first_update'] = False
         
         fig.canvas.draw_idle()
         state['computing'] = False
@@ -589,6 +656,60 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
         except Exception as e:
             print(f"✗ Failed to save plot: {e}")
     
+    def toggle_inspect_mode(label):
+        """Toggle trace inspection mode on/off."""
+        state['inspect_enabled'] = (label == 'On')
+        if not state['inspect_enabled']:
+            # Remove inspection visuals when turned off
+            if state['inspect_vline'] is not None:
+                state['inspect_vline'].remove()
+                state['inspect_vline'] = None
+            if state['inspect_text'] is not None:
+                state['inspect_text'].remove()
+                state['inspect_text'] = None
+            fig.canvas.draw_idle()
+    
+    def on_mouse_move(event):
+        """Handle mouse motion for trace inspection."""
+        if not state['inspect_enabled'] or event.inaxes != ax_main:
+            return
+        
+        if state['pois_xyz'] is None or len(state['pois_xyz']) == 0:
+            return
+        
+        if event.xdata is None:
+            return
+        
+        # Find nearest trace index
+        trace_idx = int(np.clip(np.round(event.xdata), 0, len(state['pois_xyz']) - 1))
+        
+        # Get location for this trace
+        x_pos = state['pois_xyz'][trace_idx, 0]
+        y_pos = state['pois_xyz'][trace_idx, 1]
+        z_pos = state['pois_xyz'][trace_idx, 2]
+        
+        # Update or create vertical line
+        if state['inspect_vline'] is None:
+            state['inspect_vline'] = ax_main.axvline(trace_idx, color='yellow', linewidth=1.5, 
+                                                     alpha=0.8, linestyle='--')
+        else:
+            state['inspect_vline'].set_xdata([trace_idx, trace_idx])
+        
+        # Update or create text box
+        info_str = f"Trace: {trace_idx}\nX: {x_pos:.4f} m\nY: {y_pos:.4f} m\nZ: {z_pos:.4f} m"
+        
+        if state['inspect_text'] is None:
+            state['inspect_text'] = ax_main.text(0.02, 0.98, info_str,
+                                                 transform=ax_main.transAxes,
+                                                 verticalalignment='top',
+                                                 fontsize=9,
+                                                 bbox=dict(boxstyle='round', facecolor='wheat', 
+                                                          alpha=0.9, edgecolor='orange', linewidth=2))
+        else:
+            state['inspect_text'].set_text(info_str)
+        
+        fig.canvas.draw_idle()
+    
     # Connect sliders and controls to update function
     slider_spacing_m.on_changed(update_plot)
     slider_weight_r.on_changed(update_plot)
@@ -597,6 +718,10 @@ def plot_result_interactive_sliders(data_dict: dict, initial_params: dict):
     slider_contrast_pct.on_changed(update_plot)
     radio_contrast.on_clicked(update_plot)
     radio_colormap.on_clicked(update_plot)
+    radio_inspect.on_clicked(toggle_inspect_mode)
+    
+    # Connect mouse motion event for inspection
+    fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
     
     # Connect buttons
     btn_print.on_clicked(print_params)
