@@ -124,10 +124,24 @@ def generate_launch_description():
     )
 
     # Odometry Tilt Corrector (provides tilt-corrected odometry for pose_controller)
-    source_script_dir = Path(__file__).parent.parent / 'scripts'
-    odom_tilt_corrector_path_src = source_script_dir / 'odom_tilt_corrector.py'
-    # Use source directory (for development) - if it doesn't exist, the script will fail with a clear error
-    odom_tilt_corrector_path = str(odom_tilt_corrector_path_src)
+    launch_file_path = Path(__file__).resolve()
+    
+    # Detect if we're in source (src/) or install (install/) directory
+    path_str = str(launch_file_path)
+    if '/src/' in path_str:
+        # Source location: src/pilot_control/scripts/odom_tilt_corrector.py
+        src_base = Path(path_str[:path_str.index('/src/') + 4])  # Include '/src'
+        source_script_dir = src_base / 'pilot_control' / 'scripts'
+        odom_tilt_corrector_path = str(source_script_dir / 'odom_tilt_corrector.py')
+    elif '/install/' in path_str:
+        # Install location: install/pilot_control/lib/pilot_control/odom_tilt_corrector.py
+        install_base = Path(path_str[:path_str.index('/install/') + 8])  # Include '/install'
+        install_script_dir = install_base / 'pilot_control' / 'lib' / 'pilot_control'
+        odom_tilt_corrector_path = str(install_script_dir / 'odom_tilt_corrector.py')
+    else:
+        # Fallback: try relative to launch file (for source)
+        source_script_dir = launch_file_path.parent.parent / 'scripts'
+        odom_tilt_corrector_path = str(source_script_dir / 'odom_tilt_corrector.py')
     odom_tilt_corrector_proc = ExecuteProcess(
         cmd=[
             'python3', odom_tilt_corrector_path,
