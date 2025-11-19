@@ -3,9 +3,7 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from ament_index_python.packages import get_package_share_directory
 import os
-import sys
 from pathlib import Path
 
 def generate_launch_description():
@@ -126,17 +124,10 @@ def generate_launch_description():
     )
 
     # Odometry Tilt Corrector (provides tilt-corrected odometry for pose_controller)
-    package_dir = Path(get_package_share_directory('pilot_control'))
     source_script_dir = Path(__file__).parent.parent / 'scripts'
-    if source_script_dir.exists():
-        sys.path.insert(0, str(source_script_dir))
-    else:
-        install_script_dir = package_dir.parent.parent / 'lib' / 'pilot_control'
-        sys.path.insert(0, str(install_script_dir))
-    
     odom_tilt_corrector_path_src = source_script_dir / 'odom_tilt_corrector.py'
-    odom_tilt_corrector_path_inst = install_script_dir / 'odom_tilt_corrector.py'
-    odom_tilt_corrector_path = str(odom_tilt_corrector_path_src if odom_tilt_corrector_path_src.exists() else odom_tilt_corrector_path_inst)
+    # Use source directory (for development) - if it doesn't exist, the script will fail with a clear error
+    odom_tilt_corrector_path = str(odom_tilt_corrector_path_src)
     odom_tilt_corrector_proc = ExecuteProcess(
         cmd=[
             'python3', odom_tilt_corrector_path,
