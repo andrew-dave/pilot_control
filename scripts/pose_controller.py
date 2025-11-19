@@ -103,7 +103,7 @@ class PoseController(Node):
         self.declare_parameter('odometry_timeout_ms', 500) # Stop if no odometry
         
         # Topic names
-        self.declare_parameter('odometry_topic', '/Odometry')
+        self.declare_parameter('odometry_topic', '/Odometry_tilt_corrected_diff')  # Use tilt-corrected odometry from odom_tilt_corrector.py
         self.declare_parameter('left_control_topic', '/left/control_message')
         self.declare_parameter('right_control_topic', '/right/control_message')
         self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected')
@@ -418,99 +418,23 @@ class PoseController(Node):
     
     def odometry_callback(self, msg: Odometry):
         """
-        Callback for Fast-LIO2 odometry messages.
-        Extracts x, y, yaw from the odometry message.
+        Callback for tilt-corrected odometry messages (from odom_tilt_corrector.py).
+        Extracts x, y, yaw from the already-corrected odometry message.
         """
-        # Gate processing until IMU-based tilt alignment has completed
-        if not self.accel_initialized:
-            return
-        # Extract raw pose
-        raw_pos = np.array([
-            float(msg.pose.pose.position.x),
-            float(msg.pose.pose.position.y),
-            float(msg.pose.pose.position.z),
-        ], dtype=float)
-        raw_q = (
+        # Extract pose from tilt-corrected odometry (already leveled)
+        self.current_x = float(msg.pose.pose.position.x)
+        self.current_y = float(msg.pose.pose.position.y)
+        q_local = (
             float(msg.pose.pose.orientation.x),
             float(msg.pose.pose.orientation.y),
             float(msg.pose.pose.orientation.z),
             float(msg.pose.pose.orientation.w),
         )
-        self.last_raw_q = raw_q
-        self.last_raw_pos = raw_pos
-        R_wb = self.quat_to_matrix(raw_q)
-
-        # Establish leveling rotation at first odom using accel_avg and current body orientation
-        if self.accel_initialized and not self.alignment_set:
-            try:
-                a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-                R_wb_curr = self.quat_to_matrix(raw_q)
-                a_world = R_wb_curr @ a_norm
-            except Exception:
-                a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-            R_flip = np.array([[-1.0, 0.0, 0.0],
-                               [ 0.0, 1.0, 0.0],
-                               [ 0.0, 0.0,-1.0]], dtype=float)
-            # Perform alignment first in world frame, then apply fixed flip in mapping
-            q_align_world = self.compute_alignment_quat(a_world, np.array([0.0, 0.0, -1.0]))
-            self.align_quat = q_align_world
-            rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
-            R_align = self.rpy_to_matrix(rx, ry, rz)
-            self.R_map = R_flip @ R_align
-            self.alignment_set = True
-            try:
-                qx, qy, qz, qw = q_align_world
-                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                a_flat_dbg = self.R_map @ a_world
-                self.get_logger().info(
-                    f'Align+flip at first odom: a_world={a_world[0]:.3f},{a_world[1]:.3f},{a_world[2]:.3f}; '
-                    f'a_flat={a_flat_dbg[0]:.3f},{a_flat_dbg[1]:.3f},{a_flat_dbg[2]:.3f}; '
-                    f'align_rpy(deg)={math.degrees(roll):.2f},{math.degrees(pitch):.2f},{math.degrees(yaw):.2f}')
-            except Exception:
-                pass
-
-        # Establish origin in leveled world
-        if not self.origin_set and self.alignment_set:
-            self.p0_world = raw_pos.copy()
-            self.origin_set = True
-
-        # Leveled world position and orientation (matrix-based) with flip+align mapping
-        p_local = self.R_map @ (raw_pos - self.p0_world)
-        try:
-            R_wb_curr = self.quat_to_matrix(raw_q)
-            R_fb = self.R_map @ R_wb_curr
-            q_local = self.matrix_to_quat(R_fb)
-            rL, pL, yL = self.quaternion_to_rpy(q_local[0], q_local[1], q_local[2], q_local[3])
-            if not hasattr(self, '_logged_q_choice'):
-                self.get_logger().info(
-                    f'Orientation mapping: R_fb = R_map * R_wb (roll,pitch deg)={math.degrees(rL):.2f},{math.degrees(pL):.2f}')
-                self._logged_q_choice = True
-        except Exception:
-            q_local = self.quat_multiply(self.align_quat, raw_q)
-
-        self.current_x = float(p_local[0])
-        self.current_y = float(p_local[1])
-        # z not used
         self.current_yaw = self.quaternion_to_yaw(q_local[0], q_local[1], q_local[2], q_local[3])
         
-        # Extract and transform velocities for consistency with pose transformation
-        raw_vel = np.array([
-            float(msg.twist.twist.linear.x),
-            float(msg.twist.twist.linear.y),
-            float(msg.twist.twist.linear.z)
-        ], dtype=float)
-        vel_local = self.R_map @ raw_vel
-        try:
-            # One-time diagnostic: check z vs x slope sign changes by logging the ratio
-            if not hasattr(self, '_logged_slope_hint') and abs(float(p_local[0])) > 1e-6:
-                slope = float(p_local[2]) / float(p_local[0])
-                self.get_logger().info(f'Leveled frame slope hint: dz/dx={slope:.4f}')
-                self._logged_slope_hint = True
-        except Exception:
-            pass
-        self.current_vx = float(vel_local[0])
-        self.current_vy = float(vel_local[1])
-        # Angular velocity is not transformed (rotation around Z-axis is preserved)
+        # Extract velocities (already transformed to leveled frame)
+        self.current_vx = float(msg.twist.twist.linear.x)
+        self.current_vy = float(msg.twist.twist.linear.y)
         self.current_vyaw = msg.twist.twist.angular.z
         
         # Mark pose as initialized
@@ -520,49 +444,13 @@ class PoseController(Node):
                 f'✓ Odometry initialized: x={self.current_x:.3f}, '
                 f'y={self.current_y:.3f}, yaw={math.degrees(self.current_yaw):.1f}°'
             )
-            try:
-                qx, qy, qz, qw = self.align_quat
-                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                self.get_logger().info(
-                    f'align_quat: q=({qx:.4f}, {qy:.4f}, {qz:.4f}, {qw:.4f}) | '
-                    f'rpy=({math.degrees(roll):.1f}°, {math.degrees(pitch):.1f}°, {math.degrees(yaw):.1f}°)'
-                )
-            except Exception:
-                pass
         
         # Update last odometry time
         self.last_odom_time = self.get_clock().now()
 
-        # Publish corrected odometry
+        # Republish corrected odometry (pass through)
         try:
-            odom_corr = Odometry()
-            odom_corr.header.stamp = msg.header.stamp
-            odom_corr.header.frame_id = msg.header.frame_id
-            # child_frame_id preserved
-            try:
-                odom_corr.child_frame_id = msg.child_frame_id
-            except Exception:
-                odom_corr.child_frame_id = ''
-            odom_corr.pose.pose.position.x = self.current_x
-            odom_corr.pose.pose.position.y = self.current_y
-            odom_corr.pose.pose.position.z = float(p_local[2])
-            odom_corr.pose.pose.orientation.x = q_local[0]
-            odom_corr.pose.pose.orientation.y = q_local[1]
-            odom_corr.pose.pose.orientation.z = q_local[2]
-            odom_corr.pose.pose.orientation.w = q_local[3]
-            # Rotate linear twist into the flat, tilt-corrected local frame
-            # (use the already computed vel_local)
-            try:
-                odom_corr.twist.twist.linear.x = float(vel_local[0])
-                odom_corr.twist.twist.linear.y = float(vel_local[1])
-                odom_corr.twist.twist.linear.z = 0.0
-            except Exception:
-                odom_corr.twist.twist.linear.x = 0.0
-                odom_corr.twist.twist.linear.y = 0.0
-                odom_corr.twist.twist.linear.z = 0.0
-            # Keep angular twist as-is (planar control uses z)
-            odom_corr.twist.twist.angular = msg.twist.twist.angular
-            self.odom_corr_pub.publish(odom_corr)
+            self.odom_corr_pub.publish(msg)
         except Exception:
             pass
 

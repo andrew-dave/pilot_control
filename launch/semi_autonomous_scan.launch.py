@@ -3,7 +3,10 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from ament_index.python.packages import get_package_share_directory
 import os
+import sys
+from pathlib import Path
 
 def generate_launch_description():
     # Declare launch arguments
@@ -122,6 +125,30 @@ def generate_launch_description():
         description='Flip IMU Z-axis'
     )
 
+    # Odometry Tilt Corrector (provides tilt-corrected odometry for pose_controller)
+    package_dir = Path(get_package_share_directory('pilot_control'))
+    source_script_dir = Path(__file__).parent.parent / 'scripts'
+    if source_script_dir.exists():
+        sys.path.insert(0, str(source_script_dir))
+    else:
+        install_script_dir = package_dir.parent.parent / 'lib' / 'pilot_control'
+        sys.path.insert(0, str(install_script_dir))
+    
+    odom_tilt_corrector_path_src = source_script_dir / 'odom_tilt_corrector.py'
+    odom_tilt_corrector_path_inst = install_script_dir / 'odom_tilt_corrector.py'
+    odom_tilt_corrector_path = str(odom_tilt_corrector_path_src if odom_tilt_corrector_path_src.exists() else odom_tilt_corrector_path_inst)
+    odom_tilt_corrector_proc = ExecuteProcess(
+        cmd=[
+            'python3', odom_tilt_corrector_path,
+            '--ros-args',
+            '-p', 'odometry_topic:=/Odometry',
+            '-p', 'accel_topic:=/livox/imu',
+            '-p', 'accel_samples:=10',
+            '-p', 'corrected_odometry_topic:=/Odometry_tilt_corrected_diff'
+        ],
+        output='screen'
+    )
+
     # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
     unified_data_collector_node = Node(
         package='pilot_control',
@@ -217,7 +244,7 @@ def generate_launch_description():
         name='pose_controller',
         output='screen',
         parameters=[{
-            'odometry_topic': '/Odometry',
+            'odometry_topic': '/Odometry_tilt_corrected_diff',  # Use tilt-corrected odometry from odom_tilt_corrector.py
             'left_control_topic': '/left/control_message',
             'right_control_topic': '/right/control_message',
             'enable_controller': LaunchConfiguration('enable_controller'),
@@ -435,11 +462,12 @@ def generate_launch_description():
                 left_odrive_node, # taskset -c 5
                 right_odrive_node, # taskset -c 5
                 gpr_odrive_node, # taskset -c 5
+                livox_driver, # taskset -c 5
+                fast_lio_node, # taskset -c 5
+                odom_tilt_corrector_proc,  # Tilt correction (must start before pose_controller)
                 pose_controller_node, # taskset -c 5  # Pose controller for autonomous navigation
                 # diff_drive_controller EXCLUDED - pose controller provides navigation instead
                 #foxglove_bridge,
-                livox_driver, # taskset -c 5
-                fast_lio_node, # taskset -c 5
                 #laser_map_rotator_node,
                 #body_to_foot_transform,
                 #camera_init_to_foot_init_transform,
