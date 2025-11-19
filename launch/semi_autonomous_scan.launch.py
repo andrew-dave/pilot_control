@@ -3,7 +3,7 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from ament_index.python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_directory
 import os
 import sys
 from pathlib import Path
