@@ -242,6 +242,7 @@ install(
   scripts/test_gpr_position.py
   scripts/gpr_scan_controller.py
   scripts/pose_controller.py
+  scripts/mpc_autonomous_controller.py
   scripts/odom_gap_monitor.py
   scripts/setup_data_folders.py
   scripts/F2C/f2c_check.py
