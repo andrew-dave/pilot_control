@@ -1160,11 +1160,17 @@ class MPCAutonomousController(Node):
         """
         if not self.path_initialized or not self.has_target:
             return []
-        
+
         # Compute straight-line path vector
         path_dx = self.target_x - self.path_start_x
         path_dy = self.target_y - self.path_start_y
         path_length = math.sqrt(path_dx*path_dx + path_dy*path_dy)
+
+        # Debug logging
+        self.get_logger().info(
+            f'Path: start=({self.path_start_x:.3f}, {self.path_start_y:.3f}), '
+            f'target=({self.target_x:.3f}, {self.target_y:.3f}), length={path_length:.3f}m'
+        )
         
         if path_length < 1e-6:
             # Already at target, return target as all waypoints
@@ -1189,17 +1195,23 @@ class MPCAutonomousController(Node):
         # Vector from path start to current position
         to_current_x = self.current_x - self.path_start_x
         to_current_y = self.current_y - self.path_start_y
-        
+
         # Project current position onto path line
         # Distance along path (parameter t: 0 = start, 1 = end)
         t_closest = (to_current_x * path_dir_x + to_current_y * path_dir_y) / path_length
-        
+
         # Clamp to path segment [0, 1]
         t_closest = np.clip(t_closest, 0.0, 1.0)
-        
+
         # Closest point on path
         closest_x = self.path_start_x + t_closest * path_dx
         closest_y = self.path_start_y + t_closest * path_dy
+
+        # Debug closest point
+        self.get_logger().info(
+            f'Closest point: t={t_closest:.6f}, pos=({closest_x:.3f}, {closest_y:.3f}), '
+            f'distance_from_current={math.sqrt((closest_x-self.current_x)**2 + (closest_y-self.current_y)**2):.3f}m'
+        )
         
         # Compute waypoint spacing: distance traveled at cruising speed for one time step
         cruising_speed = min(self.max_linear_vel, 0.4)  # Cap at 0.4 m/s as requested
@@ -1211,6 +1223,13 @@ class MPCAutonomousController(Node):
         # Check if we need to adjust spacing due to proximity to target
         max_distance_needed = waypoint_spacing * self.mpc_horizon  # ~0.2m for 5 steps
 
+        # Debug logging
+        self.get_logger().info(
+            f'Spacing: cruise_speed={cruising_speed:.3f}, spacing={waypoint_spacing:.3f}, '
+            f't_closest={t_closest:.6f}, dist_to_target={distance_to_target_along_path:.3f}, '
+            f'max_needed={max_distance_needed:.3f}'
+        )
+
         # Only adjust spacing when very close to target (within horizon distance)
         proximity_threshold = max_distance_needed * 1.2  # 20% buffer
         if distance_to_target_along_path < proximity_threshold:
@@ -1219,13 +1238,17 @@ class MPCAutonomousController(Node):
                 adjusted_spacing = distance_to_target_along_path / self.mpc_horizon
             else:
                 adjusted_spacing = waypoint_spacing
+            self.get_logger().info(f'Adjusted spacing: {adjusted_spacing:.6f} (close to target)')
         else:
             # Use fixed cruising spacing
             adjusted_spacing = waypoint_spacing
+            self.get_logger().info(f'Fixed spacing: {adjusted_spacing:.6f} (cruising)')
 
         # Ensure minimum spacing to avoid numerical issues
         min_spacing = 0.005  # 5mm minimum
-        adjusted_spacing = max(adjusted_spacing, min_spacing)
+        if adjusted_spacing < min_spacing:
+            self.get_logger().info(f'Enforcing min spacing: {min_spacing:.6f} (was {adjusted_spacing:.6f})')
+            adjusted_spacing = min_spacing
         
         # Generate waypoints along the path
         waypoints = []
@@ -1234,16 +1257,22 @@ class MPCAutonomousController(Node):
         for k in range(self.mpc_horizon):
             # Distance along path from closest point
             distance_along_path = adjusted_spacing * (k + 1)  # k+1 to start ahead
-            
+
             # Parameter along path (0 = start, 1 = end)
             t_waypoint = t_closest + (distance_along_path / path_length)
-            
+
             # Clamp to path segment [0, 1]
             t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-            
+
             # Compute waypoint position
             waypoint_x = self.path_start_x + t_waypoint * path_dx
             waypoint_y = self.path_start_y + t_waypoint * path_dy
+
+            if k == 0:  # Log first waypoint
+                self.get_logger().info(
+                    f'Waypoint 0: dist={distance_along_path:.3f}, t={t_waypoint:.6f}, '
+                    f'pos=({waypoint_x:.3f}, {waypoint_y:.3f})'
+                )
             
             # Interpolate yaw between start and target
             # Blend between heading along path and target yaw
@@ -1618,8 +1647,11 @@ class MPCAutonomousController(Node):
             pass
         
         # Generate local waypoints for MPC
+        self.get_logger().info(
+            f'Current pos: x={self.current_x:.3f}, y={self.current_y:.3f}, yaw={self.current_yaw:.3f}'
+        )
         reference_trajectory = self.generate_local_waypoints()
-        
+
         if len(reference_trajectory) == 0:
             self.publish_zero_velocity()
             return
