@@ -795,6 +795,9 @@ class MPCAutonomousController(Node):
         # Waypoint parameters
         self.declare_parameter('lookahead_distance', 0.5)  # m
         
+        # Stopping criteria
+        self.declare_parameter('target_reached_threshold', 0.02)  # Stop when within 2cm of target (m)
+        
         # Topic names
         self.declare_parameter('odometry_topic', '/Odometry_tilt_corrected_diff')
         self.declare_parameter('left_control_topic', '/left/control_message')
@@ -828,6 +831,9 @@ class MPCAutonomousController(Node):
         
         # Waypoint parameters
         self.lookahead_distance = self.get_parameter('lookahead_distance').value
+        
+        # Stopping criteria
+        self.target_reached_threshold = self.get_parameter('target_reached_threshold').value
         
         # Topic names
         odometry_topic = self.get_parameter('odometry_topic').value
@@ -879,10 +885,11 @@ class MPCAutonomousController(Node):
         # ============================================================
         
         # MPC cost weights (penalize xe, ye more than yaw_e)
-        self.declare_parameter('mpc_Q_xe', 30.0)  # Weight for position error x (increased from 10.0)
-        self.declare_parameter('mpc_Q_ye', 30.0)  # Weight for position error y (increased from 10.0)
-        self.declare_parameter('mpc_Q_yaw',30.0)  # Weight for yaw error (increased from 1.0)
-        self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change (reduced from 0.001)
+        # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
+        self.declare_parameter('mpc_Q_xe', 50.0)  # Weight for position error x
+        self.declare_parameter('mpc_Q_ye', 200.0)  # Weight for position error y (much higher for lateral correction)
+        self.declare_parameter('mpc_Q_yaw', 10.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change
         
         # Solver debug parameter
         self.declare_parameter('solver_debug_enabled', False)  # Enable detailed solver debugging
@@ -925,6 +932,7 @@ class MPCAutonomousController(Node):
         self.target_y = 0.0
         self.target_yaw = 0.0
         self.has_target = False
+        self.target_reached = False  # Flag to track if target has been reached
         
         # Path planning state
         self.path_start_x = 0.0  # Initial position when target was set
@@ -1302,6 +1310,7 @@ class MPCAutonomousController(Node):
             self.path_start_yaw = self.current_yaw
             self.path_initialized = True
             self.has_target = True
+            self.target_reached = False  # Reset target reached flag for new target
             
             self.get_logger().info(
                 f'🎯 New target set: x={self.target_x:.2f}m, y={self.target_y:.2f}m, '
@@ -1808,6 +1817,30 @@ class MPCAutonomousController(Node):
         
         # Check if target is set
         if not self.has_target:
+            self.publish_zero_velocity()
+            return
+        
+        # Check if target has been reached (stopping criteria)
+        if not self.target_reached:
+            dx_to_target = self.target_x - self.current_x
+            dy_to_target = self.target_y - self.current_y
+            distance_to_target = math.sqrt(dx_to_target**2 + dy_to_target**2)
+            
+            if distance_to_target <= self.target_reached_threshold:
+                self.target_reached = True
+                self.has_target = False
+                self.publish_zero_velocity()
+                self.get_logger().info(
+                    f'✅ Target reached! Distance: {distance_to_target*100:.1f}cm (threshold: {self.target_reached_threshold*100:.1f}cm)'
+                )
+                self.get_logger().info(
+                    f'   Final position: x={self.current_x:.3f}m, y={self.current_y:.3f}m, '
+                    f'target: x={self.target_x:.3f}m, y={self.target_y:.3f}m'
+                )
+                return
+        
+        # If target reached, stop
+        if self.target_reached:
             self.publish_zero_velocity()
             return
         
