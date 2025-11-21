@@ -33,7 +33,7 @@ from std_msgs.msg import Float64MultiArray, Float64
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage, ControllerStatus
 from odrive_can.srv import AxisState
-from std_srvs.srv import Trigger
+from std_srvs.srv import Trigger, Empty
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.executors import MultiThreadedExecutor
 import numpy as np
@@ -544,7 +544,7 @@ class MPCAutonomousController(Node):
         # ============================================================
         
         # Robot kinematics parameters
-        self.declare_parameter('wheel_radius', 0.072)      # m
+        self.declare_parameter('wheel_radius', 0.09)      # m
         self.declare_parameter('wheel_base', 0.32)         # m (track width)
         self.declare_parameter('gear_ratio', 1.0)
         self.declare_parameter('invert_left', False)
@@ -777,7 +777,7 @@ class MPCAutonomousController(Node):
             self._soft_shutdown_service
         )
         
-        # ODrive axis state clients for disarming
+        # ODrive axis state clients for arming/disarming
         self.left_axis_client = self.create_client(
             AxisState,
             '/left/request_axis_state'
@@ -787,11 +787,27 @@ class MPCAutonomousController(Node):
             '/right/request_axis_state'
         )
         
+        # ODrive clear error clients
+        self.left_clear_client = self.create_client(
+            Empty,
+            '/left/clear_errors'
+        )
+        self.right_clear_client = self.create_client(
+            Empty,
+            '/right/clear_errors'
+        )
+        
         # Shutdown service client (for calling shutdown_service node)
         self.shutdown_client = self.create_client(
             Trigger,
             '/shutdown_mapping'
         )
+        
+        # Motor arming state
+        self._arm_attempts = 0
+        self._arm_max_attempts = 5
+        self._arm_timer = self.create_timer(1.0, self._attempt_arm_motors)
+        self._last_log_time_ns = {}  # For throttled logging
         
         # ============================================================
         # CONTROL LOOP TIMER
@@ -1268,6 +1284,53 @@ class MPCAutonomousController(Node):
                     self.shutdown_client.call_async(req)
         except Exception as e:
             self.get_logger().warn(f'Error calling shutdown service: {e}')
+    
+    def _attempt_arm_motors(self):
+        """
+        Attempt to arm ODrive motors by requesting CLOSED_LOOP_CONTROL state.
+        Retries up to _arm_max_attempts times.
+        """
+        if self._arm_attempts >= self._arm_max_attempts:
+            self._arm_timer.cancel()
+            return
+        self._arm_attempts += 1
+        
+        # Ensure service availability
+        if not (self.left_axis_client.service_is_ready() and self.right_axis_client.service_is_ready() and
+                self.left_clear_client.service_is_ready() and self.right_clear_client.service_is_ready()):
+            self.warn_throttled('odrive_services', 'Waiting for ODrive CAN services to be ready...', 5.0)
+            return
+        
+        try:
+            # Clear errors first
+            self.left_clear_client.call_async(Empty.Request())
+            self.right_clear_client.call_async(Empty.Request())
+            time.sleep(0.1)
+            
+            # Request CLOSED_LOOP_CONTROL (state 8) for both axes
+            req_left = AxisState.Request()
+            req_left.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
+            req_right = AxisState.Request()
+            req_right.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
+            
+            self.left_axis_client.call_async(req_left)
+            self.right_axis_client.call_async(req_right)
+            self.get_logger().info('Arming ODrive axes (CLOSED_LOOP_CONTROL requested)')
+            # Stop timer after successful dispatch
+            self._arm_timer.cancel()
+        except Exception as e:
+            self.get_logger().warn(f'Arm attempt failed: {e}')
+    
+    def warn_throttled(self, key: str, message: str, period_sec: float) -> None:
+        """
+        Log a warning message, but throttle it to avoid spam.
+        Same implementation as pose_controller.
+        """
+        now_ns = self.get_clock().now().nanoseconds
+        last_ns = self._last_log_time_ns.get(key, 0)
+        if last_ns == 0 or (now_ns - last_ns) >= int(period_sec * 1e9):
+            self._last_log_time_ns[key] = now_ns
+            self.get_logger().warning(message)
     
     # ============================================================
     # ONLINE WHEEL SLIP ESTIMATION
