@@ -72,14 +72,14 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 0.1) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.4) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
         self.declare_parameter('r_far', 0.03)     # 10cm - pure go-to-point steering beyond this
         self.declare_parameter('K_lat', 1.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
-        self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
+        self.declare_parameter('yaw_tol', 0.0)   # desired yaw accuracy (rad)
         self.declare_parameter('blend_prefixed', 0.0) # blend factor for yaw correction
         
         # Tilt correction parameters (similar to gpr_scan_controller)
@@ -91,10 +91,10 @@ class PoseController(Node):
         
         # IMU coordinate transformation parameters (no axis flips applied)
 
-        self.declare_parameter('Kp_linear', 3.0) # 5.0
+        self.declare_parameter('Kp_linear', 1.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 0.1) # 1.0
+        self.declare_parameter('Kp_angular', 1.0) # 1.0
         self.declare_parameter('Ki_angular', 0.0)
         self.declare_parameter('Kd_angular', 0.0)
 

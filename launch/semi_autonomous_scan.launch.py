@@ -52,7 +52,7 @@ def generate_launch_description():
     )
     declare_max_linear_velocity_arg = DeclareLaunchArgument(
         'max_linear_velocity',
-        default_value='0.3',
+        default_value='0.4',
         description='Max linear velocity (m/s)'
     )
     declare_max_angular_velocity_arg = DeclareLaunchArgument(
@@ -79,7 +79,7 @@ def generate_launch_description():
     # Error computation parameters
     declare_lookahead_distance_arg = DeclareLaunchArgument(
         'lookahead_distance',
-        default_value='0.1',
+        default_value='0.4',
         description='Lookahead distance for waypoint generation (m)'
     )
     declare_r_close_arg = DeclareLaunchArgument(
@@ -104,7 +104,7 @@ def generate_launch_description():
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
         'yaw_tol',
-        default_value='0.1',
+        default_value='0.0',
         description='Yaw tolerance for target achievement (rad)'
     )
     declare_imu_flip_x_arg = DeclareLaunchArgument(
