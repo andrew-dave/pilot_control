@@ -177,10 +177,21 @@ class SlipAwareMPC:
                         P_data.append(Q_dense[i, j])
         
         # Add cost for control input changes: (u_k - u_{k-1})^T R_delta (u_k - u_{k-1})
-        # This expands to: u_k^T R_delta u_k - 2*u_k^T R_delta u_{k-1} + u_{k-1}^T R_delta u_{k-1}
+        # This expands to: u_k^T R_delta u_k - u_k^T R_delta u_{k-1} - u_{k-1}^T R_delta u_k + u_{k-1}^T R_delta u_{k-1}
+        # Since R_delta is symmetric: = u_k^T R_delta u_k - 2*u_k^T R_delta u_{k-1} + u_{k-1}^T R_delta u_{k-1}
+        # But in the Hessian form [u_{k-1}, u_k]^T H [u_{k-1}, u_k], we need H = [[r, -r], [-r, r]]
+        # So the cross term coefficient in the Hessian is -r (not -2*r)
         # For k >= 1: penalize (u_k - u_{k-1})
         # Since R_delta is diagonal, we can simplify
         R_delta_diag = self.R_delta.diagonal()  # Get diagonal values [r, r]
+        
+        # Also add a small cost on u_0 to ensure positive definiteness
+        for i in range(nu):
+            r_val = R_delta_diag[i]
+            u_0_idx = i  # u_0 is at the start of decision vector
+            P_row.append(u_0_idx)
+            P_col.append(u_0_idx)
+            P_data.append(r_val * 0.5)  # Small cost on initial control
         
         for k in range(1, N):  # k from 1 to N-1
             # Position of u_{k-1} and u_k in decision vector
@@ -201,15 +212,12 @@ class SlipAwareMPC:
                 P_col.append(u_km1_start + i)
                 P_data.append(r_val)
                 
-                # Cross term: -2*r*u_k[i]*u_{k-1}[i] (symmetric)
-                # Upper triangle
+                # Cross term: -r*u_k[i]*u_{k-1}[i] (symmetric)
+                # The Hessian has -r in both off-diagonal positions
+                # Only add upper triangle, symmetry will be enforced
                 P_row.append(u_k_start + i)
                 P_col.append(u_km1_start + i)
-                P_data.append(-2.0 * r_val)
-                # Lower triangle (symmetric)
-                P_row.append(u_km1_start + i)
-                P_col.append(u_k_start + i)
-                P_data.append(-2.0 * r_val)
+                P_data.append(-r_val)
         
         # Create sparse P matrix (nz x nz)
         # First create COO matrix (duplicate entries will be summed automatically)
@@ -227,8 +235,27 @@ class SlipAwareMPC:
         
         # Add small regularization to ensure positive definiteness
         # This prevents numerical issues with OSQP
-        regularization = 1e-8
+        regularization = 1e-6
         self.P = self.P + sparse.eye(nz, format='csc') * regularization
+        
+        # Verify P is positive semi-definite
+        try:
+            from scipy.sparse.linalg import eigsh
+            eigenvals = eigsh(self.P, k=min(3, nz-1), which='SA', return_eigenvectors=False)
+            min_eigenval = eigenvals[0]
+            if min_eigenval < -1e-6:
+                if self.logger:
+                    self.logger.error(f"P matrix is not positive semi-definite! Min eigenvalue: {min_eigenval:.2e}")
+                # Apply even stronger regularization
+                regularization = abs(min_eigenval) + 1e-3
+                self.P = self.P + sparse.eye(nz, format='csc') * regularization
+                if self.logger:
+                    self.logger.warning(f"Applied stronger regularization: {regularization:.2e}")
+            elif self.logger:
+                self.logger.debug(f"P matrix is positive semi-definite. Min eigenvalue: {min_eigenval:.2e}")
+        except Exception as e:
+            if self.logger:
+                self.logger.warning(f"Could not verify P matrix eigenvalues: {e}")
         
         # ============================================================
         # STEP 2: BUILD CONSTRAINT MATRIX A_constr

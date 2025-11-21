@@ -58,7 +58,7 @@ class PoseController(Node):
         # ============================================================
         
         # Robot kinematics (matching diff_drive_controller)
-        self.declare_parameter('wheel_radius', 0.072)      # m
+        self.declare_parameter('wheel_radius', 0.09)      # m
         self.declare_parameter('wheel_base', 0.32)         # m
         self.declare_parameter('gear_ratio', 1.0)
         self.declare_parameter('invert_left', False)
@@ -67,7 +67,7 @@ class PoseController(Node):
         
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
-        self.declare_parameter('max_linear_velocity', 0.3) # m/s
+        self.declare_parameter('max_linear_velocity', 0.4) # m/s
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
