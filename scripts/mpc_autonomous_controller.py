@@ -1520,7 +1520,7 @@ class MPCAutonomousController(Node):
         
         # Clamp slip ratios to reasonable range [-1, 1]
         left_slip = np.clip(left_slip, 0.0, 1.0)
-        right_slip = np.clip(right_slip, 0..0, 1.0)
+        right_slip = np.clip(right_slip, 0.0, 1.0)
         
         # Store slip ratios
         self.left_slip_ratio = left_slip
