@@ -148,11 +148,34 @@ class SlipAwareMPC:
         # STEP 1: BUILD COST MATRIX P (block-diagonal with Q)
         # ============================================================
         # Cost function: J = sum(x_k^T Q x_k) for k=1 to N
-        # P is block-diagonal: diag([Q, Q, ..., Q]) for N state blocks
-        # R=0 (no control input cost)
+        # P is nz x nz, but only has Q blocks for state positions
+        # Decision vector: [u0, x1, u1, x2, ..., u_{N-1}, xN]
+        # We only penalize states (x1, x2, ..., xN), not controls
         
-        Q_blocks = [self.Q] * N
-        self.P = sparse.block_diag(Q_blocks, format='csc')
+        # Build P matrix: sparse matrix with Q blocks only for states
+        P_data = []
+        P_row = []
+        P_col = []
+        
+        # For each state x_k (k=1 to N)
+        for k in range(N):
+            # Position of x_k in decision vector: k * (nu + nx) + nu
+            x_k_start = k * (nu + nx) + nu
+            
+            # Add Q matrix entries for this state
+            Q_dense = self.Q.toarray()
+            for i in range(nx):
+                for j in range(nx):
+                    if abs(Q_dense[i, j]) > 1e-10:  # Only non-zero entries
+                        P_row.append(x_k_start + i)
+                        P_col.append(x_k_start + j)
+                        P_data.append(Q_dense[i, j])
+        
+        # Create sparse P matrix (nz x nz)
+        self.P = sparse.coo_matrix(
+            (P_data, (P_row, P_col)),
+            shape=(nz, nz)
+        ).tocsc()
         
         # ============================================================
         # STEP 2: BUILD CONSTRAINT MATRIX A_constr
@@ -229,6 +252,10 @@ class SlipAwareMPC:
             shape=(n_constraints, nz)
         ).tocsc()
         
+        # Verify dimensions
+        if self.logger:
+            self.logger.info(f'MPC matrix dimensions: P={self.P.shape}, A={self.A_constr.shape}, nz={nz}, n_constraints={n_constraints}')
+        
         # ============================================================
         # STEP 3: BUILD CONSTRAINT BOUNDS
         # ============================================================
@@ -248,6 +275,12 @@ class SlipAwareMPC:
         # ============================================================
         # STEP 4: SETUP OSQP SOLVER
         # ============================================================
+        # Verify all dimensions match
+        assert self.P.shape == (nz, nz), f"P matrix wrong shape: {self.P.shape}, expected ({nz}, {nz})"
+        assert self.A_constr.shape == (n_constraints, nz), f"A matrix wrong shape: {self.A_constr.shape}, expected ({n_constraints}, {nz})"
+        assert len(self.l_constr) == n_constraints, f"l_constr wrong length: {len(self.l_constr)}, expected {n_constraints}"
+        assert len(self.u_constr) == n_constraints, f"u_constr wrong length: {len(self.u_constr)}, expected {n_constraints}"
+        
         self.solver = osqp.OSQP()
         self.solver.setup(
             P=self.P,
