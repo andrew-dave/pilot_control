@@ -233,6 +233,9 @@ def generate_launch_description():
             'mpc_Q_yaw': LaunchConfiguration('mpc_Q_yaw'),
             'mpc_R_delta': LaunchConfiguration('mpc_R_delta'),
             
+            # Solver debug
+            'solver_debug_enabled': True,
+            
             # Slip estimation parameters
             'slip_history_length': LaunchConfiguration('slip_history_length'),
             'slip_estimation_window': LaunchConfiguration('slip_estimation_window'),

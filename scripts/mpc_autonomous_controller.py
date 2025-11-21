@@ -590,26 +590,124 @@ class SlipAwareMPC:
             
             self.solver.warm_start(x=warm_start)
         
+        # Debug: Log solver inputs
+        if self.logger and hasattr(self, 'solver_debug_enabled') and self.solver_debug_enabled:
+            try:
+                from scipy.sparse.linalg import norm as sparse_norm
+                P_nnz = self.P.nnz
+                P_norm = sparse_norm(self.P)
+                A_nnz = self.A_constr.nnz
+                A_norm = sparse_norm(self.A_constr)
+                self.logger.info(f'Solver Inputs: P matrix: nnz={P_nnz}, norm={P_norm:.6f}')
+                self.logger.info(f'Solver Inputs: A matrix: nnz={A_nnz}, norm={A_norm:.6f}')
+                self.logger.info(f'Solver Inputs: l bounds: min={self.l_constr.min():.6f}, max={self.l_constr.max():.6f}')
+                self.logger.info(f'Solver Inputs: u bounds: min={self.u_constr.min():.6f}, max={self.u_constr.max():.6f}')
+                self.logger.info(f'Solver Inputs: Initial state constraint: [{self.l_constr[0]:.6f}, {self.l_constr[1]:.6f}, {self.l_constr[2]:.6f}]')
+                self.logger.info(f'Solver Inputs: Current error state: [{current_error[0]:.6f}, {current_error[1]:.6f}, {current_error[2]:.6f}]')
+            except Exception as e:
+                if self.logger:
+                    self.logger.warn(f'Error logging solver inputs: {e}')
+
         # Update solver bounds
         self.solver.update(l=self.l_constr, u=self.u_constr)
-        
+
         # Solve
         result = self.solver.solve()
-        
+
         if result.info.status != 'solved':
             if self.logger:
                 self.logger.warn(f'MPC solve failed: {result.info.status}')
             return np.array([0.0, 0.0]), 0.0, None
-        
+
+        # Store result for debug access
+        self._last_result = result
+
         # Extract control
         solution = result.x
         u0_optimal = solution[:self.nu]  # First control input [ωL, ωR]
-        
+
+        # Debug: Enhanced solver diagnostics
+        if self.logger and hasattr(self, 'solver_debug_enabled') and self.solver_debug_enabled:
+            try:
+                # OSQP result info
+                obj_val = result.info.obj_val if hasattr(result.info, 'obj_val') else 0.0
+                iterations = result.info.iter if hasattr(result.info, 'iter') else 0
+                run_time_ms = result.info.run_time * 1000.0 if hasattr(result.info, 'run_time') else 0.0
+                
+                self.logger.info(f'Solver Result: status={result.info.status}, '
+                               f'obj_val={obj_val:.6f}, iter={iterations}, run_time={run_time_ms:.3f}ms')
+
+                # Compute actual cost
+                actual_cost = self.compute_solution_cost(solution, current_error, ref_traj)
+                self.logger.info(f'Solver Result: computed_cost={actual_cost:.6f}, OSQP_obj_val={obj_val:.6f}')
+
+                # Solution statistics
+                solution_norm = np.linalg.norm(solution)
+                self.logger.info(f'Solver Result: solution norm={solution_norm:.6f}')
+                self.logger.info(f'Solver Result: u0_optimal=[{u0_optimal[0]:.6f}, {u0_optimal[1]:.6f}]')
+
+                # Constraint satisfaction check
+                A_solution = self.A_constr @ solution
+                constraint_violations = np.abs(A_solution - self.l_constr)
+                max_violation = constraint_violations.max()
+                self.logger.info(f'Solver Result: max_constraint_violation={max_violation:.10e}')
+            except Exception as e:
+                if self.logger:
+                    self.logger.warn(f'Error logging solver results: {e}')
+
         # Store solution for warm start next time
         self.prev_solution = solution
-        
+
         solve_time_ms = (time.time() - solve_start) * 1000.0
         return u0_optimal, solve_time_ms, solution
+    
+    def compute_solution_cost(self, solution, current_error, ref_traj):
+        """
+        Compute the actual cost value for the MPC solution.
+
+        Cost = sum(x_k^T Q x_k) + sum((u_k - u_{k-1})^T R_delta (u_k - u_{k-1}))
+
+        Solution vector format: [u0, x1, u1, x2, u2, ..., u_{N-1}, xN]
+
+        Args:
+            solution: Full MPC solution vector
+            current_error: Current error state (unused but kept for API consistency)
+            ref_traj: Reference trajectory (unused but kept for API consistency)
+
+        Returns:
+            Computed cost value (float)
+        """
+        if solution is None or len(solution) < self.nz:
+            return 0.0
+
+        cost = 0.0
+        Q_dense = self.Q.toarray()
+        R_delta_diag = self.R_delta.diagonal()
+
+        # State costs: sum(x_k^T Q x_k) for k=1 to N
+        # x_k is at position: k * (nu + nx) - nx + nu = k * (nu + nx) + nu - nx (simplified)
+        for k in range(1, self.N + 1):
+            # x_k position in solution: [u0, x1, u1, x2, ...] -> x_k at k*(nu+nx) - nx + nu
+            x_idx = k * (self.nu + self.nx) - self.nx  # Actual: k*(nu+nx) + nu - nx, but simplified
+            # Correct indexing: x1 is at nu, x2 is at nu+nx+nu, etc.
+            # Actually: x_k is at (k-1)*(nu+nx) + nu
+            x_idx = (k - 1) * (self.nu + self.nx) + self.nu
+            if x_idx + self.nx <= len(solution):
+                x_k = solution[x_idx:x_idx + self.nx]
+                cost += x_k @ Q_dense @ x_k
+
+        # Control change costs: sum((u_k - u_{k-1})^T R_delta (u_k - u_{k-1}))
+        # u_0 is at 0, u_1 is at nu+nx, u_2 is at 2*(nu+nx), etc.
+        for k in range(1, self.N):
+            u_km1_idx = (k - 1) * (self.nu + self.nx)  # u_{k-1}
+            u_k_idx = k * (self.nu + self.nx)  # u_k
+            if u_k_idx + self.nu <= len(solution) and u_km1_idx + self.nu <= len(solution):
+                u_km1 = solution[u_km1_idx:u_km1_idx + self.nu]
+                u_k = solution[u_k_idx:u_k_idx + self.nu]
+                delta_u = u_k - u_km1
+                cost += delta_u[0]**2 * R_delta_diag[0] + delta_u[1]**2 * R_delta_diag[1]
+
+        return cost
 
 
 class MPCAutonomousController(Node):
@@ -734,13 +832,19 @@ class MPCAutonomousController(Node):
         self.declare_parameter('mpc_Q_xe', 10.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 10.0)  # Weight for position error y
         self.declare_parameter('mpc_Q_yaw', 1.0)  # Weight for yaw error (lower)
-        self.declare_parameter('mpc_R_delta', 0.1)  # Weight for control input change (delta u)
+        self.declare_parameter('mpc_R_delta', 0.001)  # Weight for control input change (delta u)
+        
+        # Solver debug parameter
+        self.declare_parameter('solver_debug_enabled', False)  # Enable detailed solver debugging
         
         # Get cost weights
         mpc_Q_xe = self.get_parameter('mpc_Q_xe').value
         mpc_Q_ye = self.get_parameter('mpc_Q_ye').value
         mpc_Q_yaw = self.get_parameter('mpc_Q_yaw').value
         mpc_R_delta = self.get_parameter('mpc_R_delta').value
+        
+        # Get solver debug setting
+        self.solver_debug_enabled = self.get_parameter('solver_debug_enabled').value
         
         # Compute wheel velocity limits (rad/s)
         # Convert max linear velocity to max wheel angular velocity
@@ -762,6 +866,9 @@ class MPCAutonomousController(Node):
             R_delta=mpc_R_delta,
             logger=self.get_logger()
         )
+        
+        # Set solver debug flag on optimizer
+        self.mpc_optimizer.solver_debug_enabled = self.solver_debug_enabled
         
         # Target pose
         self.target_x = 0.0
@@ -886,6 +993,19 @@ class MPCAutonomousController(Node):
             '/mpc_control/constraint_bounds',
             10
         )
+
+        # Solver debug publishers
+        self.solver_inputs_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/solver_inputs',
+            10
+        )
+
+        self.solver_cost_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/solver_cost',
+            10
+        )
         
         # ============================================================
         # SERVICES
@@ -973,9 +1093,12 @@ class MPCAutonomousController(Node):
         self.get_logger().info(f'  /mpc_control/control_sequence - MPC control sequence over horizon')
         self.get_logger().info(f'  /mpc_control/error_state - Current error state [xe, ye, θe]')
         self.get_logger().info(f'  /mpc_control/reference_trajectory - Current reference waypoint')
-        self.get_logger().info(f'  /mpc_control/solver_diagnostics - Solver info [solve_time, status, iter, osqp_time]')
+        self.get_logger().info(f'  /mpc_control/solver_diagnostics - Solver info [solve_time, obj_val, iter, osqp_time]')
         self.get_logger().info(f'  /mpc_control/pose_velocity - Current pose and velocity')
         self.get_logger().info(f'  /mpc_control/constraint_bounds - MPC constraint bounds (sample)')
+        if self.solver_debug_enabled:
+            self.get_logger().info(f'  /mpc_control/solver_inputs - Solver inputs [P_nnz, A_nnz, l_min, l_max, u_min, u_max, xe, ye, θe]')
+            self.get_logger().info(f'  /mpc_control/solver_cost - Solver cost [computed_cost, OSQP_obj_val, iter, solve_time_ms]')
         self.get_logger().info('='*70)
     
     # ============================================================
@@ -1214,8 +1337,8 @@ class MPCAutonomousController(Node):
         )
         
         # Compute waypoint spacing: distance traveled at cruising speed for one time step
-        cruising_speed = min(self.max_linear_vel, 0.4)  # Cap at 0.4 m/s as requested
-        waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be ~0.04m)
+        cruising_speed = 0.4  # Fixed cruising speed as requested
+        waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be 0.04m)
 
         # Compute distance from closest point to target along path
         distance_to_target_along_path = (1.0 - t_closest) * path_length
@@ -1319,8 +1442,8 @@ class MPCAutonomousController(Node):
             # Linear velocity components
             if self.mpc_dt > 1e-6:
                 v_magnitude = distance / self.mpc_dt
-                # Limit to max velocity
-                v_magnitude = min(v_magnitude, self.max_linear_vel)
+                # Limit to cruising speed
+                v_magnitude = min(v_magnitude, 0.4)
                 
                 if distance > 1e-6:
                     vx_ref = v_magnitude * (dx / distance)
@@ -1718,11 +1841,61 @@ class MPCAutonomousController(Node):
 
             # Publish solver diagnostics and constraint bounds (only when MPC solved successfully)
             if solution is not None:
-                # Publish solver diagnostics
+                # Enhanced solver diagnostics with more info from OSQP result
                 solver_diag_msg = Float64MultiArray()
-                solver_diag_msg.data = [float(solve_time_ms), 1.0,  # status (1.0 = solved)
-                                      0.0, 0.0]  # iter and solve_time not available
+                obj_val = 0.0
+                iterations = 0
+                osqp_time = 0.0
+                try:
+                    # Try to get result info (stored in optimizer after solve)
+                    if hasattr(self.mpc_optimizer, '_last_result') and self.mpc_optimizer._last_result is not None:
+                        result = self.mpc_optimizer._last_result
+                        if hasattr(result, 'info'):
+                            obj_val = result.info.obj_val if hasattr(result.info, 'obj_val') else 0.0
+                            iterations = result.info.iter if hasattr(result.info, 'iter') else 0
+                            osqp_time = result.info.run_time * 1000.0 if hasattr(result.info, 'run_time') else 0.0
+                except Exception:
+                    pass
+                
+                solver_diag_msg.data = [
+                    float(solve_time_ms),  # Total solve time (wall clock)
+                    float(obj_val),  # OSQP objective value
+                    float(iterations),  # Number of iterations
+                    float(osqp_time)  # OSQP internal solve time (ms)
+                ]
                 self.solver_diagnostics_pub.publish(solver_diag_msg)
+
+                # Publish solver inputs summary
+                if self.solver_debug_enabled:
+                    try:
+                        inputs_msg = Float64MultiArray()
+                        P_nnz = self.mpc_optimizer.P.nnz
+                        A_nnz = self.mpc_optimizer.A_constr.nnz
+                        inputs_msg.data = [
+                            float(P_nnz),  # P matrix non-zeros
+                            float(A_nnz),  # A matrix non-zeros
+                            float(self.mpc_optimizer.l_constr.min()),  # Min lower bound
+                            float(self.mpc_optimizer.l_constr.max()),  # Max lower bound
+                            float(self.mpc_optimizer.u_constr.min()),  # Min upper bound
+                            float(self.mpc_optimizer.u_constr.max()),  # Max upper bound
+                            float(current_error[0]),  # Error xe
+                            float(current_error[1]),  # Error ye
+                            float(current_error[2])   # Error θe
+                        ]
+                        self.solver_inputs_pub.publish(inputs_msg)
+
+                        # Publish solver cost
+                        cost_msg = Float64MultiArray()
+                        actual_cost = self.mpc_optimizer.compute_solution_cost(solution, current_error, reference_trajectory)
+                        cost_msg.data = [
+                            float(actual_cost),  # Computed cost
+                            float(obj_val),  # OSQP objective value
+                            float(iterations),  # Iterations
+                            float(osqp_time)  # Solve time (ms)
+                        ]
+                        self.solver_cost_pub.publish(cost_msg)
+                    except Exception as e:
+                        self.get_logger().warn(f'Error publishing solver debug info: {e}')
 
                 # Publish MPC constraint bounds (first few bounds for debugging)
                 bounds_msg = Float64MultiArray()
