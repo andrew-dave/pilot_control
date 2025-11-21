@@ -879,9 +879,9 @@ class MPCAutonomousController(Node):
         # ============================================================
         
         # MPC cost weights (penalize xe, ye more than yaw_e)
-        self.declare_parameter('mpc_Q_xe', 50.0)  # Weight for position error x (increased from 10.0)
-        self.declare_parameter('mpc_Q_ye', 50.0)  # Weight for position error y (increased from 10.0)
-        self.declare_parameter('mpc_Q_yaw', 5.0)  # Weight for yaw error (increased from 1.0)
+        self.declare_parameter('mpc_Q_xe', 30.0)  # Weight for position error x (increased from 10.0)
+        self.declare_parameter('mpc_Q_ye', 30.0)  # Weight for position error y (increased from 10.0)
+        self.declare_parameter('mpc_Q_yaw',30.0)  # Weight for yaw error (increased from 1.0)
         self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change (reduced from 0.001)
         
         # Solver debug parameter
@@ -1697,7 +1697,7 @@ class MPCAutonomousController(Node):
         """
         #disbbled for now
         return 0.0, 0.0
-        
+
         current_time = self.get_clock().now().nanoseconds / 1e9  # Current time in seconds
         
         # Filter history to past 1 second
