@@ -259,26 +259,19 @@ class SlipAwareMPC:
         # Build mapping from (row, col) to data index in CSC format
         # This is needed because CSC format may reorder data
         self.row_col_to_data_idx = {}
-        coo_row = A_constr_coo.row
-        coo_col = A_constr_coo.col
-        coo_data = A_constr_coo.data
         
-        # Find corresponding indices in CSC format
-        csc_row = self.A_constr.row
-        csc_col_ptr = self.A_constr.indptr
+        # CSC format attributes: indices (row indices), indptr (column pointers), data
+        csc_indices = self.A_constr.indices  # Row indices
+        csc_indptr = self.A_constr.indptr    # Column pointers
         csc_data = self.A_constr.data
         
-        # Build mapping: for each (row, col) pair, find its index in CSC data array
-        for coo_idx in range(len(coo_row)):
-            r = coo_row[coo_idx]
-            c = coo_col[coo_idx]
-            # Find this (r, c) in CSC format
-            col_start = csc_col_ptr[c]
-            col_end = csc_col_ptr[c + 1]
+        # Build mapping: for each column, find all row indices and map (row, col) to data index
+        for col in range(nz):
+            col_start = csc_indptr[col]
+            col_end = csc_indptr[col + 1]
             for csc_idx in range(col_start, col_end):
-                if csc_row[csc_idx] == r:
-                    self.row_col_to_data_idx[(r, c)] = csc_idx
-                    break
+                row = csc_indices[csc_idx]
+                self.row_col_to_data_idx[(row, col)] = csc_idx
         
         # Now update stored indices to point to CSC data array
         for k in range(N):
