@@ -1653,7 +1653,7 @@ class MPCAutonomousController(Node):
             control_seq_msg = Float64MultiArray()
             control_sequence = []
             for k in range(self.mpc_horizon):
-                u_idx = k * (self.nu + self.nx)  # Start of u_k
+                u_idx = k * (self.mpc_optimizer.nu + self.mpc_optimizer.nx)  # Start of u_k
                 control_sequence.extend([float(solution[u_idx]), float(solution[u_idx + 1])])  # u_k_L, u_k_R
             control_seq_msg.data = control_sequence
             self.mpc_controls_pub.publish(control_seq_msg)
@@ -1685,9 +1685,10 @@ class MPCAutonomousController(Node):
 
             # Publish MPC constraint bounds (first few bounds for debugging)
             bounds_msg = Float64MultiArray()
+            nx = self.mpc_optimizer.nx
             bounds_msg.data = [float(self.l_constr[0]), float(self.u_constr[0]),  # First dynamics constraint
-                             float(self.l_constr[self.nx]), float(self.u_constr[self.nx]),  # Second dynamics constraint
-                             float(self.l_constr[2*self.nx]), float(self.u_constr[2*self.nx])]  # Third dynamics constraint
+                             float(self.l_constr[nx]), float(self.u_constr[nx]),  # Second dynamics constraint
+                             float(self.l_constr[2*nx]), float(self.u_constr[2*nx])]  # Third dynamics constraint
             self.mpc_bounds_pub.publish(bounds_msg)
 
         except Exception as e:
