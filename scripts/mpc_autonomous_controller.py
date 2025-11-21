@@ -1508,19 +1508,19 @@ class MPCAutonomousController(Node):
         
         # Step 4: Estimate slip ratios for each wheel: slip_ratio = (R*ω - v_expected) / (R*ω)
         # If R*ω is zero, then slip_ratio = 0
-        if abs(Rw_left) > 1e-6:
+        if abs(Rw_left) > 0.1:
             left_slip = (Rw_left - v_left_expected) / Rw_left
         else:
             left_slip = 0.0
         
-        if abs(Rw_right) > 1e-6:
+        if abs(Rw_right) > 0.1:
             right_slip = (Rw_right - v_right_expected) / Rw_right
         else:
             right_slip = 0.0
         
         # Clamp slip ratios to reasonable range [-1, 1]
-        left_slip = np.clip(left_slip, -1.0, 1.0)
-        right_slip = np.clip(right_slip, -1.0, 1.0)
+        left_slip = np.clip(left_slip, 0.0, 1.0)
+        right_slip = np.clip(right_slip, 0..0, 1.0)
         
         # Store slip ratios
         self.left_slip_ratio = left_slip
