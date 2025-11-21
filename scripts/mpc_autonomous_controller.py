@@ -229,11 +229,11 @@ class SlipAwareMPC:
                 
                 # -B_k[i,:]*u_k terms
                 for j in range(nu):
-                    idx = len(data_values)
+                    idx = len(data_values)  # Index before appending
                     row_indices.append(constraint_row + i)
                     col_indices.append(u_k_idx + j)
                     data_values.append(0.0)  # Placeholder, will be updated
-                    self.B_indices[k].append(idx)
+                    self.B_indices[k].append(idx)  # Store index of this element
             
             constraint_row += nx
         
@@ -247,14 +247,69 @@ class SlipAwareMPC:
                 constraint_row += 1
         
         # Create sparse constraint matrix
-        self.A_constr = sparse.coo_matrix(
+        # Store COO format first to preserve index mapping
+        A_constr_coo = sparse.coo_matrix(
             (data_values, (row_indices, col_indices)),
             shape=(n_constraints, nz)
-        ).tocsc()
+        )
+        
+        # Convert to CSC for OSQP (but keep COO for index mapping)
+        self.A_constr = A_constr_coo.tocsc()
+        
+        # Build mapping from (row, col) to data index in CSC format
+        # This is needed because CSC format may reorder data
+        self.row_col_to_data_idx = {}
+        coo_row = A_constr_coo.row
+        coo_col = A_constr_coo.col
+        coo_data = A_constr_coo.data
+        
+        # Find corresponding indices in CSC format
+        csc_row = self.A_constr.row
+        csc_col_ptr = self.A_constr.indptr
+        csc_data = self.A_constr.data
+        
+        # Build mapping: for each (row, col) pair, find its index in CSC data array
+        for coo_idx in range(len(coo_row)):
+            r = coo_row[coo_idx]
+            c = coo_col[coo_idx]
+            # Find this (r, c) in CSC format
+            col_start = csc_col_ptr[c]
+            col_end = csc_col_ptr[c + 1]
+            for csc_idx in range(col_start, col_end):
+                if csc_row[csc_idx] == r:
+                    self.row_col_to_data_idx[(r, c)] = csc_idx
+                    break
+        
+        # Now update stored indices to point to CSC data array
+        for k in range(N):
+            if k in self.A_indices:
+                # Rebuild A_indices using row/col mapping
+                new_A_indices = []
+                if k > 0:
+                    x_k_idx = k * (nu + nx) + nu
+                    for i in range(nx):
+                        for j in range(nx):
+                            row = k * nx + i
+                            col = x_k_idx + j
+                            if (row, col) in self.row_col_to_data_idx:
+                                new_A_indices.append(self.row_col_to_data_idx[(row, col)])
+                self.A_indices[k] = new_A_indices
+            
+            if k in self.B_indices:
+                # Rebuild B_indices using row/col mapping
+                new_B_indices = []
+                u_k_idx = k * (nu + nx)
+                for i in range(nx):
+                    for j in range(nu):
+                        row = k * nx + i
+                        col = u_k_idx + j
+                        if (row, col) in self.row_col_to_data_idx:
+                            new_B_indices.append(self.row_col_to_data_idx[(row, col)])
+                self.B_indices[k] = new_B_indices
         
         # Verify dimensions
         if self.logger:
-            self.logger.info(f'MPC matrix dimensions: P={self.P.shape}, A={self.A_constr.shape}, nz={nz}, n_constraints={n_constraints}')
+            self.logger.info(f'MPC matrix dimensions: P={self.P.shape}, A={self.A_constr.shape}, nz={nz}, n_constraints={n_constraints}, data_size={len(self.A_constr.data)}')
         
         # ============================================================
         # STEP 3: BUILD CONSTRAINT BOUNDS
@@ -320,6 +375,13 @@ class SlipAwareMPC:
         # Get data array for efficient updates
         A_constr_data = self.A_constr.data.copy()
         
+        # Verify data array size matches expected
+        expected_size = len(self.A_constr.data)
+        if len(A_constr_data) != expected_size:
+            if self.logger:
+                self.logger.error(f'A_constr data size mismatch: {len(A_constr_data)} != {expected_size}')
+            return
+        
         # Slip efficiency factors
         eta_L = 1.0 - slip_left
         eta_R = 1.0 - slip_right
@@ -366,17 +428,27 @@ class SlipAwareMPC:
             if k > 0 and k in self.A_indices:
                 A_neg = -A_k
                 for idx, matrix_idx in enumerate(self.A_indices[k]):
+                    if matrix_idx >= len(A_constr_data):
+                        if self.logger:
+                            self.logger.error(f'A index out of bounds: k={k}, idx={idx}, matrix_idx={matrix_idx}, data_size={len(A_constr_data)}')
+                        continue
                     i = idx // nx
                     j = idx % nx
-                    A_constr_data[matrix_idx] = A_neg[i, j]
+                    if i < nx and j < nx:
+                        A_constr_data[matrix_idx] = A_neg[i, j]
             
             # Update -B_k terms
             if k in self.B_indices:
                 B_neg = -B_k
                 for idx, matrix_idx in enumerate(self.B_indices[k]):
+                    if matrix_idx >= len(A_constr_data):
+                        if self.logger:
+                            self.logger.error(f'B index out of bounds: k={k}, idx={idx}, matrix_idx={matrix_idx}, data_size={len(A_constr_data)}')
+                        continue
                     i = idx // nu
                     j = idx % nu
-                    A_constr_data[matrix_idx] = B_neg[i, j]
+                    if i < nx and j < nu:
+                        A_constr_data[matrix_idx] = B_neg[i, j]
         
         # Update solver with new matrix data
         self.A_constr.data = A_constr_data
