@@ -598,10 +598,16 @@ class SlipAwareMPC:
                 P_norm = sparse_norm(self.P)
                 A_nnz = self.A_constr.nnz
                 A_norm = sparse_norm(self.A_constr)
+                
+                # Verify dynamics constraints are equalities
+                n_dynamics = self.N * self.nx
+                dynamics_eq_check = np.abs(self.l_constr[:n_dynamics] - self.u_constr[:n_dynamics]).max()
+                
                 self.logger.info(f'Solver Inputs: P matrix: nnz={P_nnz}, norm={P_norm:.6f}')
                 self.logger.info(f'Solver Inputs: A matrix: nnz={A_nnz}, norm={A_norm:.6f}')
                 self.logger.info(f'Solver Inputs: l bounds: min={self.l_constr.min():.6f}, max={self.l_constr.max():.6f}')
                 self.logger.info(f'Solver Inputs: u bounds: min={self.u_constr.min():.6f}, max={self.u_constr.max():.6f}')
+                self.logger.info(f'Solver Inputs: Dynamics equality check: max|l-u|={dynamics_eq_check:.10e} (should be <1e-9)')
                 self.logger.info(f'Solver Inputs: Initial state constraint: [{self.l_constr[0]:.6f}, {self.l_constr[1]:.6f}, {self.l_constr[2]:.6f}]')
                 self.logger.info(f'Solver Inputs: Current error state: [{current_error[0]:.6f}, {current_error[1]:.6f}, {current_error[2]:.6f}]')
             except Exception as e:
@@ -648,9 +654,53 @@ class SlipAwareMPC:
 
                 # Constraint satisfaction check
                 A_solution = self.A_constr @ solution
-                constraint_violations = np.abs(A_solution - self.l_constr)
-                max_violation = constraint_violations.max()
-                self.logger.info(f'Solver Result: max_constraint_violation={max_violation:.10e}')
+                violations = np.zeros(len(A_solution))
+                
+                # Check each constraint properly
+                for i in range(len(A_solution)):
+                    if abs(self.l_constr[i] - self.u_constr[i]) < 1e-9:  # Equality constraint
+                        # For equality: check if A_solution equals the bound value
+                        violations[i] = abs(A_solution[i] - self.l_constr[i])
+                    else:  # Inequality constraint
+                        # For inequality: check if within [l_constr, u_constr]
+                        if A_solution[i] < self.l_constr[i]:
+                            violations[i] = self.l_constr[i] - A_solution[i]  # Violation: below lower bound
+                        elif A_solution[i] > self.u_constr[i]:
+                            violations[i] = A_solution[i] - self.u_constr[i]  # Violation: above upper bound
+                        else:
+                            violations[i] = 0.0  # Satisfied
+                
+                max_violation = violations.max()
+                max_violation_idx = violations.argmax()
+                
+                self.logger.info(f'Solver Result: max_constraint_violation={max_violation:.10e} at constraint {max_violation_idx}')
+                
+                # Log details of the most violated constraint
+                if max_violation > 1e-6:
+                    self.logger.warn(f'  Constraint {max_violation_idx}: A_solution={A_solution[max_violation_idx]:.6f}, '
+                                   f'l={self.l_constr[max_violation_idx]:.6f}, u={self.u_constr[max_violation_idx]:.6f}')
+                    
+                    # Count how many constraints are violated
+                    n_violated = np.sum(violations > 1e-6)
+                    n_equality = np.sum(np.abs(self.l_constr - self.u_constr) < 1e-9)
+                    n_dynamics = self.N * self.nx
+                    
+                    # Check dynamics constraints specifically
+                    dynamics_violations = violations[:n_dynamics]
+                    input_violations = violations[n_dynamics:]
+                    max_dynamics_violation = dynamics_violations.max() if len(dynamics_violations) > 0 else 0.0
+                    max_input_violation = input_violations.max() if len(input_violations) > 0 else 0.0
+                    
+                    self.logger.warn(f'  Violated constraints: {n_violated}/{len(violations)} '
+                                   f'(Equality constraints: {n_equality}, Dynamics: {n_dynamics})')
+                    self.logger.warn(f'  Max violations - Dynamics: {max_dynamics_violation:.10e}, '
+                                   f'Input bounds: {max_input_violation:.10e}')
+                    
+                    # Check if initial state constraint is violated
+                    if max_violation_idx < self.nx:
+                        self.logger.warn(f'  Initial state constraint violated! Constraint {max_violation_idx} of first {self.nx}')
+                        self.logger.warn(f'    Expected: {self.l_constr[max_violation_idx]:.6f}, '
+                                       f'Got: {A_solution[max_violation_idx]:.6f}')
             except Exception as e:
                 if self.logger:
                     self.logger.warn(f'Error logging solver results: {e}')
