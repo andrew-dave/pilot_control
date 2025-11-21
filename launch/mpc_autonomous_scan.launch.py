@@ -74,22 +74,22 @@ def generate_launch_description():
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
         'mpc_Q_xe',
-        default_value='10.0',
+        default_value='50.0',
         description='MPC cost weight for position error x'
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
         'mpc_Q_ye',
-        default_value='10.0',
+        default_value='50.0',
         description='MPC cost weight for position error y'
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='1.0',
+        default_value='5.0',
         description='MPC cost weight for yaw error'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
         'mpc_R_delta',
-        default_value='0.1',
+        default_value='0.0001',
         description='MPC cost weight for control input change (delta u)'
     )
     
