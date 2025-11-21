@@ -545,7 +545,7 @@ class SlipAwareMPC:
         """
         if not self.initialized:
             if not self.setup():
-                return np.array([0.0, 0.0]), 0.0
+                return np.array([0.0, 0.0]), 0.0, None
         
         import time
         solve_start = time.time()
@@ -1651,15 +1651,17 @@ class MPCAutonomousController(Node):
             self.cmd_pub.publish(twist_msg)
 
             # Only publish MPC-specific diagnostics if solution exists
-            if solution is not None:
+            if solution is not None and hasattr(self.mpc_optimizer, 'l_constr') and self.mpc_optimizer.l_constr is not None:
                 # Publish MPC control sequence over horizon [u0_L, u0_R, u1_L, u1_R, ..., u_{N-1}_L, u_{N-1}_R]
                 control_seq_msg = Float64MultiArray()
                 control_sequence = []
-                for k in range(self.mpc_horizon):
-                    u_idx = k * (self.mpc_optimizer.nu + self.mpc_optimizer.nx)  # Start of u_k
-                    control_sequence.extend([float(solution[u_idx]), float(solution[u_idx + 1])])  # u_k_L, u_k_R
-                control_seq_msg.data = control_sequence
-                self.mpc_controls_pub.publish(control_seq_msg)
+                expected_length = self.mpc_horizon * (self.mpc_optimizer.nu + self.mpc_optimizer.nx)
+                if len(solution) >= expected_length:
+                    for k in range(self.mpc_horizon):
+                        u_idx = k * (self.mpc_optimizer.nu + self.mpc_optimizer.nx)  # Start of u_k
+                        control_sequence.extend([float(solution[u_idx]), float(solution[u_idx + 1])])  # u_k_L, u_k_R
+                    control_seq_msg.data = control_sequence
+                    self.mpc_controls_pub.publish(control_seq_msg)
 
             # Publish current error state
             error_state_msg = Float64MultiArray()
@@ -1674,6 +1676,8 @@ class MPCAutonomousController(Node):
                                    float(ref_wp[3]), float(ref_wp[4]), float(ref_wp[5])]
                 self.ref_trajectory_pub.publish(ref_traj_msg)
 
+            # Publish solver diagnostics and constraint bounds (only when MPC solved successfully)
+            if solution is not None:
                 # Publish solver diagnostics
                 solver_diag_msg = Float64MultiArray()
                 solver_diag_msg.data = [float(solve_time_ms), 1.0,  # status (1.0 = solved)
@@ -1683,10 +1687,11 @@ class MPCAutonomousController(Node):
                 # Publish MPC constraint bounds (first few bounds for debugging)
                 bounds_msg = Float64MultiArray()
                 nx = self.mpc_optimizer.nx
-                bounds_msg.data = [float(self.l_constr[0]), float(self.u_constr[0]),  # First dynamics constraint
-                                 float(self.l_constr[nx]), float(self.u_constr[nx]),  # Second dynamics constraint
-                                 float(self.l_constr[2*nx]), float(self.u_constr[2*nx])]  # Third dynamics constraint
-                self.mpc_bounds_pub.publish(bounds_msg)
+                if len(self.mpc_optimizer.l_constr) > 2*nx and len(self.mpc_optimizer.u_constr) > 2*nx:
+                    bounds_msg.data = [float(self.mpc_optimizer.l_constr[0]), float(self.mpc_optimizer.u_constr[0]),  # First dynamics constraint
+                                     float(self.mpc_optimizer.l_constr[nx]), float(self.mpc_optimizer.u_constr[nx]),  # Second dynamics constraint
+                                     float(self.mpc_optimizer.l_constr[2*nx]), float(self.mpc_optimizer.u_constr[2*nx])]  # Third dynamics constraint
+                    self.mpc_bounds_pub.publish(bounds_msg)
 
             # Publish current pose and velocity (always available)
             pose_vel_msg = Float64MultiArray()
