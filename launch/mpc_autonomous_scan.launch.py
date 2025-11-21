@@ -87,6 +87,11 @@ def generate_launch_description():
         default_value='1.0',
         description='MPC cost weight for yaw error'
     )
+    declare_mpc_R_delta_arg = DeclareLaunchArgument(
+        'mpc_R_delta',
+        default_value='0.1',
+        description='MPC cost weight for control input change (delta u)'
+    )
     
     # Slip estimation parameters
     declare_slip_history_length_arg = DeclareLaunchArgument(
@@ -226,6 +231,7 @@ def generate_launch_description():
             'mpc_Q_xe': LaunchConfiguration('mpc_Q_xe'),
             'mpc_Q_ye': LaunchConfiguration('mpc_Q_ye'),
             'mpc_Q_yaw': LaunchConfiguration('mpc_Q_yaw'),
+            'mpc_R_delta': LaunchConfiguration('mpc_R_delta'),
             
             # Slip estimation parameters
             'slip_history_length': LaunchConfiguration('slip_history_length'),
@@ -321,6 +327,7 @@ def generate_launch_description():
         declare_mpc_Q_xe_arg,
         declare_mpc_Q_ye_arg,
         declare_mpc_Q_yaw_arg,
+        declare_mpc_R_delta_arg,
         declare_slip_history_length_arg,
         declare_slip_estimation_window_arg,
         declare_lookahead_distance_arg,

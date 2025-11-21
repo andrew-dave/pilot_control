@@ -74,7 +74,7 @@ class SlipAwareMPC:
     - B_k depends on slip ratios (λ_L, λ_R)
     """
     
-    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, logger=None):
+    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None):
         """
         Initialize MPC optimizer.
         
@@ -88,6 +88,7 @@ class SlipAwareMPC:
             Q_xe: Cost weight for position error x
             Q_ye: Cost weight for position error y
             Q_yaw: Cost weight for yaw error
+            R_delta: Cost weight for control input change (delta u)
             logger: Optional logger for debug messages
         """
         self.N = N
@@ -103,8 +104,11 @@ class SlipAwareMPC:
         self.nu = 2  # [ωL, ωR]
         self.nz = N * (self.nu + self.nx)  # Decision vector size
         
-        # Cost matrix Q
+        # Cost matrix Q (for states)
         self.Q = sparse.diags([Q_xe, Q_ye, Q_yaw])
+        
+        # Cost matrix R_delta (for control input changes: delta u = u_k - u_{k-1})
+        self.R_delta = sparse.diags([R_delta, R_delta])
         
         # OSQP solver
         self.solver = None
@@ -145,14 +149,15 @@ class SlipAwareMPC:
         nz = self.nz
         
         # ============================================================
-        # STEP 1: BUILD COST MATRIX P (block-diagonal with Q)
+        # STEP 1: BUILD COST MATRIX P
         # ============================================================
-        # Cost function: J = sum(x_k^T Q x_k) for k=1 to N
-        # P is nz x nz, but only has Q blocks for state positions
-        # Decision vector: [u0, x1, u1, x2, ..., u_{N-1}, xN]
-        # We only penalize states (x1, x2, ..., xN), not controls
+        # Cost function: J = sum(x_k^T Q x_k) + sum((u_k - u_{k-1})^T R_delta (u_k - u_{k-1}))
+        # P is nz x nz with:
+        #   - Q blocks for state positions (x1, x2, ..., xN)
+        #   - R_delta blocks for control input changes (u1-u0, u2-u1, ..., u_{N-1}-u_{N-2})
+        # Decision vector: [u0, x1, u1, x2, u2, ..., u_{N-1}, xN]
         
-        # Build P matrix: sparse matrix with Q blocks only for states
+        # Build P matrix: sparse matrix with Q blocks for states and R_delta for control changes
         P_data = []
         P_row = []
         P_col = []
@@ -170,6 +175,40 @@ class SlipAwareMPC:
                         P_row.append(x_k_start + i)
                         P_col.append(x_k_start + j)
                         P_data.append(Q_dense[i, j])
+        
+        # Add cost for control input changes: (u_k - u_{k-1})^T R_delta (u_k - u_{k-1})
+        # This expands to: u_k^T R_delta u_k - 2*u_k^T R_delta u_{k-1} + u_{k-1}^T R_delta u_{k-1}
+        # For k >= 1: penalize (u_k - u_{k-1})
+        # Since R_delta is diagonal, we can simplify
+        R_delta_diag = self.R_delta.diagonal()  # Get diagonal values [r, r]
+        
+        for k in range(1, N):  # k from 1 to N-1
+            # Position of u_{k-1} and u_k in decision vector
+            u_km1_start = (k - 1) * (nu + nx)  # u_{k-1}
+            u_k_start = k * (nu + nx)  # u_k
+            
+            # Add R_delta terms for u_k^T R_delta u_k (diagonal only)
+            for i in range(nu):
+                P_row.append(u_k_start + i)
+                P_col.append(u_k_start + i)
+                P_data.append(R_delta_diag[i])
+            
+            # Add R_delta terms for u_{k-1}^T R_delta u_{k-1} (diagonal only)
+            for i in range(nu):
+                P_row.append(u_km1_start + i)
+                P_col.append(u_km1_start + i)
+                P_data.append(R_delta_diag[i])
+            
+            # Add cross terms: -2*u_k^T R_delta u_{k-1} (symmetric, diagonal R_delta)
+            for i in range(nu):
+                # u_k[i] * u_{k-1}[i] term (off-diagonal, symmetric)
+                P_row.append(u_k_start + i)
+                P_col.append(u_km1_start + i)
+                P_data.append(-2.0 * R_delta_diag[i])
+                # Symmetric term
+                P_row.append(u_km1_start + i)
+                P_col.append(u_k_start + i)
+                P_data.append(-2.0 * R_delta_diag[i])
         
         # Create sparse P matrix (nz x nz)
         self.P = sparse.coo_matrix(
@@ -653,11 +692,13 @@ class MPCAutonomousController(Node):
         self.declare_parameter('mpc_Q_xe', 10.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 10.0)  # Weight for position error y
         self.declare_parameter('mpc_Q_yaw', 1.0)  # Weight for yaw error (lower)
+        self.declare_parameter('mpc_R_delta', 0.1)  # Weight for control input change (delta u)
         
         # Get cost weights
         mpc_Q_xe = self.get_parameter('mpc_Q_xe').value
         mpc_Q_ye = self.get_parameter('mpc_Q_ye').value
         mpc_Q_yaw = self.get_parameter('mpc_Q_yaw').value
+        mpc_R_delta = self.get_parameter('mpc_R_delta').value
         
         # Compute wheel velocity limits (rad/s)
         # Convert max linear velocity to max wheel angular velocity
@@ -676,6 +717,7 @@ class MPCAutonomousController(Node):
             Q_xe=mpc_Q_xe,
             Q_ye=mpc_Q_ye,
             Q_yaw=mpc_Q_yaw,
+            R_delta=mpc_R_delta,
             logger=self.get_logger()
         )
         
