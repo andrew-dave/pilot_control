@@ -1147,13 +1147,14 @@ class MPCAutonomousController(Node):
     def generate_local_waypoints(self) -> List[np.ndarray]:
         """
         Generate local waypoints for MPC based on straight-line path.
-        
+
         Approach:
         1. Compute straight-line path from initial position to target global waypoint
         2. Find closest point on the line to current position
         3. Generate 'prediction horizon' number of waypoints along the line
-        4. Waypoints are spaced at distances corresponding to travel at max speed for time_step duration
-        
+        4. Use fixed spacing at cruising speed (0.4 m/s) for most cases
+        5. Only adjust spacing when very close to target to ensure accurate final approach
+
         Returns:
             List of waypoint states [x, y, yaw, vx, vy, vyaw] for MPC horizon
         """
@@ -1200,24 +1201,31 @@ class MPCAutonomousController(Node):
         closest_x = self.path_start_x + t_closest * path_dx
         closest_y = self.path_start_y + t_closest * path_dy
         
-        # Compute waypoint spacing: distance traveled at max speed for one time step
-        waypoint_spacing = self.max_linear_vel * self.mpc_dt  # m
-        
+        # Compute waypoint spacing: distance traveled at cruising speed for one time step
+        cruising_speed = min(self.max_linear_vel, 0.4)  # Cap at 0.4 m/s as requested
+        waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be ~0.04m)
+
         # Compute distance from closest point to target along path
         distance_to_target_along_path = (1.0 - t_closest) * path_length
-        
-        # Check if last waypoint would go beyond target
-        max_distance_needed = waypoint_spacing * self.mpc_horizon
-        
-        # Adjust spacing if needed to stop exactly at target
-        if max_distance_needed > distance_to_target_along_path:
-            # Adjust spacing so last waypoint is at target
+
+        # Check if we need to adjust spacing due to proximity to target
+        max_distance_needed = waypoint_spacing * self.mpc_horizon  # ~0.2m for 5 steps
+
+        # Only adjust spacing when very close to target (within horizon distance)
+        proximity_threshold = max_distance_needed * 1.2  # 20% buffer
+        if distance_to_target_along_path < proximity_threshold:
+            # Adjust spacing so last waypoint hits target exactly
             if self.mpc_horizon > 0:
                 adjusted_spacing = distance_to_target_along_path / self.mpc_horizon
             else:
                 adjusted_spacing = waypoint_spacing
         else:
+            # Use fixed cruising spacing
             adjusted_spacing = waypoint_spacing
+
+        # Ensure minimum spacing to avoid numerical issues
+        min_spacing = 0.005  # 5mm minimum
+        adjusted_spacing = max(adjusted_spacing, min_spacing)
         
         # Generate waypoints along the path
         waypoints = []
