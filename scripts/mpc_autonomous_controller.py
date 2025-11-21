@@ -842,10 +842,47 @@ class MPCAutonomousController(Node):
             '/mpc_control/cmd_twist',
             10
         )
-        
+
         self.slip_pub = self.create_publisher(
             Float64MultiArray,
             '/mpc_control/slip_ratios',
+            10
+        )
+
+        # Additional debugging publishers
+        self.mpc_controls_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/control_sequence',
+            10
+        )
+
+        self.error_state_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/error_state',
+            10
+        )
+
+        self.ref_trajectory_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/reference_trajectory',
+            10
+        )
+
+        self.solver_diagnostics_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/solver_diagnostics',
+            10
+        )
+
+        self.pose_velocity_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/pose_velocity',
+            10
+        )
+
+        self.mpc_bounds_pub = self.create_publisher(
+            Float64MultiArray,
+            '/mpc_control/constraint_bounds',
             10
         )
         
@@ -928,6 +965,16 @@ class MPCAutonomousController(Node):
         self.get_logger().info(f'Dependencies:')
         self.get_logger().info(f'  OSQP available: {OSQP_AVAILABLE}')
         self.get_logger().info(f'  scipy available: {SCIPY_AVAILABLE}')
+        self.get_logger().info(f'')
+        self.get_logger().info(f'Diagnostic Topics:')
+        self.get_logger().info(f'  /mpc_control/cmd_twist - Current commanded twist')
+        self.get_logger().info(f'  /mpc_control/slip_ratios - Wheel slip ratios [left, right]')
+        self.get_logger().info(f'  /mpc_control/control_sequence - MPC control sequence over horizon')
+        self.get_logger().info(f'  /mpc_control/error_state - Current error state [xe, ye, θe]')
+        self.get_logger().info(f'  /mpc_control/reference_trajectory - Current reference waypoint')
+        self.get_logger().info(f'  /mpc_control/solver_diagnostics - Solver info [solve_time, status, iter, osqp_time]')
+        self.get_logger().info(f'  /mpc_control/pose_velocity - Current pose and velocity')
+        self.get_logger().info(f'  /mpc_control/constraint_bounds - MPC constraint bounds (sample)')
         self.get_logger().info('='*70)
     
     # ============================================================
@@ -1591,18 +1638,60 @@ class MPCAutonomousController(Node):
         # Publish wheel velocities
         self.publish_wheel_velocities(left_rps, right_rps)
         
-        # Publish diagnostic twist message
+        # Publish diagnostic messages
         try:
             # Convert to linear and angular velocities for diagnostics
             linear_vel = (omega_L + omega_R) * self.wheel_radius / 2.0
             angular_vel = (omega_R - omega_L) * self.wheel_radius / self.wheel_base
-            
+
             twist_msg = Twist()
             twist_msg.linear.x = linear_vel
             twist_msg.angular.z = angular_vel
             self.cmd_pub.publish(twist_msg)
-        except Exception:
-            pass
+
+            # Publish MPC control sequence over horizon [u0_L, u0_R, u1_L, u1_R, ..., u_{N-1}_L, u_{N-1}_R]
+            control_seq_msg = Float64MultiArray()
+            control_sequence = []
+            for k in range(self.mpc_horizon):
+                u_idx = k * (self.nu + self.nx)  # Start of u_k
+                control_sequence.extend([float(solution[u_idx]), float(solution[u_idx + 1])])  # u_k_L, u_k_R
+            control_seq_msg.data = control_sequence
+            self.mpc_controls_pub.publish(control_seq_msg)
+
+            # Publish current error state
+            error_state_msg = Float64MultiArray()
+            error_state_msg.data = [float(current_error[0]), float(current_error[1]), float(current_error[2])]
+            self.error_state_pub.publish(error_state_msg)
+
+            # Publish reference trajectory (first waypoint)
+            if len(reference_trajectory) > 0:
+                ref_wp = reference_trajectory[0]
+                ref_traj_msg = Float64MultiArray()
+                ref_traj_msg.data = [float(ref_wp[0]), float(ref_wp[1]), float(ref_wp[2]),
+                                   float(ref_wp[3]), float(ref_wp[4]), float(ref_wp[5])]
+                self.ref_trajectory_pub.publish(ref_traj_msg)
+
+            # Publish solver diagnostics
+            solver_diag_msg = Float64MultiArray()
+            solver_diag_msg.data = [float(solve_time_ms), float(result.info.status_val),
+                                  float(result.info.iter), float(result.info.solve_time)]
+            self.solver_diagnostics_pub.publish(solver_diag_msg)
+
+            # Publish current pose and velocity
+            pose_vel_msg = Float64MultiArray()
+            pose_vel_msg.data = [float(self.current_x), float(self.current_y), float(self.current_yaw),
+                               float(self.current_vx), float(self.current_vy), float(self.current_vyaw)]
+            self.pose_velocity_pub.publish(pose_vel_msg)
+
+            # Publish MPC constraint bounds (first few bounds for debugging)
+            bounds_msg = Float64MultiArray()
+            bounds_msg.data = [float(self.l_constr[0]), float(self.u_constr[0]),  # First dynamics constraint
+                             float(self.l_constr[self.nx]), float(self.u_constr[self.nx]),  # Second dynamics constraint
+                             float(self.l_constr[2*self.nx]), float(self.u_constr[2*self.nx])]  # Third dynamics constraint
+            self.mpc_bounds_pub.publish(bounds_msg)
+
+        except Exception as e:
+            self.get_logger().warn(f'Error publishing diagnostics: {e}')
     
     # ============================================================
     # PUBLISHING
