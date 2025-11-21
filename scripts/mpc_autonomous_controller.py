@@ -1695,6 +1695,9 @@ class MPCAutonomousController(Node):
             Tuple[left_slip_ratio, right_slip_ratio]:
                 - Slip ratios where negative = wheel spinning faster than expected, positive = wheel slipping
         """
+        #disbbled for now
+        return 0.0, 0.0
+        
         current_time = self.get_clock().now().nanoseconds / 1e9  # Current time in seconds
         
         # Filter history to past 1 second
