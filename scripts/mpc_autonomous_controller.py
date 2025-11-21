@@ -187,34 +187,48 @@ class SlipAwareMPC:
             u_km1_start = (k - 1) * (nu + nx)  # u_{k-1}
             u_k_start = k * (nu + nx)  # u_k
             
-            # Add R_delta terms for u_k^T R_delta u_k (diagonal only)
+            # For each control input dimension
             for i in range(nu):
+                r_val = R_delta_diag[i]
+                
+                # u_k[i]^2 term: coefficient = r
                 P_row.append(u_k_start + i)
                 P_col.append(u_k_start + i)
-                P_data.append(R_delta_diag[i])
-            
-            # Add R_delta terms for u_{k-1}^T R_delta u_{k-1} (diagonal only)
-            for i in range(nu):
+                P_data.append(r_val)
+                
+                # u_{k-1}[i]^2 term: coefficient = r
                 P_row.append(u_km1_start + i)
                 P_col.append(u_km1_start + i)
-                P_data.append(R_delta_diag[i])
-            
-            # Add cross terms: -2*u_k^T R_delta u_{k-1} (symmetric, diagonal R_delta)
-            for i in range(nu):
-                # u_k[i] * u_{k-1}[i] term (off-diagonal, symmetric)
+                P_data.append(r_val)
+                
+                # Cross term: -2*r*u_k[i]*u_{k-1}[i] (symmetric)
+                # Upper triangle
                 P_row.append(u_k_start + i)
                 P_col.append(u_km1_start + i)
-                P_data.append(-2.0 * R_delta_diag[i])
-                # Symmetric term
+                P_data.append(-2.0 * r_val)
+                # Lower triangle (symmetric)
                 P_row.append(u_km1_start + i)
                 P_col.append(u_k_start + i)
-                P_data.append(-2.0 * R_delta_diag[i])
+                P_data.append(-2.0 * r_val)
         
         # Create sparse P matrix (nz x nz)
-        self.P = sparse.coo_matrix(
+        # First create COO matrix (duplicate entries will be summed automatically)
+        P_coo = sparse.coo_matrix(
             (P_data, (P_row, P_col)),
             shape=(nz, nz)
-        ).tocsc()
+        )
+        
+        # Ensure symmetry: P = (P + P^T) / 2
+        # This ensures the matrix is symmetric (required for QP)
+        P_sym = (P_coo + P_coo.T) / 2.0
+        
+        # Convert to CSC format
+        self.P = P_sym.tocsc()
+        
+        # Add small regularization to ensure positive definiteness
+        # This prevents numerical issues with OSQP
+        regularization = 1e-8
+        self.P = self.P + sparse.eye(nz, format='csc') * regularization
         
         # ============================================================
         # STEP 2: BUILD CONSTRAINT MATRIX A_constr
