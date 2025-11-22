@@ -1494,12 +1494,14 @@ class MPCAutonomousController(Node):
                 # Find current position's t parameter along path for reference
                 t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
                 
-                # Filter to intersections ahead of previous center
-                forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-6]
+                # Filter to intersections ahead of previous center (with minimum forward progress)
+                min_forward_progress_ratio = 1e-4 / path_length if path_length > 1e-10 else 1e-4  # Require at least 0.1mm forward progress
+                forward_intersections = [inter for inter in intersections if inter[2] > t_prev + min_forward_progress_ratio]
                 
                 if len(forward_intersections) > 0:
-                    # Choose the intersection that's ahead and furthest along the path (ensures progress)
-                    forward_intersections.sort(key=lambda p: p[2], reverse=True)
+                    # Choose the CLOSEST intersection ahead (ensures steady step-by-step progress)
+                    # Sort by t value ascending to get the one closest to current position
+                    forward_intersections.sort(key=lambda p: p[2])
                     waypoint_x, waypoint_y, t_waypoint = forward_intersections[0]
                 else:
                     # No forward intersection (might be at path end), choose one closest to target
@@ -1557,13 +1559,37 @@ class MPCAutonomousController(Node):
                 dy_wp = waypoint_y - prev_center_y
                 dist_wp = math.sqrt(dx_wp*dx_wp + dy_wp*dy_wp)
                 
+                # Compute t_prev for reference
+                t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
+                
                 self.get_logger().info(
                     f'Waypoint 0: circle_center=({prev_center_x:.3f}, {prev_center_y:.3f}), '
-                    f'radius={circle_radius:.3f}, t={t_waypoint:.6f}, '
+                    f'radius={circle_radius:.3f}, t_prev={t_prev:.6f}, t_waypoint={t_waypoint:.6f}, '
                     f'pos=({waypoint_x:.3f}, {waypoint_y:.3f}), '
                     f'dist_from_center={dist_wp:.4f}, intersections={len(intersections)}, '
-                    f'using_fallback={len(intersections) == 0}'
+                    f'using_fallback={len(intersections) == 0}, forward_progress={t_waypoint - t_prev:.6f}'
                 )
+            
+            # Verify waypoint is not at the same location as previous center
+            dx_check = waypoint_x - prev_center_x
+            dy_check = waypoint_y - prev_center_y
+            dist_check = math.sqrt(dx_check*dx_check + dy_check*dy_check)
+            
+            if dist_check < 1e-6:  # Waypoint too close to previous center
+                self.get_logger().warn(
+                    f'Waypoint {k} too close to previous center! dist={dist_check:.8f}. '
+                    f'Forcing forward movement along path.'
+                )
+                # Force forward movement along path
+                if path_length > 1e-10:
+                    forward_vec_x = dx_line / path_length
+                    forward_vec_y = dy_line / path_length
+                    waypoint_x = prev_center_x + circle_radius * forward_vec_x
+                    waypoint_y = prev_center_y + circle_radius * forward_vec_y
+                    
+                    # Update t_waypoint
+                    t_waypoint = ((waypoint_x - x1) * dx_line + (waypoint_y - y1) * dy_line) / (path_length * path_length)
+                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
             
             # Interpolate yaw between start and target
             # Blend between heading along path and target yaw
@@ -1627,11 +1653,12 @@ class MPCAutonomousController(Node):
                     # Find t_prev for last waypoint
                     if path_length > 1e-10:
                         t_prev = ((last_center_x - x1) * dx_line + (last_center_y - y1) * dy_line) / (path_length * path_length)
-                        forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-6]
+                        min_forward_progress_ratio = 1e-4 / path_length if path_length > 1e-10 else 1e-4
+                        forward_intersections = [inter for inter in intersections if inter[2] > t_prev + min_forward_progress_ratio]
                         
                         if len(forward_intersections) > 0:
-                            # Choose furthest ahead to ensure progress
-                            forward_intersections.sort(key=lambda p: p[2], reverse=True)
+                            # Choose CLOSEST intersection ahead (ensures steady step-by-step progress)
+                            forward_intersections.sort(key=lambda p: p[2])
                             next_x, next_y, t_next = forward_intersections[0]
                         else:
                             # No forward intersection, choose closest to target
