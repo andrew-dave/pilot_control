@@ -1432,28 +1432,121 @@ class MPCAutonomousController(Node):
             self.get_logger().info(f'Enforcing min spacing: {min_spacing:.6f} (was {adjusted_spacing:.6f})')
             adjusted_spacing = min_spacing
         
-        # Generate waypoints along the path
+        # Generate waypoints using circle-intersection method
+        # This method naturally accounts for lateral errors by generating waypoints
+        # that guide the robot back to the path
         waypoints = []
         waypoint_positions = []  # Store positions for velocity computation
         
+        # Start from current position for first waypoint
+        prev_center_x = self.current_x
+        prev_center_y = self.current_y
+        
         for k in range(self.mpc_horizon):
-            # Distance along path from closest point
-            distance_along_path = adjusted_spacing * (k + 1)  # k+1 to start ahead
-
-            # Parameter along path (0 = start, 1 = end)
-            t_waypoint = t_closest + (distance_along_path / path_length)
-
-            # Clamp to path segment [0, 1]
-            t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-
-            # Compute waypoint position
-            waypoint_x = self.path_start_x + t_waypoint * path_dx
-            waypoint_y = self.path_start_y + t_waypoint * path_dy
-
+            # Circle radius: distance traveled in one time step
+            circle_radius = adjusted_spacing
+            
+            # Find intersection of circle with path line
+            # Path line: from (path_start_x, path_start_y) to (target_x, target_y)
+            # Circle: centered at (prev_center_x, prev_center_y) with radius circle_radius
+            
+            # Line parametric form: x = x1 + t*(x2-x1), y = y1 + t*(y2-y1)
+            # Circle: (x - cx)^2 + (y - cy)^2 = r^2
+            # Substitute line into circle equation and solve for t
+            
+            # Line parameters
+            x1, y1 = self.path_start_x, self.path_start_y
+            x2, y2 = self.target_x, self.target_y
+            cx, cy = prev_center_x, prev_center_y
+            r = circle_radius
+            
+            # Vector along path line
+            dx_line = x2 - x1
+            dy_line = y2 - y1
+            
+            # Vector from line start to circle center
+            dx_to_center = cx - x1
+            dy_to_center = cy - y1
+            
+            # Quadratic coefficients: a*t^2 + b*t + c = 0
+            a = dx_line*dx_line + dy_line*dy_line
+            b = 2.0 * (dx_line*dx_to_center + dy_line*dy_to_center)
+            c = dx_to_center*dx_to_center + dy_to_center*dy_to_center - r*r
+            
+            # Solve quadratic
+            discriminant = b*b - 4.0*a*c
+            intersections = []
+            
+            if abs(a) > 1e-10 and discriminant >= 0:
+                sqrt_disc = math.sqrt(discriminant)
+                t1 = (-b + sqrt_disc) / (2.0 * a)
+                t2 = (-b - sqrt_disc) / (2.0 * a)
+                
+                # Check both solutions
+                for t in [t1, t2]:
+                    if 0.0 <= t <= 1.0:  # Within path segment
+                        inter_x = x1 + t * dx_line
+                        inter_y = y1 + t * dy_line
+                        intersections.append((inter_x, inter_y, t))
+            
+            # Choose intersection
+            if len(intersections) > 0:
+                # If multiple intersections, choose one closer to target (larger t)
+                intersections.sort(key=lambda p: p[2], reverse=True)
+                waypoint_x, waypoint_y, t_waypoint = intersections[0]
+            else:
+                # No intersection: use projection line method
+                # Project circle center onto path line to find closest point
+                if path_length > 1e-10:
+                    # Parameter along path for closest point
+                    t_proj = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
+                    t_proj = np.clip(t_proj, 0.0, 1.0)
+                    
+                    # Projected point on path (closest point)
+                    proj_x = x1 + t_proj * dx_line
+                    proj_y = y1 + t_proj * dy_line
+                    
+                    # Vector from circle center to projected point (direction toward path)
+                    dx_proj = proj_x - cx
+                    dy_proj = proj_y - cy
+                    dist_proj = math.sqrt(dx_proj*dx_proj + dy_proj*dy_proj)
+                    
+                    if dist_proj > 1e-10:
+                        # Unit vector from center toward path projection
+                        ux = dx_proj / dist_proj
+                        uy = dy_proj / dist_proj
+                        
+                        # Waypoint is at distance 'r' along projection line toward path
+                        waypoint_x = cx + r * ux
+                        waypoint_y = cy + r * uy
+                    else:
+                        # Center is already on path, move forward along path
+                        forward_vec_x = dx_line / path_length
+                        forward_vec_y = dy_line / path_length
+                        waypoint_x = cx + r * forward_vec_x
+                        waypoint_y = cy + r * forward_vec_y
+                    
+                    # Compute t for waypoint (projection onto path)
+                    t_waypoint = ((waypoint_x - x1) * dx_line + (waypoint_y - y1) * dy_line) / (path_length * path_length)
+                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+                else:
+                    # Path has zero length, stay at center
+                    waypoint_x = cx
+                    waypoint_y = cy
+                    t_waypoint = 0.0
+            
+            # Clamp waypoint to path endpoints (safety check)
+            if path_length > 1e-10:
+                t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+                waypoint_x = x1 + t_waypoint * dx_line
+                waypoint_y = y1 + t_waypoint * dy_line
+            
             if k == 0:  # Log first waypoint
                 self.get_logger().info(
-                    f'Waypoint 0: dist={distance_along_path:.3f}, t={t_waypoint:.6f}, '
-                    f'pos=({waypoint_x:.3f}, {waypoint_y:.3f})'
+                    f'Waypoint 0: circle_center=({prev_center_x:.3f}, {prev_center_y:.3f}), '
+                    f'radius={circle_radius:.3f}, t={t_waypoint:.6f}, '
+                    f'pos=({waypoint_x:.3f}, {waypoint_y:.3f}), '
+                    f'intersections={len(intersections)}'
                 )
             
             # Interpolate yaw between start and target
@@ -1465,6 +1558,10 @@ class MPCAutonomousController(Node):
             waypoint_yaw = self.normalize_angle(waypoint_yaw)
             
             waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
+            
+            # Update center for next waypoint
+            prev_center_x = waypoint_x
+            prev_center_y = waypoint_y
         
         # Compute velocities for each waypoint based on next waypoint
         # For the last waypoint, compute an extra waypoint into the future
