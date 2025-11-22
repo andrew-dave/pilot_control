@@ -84,13 +84,18 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='0.0',
+        default_value='10.0',
         description='MPC cost weight for yaw error (higher to help lateral correction)'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
         'mpc_R_delta',
         default_value='0.0001',
         description='MPC cost weight for control input change (delta u)'
+    )
+    declare_mpc_weight_increase_per_step_arg = DeclareLaunchArgument(
+        'mpc_weight_increase_per_step',
+        default_value='0.5',
+        description='Linear weight increase factor per time step. Weight at step k = base_weight * (1 + weight_increase_per_step * k). Example: 0.1 means 10% increase per step.'
     )
     
     # Slip estimation parameters
@@ -232,6 +237,7 @@ def generate_launch_description():
             'mpc_Q_ye': LaunchConfiguration('mpc_Q_ye'),
             'mpc_Q_yaw': LaunchConfiguration('mpc_Q_yaw'),
             'mpc_R_delta': LaunchConfiguration('mpc_R_delta'),
+            'mpc_weight_increase_per_step': LaunchConfiguration('mpc_weight_increase_per_step'),
             
             # Solver debug
             'solver_debug_enabled': True,
@@ -331,6 +337,7 @@ def generate_launch_description():
         declare_mpc_Q_ye_arg,
         declare_mpc_Q_yaw_arg,
         declare_mpc_R_delta_arg,
+        declare_mpc_weight_increase_per_step_arg,
         declare_slip_history_length_arg,
         declare_slip_estimation_window_arg,
         declare_lookahead_distance_arg,

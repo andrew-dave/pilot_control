@@ -74,7 +74,7 @@ class SlipAwareMPC:
     - B_k depends on slip ratios (λ_L, λ_R)
     """
     
-    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None):
+    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None, weight_increase_per_step=0.0):
         """
         Initialize MPC optimizer.
         
@@ -85,11 +85,14 @@ class SlipAwareMPC:
             L: Wheel base (m)
             w_min: Minimum wheel velocity (rad/s)
             w_max: Maximum wheel velocity (rad/s)
-            Q_xe: Cost weight for position error x
-            Q_ye: Cost weight for position error y
-            Q_yaw: Cost weight for yaw error
+            Q_xe: Cost weight for position error x (base weight)
+            Q_ye: Cost weight for position error y (base weight)
+            Q_yaw: Cost weight for yaw error (base weight)
             R_delta: Cost weight for control input change (delta u)
             logger: Optional logger for debug messages
+            weight_increase_per_step: Linear weight increase factor per time step.
+                                     Weight at step k = base_weight * (1 + weight_increase_per_step * k)
+                                     Default 0.0 means same weight for all steps.
         """
         self.N = N
         self.Ts = Ts
@@ -98,14 +101,18 @@ class SlipAwareMPC:
         self.w_min = w_min
         self.w_max = w_max
         self.logger = logger
+        self.weight_increase_per_step = weight_increase_per_step
         
         # State and control dimensions
         self.nx = 3  # [xe, ye, θe]
         self.nu = 2  # [ωL, ωR]
         self.nz = N * (self.nu + self.nx)  # Decision vector size
         
-        # Cost matrix Q (for states)
-        self.Q = sparse.diags([Q_xe, Q_ye, Q_yaw])
+        # Base cost matrix Q (for states) - will be scaled per time step in setup()
+        self.Q_xe_base = Q_xe
+        self.Q_ye_base = Q_ye
+        self.Q_yaw_base = Q_yaw
+        self.Q = sparse.diags([Q_xe, Q_ye, Q_yaw])  # Keep for backward compatibility, but will use scaled versions
         
         # Cost matrix R_delta (for control input changes: delta u = u_k - u_{k-1})
         self.R_delta = sparse.diags([R_delta, R_delta])
@@ -162,13 +169,25 @@ class SlipAwareMPC:
         P_row = []
         P_col = []
         
-        # For each state x_k (k=1 to N)
+        # For each state x_k (k=0 to N-1, but indexed as 1 to N in decision vector)
+        # Actually k here is the step index: 0-based in the horizon
         for k in range(N):
             # Position of x_k in decision vector: k * (nu + nx) + nu
             x_k_start = k * (nu + nx) + nu
             
+            # Scale Q for this time step: weight_k = base_weight * (1 + alpha * k)
+            # where alpha is weight_increase_per_step
+            weight_scale = 1.0 + self.weight_increase_per_step * k
+            
+            # Create scaled Q matrix for this time step
+            Q_scaled = sparse.diags([
+                self.Q_xe_base * weight_scale,
+                self.Q_ye_base * weight_scale,
+                self.Q_yaw_base * weight_scale
+            ])
+            
             # Add Q matrix entries for this state
-            Q_dense = self.Q.toarray()
+            Q_dense = Q_scaled.toarray()
             for i in range(nx):
                 for j in range(nx):
                     if abs(Q_dense[i, j]) > 1e-10:  # Only non-zero entries
@@ -891,6 +910,11 @@ class MPCAutonomousController(Node):
         self.declare_parameter('mpc_Q_yaw', 10.0)  # Weight for yaw error (higher to help lateral correction)
         self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change
         
+        # Weight scaling: increase weights linearly into the future
+        # Weight at step k = base_weight * (1 + weight_increase_per_step * k)
+        # Example: 0.1 means 10% increase per step (step 0: 1.0x, step 1: 1.1x, step 2: 1.2x, ...)
+        self.declare_parameter('mpc_weight_increase_per_step', 0.5)  # Default: no increase (same weight for all steps)
+        
         # Solver debug parameter
         self.declare_parameter('solver_debug_enabled', False)  # Enable detailed solver debugging
         
@@ -899,6 +923,7 @@ class MPCAutonomousController(Node):
         mpc_Q_ye = self.get_parameter('mpc_Q_ye').value
         mpc_Q_yaw = self.get_parameter('mpc_Q_yaw').value
         mpc_R_delta = self.get_parameter('mpc_R_delta').value
+        mpc_weight_increase_per_step = self.get_parameter('mpc_weight_increase_per_step').value
         
         # Get solver debug setting
         self.solver_debug_enabled = self.get_parameter('solver_debug_enabled').value
@@ -921,7 +946,8 @@ class MPCAutonomousController(Node):
             Q_ye=mpc_Q_ye,
             Q_yaw=mpc_Q_yaw,
             R_delta=mpc_R_delta,
-            logger=self.get_logger()
+            logger=self.get_logger(),
+            weight_increase_per_step=mpc_weight_increase_per_step
         )
         
         # Set solver debug flag on optimizer
@@ -1432,156 +1458,32 @@ class MPCAutonomousController(Node):
             self.get_logger().info(f'Enforcing min spacing: {min_spacing:.6f} (was {adjusted_spacing:.6f})')
             adjusted_spacing = min_spacing
         
-        # Generate waypoints using circle-intersection method
-        # This method naturally accounts for lateral errors by generating waypoints
-        # that guide the robot back to the path
+        # Generate waypoints along the path
+        # Method: Find closest point on path, then move forward along path
         waypoints = []
         waypoint_positions = []  # Store positions for velocity computation
         
-        # Start from current position for first waypoint
-        prev_center_x = self.current_x
-        prev_center_y = self.current_y
-        
         for k in range(self.mpc_horizon):
-            # Circle radius: distance traveled in one time step
-            circle_radius = adjusted_spacing
+            # Distance along path from closest point
+            distance_along_path = adjusted_spacing * (k + 1)  # k+1 to start ahead
             
-            # Find intersection of circle with path line
-            # Path line: from (path_start_x, path_start_y) to (target_x, target_y)
-            # Circle: centered at (prev_center_x, prev_center_y) with radius circle_radius
+            # Parameter along path (0 = start, 1 = end)
+            t_waypoint = t_closest + (distance_along_path / path_length)
             
-            # Line parametric form: x = x1 + t*(x2-x1), y = y1 + t*(y2-y1)
-            # Circle: (x - cx)^2 + (y - cy)^2 = r^2
-            # Substitute line into circle equation and solve for t
+            # Clamp to path segment [0, 1]
+            t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
             
-            # Line parameters
-            x1, y1 = self.path_start_x, self.path_start_y
-            x2, y2 = self.target_x, self.target_y
-            cx, cy = prev_center_x, prev_center_y
-            r = circle_radius
-            
-            # Vector along path line
-            dx_line = x2 - x1
-            dy_line = y2 - y1
-            
-            # Vector from line start to circle center
-            dx_to_center = cx - x1
-            dy_to_center = cy - y1
-            
-            # Quadratic coefficients: a*t^2 + b*t + c = 0
-            a = dx_line*dx_line + dy_line*dy_line
-            b = 2.0 * (dx_line*dx_to_center + dy_line*dy_to_center)
-            c = dx_to_center*dx_to_center + dy_to_center*dy_to_center - r*r
-            
-            # Solve quadratic
-            discriminant = b*b - 4.0*a*c
-            intersections = []
-            
-            if abs(a) > 1e-10 and discriminant >= 0:
-                sqrt_disc = math.sqrt(discriminant)
-                t1 = (-b + sqrt_disc) / (2.0 * a)
-                t2 = (-b - sqrt_disc) / (2.0 * a)
-                
-                # Check both solutions
-                for t in [t1, t2]:
-                    if 0.0 <= t <= 1.0:  # Within path segment
-                        inter_x = x1 + t * dx_line
-                        inter_y = y1 + t * dy_line
-                        intersections.append((inter_x, inter_y, t))
-            
-            # Choose intersection
-            if len(intersections) > 0:
-                # Find current position's t parameter along path for reference
-                t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
-                
-                # Filter to intersections ahead of previous center (any forward progress is okay)
-                forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-8]
-                
-                if len(forward_intersections) > 0:
-                    # Choose the CLOSEST intersection ahead (ensures steady step-by-step progress)
-                    # Sort by t value ascending to get the one closest to current position
-                    forward_intersections.sort(key=lambda p: p[2])
-                    waypoint_x, waypoint_y, t_waypoint = forward_intersections[0]
-                    
-                    # Verify forward progress: if somehow t_waypoint <= t_prev, force forward
-                    if t_waypoint <= t_prev:
-                        # Force forward movement along path
-                        forward_vec_x = dx_line / path_length
-                        forward_vec_y = dy_line / path_length
-                        waypoint_x = cx + r * forward_vec_x
-                        waypoint_y = cy + r * forward_vec_y
-                        t_waypoint = t_prev + (r / path_length) if path_length > 1e-10 else t_prev + r
-                        t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-                else:
-                    # No forward intersection (at path end or edge case), just move forward
-                    forward_vec_x = dx_line / path_length if path_length > 1e-10 else 0.0
-                    forward_vec_y = dy_line / path_length if path_length > 1e-10 else 0.0
-                    waypoint_x = cx + r * forward_vec_x
-                    waypoint_y = cy + r * forward_vec_y
-                    t_waypoint = t_prev + (r / path_length) if path_length > 1e-10 else 0.0
-                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-            else:
-                # No intersection: always move forward along path
-                # This ensures forward progress while MPC handles lateral correction
-                if path_length > 1e-10:
-                    # Find current position's t parameter along path
-                    t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
-                    
-                    # Move forward along path by circle_radius distance
-                    t_waypoint = t_prev + (r / path_length)
-                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-                    
-                    # Compute waypoint position along path
-                    waypoint_x = x1 + t_waypoint * dx_line
-                    waypoint_y = y1 + t_waypoint * dy_line
-                else:
-                    # Path has zero length, stay at center
-                    waypoint_x = cx
-                    waypoint_y = cy
-                    t_waypoint = 0.0
-            
-            # Only clamp t_waypoint for yaw computation, NOT the waypoint position
-            # The waypoint position should be free to correct lateral errors
-            if path_length > 1e-10:
-                t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+            # Compute waypoint position
+            waypoint_x = self.path_start_x + t_waypoint * path_dx
+            waypoint_y = self.path_start_y + t_waypoint * path_dy
             
             if k == 0:  # Log first waypoint
-                # Compute distance from previous center to waypoint
-                dx_wp = waypoint_x - prev_center_x
-                dy_wp = waypoint_y - prev_center_y
-                dist_wp = math.sqrt(dx_wp*dx_wp + dy_wp*dy_wp)
-                
-                # Compute t_prev for reference
-                t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
-                
+                dist_from_closest = math.sqrt((waypoint_x - closest_x)**2 + (waypoint_y - closest_y)**2)
                 self.get_logger().info(
-                    f'Waypoint 0: circle_center=({prev_center_x:.3f}, {prev_center_y:.3f}), '
-                    f'radius={circle_radius:.3f}, t_prev={t_prev:.6f}, t_waypoint={t_waypoint:.6f}, '
+                    f'Waypoint 0: dist={distance_along_path:.3f}, t={t_waypoint:.6f}, '
                     f'pos=({waypoint_x:.3f}, {waypoint_y:.3f}), '
-                    f'dist_from_center={dist_wp:.4f}, intersections={len(intersections)}, '
-                    f'using_fallback={len(intersections) == 0}, forward_progress={t_waypoint - t_prev:.6f}'
+                    f'dist_from_closest={dist_from_closest:.4f}'
                 )
-            
-            # Verify waypoint is not at the same location as previous center
-            dx_check = waypoint_x - prev_center_x
-            dy_check = waypoint_y - prev_center_y
-            dist_check = math.sqrt(dx_check*dx_check + dy_check*dy_check)
-            
-            if dist_check < 1e-6:  # Waypoint too close to previous center
-                self.get_logger().warn(
-                    f'Waypoint {k} too close to previous center! dist={dist_check:.8f}. '
-                    f'Forcing forward movement along path.'
-                )
-                # Force forward movement along path
-                if path_length > 1e-10:
-                    forward_vec_x = dx_line / path_length
-                    forward_vec_y = dy_line / path_length
-                    waypoint_x = prev_center_x + circle_radius * forward_vec_x
-                    waypoint_y = prev_center_y + circle_radius * forward_vec_y
-                    
-                    # Update t_waypoint
-                    t_waypoint = ((waypoint_x - x1) * dx_line + (waypoint_y - y1) * dy_line) / (path_length * path_length)
-                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
             
             # Interpolate yaw between start and target
             # Blend between heading along path and target yaw
@@ -1592,10 +1494,6 @@ class MPCAutonomousController(Node):
             waypoint_yaw = self.normalize_angle(waypoint_yaw)
             
             waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
-            
-            # Update center for next waypoint
-            prev_center_x = waypoint_x
-            prev_center_y = waypoint_y
         
         # Compute velocities for each waypoint based on next waypoint
         # For the last waypoint, compute an extra waypoint into the future
@@ -1607,76 +1505,14 @@ class MPCAutonomousController(Node):
                 # Use next waypoint in the window
                 next_pos = waypoint_positions[k + 1]
             else:
-                # Last waypoint: compute extra waypoint into the future using circle-intersection
-                last_center_x = waypoint_positions[k][0]
-                last_center_y = waypoint_positions[k][1]
-                circle_radius = adjusted_spacing
+                # Last waypoint: compute extra waypoint into the future along the path
+                # Distance for next step
+                next_distance = adjusted_spacing
+                t_next = t_closest + (adjusted_spacing * (self.mpc_horizon + 1) / path_length)
+                t_next = np.clip(t_next, 0.0, 1.0)
                 
-                # Find intersection with path line
-                x1, y1 = self.path_start_x, self.path_start_y
-                x2, y2 = self.target_x, self.target_y
-                cx, cy = last_center_x, last_center_y
-                r = circle_radius
-                
-                dx_line = x2 - x1
-                dy_line = y2 - y1
-                dx_to_center = cx - x1
-                dy_to_center = cy - y1
-                
-                a = dx_line*dx_line + dy_line*dy_line
-                b = 2.0 * (dx_line*dx_to_center + dy_line*dy_to_center)
-                c = dx_to_center*dx_to_center + dy_to_center*dy_to_center - r*r
-                
-                discriminant = b*b - 4.0*a*c
-                intersections = []
-                
-                if abs(a) > 1e-10 and discriminant >= 0:
-                    sqrt_disc = math.sqrt(discriminant)
-                    t1 = (-b + sqrt_disc) / (2.0 * a)
-                    t2 = (-b - sqrt_disc) / (2.0 * a)
-                    
-                    for t in [t1, t2]:
-                        if 0.0 <= t <= 1.0:
-                            inter_x = x1 + t * dx_line
-                            inter_y = y1 + t * dy_line
-                            intersections.append((inter_x, inter_y, t))
-                
-                if len(intersections) > 0:
-                    # Find t_prev for last waypoint
-                    if path_length > 1e-10:
-                        t_prev = ((last_center_x - x1) * dx_line + (last_center_y - y1) * dy_line) / (path_length * path_length)
-                        min_forward_progress_ratio = 1e-4 / path_length if path_length > 1e-10 else 1e-4
-                        forward_intersections = [inter for inter in intersections if inter[2] > t_prev + min_forward_progress_ratio]
-                        
-                        if len(forward_intersections) > 0:
-                            # Choose CLOSEST intersection ahead (ensures steady step-by-step progress)
-                            forward_intersections.sort(key=lambda p: p[2])
-                            next_x, next_y, t_next = forward_intersections[0]
-                        else:
-                            # No forward intersection, choose closest to target
-                            intersections.sort(key=lambda p: p[2], reverse=True)
-                            next_x, next_y, t_next = intersections[0]
-                    else:
-                        intersections.sort(key=lambda p: p[2], reverse=True)
-                        next_x, next_y, t_next = intersections[0]
-                else:
-                    # No intersection: always move forward along path
-                    if path_length > 1e-10:
-                        # Find current position's t parameter along path
-                        t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
-                        
-                        # Move forward along path by circle_radius distance
-                        t_next = t_prev + (r / path_length)
-                        t_next = np.clip(t_next, 0.0, 1.0)
-                        
-                        # Compute waypoint position along path
-                        next_x = x1 + t_next * dx_line
-                        next_y = y1 + t_next * dy_line
-                    else:
-                        # Path has zero length, stay at center
-                        next_x = cx
-                        next_y = cy
-                        t_next = 0.0
+                next_x = self.path_start_x + t_next * path_dx
+                next_y = self.path_start_y + t_next * path_dy
                 
                 # Interpolate yaw
                 heading_to_target = math.atan2(path_dy, path_dx)
