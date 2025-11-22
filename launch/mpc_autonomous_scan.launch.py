@@ -10,7 +10,7 @@ def generate_launch_description():
     # Declare launch arguments
     declare_wheel_radius_arg = DeclareLaunchArgument(
         'wheel_radius',
-        default_value='0.072',
+        default_value='0.09',
         description='Radius of the wheels in meters.'
     )
     declare_wheel_base_arg = DeclareLaunchArgument(
@@ -84,7 +84,7 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='10.0',
+        default_value='1.0',
         description='MPC cost weight for yaw error (higher to help lateral correction)'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
@@ -92,10 +92,20 @@ def generate_launch_description():
         default_value='0.0001',
         description='MPC cost weight for control input change (delta u)'
     )
-    declare_mpc_weight_increase_per_step_arg = DeclareLaunchArgument(
-        'mpc_weight_increase_per_step',
+    declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
+        'mpc_weight_increase_xe',
+        default_value='0.0',
+        description='Linear weight increase factor per time step for xe error. Weight at step k = base_weight * (1 + weight_increase_xe * k). Example: 0.1 means 10% increase per step.'
+    )
+    declare_mpc_weight_increase_ye_arg = DeclareLaunchArgument(
+        'mpc_weight_increase_ye',
         default_value='0.5',
-        description='Linear weight increase factor per time step. Weight at step k = base_weight * (1 + weight_increase_per_step * k). Example: 0.1 means 10% increase per step.'
+        description='Linear weight increase factor per time step for ye error. Weight at step k = base_weight * (1 + weight_increase_ye * k). Example: 0.1 means 10% increase per step.'
+    )
+    declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
+        'mpc_weight_increase_yaw',
+        default_value='0.0',
+        description='Linear weight increase factor per time step for yaw error. Weight at step k = base_weight * (1 + weight_increase_yaw * k). Example: 0.1 means 10% increase per step.'
     )
     
     # Slip estimation parameters
@@ -237,7 +247,9 @@ def generate_launch_description():
             'mpc_Q_ye': LaunchConfiguration('mpc_Q_ye'),
             'mpc_Q_yaw': LaunchConfiguration('mpc_Q_yaw'),
             'mpc_R_delta': LaunchConfiguration('mpc_R_delta'),
-            'mpc_weight_increase_per_step': LaunchConfiguration('mpc_weight_increase_per_step'),
+            'mpc_weight_increase_xe': LaunchConfiguration('mpc_weight_increase_xe'),
+            'mpc_weight_increase_ye': LaunchConfiguration('mpc_weight_increase_ye'),
+            'mpc_weight_increase_yaw': LaunchConfiguration('mpc_weight_increase_yaw'),
             
             # Solver debug
             'solver_debug_enabled': True,
@@ -337,7 +349,9 @@ def generate_launch_description():
         declare_mpc_Q_ye_arg,
         declare_mpc_Q_yaw_arg,
         declare_mpc_R_delta_arg,
-        declare_mpc_weight_increase_per_step_arg,
+        declare_mpc_weight_increase_xe_arg,
+        declare_mpc_weight_increase_ye_arg,
+        declare_mpc_weight_increase_yaw_arg,
         declare_slip_history_length_arg,
         declare_slip_estimation_window_arg,
         declare_lookahead_distance_arg,

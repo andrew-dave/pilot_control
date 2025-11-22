@@ -74,7 +74,8 @@ class SlipAwareMPC:
     - B_k depends on slip ratios (λ_L, λ_R)
     """
     
-    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None, weight_increase_per_step=0.0):
+    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None, 
+                 weight_increase_xe=0.0, weight_increase_ye=0.0, weight_increase_yaw=0.0):
         """
         Initialize MPC optimizer.
         
@@ -90,9 +91,12 @@ class SlipAwareMPC:
             Q_yaw: Cost weight for yaw error (base weight)
             R_delta: Cost weight for control input change (delta u)
             logger: Optional logger for debug messages
-            weight_increase_per_step: Linear weight increase factor per time step.
-                                     Weight at step k = base_weight * (1 + weight_increase_per_step * k)
-                                     Default 0.0 means same weight for all steps.
+            weight_increase_xe: Linear weight increase factor per time step for xe error.
+                               Weight at step k = base_weight * (1 + weight_increase_xe * k)
+            weight_increase_ye: Linear weight increase factor per time step for ye error.
+                               Weight at step k = base_weight * (1 + weight_increase_ye * k)
+            weight_increase_yaw: Linear weight increase factor per time step for yaw error.
+                                Weight at step k = base_weight * (1 + weight_increase_yaw * k)
         """
         self.N = N
         self.Ts = Ts
@@ -101,7 +105,9 @@ class SlipAwareMPC:
         self.w_min = w_min
         self.w_max = w_max
         self.logger = logger
-        self.weight_increase_per_step = weight_increase_per_step
+        self.weight_increase_xe = weight_increase_xe
+        self.weight_increase_ye = weight_increase_ye
+        self.weight_increase_yaw = weight_increase_yaw
         
         # State and control dimensions
         self.nx = 3  # [xe, ye, θe]
@@ -176,24 +182,30 @@ class SlipAwareMPC:
             x_k_start = k * (nu + nx) + nu
             
             # Scale Q for this time step: weight_k = base_weight * (1 + alpha * k)
-            # where alpha is weight_increase_per_step
-            weight_scale = 1.0 + self.weight_increase_per_step * k
+            # Use separate scaling factors for each error term
+            weight_scale_xe = 1.0 + self.weight_increase_xe * k
+            weight_scale_ye = 1.0 + self.weight_increase_ye * k
+            weight_scale_yaw = 1.0 + self.weight_increase_yaw * k
             
-            # Create scaled Q matrix for this time step
-            Q_scaled = sparse.diags([
-                self.Q_xe_base * weight_scale,
-                self.Q_ye_base * weight_scale,
-                self.Q_yaw_base * weight_scale
-            ])
+            # Create scaled Q matrix for this time step (diagonal matrix)
+            # Since Q is diagonal, we can directly add diagonal entries
+            Q_xe_scaled = self.Q_xe_base * weight_scale_xe
+            Q_ye_scaled = self.Q_ye_base * weight_scale_ye
+            Q_yaw_scaled = self.Q_yaw_base * weight_scale_yaw
             
-            # Add Q matrix entries for this state
-            Q_dense = Q_scaled.toarray()
-            for i in range(nx):
-                for j in range(nx):
-                    if abs(Q_dense[i, j]) > 1e-10:  # Only non-zero entries
-                        P_row.append(x_k_start + i)
-                        P_col.append(x_k_start + j)
-                        P_data.append(Q_dense[i, j])
+            # Add Q matrix diagonal entries for this state
+            # State vector: [xe, ye, θe]
+            P_row.append(x_k_start + 0)  # xe
+            P_col.append(x_k_start + 0)
+            P_data.append(Q_xe_scaled)
+            
+            P_row.append(x_k_start + 1)  # ye
+            P_col.append(x_k_start + 1)
+            P_data.append(Q_ye_scaled)
+            
+            P_row.append(x_k_start + 2)  # yaw
+            P_col.append(x_k_start + 2)
+            P_data.append(Q_yaw_scaled)
         
         # Add cost for control input changes: (u_k - u_{k-1})^T R_delta (u_k - u_{k-1})
         # This expands to: u_k^T R_delta u_k - u_k^T R_delta u_{k-1} - u_{k-1}^T R_delta u_k + u_{k-1}^T R_delta u_{k-1}
@@ -907,13 +919,15 @@ class MPCAutonomousController(Node):
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
         self.declare_parameter('mpc_Q_xe', 50.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 200.0)  # Weight for position error y (much higher for lateral correction)
-        self.declare_parameter('mpc_Q_yaw', 10.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_Q_yaw', 1.0)  # Weight for yaw error (higher to help lateral correction)
         self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change
         
-        # Weight scaling: increase weights linearly into the future
-        # Weight at step k = base_weight * (1 + weight_increase_per_step * k)
+        # Weight scaling: increase weights linearly into the future (separate factors for each error term)
+        # Weight at step k = base_weight * (1 + weight_increase * k)
         # Example: 0.1 means 10% increase per step (step 0: 1.0x, step 1: 1.1x, step 2: 1.2x, ...)
-        self.declare_parameter('mpc_weight_increase_per_step', 0.5)  # Default: no increase (same weight for all steps)
+        self.declare_parameter('mpc_weight_increase_xe', 0.0)  # Weight increase factor for xe error
+        self.declare_parameter('mpc_weight_increase_ye', 0.5)  # Weight increase factor for ye error
+        self.declare_parameter('mpc_weight_increase_yaw', 0.0)  # Weight increase factor for yaw error
         
         # Solver debug parameter
         self.declare_parameter('solver_debug_enabled', False)  # Enable detailed solver debugging
@@ -923,7 +937,9 @@ class MPCAutonomousController(Node):
         mpc_Q_ye = self.get_parameter('mpc_Q_ye').value
         mpc_Q_yaw = self.get_parameter('mpc_Q_yaw').value
         mpc_R_delta = self.get_parameter('mpc_R_delta').value
-        mpc_weight_increase_per_step = self.get_parameter('mpc_weight_increase_per_step').value
+        mpc_weight_increase_xe = self.get_parameter('mpc_weight_increase_xe').value
+        mpc_weight_increase_ye = self.get_parameter('mpc_weight_increase_ye').value
+        mpc_weight_increase_yaw = self.get_parameter('mpc_weight_increase_yaw').value
         
         # Get solver debug setting
         self.solver_debug_enabled = self.get_parameter('solver_debug_enabled').value
@@ -947,7 +963,9 @@ class MPCAutonomousController(Node):
             Q_yaw=mpc_Q_yaw,
             R_delta=mpc_R_delta,
             logger=self.get_logger(),
-            weight_increase_per_step=mpc_weight_increase_per_step
+            weight_increase_xe=mpc_weight_increase_xe,
+            weight_increase_ye=mpc_weight_increase_ye,
+            weight_increase_yaw=mpc_weight_increase_yaw
         )
         
         # Set solver debug flag on optimizer
