@@ -1491,9 +1491,20 @@ class MPCAutonomousController(Node):
             
             # Choose intersection
             if len(intersections) > 0:
-                # If multiple intersections, choose one closer to target (larger t)
-                intersections.sort(key=lambda p: p[2], reverse=True)
-                waypoint_x, waypoint_y, t_waypoint = intersections[0]
+                # Find current position's t parameter along path for reference
+                t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
+                
+                # Filter to intersections ahead of previous center
+                forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-6]
+                
+                if len(forward_intersections) > 0:
+                    # Choose the intersection that's ahead and furthest along the path (ensures progress)
+                    forward_intersections.sort(key=lambda p: p[2], reverse=True)
+                    waypoint_x, waypoint_y, t_waypoint = forward_intersections[0]
+                else:
+                    # No forward intersection (might be at path end), choose one closest to target
+                    intersections.sort(key=lambda p: p[2], reverse=True)
+                    waypoint_x, waypoint_y, t_waypoint = intersections[0]
             else:
                 # No intersection: use projection line method
                 # Project circle center onto path line to find closest point
@@ -1513,12 +1524,32 @@ class MPCAutonomousController(Node):
                     
                     if dist_proj > 1e-10:
                         # Unit vector from center toward path projection
-                        ux = dx_proj / dist_proj
-                        uy = dy_proj / dist_proj
+                        ux_toward = dx_proj / dist_proj
+                        uy_toward = dy_proj / dist_proj
                         
-                        # Waypoint is at distance 'r' along projection line toward path
-                        waypoint_x = cx + r * ux
-                        waypoint_y = cy + r * uy
+                        # Unit vector forward along path
+                        forward_vec_x = dx_line / path_length
+                        forward_vec_y = dy_line / path_length
+                        
+                        # Blend directions: 60% toward path, 40% forward
+                        # This ensures we correct lateral error while making forward progress
+                        blend_factor = 0.4
+                        combined_dir_x = (1.0 - blend_factor) * ux_toward + blend_factor * forward_vec_x
+                        combined_dir_y = (1.0 - blend_factor) * uy_toward + blend_factor * forward_vec_y
+                        
+                        # Normalize to ensure waypoint is exactly 'r' distance from center
+                        dir_norm = math.sqrt(combined_dir_x*combined_dir_x + combined_dir_y*combined_dir_y)
+                        if dir_norm > 1e-10:
+                            combined_dir_x /= dir_norm
+                            combined_dir_y /= dir_norm
+                        else:
+                            # Fallback: just go forward
+                            combined_dir_x = forward_vec_x
+                            combined_dir_y = forward_vec_y
+                        
+                        # Waypoint is at distance 'r' in the combined direction
+                        waypoint_x = cx + r * combined_dir_x
+                        waypoint_y = cy + r * combined_dir_y
                     else:
                         # Center is already on path, move forward along path
                         forward_vec_x = dx_line / path_length
@@ -1526,7 +1557,7 @@ class MPCAutonomousController(Node):
                         waypoint_x = cx + r * forward_vec_x
                         waypoint_y = cy + r * forward_vec_y
                     
-                    # Compute t for waypoint (projection onto path)
+                    # Compute t for waypoint (projection onto path) for yaw computation only
                     t_waypoint = ((waypoint_x - x1) * dx_line + (waypoint_y - y1) * dy_line) / (path_length * path_length)
                     t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
                 else:
@@ -1535,18 +1566,23 @@ class MPCAutonomousController(Node):
                     waypoint_y = cy
                     t_waypoint = 0.0
             
-            # Clamp waypoint to path endpoints (safety check)
+            # Only clamp t_waypoint for yaw computation, NOT the waypoint position
+            # The waypoint position should be free to correct lateral errors
             if path_length > 1e-10:
                 t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
-                waypoint_x = x1 + t_waypoint * dx_line
-                waypoint_y = y1 + t_waypoint * dy_line
             
             if k == 0:  # Log first waypoint
+                # Compute distance from previous center to waypoint
+                dx_wp = waypoint_x - prev_center_x
+                dy_wp = waypoint_y - prev_center_y
+                dist_wp = math.sqrt(dx_wp*dx_wp + dy_wp*dy_wp)
+                
                 self.get_logger().info(
                     f'Waypoint 0: circle_center=({prev_center_x:.3f}, {prev_center_y:.3f}), '
                     f'radius={circle_radius:.3f}, t={t_waypoint:.6f}, '
                     f'pos=({waypoint_x:.3f}, {waypoint_y:.3f}), '
-                    f'intersections={len(intersections)}'
+                    f'dist_from_center={dist_wp:.4f}, intersections={len(intersections)}, '
+                    f'using_fallback={len(intersections) == 0}'
                 )
             
             # Interpolate yaw between start and target
@@ -1573,14 +1609,105 @@ class MPCAutonomousController(Node):
                 # Use next waypoint in the window
                 next_pos = waypoint_positions[k + 1]
             else:
-                # Last waypoint: compute extra waypoint into the future
-                # Distance for next step
-                next_distance = adjusted_spacing
-                t_next = t_closest + (adjusted_spacing * (self.mpc_horizon + 1) / path_length)
-                t_next = np.clip(t_next, 0.0, 1.0)
+                # Last waypoint: compute extra waypoint into the future using circle-intersection
+                last_center_x = waypoint_positions[k][0]
+                last_center_y = waypoint_positions[k][1]
+                circle_radius = adjusted_spacing
                 
-                next_x = self.path_start_x + t_next * path_dx
-                next_y = self.path_start_y + t_next * path_dy
+                # Find intersection with path line
+                x1, y1 = self.path_start_x, self.path_start_y
+                x2, y2 = self.target_x, self.target_y
+                cx, cy = last_center_x, last_center_y
+                r = circle_radius
+                
+                dx_line = x2 - x1
+                dy_line = y2 - y1
+                dx_to_center = cx - x1
+                dy_to_center = cy - y1
+                
+                a = dx_line*dx_line + dy_line*dy_line
+                b = 2.0 * (dx_line*dx_to_center + dy_line*dy_to_center)
+                c = dx_to_center*dx_to_center + dy_to_center*dy_to_center - r*r
+                
+                discriminant = b*b - 4.0*a*c
+                intersections = []
+                
+                if abs(a) > 1e-10 and discriminant >= 0:
+                    sqrt_disc = math.sqrt(discriminant)
+                    t1 = (-b + sqrt_disc) / (2.0 * a)
+                    t2 = (-b - sqrt_disc) / (2.0 * a)
+                    
+                    for t in [t1, t2]:
+                        if 0.0 <= t <= 1.0:
+                            inter_x = x1 + t * dx_line
+                            inter_y = y1 + t * dy_line
+                            intersections.append((inter_x, inter_y, t))
+                
+                if len(intersections) > 0:
+                    # Find t_prev for last waypoint
+                    if path_length > 1e-10:
+                        t_prev = ((last_center_x - x1) * dx_line + (last_center_y - y1) * dy_line) / (path_length * path_length)
+                        forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-6]
+                        
+                        if len(forward_intersections) > 0:
+                            # Choose furthest ahead to ensure progress
+                            forward_intersections.sort(key=lambda p: p[2], reverse=True)
+                            next_x, next_y, t_next = forward_intersections[0]
+                        else:
+                            # No forward intersection, choose closest to target
+                            intersections.sort(key=lambda p: p[2], reverse=True)
+                            next_x, next_y, t_next = intersections[0]
+                    else:
+                        intersections.sort(key=lambda p: p[2], reverse=True)
+                        next_x, next_y, t_next = intersections[0]
+                else:
+                    # No intersection: use projection method
+                    if path_length > 1e-10:
+                        t_proj = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
+                        t_proj = np.clip(t_proj, 0.0, 1.0)
+                        
+                        proj_x = x1 + t_proj * dx_line
+                        proj_y = y1 + t_proj * dy_line
+                        
+                        dx_proj = proj_x - cx
+                        dy_proj = proj_y - cy
+                        dist_proj = math.sqrt(dx_proj*dx_proj + dy_proj*dy_proj)
+                        
+                        if dist_proj > 1e-10:
+                            ux_toward = dx_proj / dist_proj
+                            uy_toward = dy_proj / dist_proj
+                            
+                            forward_vec_x = dx_line / path_length
+                            forward_vec_y = dy_line / path_length
+                            
+                            # Blend directions: 60% toward path, 40% forward
+                            blend_factor = 0.4
+                            combined_dir_x = (1.0 - blend_factor) * ux_toward + blend_factor * forward_vec_x
+                            combined_dir_y = (1.0 - blend_factor) * uy_toward + blend_factor * forward_vec_y
+                            
+                            # Normalize to ensure waypoint is exactly 'r' distance from center
+                            dir_norm = math.sqrt(combined_dir_x*combined_dir_x + combined_dir_y*combined_dir_y)
+                            if dir_norm > 1e-10:
+                                combined_dir_x /= dir_norm
+                                combined_dir_y /= dir_norm
+                            else:
+                                combined_dir_x = forward_vec_x
+                                combined_dir_y = forward_vec_y
+                            
+                            next_x = cx + r * combined_dir_x
+                            next_y = cy + r * combined_dir_y
+                        else:
+                            forward_vec_x = dx_line / path_length
+                            forward_vec_y = dy_line / path_length
+                            next_x = cx + r * forward_vec_x
+                            next_y = cy + r * forward_vec_y
+                        
+                        t_next = ((next_x - x1) * dx_line + (next_y - y1) * dy_line) / (path_length * path_length)
+                        t_next = np.clip(t_next, 0.0, 1.0)
+                    else:
+                        next_x = cx
+                        next_y = cy
+                        t_next = 0.0
                 
                 # Interpolate yaw
                 heading_to_target = math.atan2(path_dy, path_dx)
