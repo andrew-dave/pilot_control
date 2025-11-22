@@ -1494,54 +1494,46 @@ class MPCAutonomousController(Node):
                 # Find current position's t parameter along path for reference
                 t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length) if path_length > 1e-10 else 0.0
                 
-                # Filter to intersections ahead of previous center (with minimum forward progress)
-                min_forward_progress_ratio = 1e-4 / path_length if path_length > 1e-10 else 1e-4  # Require at least 0.1mm forward progress
-                forward_intersections = [inter for inter in intersections if inter[2] > t_prev + min_forward_progress_ratio]
+                # Filter to intersections ahead of previous center (any forward progress is okay)
+                forward_intersections = [inter for inter in intersections if inter[2] > t_prev - 1e-8]
                 
                 if len(forward_intersections) > 0:
                     # Choose the CLOSEST intersection ahead (ensures steady step-by-step progress)
                     # Sort by t value ascending to get the one closest to current position
                     forward_intersections.sort(key=lambda p: p[2])
                     waypoint_x, waypoint_y, t_waypoint = forward_intersections[0]
-                else:
-                    # No forward intersection (might be at path end), choose one closest to target
-                    intersections.sort(key=lambda p: p[2], reverse=True)
-                    waypoint_x, waypoint_y, t_waypoint = intersections[0]
-            else:
-                # No intersection: find point on circle closest to path
-                # Project circle center onto path line to find closest point on path
-                if path_length > 1e-10:
-                    # Parameter along path for closest point
-                    t_proj = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
-                    t_proj = np.clip(t_proj, 0.0, 1.0)
                     
-                    # Projected point on path (closest point on path to circle center)
-                    proj_x = x1 + t_proj * dx_line
-                    proj_y = y1 + t_proj * dy_line
-                    
-                    # Vector from circle center to projected point
-                    dx_proj = proj_x - cx
-                    dy_proj = proj_y - cy
-                    dist_proj = math.sqrt(dx_proj*dx_proj + dy_proj*dy_proj)
-                    
-                    if dist_proj > 1e-10:
-                        # Unit vector from circle center toward projected point on path
-                        ux = dx_proj / dist_proj
-                        uy = dy_proj / dist_proj
-                        
-                        # Point on circle closest to path: center + r * unit_vector_toward_path
-                        waypoint_x = cx + r * ux
-                        waypoint_y = cy + r * uy
-                    else:
-                        # Center is already on path (or very close), move forward along path
+                    # Verify forward progress: if somehow t_waypoint <= t_prev, force forward
+                    if t_waypoint <= t_prev:
+                        # Force forward movement along path
                         forward_vec_x = dx_line / path_length
                         forward_vec_y = dy_line / path_length
                         waypoint_x = cx + r * forward_vec_x
                         waypoint_y = cy + r * forward_vec_y
-                    
-                    # Compute t for waypoint (projection onto path) for yaw computation only
-                    t_waypoint = ((waypoint_x - x1) * dx_line + (waypoint_y - y1) * dy_line) / (path_length * path_length)
+                        t_waypoint = t_prev + (r / path_length) if path_length > 1e-10 else t_prev + r
+                        t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+                else:
+                    # No forward intersection (at path end or edge case), just move forward
+                    forward_vec_x = dx_line / path_length if path_length > 1e-10 else 0.0
+                    forward_vec_y = dy_line / path_length if path_length > 1e-10 else 0.0
+                    waypoint_x = cx + r * forward_vec_x
+                    waypoint_y = cy + r * forward_vec_y
+                    t_waypoint = t_prev + (r / path_length) if path_length > 1e-10 else 0.0
                     t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+            else:
+                # No intersection: always move forward along path
+                # This ensures forward progress while MPC handles lateral correction
+                if path_length > 1e-10:
+                    # Find current position's t parameter along path
+                    t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
+                    
+                    # Move forward along path by circle_radius distance
+                    t_waypoint = t_prev + (r / path_length)
+                    t_waypoint = np.clip(t_waypoint, 0.0, 1.0)
+                    
+                    # Compute waypoint position along path
+                    waypoint_x = x1 + t_waypoint * dx_line
+                    waypoint_y = y1 + t_waypoint * dy_line
                 else:
                     # Path has zero length, stay at center
                     waypoint_x = cx
@@ -1668,39 +1660,18 @@ class MPCAutonomousController(Node):
                         intersections.sort(key=lambda p: p[2], reverse=True)
                         next_x, next_y, t_next = intersections[0]
                 else:
-                    # No intersection: find point on circle closest to path
+                    # No intersection: always move forward along path
                     if path_length > 1e-10:
-                        # Project circle center onto path line
-                        t_proj = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
-                        t_proj = np.clip(t_proj, 0.0, 1.0)
+                        # Find current position's t parameter along path
+                        t_prev = (dx_to_center * dx_line + dy_to_center * dy_line) / (path_length * path_length)
                         
-                        # Projected point on path (closest point on path to circle center)
-                        proj_x = x1 + t_proj * dx_line
-                        proj_y = y1 + t_proj * dy_line
-                        
-                        # Vector from circle center to projected point
-                        dx_proj = proj_x - cx
-                        dy_proj = proj_y - cy
-                        dist_proj = math.sqrt(dx_proj*dx_proj + dy_proj*dy_proj)
-                        
-                        if dist_proj > 1e-10:
-                            # Unit vector from circle center toward projected point on path
-                            ux = dx_proj / dist_proj
-                            uy = dy_proj / dist_proj
-                            
-                            # Point on circle closest to path: center + r * unit_vector_toward_path
-                            next_x = cx + r * ux
-                            next_y = cy + r * uy
-                        else:
-                            # Center is already on path (or very close), move forward along path
-                            forward_vec_x = dx_line / path_length
-                            forward_vec_y = dy_line / path_length
-                            next_x = cx + r * forward_vec_x
-                            next_y = cy + r * forward_vec_y
-                        
-                        # Compute t for waypoint (projection onto path) for yaw computation
-                        t_next = ((next_x - x1) * dx_line + (next_y - y1) * dy_line) / (path_length * path_length)
+                        # Move forward along path by circle_radius distance
+                        t_next = t_prev + (r / path_length)
                         t_next = np.clip(t_next, 0.0, 1.0)
+                        
+                        # Compute waypoint position along path
+                        next_x = x1 + t_next * dx_line
+                        next_y = y1 + t_next * dy_line
                     else:
                         # Path has zero length, stay at center
                         next_x = cx
