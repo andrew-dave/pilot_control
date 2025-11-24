@@ -1070,8 +1070,21 @@ class PoseController(Node):
         # Check if target is achieved
         distance_to_target = np.linalg.norm([target_x - current_x, target_y - current_y])
         dyaw = self.normalize_angle(target_yaw - current_yaw)
-        
-        if distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance:
+
+        # Context-aware waypoint achievement based on navigation phase
+        target_achieved = False
+        if self.waypoint_navigation_active:
+            if self.yaw_alignment_phase:
+                # During yaw alignment: only check orientation tolerance
+                target_achieved = abs(dyaw) < self.ori_tolerance
+            else:
+                # During straight line movement: only check position tolerance
+                target_achieved = distance_to_target < self.pos_tolerance
+        else:
+            # Regular navigation: check both tolerances
+            target_achieved = distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance
+
+        if target_achieved:
             # Target achieved - mark as achieved and return zero velocities
             self.target_achieved = True
             self.zero_velocity_sent = False  # Reset flag for next target
