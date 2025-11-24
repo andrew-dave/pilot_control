@@ -23,10 +23,9 @@ Topics:
     - /left/control_message (odrive_can/ControlMessage) - Left wheel velocity
     - /right/control_message (odrive_can/ControlMessage) - Right wheel velocity
 
-Services:
-  - /start_waypoint_navigation (pilot_control/StartWaypointNavigation) - Start autonomous waypoint navigation
-    Request: csv_file_path (string) - Path to CSV file containing waypoints
-    Response: success (bool), message (string)
+Topics:
+  - /start_waypoint_navigation (std_msgs/String) - Start autonomous waypoint navigation
+    Message: data (string) - Path to CSV file containing waypoints
 
 Waypoint Navigation:
   The waypoint navigation feature allows autonomous navigation through a series of waypoints
@@ -45,7 +44,11 @@ Waypoint Navigation:
   4. Completion: Stops when all waypoints are completed
 
   Usage:
-    ros2 service call /start_waypoint_navigation pilot_control/srv/StartWaypointNavigation "{csv_file_path: '/path/to/waypoints.csv'}"
+    # Publish CSV file path to topic
+    ros2 topic pub /start_waypoint_navigation std_msgs/String "{data: '/path/to/waypoints.csv'}"
+
+    # Or use the test script
+    python3 src/pilot_control/scripts/test_waypoint_navigation_topic.py /path/to/waypoints.csv
 """
 
 import rclpy
@@ -58,7 +61,7 @@ from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
 from std_srvs.srv import Empty
-from pilot_control.srv import StartWaypointNavigation
+from std_msgs.msg import String
 import math
 import numpy as np
 from typing import Tuple, Optional
@@ -359,11 +362,12 @@ class PoseController(Node):
             self.disable_callback
         )
 
-        # Service for waypoint navigation
-        self.waypoint_nav_srv = self.create_service(
-            StartWaypointNavigation,
+        # Topic for waypoint navigation (receives CSV file path as string)
+        self.waypoint_nav_sub = self.create_subscription(
+            String,
             '/start_waypoint_navigation',
-            self.start_waypoint_navigation_callback
+            self.start_waypoint_navigation_callback,
+            10
         )
 
         # Service to trigger graceful shutdown (zero torque → disarm → stop nodes)
@@ -435,7 +439,9 @@ class PoseController(Node):
         self.get_logger().info(f'  /set_target_pose - Set new target pose')
         self.get_logger().info(f'  /enable_controller - Enable controller')
         self.get_logger().info(f'  /disable_controller - Disable controller')
-        self.get_logger().info(f'  /start_waypoint_navigation - Start autonomous waypoint navigation')
+        self.get_logger().info(f'')
+        self.get_logger().info(f'Topics:')
+        self.get_logger().info(f'  /start_waypoint_navigation (std_msgs/String) - Start autonomous waypoint navigation')
         self.get_logger().info(f'')
         self.get_logger().info(f'Controller Status: {"ENABLED" if self.controller_enabled else "DISABLED"}')
         self.get_logger().info('='*70)
@@ -1267,23 +1273,22 @@ class PoseController(Node):
         self.get_logger().info('✓ Controller DISABLED')
         return response
 
-    def start_waypoint_navigation_callback(self, request, response):
+    def start_waypoint_navigation_callback(self, msg):
         """
-        Service callback to start waypoint navigation with CSV file.
+        Topic callback to start waypoint navigation with CSV file.
+        Receives std_msgs/String message containing CSV file path
         """
         try:
-            csv_file_path = request.csv_file_path
+            csv_file_path = msg.data
             if not os.path.exists(csv_file_path):
-                response.success = False
-                response.message = f'CSV file not found: {csv_file_path}'
-                return response
+                self.get_logger().error(f'CSV file not found: {csv_file_path}')
+                return
 
             # Parse waypoints from CSV
             waypoints = self.parse_waypoints_csv(csv_file_path)
             if len(waypoints) < 1:
-                response.success = False
-                response.message = f'No valid waypoints found in CSV: {csv_file_path}'
-                return response
+                self.get_logger().error(f'No valid waypoints found in CSV: {csv_file_path}')
+                return
 
             # Initialize waypoint navigation
             self.waypoints = waypoints
@@ -1295,9 +1300,8 @@ class PoseController(Node):
             if self.pose_initialized:
                 self.previous_waypoint = (self.current_x, self.current_y)
             else:
-                response.success = False
-                response.message = 'Odometry not initialized yet'
-                return response
+                self.get_logger().error('Odometry not initialized yet - cannot start waypoint navigation')
+                return
 
             # Enable controller if not already enabled
             if not self.controller_enabled:
@@ -1307,16 +1311,10 @@ class PoseController(Node):
             # Start navigation to first waypoint
             self.set_next_waypoint_target()
 
-            response.success = True
-            response.message = f'✓ Waypoint navigation started with {len(waypoints)} waypoints'
             self.get_logger().info(f'✓ Waypoint navigation started: {len(waypoints)} waypoints loaded from {csv_file_path}')
 
         except Exception as e:
-            response.success = False
-            response.message = f'Error starting waypoint navigation: {str(e)}'
             self.get_logger().error(f'Error starting waypoint navigation: {str(e)}')
-
-        return response
 
     def parse_waypoints_csv(self, csv_file_path: str) -> list:
         """

@@ -20,12 +20,6 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-
-# Generate custom interfaces
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/StartWaypointNavigation.srv"
-)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
