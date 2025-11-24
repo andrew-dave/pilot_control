@@ -993,17 +993,20 @@ class PoseController(Node):
                 # Yaw is aligned: do straight line control
                 blend = 0.0  # Pure lateral control
                 self.get_logger().info('[WP_NAV] Phase: STRAIGHT LINE (blend = 0.0)')
+                # Combine the two steering components
+                w_e = (1.0 - blend) * w_lat + blend * w_yaw
             else:
-                # Yaw not aligned: do yaw alignment
+                # Yaw not aligned: do PURE yaw alignment (bypass waypoint following logic)
                 blend = 1.0  # Pure yaw correction
-                self.get_logger().info('[WP_NAV] Phase: YAW ALIGNMENT (blend = 1.0)')
+                self.get_logger().info(f'[WP_NAV] Phase: YAW ALIGNMENT (blend = 1.0) - Using direct yaw correction: d_yaw={math.degrees(d_yaw):.1f}°, w_yaw={self.K_yaw * d_yaw:.3f} rad/s')
+                # For pure yaw alignment, use direct yaw error correction
+                w_e = self.K_yaw * d_yaw  # Direct yaw correction, no blending
         else:
             # For regular navigation: use blend_prefixed parameter
             blend = self.blend_prefixed
             self.get_logger().info(f'[REG_NAV] Using blend_prefixed = {blend}')
-        
-        # Combine the two steering components
-        w_e = (1.0 - blend) * w_lat + blend * w_yaw
+            # Combine the two steering components
+            w_e = (1.0 - blend) * w_lat + blend * w_yaw
         
         # Final yaw fine-tuning
         if r < self.r_close and abs(d_yaw) < self.yaw_tol:
@@ -1070,7 +1073,8 @@ class PoseController(Node):
 
             # Check yaw alignment (always check)
             self.yaw_aligned = abs(dyaw) < self.ori_tolerance
-            self.get_logger().info(f'[WP_NAV] yaw_aligned = {self.yaw_aligned} (|dyaw| = {abs(math.degrees(dyaw)):.1f}° < {math.degrees(self.ori_tolerance):.1f}°)')
+            comparison = "<" if self.yaw_aligned else ">="
+            self.get_logger().info(f'[WP_NAV] yaw_aligned = {self.yaw_aligned} (|dyaw| = {abs(math.degrees(dyaw)):.1f}° {comparison} {math.degrees(self.ori_tolerance):.1f}°)')
 
             # Check waypoint achievement (only during straight line control, i.e., when yaw is aligned)
             if self.yaw_aligned:
@@ -1114,6 +1118,11 @@ class PoseController(Node):
 
         # PID control for linear velocity (currently proportional)
         linear_vel = self.Kp_linear * v_e
+        
+        # For waypoint navigation: zero linear velocity during yaw alignment
+        if self.waypoint_navigation_active and not self.yaw_aligned:
+            linear_vel = 0.0  # Pure rotation, no forward motion
+            self.get_logger().info(f'[WP_NAV] Yaw alignment: linear_vel set to 0.0')
         # Angular PID on w_e with anti-windup and derivative
         now_ns = self.get_clock().now().nanoseconds
         if self._ang_prev_time_ns is None:
