@@ -1074,10 +1074,9 @@ class PoseController(Node):
         # Context-aware waypoint achievement based on navigation phase
         target_achieved = False
         if self.waypoint_navigation_active:
-            if self.yaw_alignment_phase:
-                # During yaw alignment: only check orientation tolerance
-                target_achieved = abs(dyaw) < self.ori_tolerance
-            else:
+            # During waypoint navigation, only check achievement during straight line movement phase
+            # Never mark waypoints as achieved during yaw alignment phase
+            if not self.yaw_alignment_phase:
                 # During straight line movement: only check position tolerance
                 target_achieved = distance_to_target < self.pos_tolerance
         else:
