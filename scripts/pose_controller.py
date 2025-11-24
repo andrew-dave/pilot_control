@@ -983,35 +983,28 @@ class PoseController(Node):
         w_lat = self.K_lat * heading_error;#*math.sqrt(dx*dx + dy*dy)/self.lookahead_distance;
         e_lat = heading_error;
         
-        # Orientation correction: stronger as we get closer
+        # Orientation correction
         w_yaw = self.K_yaw * d_yaw
-        
-        # Distance-based blending (use distance to GLOBAL goal)
-        # blend = 0 → full lateral control (far from global goal)
-        # blend = 1 → full yaw correction (very close to global goal)
-        blend = (self.r_far - r_goal) / max((self.r_far - self.r_close), 1e-6)
-        blend = max(min(blend, 1.0), 0.0)  # clamp 0–1
 
-        # Smoothstep for gradual transition: 3*t^2 - 2*t^3
-        blend = 3*blend*blend - 2*blend*blend*blend
-
-        # Override blend for waypoint navigation phases
+        # Determine blend factor based on navigation mode and phase
         if self.waypoint_navigation_active:
+            # For waypoint navigation: discrete switching, no blending
             if self.yaw_alignment_phase:
-                # During yaw alignment, focus on yaw correction
+                # During yaw alignment: pure yaw correction
                 yaw_error = abs(self.normalize_angle(self.target_yaw - current_yaw))
                 if yaw_error < math.radians(5.0):  # Within 5 degrees
                     # Switch to straight line movement
                     self.yaw_alignment_phase = False
                     self.get_logger().info('✓ Yaw aligned, switching to straight line movement')
-                    blend = 0.0  # Full lateral control for straight line
+                    blend = 0.0  # Pure lateral control for straight line
                 else:
-                    blend = 1.0  # Full yaw correction during alignment
+                    blend = 1.0  # Pure yaw correction during alignment
             else:
-                # During straight line movement, use lateral control
+                # During straight line movement: pure lateral control
                 blend = 0.0
         else:
-            blend = self.blend_prefixed # DEBUG: always use yaw correction
+            # For regular navigation: use blend_prefixed parameter
+            blend = self.blend_prefixed
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
