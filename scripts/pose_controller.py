@@ -268,8 +268,8 @@ class PoseController(Node):
         self.waypoints = []  # List of (x, y) tuples
         self.current_waypoint_index = 0
         self.previous_waypoint = None  # (x, y) of previous waypoint
-        self.yaw_alignment_phase = False  # True when aligning yaw before moving
-        self.yaw_alignment_cycles = 0  # Count cycles spent in yaw alignment
+        self.yaw_aligned = False  # Flag: is robot aligned with target heading?
+        self.waypoint_achieved = False  # Flag: has current waypoint been reached?
         
         # Starting pose when target was received (for line-following)
         self.start_x = 0.0
@@ -713,16 +713,15 @@ class PoseController(Node):
                 self.zero_velocity_sent = True
             return
         
-        # Check if target is achieved
-        if self.target_achieved:
+        # Check if target is achieved (for regular navigation)
+        if not self.waypoint_navigation_active and self.target_achieved:
             # Target achieved - send zero velocity once and wait for new target
             if not self.zero_velocity_sent:
                 self.publish_zero_velocity()
                 self.zero_velocity_sent = True
-
-            # Check if we need to move to next waypoint
-            self.check_waypoint_achievement()
             return
+
+        # For waypoint navigation, achievement is handled by the waypoint_achieved flag above
         
         # ============================================================
         # CALL CONTROL FUNCTION
@@ -987,26 +986,15 @@ class PoseController(Node):
         # Orientation correction
         w_yaw = self.K_yaw * d_yaw
 
-        # Determine blend factor based on navigation mode and phase
+        # Determine blend factor based on navigation mode and state
         if self.waypoint_navigation_active:
-            # For waypoint navigation: discrete switching, no blending
-            if self.yaw_alignment_phase:
-                # During yaw alignment: pure yaw correction
-                self.yaw_alignment_cycles += 1
-                yaw_error = abs(self.normalize_angle(self.target_yaw - current_yaw))
-
-                # Require minimum time in yaw alignment (10 cycles = 1.0s at 10Hz) AND good alignment
-                min_cycles = 10
-                if self.yaw_alignment_cycles >= min_cycles and yaw_error < math.radians(2.0):
-                    # Switch to straight line movement
-                    self.yaw_alignment_phase = False
-                    self.get_logger().info(f'✓ Yaw aligned (error={math.degrees(yaw_error):.1f}°, cycles={self.yaw_alignment_cycles}), switching to straight line movement')
-                    blend = 0.0  # Pure lateral control for straight line
-                else:
-                    blend = 1.0  # Pure yaw correction during alignment
+            # For waypoint navigation: use flags to determine control mode
+            if self.yaw_aligned:
+                # Yaw is aligned: do straight line control
+                blend = 0.0  # Pure lateral control
             else:
-                # During straight line movement: pure lateral control
-                blend = 0.0
+                # Yaw not aligned: do yaw alignment
+                blend = 1.0  # Pure yaw correction
         else:
             # For regular navigation: use blend_prefixed parameter
             blend = self.blend_prefixed
@@ -1069,23 +1057,26 @@ class PoseController(Node):
         distance_to_target = np.linalg.norm([target_x - current_x, target_y - current_y])
         dyaw = self.normalize_angle(target_yaw - current_yaw)
 
-        # Context-aware waypoint achievement based on navigation phase
-        target_achieved = False
+        # Update waypoint navigation flags
         if self.waypoint_navigation_active:
-            # During waypoint navigation, only check achievement during straight line movement phase
-            # Never mark waypoints as achieved during yaw alignment phase
-            if not self.yaw_alignment_phase:
-                # During straight line movement: only check position tolerance
-                target_achieved = distance_to_target < self.pos_tolerance
-        else:
-            # Regular navigation: check both tolerances
-            target_achieved = distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance
+            # Check yaw alignment (always check)
+            self.yaw_aligned = abs(dyaw) < self.ori_tolerance
 
-        if target_achieved:
-            # Target achieved - mark as achieved and return zero velocities
-            self.target_achieved = True
-            self.zero_velocity_sent = False  # Reset flag for next target
-            return linear_vel, angular_vel, {
+            # Check waypoint achievement (only during straight line control, i.e., when yaw is aligned)
+            if self.yaw_aligned:
+                self.waypoint_achieved = distance_to_target < self.pos_tolerance
+            else:
+                self.waypoint_achieved = False  # Can't achieve waypoint if not aligned
+        else:
+            # For regular navigation: check both tolerances
+            self.target_achieved = distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance
+
+        # Handle waypoint achievement
+        if self.waypoint_achieved and self.waypoint_navigation_active:
+            # Waypoint achieved - handle transition to next waypoint
+            self.check_waypoint_achievement()
+            # Return zero velocities after waypoint achievement
+            return 0.0, 0.0, {
                 'dx': 0.0,
                 'dy': 0.0,
                 'e_lat': 0.0,
@@ -1382,39 +1373,37 @@ class PoseController(Node):
             # If no previous waypoint, keep current yaw
             self.target_yaw = self.current_yaw if hasattr(self, 'current_yaw') else 0.0
 
-        # Start with yaw alignment phase - reset cycle counter
-        self.yaw_alignment_phase = True
-        self.yaw_alignment_cycles = 0  # Reset for new waypoint
+        # Reset flags for new waypoint
+        self.yaw_aligned = False
+        self.waypoint_achieved = False
         self.has_target = True
-        self.target_achieved = False
 
         self.get_logger().info(f'🎯 Navigating to waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)}: '
                               f'x={self.target_x:.2f}, y={self.target_y:.2f}, yaw_target={math.degrees(self.target_yaw):.1f}°')
 
     def check_waypoint_achievement(self):
         """
-        Check if current waypoint is achieved and move to next one.
+        Handle waypoint achievement and move to next waypoint.
         """
         if not self.waypoint_navigation_active:
             return
 
-        # Check if target is achieved
-        if self.target_achieved:
-            self.get_logger().info(f'✓ Waypoint {self.current_waypoint_index + 1} reached')
+        self.get_logger().info(f'✓ Waypoint {self.current_waypoint_index + 1} reached at ({self.current_x:.2f}, {self.current_y:.2f})')
 
-            # Update previous waypoint to current
-            self.previous_waypoint = (self.target_x, self.target_y)
+        # Update previous waypoint to current
+        self.previous_waypoint = (self.target_x, self.target_y)
 
-            # Move to next waypoint
-            self.current_waypoint_index += 1
+        # Move to next waypoint
+        self.current_waypoint_index += 1
 
-            if self.current_waypoint_index < len(self.waypoints):
-                self.set_next_waypoint_target()
-            else:
-                # All waypoints completed
-                self.waypoint_navigation_active = False
-                self.has_target = False
-                self.get_logger().info('✓ All waypoints completed successfully')
+        if self.current_waypoint_index < len(self.waypoints):
+            self.get_logger().info(f'Moving to waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)}')
+            self.set_next_waypoint_target()
+        else:
+            # All waypoints completed
+            self.waypoint_navigation_active = False
+            self.has_target = False
+            self.get_logger().info('✓ All waypoints completed successfully')
 
     # ============================================================
     # UTILITY FUNCTIONS
