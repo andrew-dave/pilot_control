@@ -992,12 +992,15 @@ class PoseController(Node):
             if self.yaw_aligned:
                 # Yaw is aligned: do straight line control
                 blend = 0.0  # Pure lateral control
+                self.get_logger().info('[WP_NAV] Phase: STRAIGHT LINE (blend = 0.0)')
             else:
                 # Yaw not aligned: do yaw alignment
                 blend = 1.0  # Pure yaw correction
+                self.get_logger().info('[WP_NAV] Phase: YAW ALIGNMENT (blend = 1.0)')
         else:
             # For regular navigation: use blend_prefixed parameter
             blend = self.blend_prefixed
+            self.get_logger().info(f'[REG_NAV] Using blend_prefixed = {blend}')
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
@@ -1059,14 +1062,23 @@ class PoseController(Node):
 
         # Update waypoint navigation flags
         if self.waypoint_navigation_active:
+            # Debug: Log navigation state
+            self.get_logger().info(f'[WP_NAV] Waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)} - '
+                                  f'Pos: ({current_x:.2f}, {current_y:.2f}) -> Target: ({target_x:.2f}, {target_y:.2f}) - '
+                                  f'Distance: {distance_to_target:.3f}m - Yaw: {math.degrees(current_yaw):.1f}° -> Target: {math.degrees(target_yaw):.1f}° - '
+                                  f'dyaw: {math.degrees(dyaw):.1f}° - ori_tol: {math.degrees(self.ori_tolerance):.1f}° - pos_tol: {self.pos_tolerance:.3f}m')
+
             # Check yaw alignment (always check)
             self.yaw_aligned = abs(dyaw) < self.ori_tolerance
+            self.get_logger().info(f'[WP_NAV] yaw_aligned = {self.yaw_aligned} (|dyaw| = {abs(math.degrees(dyaw)):.1f}° < {math.degrees(self.ori_tolerance):.1f}°)')
 
             # Check waypoint achievement (only during straight line control, i.e., when yaw is aligned)
             if self.yaw_aligned:
                 self.waypoint_achieved = distance_to_target < self.pos_tolerance
+                self.get_logger().info(f'[WP_NAV] Checking waypoint achievement: distance {distance_to_target:.3f}m < {self.pos_tolerance:.3f}m = {self.waypoint_achieved}')
             else:
                 self.waypoint_achieved = False  # Can't achieve waypoint if not aligned
+                self.get_logger().info(f'[WP_NAV] Skipping waypoint achievement check (yaw not aligned)')
         else:
             # For regular navigation: check both tolerances
             self.target_achieved = distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance
@@ -1074,6 +1086,7 @@ class PoseController(Node):
         # Handle waypoint achievement
         if self.waypoint_achieved and self.waypoint_navigation_active:
             # Waypoint achieved - handle transition to next waypoint
+            self.get_logger().info(f'[WP_NAV] WAYPOINT ACHIEVED! Moving to next waypoint...')
             self.check_waypoint_achievement()
             # Return zero velocities after waypoint achievement
             return 0.0, 0.0, {
@@ -1369,14 +1382,19 @@ class PoseController(Node):
             dx = self.target_x - self.previous_waypoint[0]
             dy = self.target_y - self.previous_waypoint[1]
             self.target_yaw = math.atan2(dy, dx)
+            self.get_logger().info(f'[WP_NAV] Target yaw calculation: prev=({self.previous_waypoint[0]:.2f}, {self.previous_waypoint[1]:.2f}) -> '
+                                  f'current=({self.target_x:.2f}, {self.target_y:.2f}) -> dx={dx:.2f}, dy={dy:.2f} -> '
+                                  f'target_yaw={math.degrees(self.target_yaw):.1f}°')
         else:
             # If no previous waypoint, keep current yaw
             self.target_yaw = self.current_yaw if hasattr(self, 'current_yaw') else 0.0
+            self.get_logger().info(f'[WP_NAV] First waypoint: using current yaw {math.degrees(self.target_yaw):.1f}° as target')
 
         # Reset flags for new waypoint
         self.yaw_aligned = False
         self.waypoint_achieved = False
         self.has_target = True
+        self.get_logger().info('[WP_NAV] Flags reset for new waypoint navigation')
 
         self.get_logger().info(f'🎯 Navigating to waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)}: '
                               f'x={self.target_x:.2f}, y={self.target_y:.2f}, yaw_target={math.degrees(self.target_yaw):.1f}°')
