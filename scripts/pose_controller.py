@@ -10,6 +10,7 @@ Features:
 - Control loop runs at 10 Hz
 - Generates left and right wheel velocity commands
 - Publishes to ODrive CAN nodes
+- Waypoint navigation: autonomous navigation through CSV-defined waypoints
 
 Usage:
   ros2 run pilot_control pose_controller.py
@@ -21,6 +22,30 @@ Topics:
   Published:
     - /left/control_message (odrive_can/ControlMessage) - Left wheel velocity
     - /right/control_message (odrive_can/ControlMessage) - Right wheel velocity
+
+Services:
+  - /start_waypoint_navigation (pilot_control/StartWaypointNavigation) - Start autonomous waypoint navigation
+    Request: csv_file_path (string) - Path to CSV file containing waypoints
+    Response: success (bool), message (string)
+
+Waypoint Navigation:
+  The waypoint navigation feature allows autonomous navigation through a series of waypoints
+  defined in a CSV file. Each waypoint consists of x,y coordinates.
+
+  CSV Format:
+    x,y
+    1.0,0.0
+    2.0,1.0
+    3.0,0.0
+
+  Navigation Logic:
+  1. Yaw Alignment Phase: Robot first rotates to face the target waypoint
+  2. Straight Line Movement: Once aligned, robot moves in a straight line to the waypoint
+  3. Waypoint Achievement: When waypoint is reached, automatically proceeds to next waypoint
+  4. Completion: Stops when all waypoints are completed
+
+  Usage:
+    ros2 service call /start_waypoint_navigation pilot_control/srv/StartWaypointNavigation "{csv_file_path: '/path/to/waypoints.csv'}"
 """
 
 import rclpy
@@ -33,6 +58,7 @@ from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
 from std_srvs.srv import Empty
+from pilot_control.srv import StartWaypointNavigation
 import math
 import numpy as np
 from typing import Tuple, Optional
@@ -232,6 +258,13 @@ class PoseController(Node):
         self.has_target = False
         self.target_achieved = False
         self.zero_velocity_sent = False
+
+        # Waypoint navigation state
+        self.waypoint_navigation_active = False
+        self.waypoints = []  # List of (x, y) tuples
+        self.current_waypoint_index = 0
+        self.previous_waypoint = None  # (x, y) of previous waypoint
+        self.yaw_alignment_phase = False  # True when aligning yaw before moving
         
         # Starting pose when target was received (for line-following)
         self.start_x = 0.0
@@ -319,11 +352,18 @@ class PoseController(Node):
             '/enable_controller',
             self.enable_callback
         )
-        
+
         self.disable_srv = self.create_service(
             Trigger,
             '/disable_controller',
             self.disable_callback
+        )
+
+        # Service for waypoint navigation
+        self.waypoint_nav_srv = self.create_service(
+            StartWaypointNavigation,
+            '/start_waypoint_navigation',
+            self.start_waypoint_navigation_callback
         )
 
         # Service to trigger graceful shutdown (zero torque → disarm → stop nodes)
@@ -395,6 +435,7 @@ class PoseController(Node):
         self.get_logger().info(f'  /set_target_pose - Set new target pose')
         self.get_logger().info(f'  /enable_controller - Enable controller')
         self.get_logger().info(f'  /disable_controller - Disable controller')
+        self.get_logger().info(f'  /start_waypoint_navigation - Start autonomous waypoint navigation')
         self.get_logger().info(f'')
         self.get_logger().info(f'Controller Status: {"ENABLED" if self.controller_enabled else "DISABLED"}')
         self.get_logger().info('='*70)
@@ -670,6 +711,9 @@ class PoseController(Node):
             if not self.zero_velocity_sent:
                 self.publish_zero_velocity()
                 self.zero_velocity_sent = True
+
+            # Check if we need to move to next waypoint
+            self.check_waypoint_achievement()
             return
         
         # ============================================================
@@ -940,11 +984,27 @@ class PoseController(Node):
         # blend = 1 → full yaw correction (very close to global goal)
         blend = (self.r_far - r_goal) / max((self.r_far - self.r_close), 1e-6)
         blend = max(min(blend, 1.0), 0.0)  # clamp 0–1
-        
+
         # Smoothstep for gradual transition: 3*t^2 - 2*t^3
         blend = 3*blend*blend - 2*blend*blend*blend
 
-        blend = self.blend_prefixed # DEBUG: always use yaw correction
+        # Override blend for waypoint navigation phases
+        if self.waypoint_navigation_active:
+            if self.yaw_alignment_phase:
+                # During yaw alignment, focus on yaw correction
+                yaw_error = abs(self.normalize_angle(self.target_yaw - current_yaw))
+                if yaw_error < math.radians(5.0):  # Within 5 degrees
+                    # Switch to straight line movement
+                    self.yaw_alignment_phase = False
+                    self.get_logger().info('✓ Yaw aligned, switching to straight line movement')
+                    blend = 0.0  # Full lateral control for straight line
+                else:
+                    blend = 1.0  # Full yaw correction during alignment
+            else:
+                # During straight line movement, use lateral control
+                blend = 0.0
+        else:
+            blend = self.blend_prefixed # DEBUG: always use yaw correction
         
         # Combine the two steering components
         w_e = (1.0 - blend) * w_lat + blend * w_yaw
@@ -1200,12 +1260,152 @@ class PoseController(Node):
         Service callback to disable the controller.
         """
         self.controller_enabled = False
+        self.waypoint_navigation_active = False  # Also disable waypoint navigation
         self.publish_zero_velocity()
         response.success = True
         response.message = '✓ Controller DISABLED'
         self.get_logger().info('✓ Controller DISABLED')
         return response
-    
+
+    def start_waypoint_navigation_callback(self, request, response):
+        """
+        Service callback to start waypoint navigation with CSV file.
+        """
+        try:
+            csv_file_path = request.csv_file_path
+            if not os.path.exists(csv_file_path):
+                response.success = False
+                response.message = f'CSV file not found: {csv_file_path}'
+                return response
+
+            # Parse waypoints from CSV
+            waypoints = self.parse_waypoints_csv(csv_file_path)
+            if len(waypoints) < 1:
+                response.success = False
+                response.message = f'No valid waypoints found in CSV: {csv_file_path}'
+                return response
+
+            # Initialize waypoint navigation
+            self.waypoints = waypoints
+            self.current_waypoint_index = 0
+            self.waypoint_navigation_active = True
+            self.yaw_alignment_phase = False
+
+            # For first waypoint, use current position as previous waypoint
+            if self.pose_initialized:
+                self.previous_waypoint = (self.current_x, self.current_y)
+            else:
+                response.success = False
+                response.message = 'Odometry not initialized yet'
+                return response
+
+            # Enable controller if not already enabled
+            if not self.controller_enabled:
+                self.controller_enabled = True
+                self.get_logger().info('✓ Controller auto-enabled for waypoint navigation')
+
+            # Start navigation to first waypoint
+            self.set_next_waypoint_target()
+
+            response.success = True
+            response.message = f'✓ Waypoint navigation started with {len(waypoints)} waypoints'
+            self.get_logger().info(f'✓ Waypoint navigation started: {len(waypoints)} waypoints loaded from {csv_file_path}')
+
+        except Exception as e:
+            response.success = False
+            response.message = f'Error starting waypoint navigation: {str(e)}'
+            self.get_logger().error(f'Error starting waypoint navigation: {str(e)}')
+
+        return response
+
+    def parse_waypoints_csv(self, csv_file_path: str) -> list:
+        """
+        Parse waypoints from CSV file.
+        Expected format: CSV with at least x,y columns (header optional)
+        """
+        waypoints = []
+        try:
+            with open(csv_file_path, 'r') as f:
+                reader = csv.reader(f)
+                for row_num, row in enumerate(reader):
+                    # Skip empty rows
+                    if not row or all(not cell.strip() for cell in row):
+                        continue
+
+                    # Try to parse as x,y coordinates
+                    if len(row) >= 2:
+                        try:
+                            x = float(row[0].strip())
+                            y = float(row[1].strip())
+                            waypoints.append((x, y))
+                        except ValueError:
+                            # Check if this might be a header row
+                            if row_num == 0 and any(keyword in ' '.join(row).lower() for keyword in ['x', 'y', 'waypoint', 'point']):
+                                continue  # Skip header
+                            else:
+                                self.get_logger().warn(f'Skipping invalid row {row_num + 1}: {row}')
+                                continue
+        except Exception as e:
+            self.get_logger().error(f'Error parsing CSV file {csv_file_path}: {str(e)}')
+            return []
+
+        self.get_logger().info(f'Parsed {len(waypoints)} waypoints from {csv_file_path}')
+        return waypoints
+
+    def set_next_waypoint_target(self):
+        """
+        Set the next waypoint as target and prepare for navigation.
+        """
+        if not self.waypoint_navigation_active or self.current_waypoint_index >= len(self.waypoints):
+            self.waypoint_navigation_active = False
+            self.get_logger().info('✓ All waypoints completed')
+            return
+
+        current_wp = self.waypoints[self.current_waypoint_index]
+        self.target_x, self.target_y = current_wp
+
+        # Calculate target yaw from previous waypoint to current waypoint
+        if self.previous_waypoint is not None:
+            dx = self.target_x - self.previous_waypoint[0]
+            dy = self.target_y - self.previous_waypoint[1]
+            self.target_yaw = math.atan2(dy, dx)
+        else:
+            # If no previous waypoint, keep current yaw
+            self.target_yaw = self.current_yaw if hasattr(self, 'current_yaw') else 0.0
+
+        # Start with yaw alignment phase
+        self.yaw_alignment_phase = True
+        self.has_target = True
+        self.target_achieved = False
+
+        self.get_logger().info(f'🎯 Navigating to waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)}: '
+                              f'x={self.target_x:.2f}, y={self.target_y:.2f}, yaw_target={math.degrees(self.target_yaw):.1f}°')
+
+    def check_waypoint_achievement(self):
+        """
+        Check if current waypoint is achieved and move to next one.
+        """
+        if not self.waypoint_navigation_active:
+            return
+
+        # Check if target is achieved
+        if self.target_achieved:
+            self.get_logger().info(f'✓ Waypoint {self.current_waypoint_index + 1} reached')
+
+            # Update previous waypoint to current
+            self.previous_waypoint = (self.target_x, self.target_y)
+
+            # Move to next waypoint
+            self.current_waypoint_index += 1
+
+            if self.current_waypoint_index < len(self.waypoints):
+                self.set_next_waypoint_target()
+            else:
+                # All waypoints completed
+                self.waypoint_navigation_active = False
+                self.has_target = False
+                self.get_logger().info('✓ All waypoints completed successfully')
+
     # ============================================================
     # UTILITY FUNCTIONS
     # ============================================================
