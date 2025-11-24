@@ -104,7 +104,7 @@ def generate_launch_description():
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
         'yaw_tol',
-        default_value='0.0',
+        default_value='0.1',
         description='Yaw tolerance for target achievement (rad)'
     )
     declare_imu_flip_x_arg = DeclareLaunchArgument(

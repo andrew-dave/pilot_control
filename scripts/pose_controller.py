@@ -100,7 +100,7 @@ class PoseController(Node):
         self.declare_parameter('max_linear_velocity', 0.4) # m/s
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
-        self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
+        self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
         self.declare_parameter('lookahead_distance', 0.4) # m (5cm)
         
