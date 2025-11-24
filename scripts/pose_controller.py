@@ -269,6 +269,7 @@ class PoseController(Node):
         self.current_waypoint_index = 0
         self.previous_waypoint = None  # (x, y) of previous waypoint
         self.yaw_alignment_phase = False  # True when aligning yaw before moving
+        self.yaw_alignment_cycles = 0  # Count cycles spent in yaw alignment
         
         # Starting pose when target was received (for line-following)
         self.start_x = 0.0
@@ -991,11 +992,15 @@ class PoseController(Node):
             # For waypoint navigation: discrete switching, no blending
             if self.yaw_alignment_phase:
                 # During yaw alignment: pure yaw correction
+                self.yaw_alignment_cycles += 1
                 yaw_error = abs(self.normalize_angle(self.target_yaw - current_yaw))
-                if yaw_error < math.radians(5.0):  # Within 5 degrees
+
+                # Require minimum time in yaw alignment (10 cycles = 1.0s at 10Hz) AND good alignment
+                min_cycles = 10
+                if self.yaw_alignment_cycles >= min_cycles and yaw_error < math.radians(2.0):
                     # Switch to straight line movement
                     self.yaw_alignment_phase = False
-                    self.get_logger().info('✓ Yaw aligned, switching to straight line movement')
+                    self.get_logger().info(f'✓ Yaw aligned (error={math.degrees(yaw_error):.1f}°, cycles={self.yaw_alignment_cycles}), switching to straight line movement')
                     blend = 0.0  # Pure lateral control for straight line
                 else:
                     blend = 1.0  # Pure yaw correction during alignment
@@ -1377,8 +1382,9 @@ class PoseController(Node):
             # If no previous waypoint, keep current yaw
             self.target_yaw = self.current_yaw if hasattr(self, 'current_yaw') else 0.0
 
-        # Start with yaw alignment phase
+        # Start with yaw alignment phase - reset cycle counter
         self.yaw_alignment_phase = True
+        self.yaw_alignment_cycles = 0  # Reset for new waypoint
         self.has_target = True
         self.target_achieved = False
 
