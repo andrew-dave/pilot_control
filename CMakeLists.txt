@@ -99,7 +99,7 @@ install(TARGETS pcd_processor DESTINATION lib/${PROJECT_NAME})
 add_executable(raw_map_saver src/raw_map_saver.cpp)
 ament_target_dependencies(raw_map_saver rclcpp sensor_msgs std_srvs pcl_conversions)
 target_include_directories(raw_map_saver PUBLIC ${PCL_INCLUDE_DIRS})
-target_link_libraries(raw_map_saver ${PCL_LIBRARIES})
+target_link_libraries(raw_map_saver ${PCL_LIBRARIES} Eigen3::Eigen)
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS raw_map_saver DESTINATION lib/${PROJECT_NAME})
 
@@ -246,6 +246,7 @@ install(
   scripts/odom_gap_monitor.py
   scripts/setup_data_folders.py
   scripts/F2C/f2c_check.py
+  scripts/F2C/pointcloud_to_f2c_field.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -29,8 +29,8 @@ public:
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
         gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
         save_raw_map_client_ = create_client<std_srvs::srv::Trigger>("/save_raw_map");
-        shutdown_mapping_client_ = create_client<std_srvs::srv::Trigger>("/shutdown_mapping");
-        process_map_client_ = create_client<std_srvs::srv::Trigger>("/process_and_save_map");
+        // shutdown_mapping_client_ - REMOVED (not shutting down Fast-LIO2 anymore)
+        // process_map_client_ - REMOVED (not using pcd_processor anymore)
         video_record_set_client_ = create_client<std_srvs::srv::SetBool>("/video_record_set");
         // GPR line control services (Arduino)
         gpr_line_start_client_ = create_client<std_srvs::srv::Trigger>("/gpr_line_start");
@@ -62,7 +62,7 @@ public:
         RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  G - Toggle GPR scan (line + motor + logging)");
-        RCLCPP_INFO(get_logger(), "  M - Save map, shutdown Fast-LIO2, then process map");
+        RCLCPP_INFO(get_logger(), "  M - Save map checkpoint (Fast-LIO2 continues running)");
         RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
         RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
         RCLCPP_INFO(get_logger(), "  B - Toggle rosbag recording");
@@ -95,18 +95,6 @@ public:
             RCLCPP_INFO(get_logger(), "✓ save_raw_map service is available");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ save_raw_map service is NOT available (will be checked when M is pressed)");
-        }
-        
-        if (shutdown_mapping_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ shutdown_mapping service is available");
-        } else {
-            RCLCPP_WARN(get_logger(), "⚠ shutdown_mapping service is NOT available (will be checked when M is pressed)");
-        }
-        
-        if (process_map_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(get_logger(), "✓ process_and_save_map service is available");
-        } else {
-            RCLCPP_WARN(get_logger(), "⚠ process_and_save_map service is NOT available (will be checked when M is pressed)");
         }
 
         // Check video record service
@@ -337,8 +325,8 @@ public:
         workflow_active_.store(true);
         workflow_step_.store(0);
         
-        RCLCPP_INFO(get_logger(), "=== STARTING MAP SAVE AND SHUTDOWN SEQUENCE ===");
-        RCLCPP_INFO(get_logger(), "✓ Teleop node will remain active throughout the process");
+        RCLCPP_INFO(get_logger(), "=== SAVING MAP CHECKPOINT ===");
+        RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 will continue running after save");
         
         // Start the workflow in a separate thread to avoid blocking the main loop
         workflow_thread_ = std::thread(&TeleopNode::execute_map_workflow, this);
@@ -349,7 +337,7 @@ private:
         try {
             // Step 1: Check service availability
             workflow_step_.store(1);
-            RCLCPP_INFO(get_logger(), "Step 1: Checking service availability...");
+            RCLCPP_INFO(get_logger(), "Checking save_raw_map service availability...");
             
             if (!save_raw_map_client_->wait_for_service(std::chrono::seconds(2))) {
                 RCLCPP_ERROR(get_logger(), "✗ save_raw_map service is not available!");
@@ -357,27 +345,15 @@ private:
                 return;
             }
             
-            if (!shutdown_mapping_client_->wait_for_service(std::chrono::seconds(2))) {
-                RCLCPP_ERROR(get_logger(), "✗ shutdown_mapping service is not available!");
-                workflow_active_.store(false);
-                return;
-            }
-            
-            if (!process_map_client_->wait_for_service(std::chrono::seconds(2))) {
-                RCLCPP_ERROR(get_logger(), "✗ process_and_save_map service is not available!");
-                workflow_active_.store(false);
-                return;
-            }
-            
-            RCLCPP_INFO(get_logger(), "✓ All services are available, proceeding...");
+            RCLCPP_INFO(get_logger(), "✓ Service available, saving map...");
             
             // Step 2: Save raw map from Fast-LIO2
             workflow_step_.store(2);
-            RCLCPP_INFO(get_logger(), "Step 2: Saving raw map from Fast-LIO2...");
+            RCLCPP_INFO(get_logger(), "Saving raw map from Fast-LIO2...");
             auto save_request = std::make_shared<std_srvs::srv::Trigger::Request>();
             auto save_future = save_raw_map_client_->async_send_request(save_request);
             
-            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
+            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), save_future, std::chrono::seconds(10)) == rclcpp::FutureReturnCode::SUCCESS) {
                 auto save_response = save_future.get();
                 if (save_response->success) {
                     RCLCPP_INFO(get_logger(), "✓ Raw map saved: %s", save_response->message.c_str());
@@ -392,88 +368,11 @@ private:
                 return;
             }
             
-            // Step 3: Shutdown Fast-LIO2 and mapping nodes
-            workflow_step_.store(3);
-            RCLCPP_INFO(get_logger(), "Step 3: Shutting down Fast-LIO2 and mapping nodes...");
-            auto shutdown_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-            auto shutdown_future = shutdown_mapping_client_->async_send_request(shutdown_request);
-            
-            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), shutdown_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-                auto shutdown_response = shutdown_future.get();
-                if (shutdown_response->success) {
-                    RCLCPP_INFO(get_logger(), "✓ %s", shutdown_response->message.c_str());
-                } else {
-                    RCLCPP_WARN(get_logger(), "✗ Failed to shutdown mapping: %s", shutdown_response->message.c_str());
-                }
-            } else {
-                RCLCPP_ERROR(get_logger(), "✗ Failed to call shutdown service");
-            }
-            
-            // Step 4: Copy raw map from robot to laptop (device-agnostic)
-            workflow_step_.store(4);
-            RCLCPP_INFO(get_logger(), "Step 4: Copying raw map from robot to laptop...");
-            
-            // Build device-agnostic copy command using environment variables
-            const char* home_dir = std::getenv("HOME");
-            const char* robot_user = std::getenv("ROBOT_USER");
-            const char* robot_ip = std::getenv("ROBOT_IP");
-            const char* robot_data_dir = std::getenv("ROBOT_DATA_DIR");
-            
-            // Defaults if environment variables not set
-            std::string robot_user_str = robot_user ? robot_user : "roofus";
-            std::string robot_ip_str = robot_ip ? robot_ip : "172.16.14.113";
-            std::string robot_data_dir_str = robot_data_dir ? robot_data_dir : "/R_DATA";
-            std::string local_maps_dir = std::string(home_dir ? home_dir : "/tmp") + "/robot_maps";
-            
-            // Create local directory
-            std::string mkdir_cmd = "mkdir -p " + local_maps_dir;
-            std::system(mkdir_cmd.c_str());
-            
-            // Find and copy latest raw map using SSH + rsync
-            std::string copy_cmd = 
-                "LATEST=$(ssh -o ConnectTimeout=5 " + robot_user_str + "@" + robot_ip_str + 
-                " 'find " + robot_data_dir_str + " -name \"raw_map_*.pcd\" -type f -printf \"%T@ %p\\n\" | sort -rn | head -1 | cut -d\" \" -f2-') && "
-                "[ -n \"$LATEST\" ] && rsync -avz " + robot_user_str + "@" + robot_ip_str + ":\"$LATEST\" " + local_maps_dir + "/";
-            
-            RCLCPP_INFO(get_logger(), "Copying from %s@%s:%s to %s", 
-                       robot_user_str.c_str(), robot_ip_str.c_str(), robot_data_dir_str.c_str(), local_maps_dir.c_str());
-            
-            int copy_result = std::system(copy_cmd.c_str());
-            
-            if (copy_result == 0) {
-                RCLCPP_INFO(get_logger(), "✓ Raw map copied to %s successfully", local_maps_dir.c_str());
-            } else {
-                RCLCPP_ERROR(get_logger(), "✗ Failed to copy raw map (exit code: %d)", copy_result);
-                RCLCPP_ERROR(get_logger(), "Continuing with processing anyway...");
-            }
-            
-            // Add a small delay to ensure file is fully written
-            RCLCPP_INFO(get_logger(), "Waiting 2 seconds for file to be fully written...");
-            std::this_thread::sleep_for(std::chrono::seconds(2));
-            
-            // Step 5: Process the saved raw map
-            workflow_step_.store(5);
-            RCLCPP_INFO(get_logger(), "Step 5: Processing saved raw map...");
-            auto process_request = std::make_shared<std_srvs::srv::Trigger::Request>();
-            auto process_future = process_map_client_->async_send_request(process_request);
-            
-            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), process_future, std::chrono::seconds(30)) == rclcpp::FutureReturnCode::SUCCESS) {
-                auto process_response = process_future.get();
-                if (process_response->success) {
-                    RCLCPP_INFO(get_logger(), "✓ %s", process_response->message.c_str());
-                } else {
-                    RCLCPP_WARN(get_logger(), "✗ Failed to process map: %s", process_response->message.c_str());
-                }
-            } else {
-                RCLCPP_ERROR(get_logger(), "✗ Failed to call process_and_save_map service");
-            }
-            
-            RCLCPP_INFO(get_logger(), "=== MAP SAVE AND PROCESSING COMPLETE ===");
-            RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 and mapping nodes are shutdown");
-            RCLCPP_INFO(get_logger(), "✓ Raw map has been processed and saved");
-            RCLCPP_INFO(get_logger(), "✓ Robot control remains active");
+            RCLCPP_INFO(get_logger(), "=== MAP SAVE COMPLETE ===");
+            RCLCPP_INFO(get_logger(), "✓ Raw map saved to session folder");
+            RCLCPP_INFO(get_logger(), "✓ Fast-LIO2 continues running - you can keep mapping");
+            RCLCPP_INFO(get_logger(), "✓ Press M again to save another checkpoint");
             RCLCPP_INFO(get_logger(), "✓ Use WASD keys to control robot movement");
-            RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm");
             
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_logger(), "Exception in map workflow: %s", e.what());
@@ -560,8 +459,8 @@ private:
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr gpr_axis_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr save_raw_map_client_;
-    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_;
-    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_;
+    // rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr shutdown_mapping_client_; // REMOVED - not shutting down Fast-LIO2
+    // rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr process_map_client_; // REMOVED - not using pcd_processor
     rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr video_record_set_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_start_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_stop_client_;

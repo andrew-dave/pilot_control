@@ -355,7 +355,8 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'input_topic': '/Laser_map',
-            'save_directory': '/tmp/robot_maps'
+            'save_directory': '/tmp/robot_maps',
+            'save_format': 'compressed'  # 'compressed' (best for wireless transfer), 'binary' (fast), 'ascii' (debug)
         }]
     )
 

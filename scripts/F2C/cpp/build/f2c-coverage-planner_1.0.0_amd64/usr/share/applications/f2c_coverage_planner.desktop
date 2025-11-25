@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=F2C Coverage Planner
+Comment=Fields2Cover Coverage Path Planning GUI
+Exec=/usr/bin/f2c_coverage_planner_launcher
+Icon=f2c_coverage_planner
+Terminal=false
+Categories=Development;Engineering;
+StartupWMClass=f2c_coverage_planner

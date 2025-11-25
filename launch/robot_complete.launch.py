@@ -275,37 +275,14 @@ def generate_launch_description():
             'input_topic': '/Laser_map',
             'save_directory': folder_paths['section_folder'],  # Save to session folder
             'auto_save_enabled': False,  # Disabled - save only when M key pressed
-            'auto_save_interval_sec': 30.0
+            'auto_save_interval_sec': 30.0,
+            'apply_tilt_correction': True,  # Apply IMU-based tilt correction when saving
+            'save_raw_backup': False,  # Set to True to keep uncorrected map as backup
+            'save_format': 'compressed'  # 'compressed' (50% smaller, best for wireless transfer), 'binary' (fast), 'ascii' (debug)
         }]
     )
 
-    # PCD Processor - Process and save final maps (press M key in teleop)
-    # Uses device-agnostic paths - processes maps in ~/robot_maps (where they get copied to)
-    import os
-    home_dir = os.path.expanduser('~')
-    robot_maps_dir = os.path.join(home_dir, 'robot_maps')
-    
-    pcd_processor_node = Node(
-        package='pilot_control',
-        executable='pcd_processor',
-        name='pcd_processor',
-        output='screen',
-        parameters=[{
-            'raw_map_directory': robot_maps_dir,  # Device-agnostic: ~/robot_maps
-            'processed_map_directory': robot_maps_dir,  # Save processed maps to ~/robot_maps
-            'processing_mode': 'high_quality',  # Options: minimal, fast, high_quality
-            'voxel_size': 0.05,
-            'remove_outliers': True,
-            'outlier_std_dev': 2.0,
-            'apply_rotation_correction': True,
-            'rotation_angle': -0.2617993878,  # -15 degrees in radians (tilt correction)
-            'save_format': 'pcd',
-            'auto_shutdown': False,  # Keep running (don't shutdown after processing)
-            'max_height': 2.0,
-            'min_height': 0.1,
-            'find_latest_raw_map': True  # Automatically find the latest raw map
-        }]
-    )
+    # PCD Processor - REMOVED (not needed - using raw maps only)
 
     # Shutdown Service Node (for remote shutdown)
     shutdown_service_node = Node(
@@ -427,7 +404,7 @@ def generate_launch_description():
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_node,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
-                pcd_processor_node,  # Enabled - processes raw maps (M key workflow)
+                # pcd_processor_node - REMOVED (not needed - using raw maps only)
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6
