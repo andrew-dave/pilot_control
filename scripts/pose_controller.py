@@ -102,7 +102,7 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 1.6) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.8) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
