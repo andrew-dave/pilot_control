@@ -102,7 +102,7 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.03) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 1.2) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.8) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
@@ -124,9 +124,14 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 1.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
-        self.declare_parameter('Kp_angular', 5.92) # 1.0
-        self.declare_parameter('Ki_angular', 0.492)
+        # Angular PID for straight line tracking
+        self.declare_parameter('Kp_angular', 20.0) # 1.0
+        self.declare_parameter('Ki_angular', 7 .0)
         self.declare_parameter('Kd_angular', 0.0)
+        # Angular PID for yaw alignment only
+        self.declare_parameter('Kp_angular_yaw', 5.92) # Default same as straight line
+        self.declare_parameter('Ki_angular_yaw', 0.492) # Default same as straight line
+        self.declare_parameter('Kd_angular_yaw', 0.0) # Default same as straight line
 
         # Safety parameters
         self.declare_parameter('enable_controller', True) # Start enabled by default
@@ -189,6 +194,10 @@ class PoseController(Node):
         self.Kp_angular = self.get_parameter('Kp_angular').value
         self.Ki_angular = self.get_parameter('Ki_angular').value
         self.Kd_angular = self.get_parameter('Kd_angular').value
+        # Yaw alignment PID parameters
+        self.Kp_angular_yaw = self.get_parameter('Kp_angular_yaw').value
+        self.Ki_angular_yaw = self.get_parameter('Ki_angular_yaw').value
+        self.Kd_angular_yaw = self.get_parameter('Kd_angular_yaw').value
         # If I/D gains unset, derive simple defaults from P gain for reasonable behavior
         #if (self.Ki_angular is None) or (float(self.Ki_angular) == 0.0):
         #    self.Ki_angular = 0 * float(self.Kp_angular)
@@ -918,8 +927,8 @@ class PoseController(Node):
         next_distance = distance_along_line + self.lookahead_distance
         
         # If next waypoint goes beyond target, use target as waypoint
-        #if next_distance >= line_length:
-        #    return target_x, target_y
+        if next_distance >= line_length:
+           return target_x, target_y
         
         # Calculate next waypoint coordinates
         next_x = self.start_x + line_direction[0] * next_distance
@@ -1160,6 +1169,21 @@ class PoseController(Node):
         if self.waypoint_navigation_active and not self.yaw_aligned:
             linear_vel = 0.0  # Pure rotation, no forward motion
             self.get_logger().info(f'[WP_NAV] Yaw alignment: linear_vel set to 0.0')
+        
+        # Select appropriate PID parameters based on phase
+        # For waypoint navigation: use yaw alignment PID during yaw alignment phase, straight line PID otherwise
+        # For regular navigation: always use straight line PID
+        if self.waypoint_navigation_active and not self.yaw_aligned:
+            # Yaw alignment phase: use yaw alignment PID parameters
+            Kp_ang = self.Kp_angular_yaw
+            Ki_ang = self.Ki_angular_yaw
+            Kd_ang = self.Kd_angular_yaw
+        else:
+            # Straight line tracking phase (or regular navigation): use straight line PID parameters
+            Kp_ang = self.Kp_angular
+            Ki_ang = self.Ki_angular
+            Kd_ang = self.Kd_angular
+        
         # Angular PID on w_e with anti-windup and derivative
         now_ns = self.get_clock().now().nanoseconds
         if self._ang_prev_time_ns is None:
@@ -1177,9 +1201,9 @@ class PoseController(Node):
         # Derivative (on measurement)
         d_err = (err_a - self._ang_prev_err) / dt if dt > 0.0 else 0.0
         angular_vel = (
-            float(self.Kp_angular) * err_a +
-            float(self.Ki_angular) * self._ang_integral +
-            float(self.Kd_angular) * d_err
+            float(Kp_ang) * err_a +
+            float(Ki_ang) * self._ang_integral +
+            float(Kd_ang) * d_err
         )
         self._ang_prev_err = err_a
         self._ang_prev_time_ns = now_ns
