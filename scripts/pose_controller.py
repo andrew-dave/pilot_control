@@ -103,6 +103,8 @@ class PoseController(Node):
         self.declare_parameter('orientation_tolerance', 0.2) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
         self.declare_parameter('lookahead_distance', 1.6) # m (5cm)
+        self.declare_parameter('yaw_alignment_settle_cycles', 5) # Number of consecutive cycles yaw must be aligned before transition
+        self.declare_parameter('waypoint_settle_cycles', 5) # Number of consecutive cycles waypoint must be achieved before completion
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
@@ -159,6 +161,8 @@ class PoseController(Node):
         self.pos_tolerance = self.get_parameter('position_tolerance').value
         self.ori_tolerance = self.get_parameter('orientation_tolerance').value
         self.lookahead_distance = self.get_parameter('lookahead_distance').value
+        self.yaw_alignment_settle_cycles = int(self.get_parameter('yaw_alignment_settle_cycles').value)
+        self.waypoint_settle_cycles = int(self.get_parameter('waypoint_settle_cycles').value)
         
         # Error computation parameters
         self.r_close = self.get_parameter('r_close').value
@@ -270,6 +274,8 @@ class PoseController(Node):
         self.previous_waypoint = None  # (x, y) of previous waypoint
         self.yaw_aligned = False  # Flag: is robot aligned with target heading?
         self.waypoint_achieved = False  # Flag: has current waypoint been reached?
+        self.yaw_aligned_consecutive_cycles = 0  # Counter for consecutive cycles yaw has been aligned
+        self.waypoint_achieved_consecutive_cycles = 0  # Counter for consecutive cycles waypoint has been achieved
         
         # Starting pose when target was received (for line-following)
         self.start_x = 0.0
@@ -1065,20 +1071,49 @@ class PoseController(Node):
 
         # Update waypoint navigation flags
         if self.waypoint_navigation_active:
-            # Phase-based threshold checking
+            # Phase-based threshold checking with settling time
             if not self.yaw_aligned:
-                # YAW ALIGNMENT PHASE: Only check yaw threshold (ori_tolerance)
-                self.yaw_aligned = abs(dyaw) < self.ori_tolerance
+                # YAW ALIGNMENT PHASE: Only check yaw threshold (ori_tolerance) with settling
+                yaw_within_tolerance = abs(dyaw) < self.ori_tolerance
+                
+                if yaw_within_tolerance:
+                    self.yaw_aligned_consecutive_cycles += 1
+                else:
+                    self.yaw_aligned_consecutive_cycles = 0  # Reset counter if threshold not met
+                
+                # Only transition to straight line after settling time
+                if self.yaw_aligned_consecutive_cycles >= self.yaw_alignment_settle_cycles:
+                    self.yaw_aligned = True
+                    self.get_logger().info(f'[WP_NAV] Yaw alignment SETTLED after {self.yaw_aligned_consecutive_cycles} cycles - transitioning to straight line')
+                else:
+                    self.yaw_aligned = False
+                    # Log every 5 cycles to reduce spam
+                    if self.yaw_aligned_consecutive_cycles % 5 == 0 or self.yaw_aligned_consecutive_cycles == 0:
+                        self.get_logger().info(f'[WP_NAV] YAW ALIGNMENT PHASE - yaw within tolerance: {yaw_within_tolerance}, '
+                                              f'settle cycles: {self.yaw_aligned_consecutive_cycles}/{self.yaw_alignment_settle_cycles} '
+                                              f'(|dyaw| = {abs(math.degrees(dyaw)):.1f}° < {math.degrees(self.ori_tolerance):.1f}°)')
+                
                 self.waypoint_achieved = False  # Not checking distance threshold during yaw alignment
-                comparison = "<" if self.yaw_aligned else ">="
-                self.get_logger().info(f'[WP_NAV] YAW ALIGNMENT PHASE - Checking ONLY yaw threshold: '
-                                      f'yaw_aligned = {self.yaw_aligned} (|dyaw| = {abs(math.degrees(dyaw)):.1f}° {comparison} {math.degrees(self.ori_tolerance):.1f}°)')
             else:
-                # STRAIGHT LINE PHASE: Only check distance threshold (pos_tolerance)
-                self.waypoint_achieved = distance_to_target < self.pos_tolerance
-                # Note: yaw_aligned remains True (we don't re-check yaw threshold during straight line)
-                self.get_logger().info(f'[WP_NAV] STRAIGHT LINE PHASE - Checking ONLY distance threshold: '
-                                      f'waypoint_achieved = {self.waypoint_achieved} (distance = {distance_to_target:.3f}m < {self.pos_tolerance:.3f}m)')
+                # STRAIGHT LINE PHASE: Only check distance threshold (pos_tolerance) with settling
+                distance_within_tolerance = distance_to_target < self.pos_tolerance
+                
+                if distance_within_tolerance:
+                    self.waypoint_achieved_consecutive_cycles += 1
+                else:
+                    self.waypoint_achieved_consecutive_cycles = 0  # Reset counter if threshold not met
+                
+                # Only mark as achieved after settling time
+                if self.waypoint_achieved_consecutive_cycles >= self.waypoint_settle_cycles:
+                    self.waypoint_achieved = True
+                    self.get_logger().info(f'[WP_NAV] Waypoint achievement SETTLED after {self.waypoint_achieved_consecutive_cycles} cycles')
+                else:
+                    self.waypoint_achieved = False
+                    # Log every 5 cycles to reduce spam
+                    if self.waypoint_achieved_consecutive_cycles % 5 == 0 or self.waypoint_achieved_consecutive_cycles == 0:
+                        self.get_logger().info(f'[WP_NAV] STRAIGHT LINE PHASE - distance within tolerance: {distance_within_tolerance}, '
+                                              f'settle cycles: {self.waypoint_achieved_consecutive_cycles}/{self.waypoint_settle_cycles} '
+                                              f'(distance = {distance_to_target:.3f}m < {self.pos_tolerance:.3f}m)')
         else:
             # For regular navigation: check both tolerances
             self.target_achieved = distance_to_target < self.pos_tolerance and abs(dyaw) < self.ori_tolerance
@@ -1395,9 +1430,11 @@ class PoseController(Node):
             self.target_yaw = self.current_yaw if hasattr(self, 'current_yaw') else 0.0
             self.get_logger().info(f'[WP_NAV] First waypoint: using current yaw {math.degrees(self.target_yaw):.1f}° as target')
 
-        # Reset flags for new waypoint
+        # Reset flags and counters for new waypoint
         self.yaw_aligned = False
         self.waypoint_achieved = False
+        self.yaw_aligned_consecutive_cycles = 0
+        self.waypoint_achieved_consecutive_cycles = 0
         self.has_target = True
 
         # Reset start pose for line following - use previous waypoint as start
