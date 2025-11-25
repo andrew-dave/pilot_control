@@ -100,7 +100,7 @@ class PoseController(Node):
         self.declare_parameter('max_linear_velocity', 0.4) # m/s
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
-        self.declare_parameter('orientation_tolerance', 0.2) # rad (~5.7 degrees)
+        self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
         self.declare_parameter('lookahead_distance', 1.6) # m (5cm)
         self.declare_parameter('yaw_alignment_settle_cycles', 5) # Number of consecutive cycles yaw must be aligned before transition
@@ -126,8 +126,13 @@ class PoseController(Node):
         self.declare_parameter('Kp_linear', 1.0) # 5.0
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
+<<<<<<< HEAD
         self.declare_parameter('Kp_angular', 4.44) # 1.0
         self.declare_parameter('Ki_angular', 0.346)
+=======
+        self.declare_parameter('Kp_angular', 2.0) # 1.0
+        self.declare_parameter('Ki_angular', 0.0)
+>>>>>>> 180a146 (changes)
         self.declare_parameter('Kd_angular', 0.0)
 
         # Safety parameters
