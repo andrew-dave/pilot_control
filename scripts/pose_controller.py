@@ -100,16 +100,16 @@ class PoseController(Node):
         self.declare_parameter('max_linear_velocity', 0.4) # m/s
         self.declare_parameter('max_angular_velocity', 8.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
-        self.declare_parameter('orientation_tolerance', 0.1) # rad (~5.7 degrees)
+        self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 0.8) # m (5cm)
+        self.declare_parameter('lookahead_distance', 1.6) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
         self.declare_parameter('r_far', 0.03)     # 10cm - pure go-to-point steering beyond this
         self.declare_parameter('K_lat', 1.0)    # lateral correction gain
         self.declare_parameter('K_yaw', 1.0)    # yaw correction gain when close
-        self.declare_parameter('yaw_tol', 0.1)   # desired yaw accuracy (rad)
+        self.declare_parameter('yaw_tol', 0.05)   # desired yaw accuracy (rad)
         self.declare_parameter('blend_prefixed', 0.0) # blend factor for yaw correction
         
         # Tilt correction parameters (similar to gpr_scan_controller)
@@ -129,8 +129,8 @@ class PoseController(Node):
         self.declare_parameter('Ki_angular', 1.38)
         self.declare_parameter('Kd_angular', 0.0)
         # Angular PID for yaw alignment only
-        self.declare_parameter('Kp_angular_yaw', 2.0) # Default same as straight line
-        self.declare_parameter('Ki_angular_yaw', 0.1) # Default same as straight line
+        self.declare_parameter('Kp_angular_yaw', 4.0) # Default same as straight line
+        self.declare_parameter('Ki_angular_yaw', 0.28) # Default same as straight line
         self.declare_parameter('Kd_angular_yaw', 0.0) # Default same as straight line
 
         # Safety parameters
