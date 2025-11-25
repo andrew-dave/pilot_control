@@ -159,8 +159,16 @@ class PoseController(Node):
         self.pos_tolerance = self.get_parameter('position_tolerance').value
         self.ori_tolerance = self.get_parameter('orientation_tolerance').value
         self.lookahead_distance = self.get_parameter('lookahead_distance').value
-        self.yaw_alignment_settle_cycles = int(self.get_parameter('yaw_alignment_settle_cycles').value)
-        self.waypoint_settle_cycles = int(self.get_parameter('waypoint_settle_cycles').value)
+        try:
+            self.yaw_alignment_settle_cycles = int(self.get_parameter('yaw_alignment_settle_cycles').value)
+        except Exception as e:
+            self.yaw_alignment_settle_cycles = 5  # Default fallback
+            self.get_logger().warn(f'Could not get yaw_alignment_settle_cycles parameter, using default: {e}')
+        try:
+            self.waypoint_settle_cycles = int(self.get_parameter('waypoint_settle_cycles').value)
+        except Exception as e:
+            self.waypoint_settle_cycles = 5  # Default fallback
+            self.get_logger().warn(f'Could not get waypoint_settle_cycles parameter, using default: {e}')
         
         # Error computation parameters
         self.r_close = self.get_parameter('r_close').value
