@@ -57,7 +57,7 @@ def generate_launch_description():
     )
     declare_max_angular_velocity_arg = DeclareLaunchArgument(
         'max_angular_velocity',
-        default_value='4.0',
+        default_value='8.0',
         description='Max angular velocity (rad/s)'
     )
     declare_roll_rad_arg = DeclareLaunchArgument(

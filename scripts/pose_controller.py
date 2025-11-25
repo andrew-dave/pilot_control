@@ -98,7 +98,7 @@ class PoseController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.4) # m/s
-        self.declare_parameter('max_angular_velocity', 4.0) # rad/s
+        self.declare_parameter('max_angular_velocity', 8.0) # rad/s
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.03) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
@@ -129,8 +129,8 @@ class PoseController(Node):
         self.declare_parameter('Ki_angular', 7 .0)
         self.declare_parameter('Kd_angular', 0.0)
         # Angular PID for yaw alignment only
-        self.declare_parameter('Kp_angular_yaw', 5.92) # Default same as straight line
-        self.declare_parameter('Ki_angular_yaw', 0.492) # Default same as straight line
+        self.declare_parameter('Kp_angular_yaw', 4.0) # Default same as straight line
+        self.declare_parameter('Ki_angular_yaw', 0.28) # Default same as straight line
         self.declare_parameter('Kd_angular_yaw', 0.0) # Default same as straight line
 
         # Safety parameters
