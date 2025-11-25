@@ -79,7 +79,7 @@ def generate_launch_description():
     # Error computation parameters
     declare_lookahead_distance_arg = DeclareLaunchArgument(
         'lookahead_distance',
-        default_value='0.8',
+        default_value='1.6',
         description='Lookahead distance for waypoint generation (m)'
     )
     declare_r_close_arg = DeclareLaunchArgument(
@@ -104,7 +104,7 @@ def generate_launch_description():
     )
     declare_yaw_tol_arg = DeclareLaunchArgument(
         'yaw_tol',
-        default_value='0.03',
+        default_value='0.1',
         description='Yaw tolerance for target achievement (rad)'
     )
     declare_imu_flip_x_arg = DeclareLaunchArgument(
