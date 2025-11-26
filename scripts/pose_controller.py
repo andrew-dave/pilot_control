@@ -102,7 +102,7 @@ class PoseController(Node):
         self.declare_parameter('position_tolerance', 0.05) # m
         self.declare_parameter('orientation_tolerance', 0.05) # rad (~5.7 degrees)
         self.declare_parameter('min_wheel_rps', 0.2) # rps
-        self.declare_parameter('lookahead_distance', 0.8) # m (5cm)
+        self.declare_parameter('lookahead_distance', 0.4) # m (5cm)
         
         # Error computation parameters
         self.declare_parameter('r_close', 0.01)  # 5mm - start strong yaw correction
@@ -125,8 +125,8 @@ class PoseController(Node):
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
         # Angular PID for straight line tracking
-        self.declare_parameter('Kp_angular', 8.89) # 1.0
-        self.declare_parameter('Ki_angular', 1.38)
+        self.declare_parameter('Kp_angular', 17.77) # 1.0
+        self.declare_parameter('Ki_angular', 5.54)
         self.declare_parameter('Kd_angular', 0.0)
         # Angular PID for yaw alignment only
         self.declare_parameter('Kp_angular_yaw', 4.0) # Default same as straight line
