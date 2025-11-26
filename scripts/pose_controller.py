@@ -130,8 +130,8 @@ class PoseController(Node):
         self.declare_parameter('Kd_angular', 0.232)
         # Angular PID for yaw alignment only
         self.declare_parameter('Kp_angular_yaw', 3.81) # Default same as straight line
-        self.declare_parameter('Ki_angular_yaw', 2.7) # Default same as straight line
-        self.declare_parameter('Kd_angular_yaw', 0.18) # Default same as straight line
+        self.declare_parameter('Ki_angular_yaw', 0.27) # Default same as straight line
+        self.declare_parameter('Kd_angular_yaw', 0) # Default same as straight line
 
         # Safety parameters
         self.declare_parameter('enable_controller', True) # Start enabled by default
