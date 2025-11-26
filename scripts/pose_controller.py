@@ -125,13 +125,15 @@ class PoseController(Node):
         self.declare_parameter('Ki_linear', 0.0)
         self.declare_parameter('Kd_linear', 0.0)
         # Angular PID for straight line tracking
-        self.declare_parameter('Kp_angular', 4.04) # 1.0
-        self.declare_parameter('Ki_angular', 1.53)
-        self.declare_parameter('Kd_angular', 0.01)
+        self.declare_parameter('Kp_angular', 8.078) # 1.0
+        self.declare_parameter('Ki_angular', 6.417)
+        self.declare_parameter('Kd_angular', 0.0488)
         # Angular PID for yaw alignment only
         self.declare_parameter('Kp_angular_yaw', 3.81) # Default same as straight line
         self.declare_parameter('Ki_angular_yaw', 1.35) # Default same as straight line
         self.declare_parameter('Kd_angular_yaw', 0.18) # Default same as straight line
+        # Derivative low-pass filter coefficient for straight line control (Simulink-style: N in H(s) = N/(s+N))
+        self.declare_parameter('derivative_filter_N', 6.0) # Filter coefficient in rad/s
 
         # Safety parameters
         self.declare_parameter('enable_controller', True) # Start enabled by default
@@ -198,6 +200,7 @@ class PoseController(Node):
         self.Kp_angular_yaw = self.get_parameter('Kp_angular_yaw').value
         self.Ki_angular_yaw = self.get_parameter('Ki_angular_yaw').value
         self.Kd_angular_yaw = self.get_parameter('Kd_angular_yaw').value
+        self.derivative_filter_N = self.get_parameter('derivative_filter_N').value
         # If I/D gains unset, derive simple defaults from P gain for reasonable behavior
         #if (self.Ki_angular is None) or (float(self.Ki_angular) == 0.0):
         #    self.Ki_angular = 0 * float(self.Kp_angular)
@@ -248,6 +251,7 @@ class PoseController(Node):
         self._ang_prev_err = 0.0
         self._ang_prev_time_ns = None
         self._ang_integral_limit = 20.0  # anti-windup clamp
+        self._ang_prev_d_err_filtered = 0.0  # Previous filtered derivative for straight line control
         # Tilt correction state
         self.accel_initialized = False
         self.accel_sum = np.zeros(3, dtype=float)
@@ -1200,10 +1204,27 @@ class PoseController(Node):
             self._ang_integral = -self._ang_integral_limit
         # Derivative (on measurement)
         d_err = (err_a - self._ang_prev_err) / dt if dt > 0.0 else 0.0
+        
+        # Apply low-pass filter on derivative for straight line control only (Simulink-style: H(s) = N/(s+N))
+        # Filter is applied when NOT in yaw alignment phase (i.e., straight line tracking or regular navigation)
+        is_straight_line_control = not (self.waypoint_navigation_active and not self.yaw_aligned)
+        if is_straight_line_control and self.derivative_filter_N > 0.0:
+            # First-order low-pass filter: y[n] = (N*T/(1+N*T)) * x[n] + (1/(1+N*T)) * y[n-1]
+            N = float(self.derivative_filter_N)
+            T = dt
+            alpha = (N * T) / (1.0 + N * T) if (1.0 + N * T) > 0.0 else 1.0
+            beta = 1.0 / (1.0 + N * T) if (1.0 + N * T) > 0.0 else 0.0
+            d_err_filtered = alpha * d_err + beta * self._ang_prev_d_err_filtered
+            self._ang_prev_d_err_filtered = d_err_filtered
+            d_err_used = d_err_filtered
+        else:
+            # Yaw alignment phase: use unfiltered derivative
+            d_err_used = d_err
+        
         angular_vel = (
             float(Kp_ang) * err_a +
             float(Ki_ang) * self._ang_integral +
-            float(Kd_ang) * d_err
+            float(Kd_ang) * d_err_used
         )
         self._ang_prev_err = err_a
         self._ang_prev_time_ns = now_ns
@@ -1466,6 +1487,8 @@ class PoseController(Node):
         self.yaw_aligned_consecutive_cycles = 0
         self.waypoint_achieved_consecutive_cycles = 0
         self.has_target = True
+        # Reset filtered derivative state for clean start of straight-line phase
+        self._ang_prev_d_err_filtered = 0.0
 
         # Reset start pose for line following - use previous waypoint as start
         if self.previous_waypoint is not None:
