@@ -79,7 +79,7 @@ def generate_launch_description():
     # Error computation parameters
     declare_lookahead_distance_arg = DeclareLaunchArgument(
         'lookahead_distance',
-        default_value='0.4',
+        default_value='0.8',
         description='Lookahead distance for waypoint generation (m)'
     )
     declare_r_close_arg = DeclareLaunchArgument(
