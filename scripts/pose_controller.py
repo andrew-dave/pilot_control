@@ -1023,9 +1023,9 @@ class PoseController(Node):
             else:
                 # Yaw not aligned: do PURE yaw alignment (bypass waypoint following logic)
                 blend = 1.0  # Pure yaw correction
-                self.get_logger().info(f'[WP_NAV] Phase: YAW ALIGNMENT (blend = 1.0) - Using direct yaw correction: d_yaw={math.degrees(d_yaw):.1f}°, w_yaw={self.K_yaw * d_yaw:.3f} rad/s')
-                # For pure yaw alignment, use direct yaw error correction
-                w_e = self.K_yaw * d_yaw  # Direct yaw correction, no blending
+                self.get_logger().info(f'[WP_NAV] Phase: YAW ALIGNMENT (blend = 1.0) - Using raw yaw error for PID: d_yaw={math.degrees(d_yaw):.1f}°')
+                # For pure yaw alignment, use raw yaw error directly (PID will apply its own gains)
+                w_e = d_yaw  # Raw yaw error, PID gains (Kp_angular_yaw, etc.) will be applied
         else:
             # For regular navigation: use blend_prefixed parameter
             blend = self.blend_prefixed
