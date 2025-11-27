@@ -509,22 +509,52 @@ class SlipAwareMPC:
             
             # Compute A_k matrix (based on reference trajectory)
             # A_k = [[1, -ω_ref*Ts, 0],
-            #        [ω_ref*Ts, 1, 0],
+            #        [ω_ref*Ts, 1, -v_ref*Ts],
             #        [0, 0, 1]]
+            #
+            # Lateral error dynamics (with our error definitions, matching PoseController):
+            #   - Error state: x = [xe, ye, θe]^T in BODY frame
+            #   - θe = yaw_ref - yaw_current  (same as PoseController d_yaw)
+            #   - ye = e_lat = -sin(yaw)*dx + cos(yaw)*dy
+            #
+            # For a straight path with v_ref > 0 and small angles:
+            #   - Around yaw ≈ 0, ye ≈ y (robot global Y with +Y left)
+            #   - y_dot ≈ v * yaw
+            #   - With θe = yaw_ref - yaw and yaw_ref ≈ 0, we have yaw ≈ -θe
+            #     so ye_dot ≈ -v * θe
+            #
+            # Therefore the linearized coupling is:
+            #   ye_dot ≈ -v_ref * θe
+            # so the discrete-time term is A_k[1,2] = -v_ref * Ts.
             A_k = np.array([
                 [1.0, -omega_ref * Ts, 0.0],
-                [omega_ref * Ts, 1.0, v_ref * Ts],
+                [omega_ref * Ts, 1.0, -v_ref * Ts],
                 [0.0, 0.0, 1.0]
             ])
             
             # Compute B_k matrix (based on slip ratios)
-            # B_k = Ts * [[-r/2*(1-λ_L), -r/2*(1-λ_R)],
-            #             [0, 0],
-            #             [r/L*(1-λ_L), -r/L*(1-λ_R)]]
+            # Differential drive forward kinematics:
+            #   v = (r/2) * (ωL + ωR)  [forward velocity]
+            #   ω = (r/L) * (ωR - ωL)  [angular velocity]
+            #
+            # Error state dynamics (linearized around small errors, using Kanayama-style error):
+            #   xe_dot ≈ v_ref - v
+            #   ye_dot ≈  v_ref * θe           [lateral drift, cannot be directly controlled]
+            #   θe     = yaw_ref - yaw_current
+            #   yaw_dot = ω = (r/L)*(ωR - ωL)
+            #   ⇒ θe_dot = ω_ref - yaw_dot ≈ ω_ref - (r/L)*(ωR - ωL)
+            #
+            # So the continuous-time Jacobian J = ∂[xe_dot, ye_dot, θe_dot]/∂[ωL, ωR] is:
+            #   Row 0 (xe):  ∂xe_dot/∂ωL = -r/2,   ∂xe_dot/∂ωR = -r/2
+            #   Row 1 (ye):  ≈ 0, 0  (no direct control of lateral error)
+            #   Row 2 (θe):  ∂θe_dot/∂ωL = +r/L,   ∂θe_dot/∂ωR = -r/L   (because θe_dot = ω_ref - ω)
+            #
+            # Discrete-time B_k is simply Ts * J. The constraint matrix stores -B_k, but the
+            # underlying dynamics model uses B_k directly in x_{k+1} = A_k x_k + B_k u_k.
             B_k = Ts * np.array([
-                [-r/2.0 * eta_L, -r/2.0 * eta_R],
-                [0.0, 0.0],
-                [r/L * eta_L, -r/L * eta_R]
+                [-r/2.0 * eta_L, -r/2.0 * eta_R],  # xe: correct sign for xe_dot = v_ref - v
+                [0.0, 0.0],                         # ye: cannot be directly controlled
+                [ r/L * eta_L, -r/L * eta_R]        # θe: correct sign for θe_dot = ω_ref - ω
             ])
             
             # Update sparse matrix data
@@ -597,7 +627,7 @@ class SlipAwareMPC:
         
         A_0 = np.array([
             [1.0, -omega_ref * self.Ts, 0.0],
-            [omega_ref * self.Ts, 1.0, v_ref * self.Ts],
+            [omega_ref * self.Ts, 1.0, -v_ref * self.Ts],
             [0.0, 0.0, 1.0]
         ])
         
@@ -816,7 +846,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         
         # MPC parameters
-        self.declare_parameter('mpc_horizon', 10)           # Prediction horizon steps
+        self.declare_parameter('mpc_horizon', 50)           # Prediction horizon steps
         self.declare_parameter('mpc_dt', 0.1)             # Time step for MPC (s)
         
         # Slip estimation parameters
@@ -917,16 +947,16 @@ class MPCAutonomousController(Node):
         
         # MPC cost weights (penalize xe, ye more than yaw_e)
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
-        self.declare_parameter('mpc_Q_xe', 50.0)  # Weight for position error x
-        self.declare_parameter('mpc_Q_ye', 200.0)  # Weight for position error y (much higher for lateral correction)
-        self.declare_parameter('mpc_Q_yaw', 1.0)  # Weight for yaw error (higher to help lateral correction)
-        self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change
+        self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
+        self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
+        self.declare_parameter('mpc_Q_yaw', 20.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_R_delta', 0.00005)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
         # Weight at step k = base_weight * (1 + weight_increase * k)
         # Example: 0.1 means 10% increase per step (step 0: 1.0x, step 1: 1.1x, step 2: 1.2x, ...)
         self.declare_parameter('mpc_weight_increase_xe', 0.0)  # Weight increase factor for xe error
-        self.declare_parameter('mpc_weight_increase_ye', 0.5)  # Weight increase factor for ye error
+        self.declare_parameter('mpc_weight_increase_ye', 1.0)  # Weight increase factor for ye error
         self.declare_parameter('mpc_weight_increase_yaw', 0.0)  # Weight increase factor for yaw error
         
         # Solver debug parameter
@@ -1392,11 +1422,12 @@ class MPCAutonomousController(Node):
         path_dy = self.target_y - self.path_start_y
         path_length = math.sqrt(path_dx*path_dx + path_dy*path_dy)
 
-        # Debug logging
-        self.get_logger().info(
-            f'Path: start=({self.path_start_x:.3f}, {self.path_start_y:.3f}), '
-            f'target=({self.target_x:.3f}, {self.target_y:.3f}), length={path_length:.3f}m'
-        )
+        # Debug logging (reduced verbosity)
+        if self.get_logger().get_effective_level() <= 10:  # Only if DEBUG level
+            self.get_logger().debug(
+                f'Path: start=({self.path_start_x:.3f}, {self.path_start_y:.3f}), '
+                f'target=({self.target_x:.3f}, {self.target_y:.3f}), length={path_length:.3f}m'
+            )
         
         if path_length < 1e-6:
             # Already at target, return target as all waypoints
@@ -1433,12 +1464,6 @@ class MPCAutonomousController(Node):
         closest_x = self.path_start_x + t_closest * path_dx
         closest_y = self.path_start_y + t_closest * path_dy
 
-        # Debug closest point
-        self.get_logger().info(
-            f'Closest point: t={t_closest:.6f}, pos=({closest_x:.3f}, {closest_y:.3f}), '
-            f'distance_from_current={math.sqrt((closest_x-self.current_x)**2 + (closest_y-self.current_y)**2):.3f}m'
-        )
-        
         # Compute waypoint spacing: distance traveled at cruising speed for one time step
         cruising_speed = 0.4  # Fixed cruising speed as requested
         waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be 0.04m)
@@ -1447,14 +1472,7 @@ class MPCAutonomousController(Node):
         distance_to_target_along_path = (1.0 - t_closest) * path_length
 
         # Check if we need to adjust spacing due to proximity to target
-        max_distance_needed = waypoint_spacing * self.mpc_horizon  # ~0.2m for 5 steps
-
-        # Debug logging
-        self.get_logger().info(
-            f'Spacing: cruise_speed={cruising_speed:.3f}, spacing={waypoint_spacing:.3f}, '
-            f't_closest={t_closest:.6f}, dist_to_target={distance_to_target_along_path:.3f}, '
-            f'max_needed={max_distance_needed:.3f}'
-        )
+        max_distance_needed = waypoint_spacing * self.mpc_horizon
 
         # Only adjust spacing when very close to target (within horizon distance)
         proximity_threshold = max_distance_needed * 1.2  # 20% buffer
@@ -1464,16 +1482,13 @@ class MPCAutonomousController(Node):
                 adjusted_spacing = distance_to_target_along_path / self.mpc_horizon
             else:
                 adjusted_spacing = waypoint_spacing
-            self.get_logger().info(f'Adjusted spacing: {adjusted_spacing:.6f} (close to target)')
         else:
             # Use fixed cruising spacing
             adjusted_spacing = waypoint_spacing
-            self.get_logger().info(f'Fixed spacing: {adjusted_spacing:.6f} (cruising)')
 
         # Ensure minimum spacing to avoid numerical issues
         min_spacing = 0.005  # 5mm minimum
         if adjusted_spacing < min_spacing:
-            self.get_logger().info(f'Enforcing min spacing: {min_spacing:.6f} (was {adjusted_spacing:.6f})')
             adjusted_spacing = min_spacing
         
         # Generate waypoints along the path
@@ -1495,80 +1510,30 @@ class MPCAutonomousController(Node):
             waypoint_x = self.path_start_x + t_waypoint * path_dx
             waypoint_y = self.path_start_y + t_waypoint * path_dy
             
-            if k == 0:  # Log first waypoint
-                dist_from_closest = math.sqrt((waypoint_x - closest_x)**2 + (waypoint_y - closest_y)**2)
-                self.get_logger().info(
-                    f'Waypoint 0: dist={distance_along_path:.3f}, t={t_waypoint:.6f}, '
-                    f'pos=({waypoint_x:.3f}, {waypoint_y:.3f}), '
-                    f'dist_from_closest={dist_from_closest:.4f}'
-                )
             
-            # Interpolate yaw between start and target
-            # Blend between heading along path and target yaw
+            # Yaw should be along the path direction (heading to target)
+            # For a straight line path, yaw should point along the path direction
             heading_to_target = math.atan2(path_dy, path_dx)
-            yaw_blend = (1.0 - t_waypoint) * self.path_start_yaw + t_waypoint * self.target_yaw
-            # Also consider heading along path
-            waypoint_yaw = 0.7 * heading_to_target + 0.3 * yaw_blend
+            waypoint_yaw = heading_to_target
             waypoint_yaw = self.normalize_angle(waypoint_yaw)
             
             waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
         
-        # Compute velocities for each waypoint based on next waypoint
-        # For the last waypoint, compute an extra waypoint into the future
+        # Compute velocities for each waypoint
+        # For a straight line path: v_ref = 0.4 m/s along path direction, w_ref = 0
+        cruising_speed = 0.4  # m/s along path
+        path_heading = math.atan2(path_dy, path_dx)  # Heading along path
+        
         for k in range(self.mpc_horizon):
             current_pos = waypoint_positions[k]
             
-            # Get next waypoint position
-            if k < self.mpc_horizon - 1:
-                # Use next waypoint in the window
-                next_pos = waypoint_positions[k + 1]
-            else:
-                # Last waypoint: compute extra waypoint into the future along the path
-                # Distance for next step
-                next_distance = adjusted_spacing
-                t_next = t_closest + (adjusted_spacing * (self.mpc_horizon + 1) / path_length)
-                t_next = np.clip(t_next, 0.0, 1.0)
-                
-                next_x = self.path_start_x + t_next * path_dx
-                next_y = self.path_start_y + t_next * path_dy
-                
-                # Interpolate yaw
-                heading_to_target = math.atan2(path_dy, path_dx)
-                yaw_blend = (1.0 - t_next) * self.path_start_yaw + t_next * self.target_yaw
-                next_yaw = 0.7 * heading_to_target + 0.3 * yaw_blend
-                next_yaw = self.normalize_angle(next_yaw)
-                
-                next_pos = (next_x, next_y, next_yaw)
+            # Velocity components in global frame: v_ref along path direction
+            # vx_ref = v_ref * cos(heading), vy_ref = v_ref * sin(heading)
+            vx_ref = cruising_speed * math.cos(path_heading)
+            vy_ref = cruising_speed * math.sin(path_heading)
             
-            # Compute velocity from current to next waypoint
-            dx = next_pos[0] - current_pos[0]
-            dy = next_pos[1] - current_pos[1]
-            distance = math.sqrt(dx*dx + dy*dy)
-            
-            # Linear velocity components
-            if self.mpc_dt > 1e-6:
-                v_magnitude = distance / self.mpc_dt
-                # Limit to cruising speed
-                v_magnitude = min(v_magnitude, 0.4)
-                
-                if distance > 1e-6:
-                    vx_ref = v_magnitude * (dx / distance)
-                    vy_ref = v_magnitude * (dy / distance)
-                else:
-                    vx_ref = 0.0
-                    vy_ref = 0.0
-            else:
-                vx_ref = 0.0
-                vy_ref = 0.0
-            
-            # Angular velocity: yaw change / time
-            dyaw = self.normalize_angle(next_pos[2] - current_pos[2])
-            if self.mpc_dt > 1e-6:
-                vyaw_ref = dyaw / self.mpc_dt
-                # Limit to max angular velocity
-                vyaw_ref = np.clip(vyaw_ref, -self.max_angular_vel, self.max_angular_vel)
-            else:
-                vyaw_ref = 0.0
+            # Angular velocity should be zero for straight line path
+            vyaw_ref = 0.0
             
             waypoint = np.array([
                 current_pos[0],  # x
@@ -1912,9 +1877,57 @@ class MPCAutonomousController(Node):
             self.publish_zero_velocity()
             return
         
-        # Compute error state for MPC (use first waypoint as reference)
-        ref_waypoint = reference_trajectory[0]
-        current_error = self.compute_error_state(ref_waypoint)
+        # Compute error state for MPC (use first waypoint as reference for forward progress)
+        # The error state should be zero when robot reaches the first waypoint
+        # This ensures forward progress along the path
+        if len(reference_trajectory) > 0:
+            ref_waypoint = reference_trajectory[0]  # First waypoint (ahead on path)
+            current_error = self.compute_error_state(ref_waypoint)
+            
+            # Log for debugging
+            self.get_logger().info(
+                f'MPC Reference (Waypoint 0): x={ref_waypoint[0]:.3f}, y={ref_waypoint[1]:.3f}, '
+                f'yaw={ref_waypoint[2]:.3f}'
+            )
+        else:
+            # Fallback: compute relative to closest point if no waypoints
+            path_dx = self.target_x - self.path_start_x
+            path_dy = self.target_y - self.path_start_y
+            path_length = math.sqrt(path_dx*path_dx + path_dy*path_dy)
+            if path_length > 1e-6:
+                path_dir_x = path_dx / path_length
+                path_dir_y = path_dy / path_length
+                to_current_x = self.current_x - self.path_start_x
+                to_current_y = self.current_y - self.path_start_y
+                t_closest = (to_current_x * path_dir_x + to_current_y * path_dir_y) / path_length
+                t_closest = np.clip(t_closest, 0.0, 1.0)
+                
+                closest_x = self.path_start_x + t_closest * path_dx
+                closest_y = self.path_start_y + t_closest * path_dy
+                path_heading = math.atan2(path_dy, path_dx)
+                
+                closest_waypoint = np.array([
+                    closest_x, closest_y, path_heading,
+                    0.4 * math.cos(path_heading), 0.4 * math.sin(path_heading), 0.0
+                ])
+                current_error = self.compute_error_state(closest_waypoint)
+            else:
+                current_error = np.array([0.0, 0.0, 0.0])
+                self.get_logger().warn('No waypoints and path length too small, using zero error')
+        
+        # Debug: Log waypoint and error state information
+        if len(reference_trajectory) > 0:
+            self.get_logger().info(
+                f'MPC Current Error: xe={current_error[0]:.3f}, ye={current_error[1]:.3f}, '
+                f'θe={current_error[2]:.3f} (relative to first waypoint, should be zero when reached)'
+            )
+            # Log first few waypoints for verification
+            for k in range(min(3, len(reference_trajectory))):
+                wp = reference_trajectory[k]
+                self.get_logger().info(
+                    f'MPC Waypoint {k}: x={wp[0]:.3f}, y={wp[1]:.3f}, yaw={wp[2]:.3f}, '
+                    f'v={math.sqrt(wp[3]**2 + wp[4]**2):.3f}, w={wp[5]:.3f}'
+                )
         
         # Solve MPC optimization
         u0_optimal, solve_time_ms, solution = self.mpc_optimizer.solve(
