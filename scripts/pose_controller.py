@@ -129,9 +129,9 @@ class PoseController(Node):
         self.declare_parameter('Ki_angular', 1.38)
         self.declare_parameter('Kd_angular', 0.0)
         # Angular PID for yaw alignment only
-        self.declare_parameter('Kp_angular_yaw', 3.81) # Default same as straight line
-        self.declare_parameter('Ki_angular_yaw', 1.35) # Default same as straight line
-        self.declare_parameter('Kd_angular_yaw', 0.18) # Default same as straight line
+        self.declare_parameter('Kp_angular_yaw', 1.0) # Default same as straight line #3.81
+        self.declare_parameter('Ki_angular_yaw', 0.0175) # Default same as straight line #1.35
+        self.declare_parameter('Kd_angular_yaw', 0.0) # Default same as straight line #0.18
         # Derivative low-pass filter coefficient for straight line control (Simulink-style: N in H(s) = N/(s+N))
         self.declare_parameter('derivative_filter_N', 19.0) # Filter coefficient in rad/s
 
