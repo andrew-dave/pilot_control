@@ -385,6 +385,7 @@
 #define __UINT64_TYPE__ long unsigned int
 #define __UINT32_C(c) c ## U
 #define __cpp_alias_templates 200704L
+#define DEFAULT_RMW_IMPLEMENTATION rmw_fastrtps_cpp
 #define __FLT_DENORM_MIN__ 1.40129846432481707092372958328991613e-45F
 #define __FLT128_IS_IEC_60559__ 2
 #define BOOST_FILESYSTEM_DYN_LINK 1
@@ -427,6 +428,7 @@
 #define __FLT32X_MIN_10_EXP__ (-307)
 #define __UINTPTR_TYPE__ long unsigned int
 #define __DEC64_SUBNORMAL_MIN__ 0.000000000000001E-383DD
+#define RCUTILS_ENABLE_FAULT_INJECTION 1
 #define HAVE_CGAL 1
 #define __DEC128_MANT_DIG__ 34
 #define __LDBL_MIN_10_EXP__ (-4931)

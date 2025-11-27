@@ -42,12 +42,13 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libqt5core5a (>= 5.9.5), libqt5widgets5 (>= 5.9.5), libqt5gui5 (>= 5.9.5), libc6 (>= 2.27), libstdc++6 (>= 6.0), libgcc-s1 (>= 3.0)
+Depends: libqt5core5a (>= 5.9.5), libqt5widgets5 (>= 5.9.5), libqt5gui5 (>= 5.9.5), libc6 (>= 2.27), libstdc++6 (>= 6.0), libgcc-s1 (>= 3.0), ros-humble-rclcpp, ros-humble-std-msgs
 Maintainer: Your Name <your.email@example.com>
-Description: F2C Coverage Path Planning GUI
- Fields2Cover Coverage Path Planning GUI application.
- This application provides a graphical interface for planning
- coverage paths using the Fields2Cover library.
+Description: F2C Coverage Path Planning GUI with ROS2 Integration
+ Fields2Cover Coverage Path Planning GUI application with ROS2 waypoint publishing.
+ This application provides a graphical interface for planning coverage paths
+ using the Fields2Cover library and can directly publish waypoints to ROS2
+ pose controllers for autonomous robot navigation.
 EOF
 
 # Create postinst script
@@ -96,7 +97,25 @@ cp "${BUILD_DIR}/f2c_coverage_planner" "$DEB_DIR/usr/bin/"
 echo "Creating launcher script..."
 cat > "$DEB_DIR/usr/bin/f2c_coverage_planner_launcher" << 'EOF'
 #!/bin/bash
-# F2C Coverage Planner Launcher
+# F2C Coverage Planner Launcher with ROS2 Support
+
+# Source ROS2 environment (try different distributions)
+if [ -f "/opt/ros/humble/setup.bash" ]; then
+    source /opt/ros/humble/setup.bash
+    ROS_DISTRO="humble"
+elif [ -f "/opt/ros/foxy/setup.bash" ]; then
+    source /opt/ros/foxy/setup.bash
+    ROS_DISTRO="foxy"
+elif [ -f "/opt/ros/galactic/setup.bash" ]; then
+    source /opt/ros/galactic/setup.bash
+    ROS_DISTRO="galactic"
+elif [ -f "/opt/ros/noetic/setup.bash" ]; then
+    source /opt/ros/noetic/setup.bash
+    ROS_DISTRO="noetic"
+else
+    echo "Warning: No ROS2 installation found. F2C waypoint publishing will not work."
+    echo "Please install ROS2 (Humble, Foxy, or Galactic recommended) to enable waypoint publishing features."
+fi
 
 # Set basic environment
 export DISPLAY=${DISPLAY:-:0}
@@ -105,8 +124,8 @@ export DISPLAY=${DISPLAY:-:0}
 export LD_LIBRARY_PATH="/usr/lib/f2c-coverage-planner:$LD_LIBRARY_PATH"
 
 # Add system ROS paths if available (fallback)
-if [ -d "/opt/ros/humble/lib" ]; then
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/humble/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/opt/ortools_vendor/lib"
+if [ -n "$ROS_DISTRO" ] && [ -d "/opt/ros/$ROS_DISTRO/lib" ]; then
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/$ROS_DISTRO/lib:/opt/ros/$ROS_DISTRO/lib/x86_64-linux-gnu:/opt/ros/$ROS_DISTRO/opt/ortools_vendor/lib"
 fi
 
 # Add other common library paths

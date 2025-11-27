@@ -29,6 +29,10 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
+#include <thread>
+
 #include "coverage_pipeline.hpp"
 
 namespace f2c_cpp {
@@ -163,6 +167,8 @@ private slots:
     
     // Export
     void exportPathCSV();
+    void publishWaypoints();
+    void startNavigation();
     
     // Callbacks
     void onROISelected(const Polygon2D& roi);
@@ -264,6 +270,13 @@ private:
     PathStateList route_;
     PathStateList path_;
     QString loaded_file_;
+
+    // ROS2 integration for waypoint publishing
+    rclcpp::Node::SharedPtr ros_node_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr waypoint_pub_;
+    std::thread ros_thread_;
+    bool waypoints_published_;
+    bool ros_initialized_;
 };
 
 } // namespace f2c_cpp

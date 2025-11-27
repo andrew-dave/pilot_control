@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/bu
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -173,6 +183,32 @@ f2c_coverage_planner: cmake_check_build_system
 f2c_coverage_planner/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner.dir/build.make CMakeFiles/f2c_coverage_planner.dir/build
 .PHONY : f2c_coverage_planner/fast
+
+#=============================================================================
+# Target rules for targets named uninstall
+
+# Build rule for target.
+uninstall: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 uninstall
+.PHONY : uninstall
+
+# fast build rule for target.
+uninstall/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uninstall.dir/build.make CMakeFiles/uninstall.dir/build
+.PHONY : uninstall/fast
+
+#=============================================================================
+# Target rules for targets named f2c_coverage_planner_uninstall
+
+# Build rule for target.
+f2c_coverage_planner_uninstall: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 f2c_coverage_planner_uninstall
+.PHONY : f2c_coverage_planner_uninstall
+
+# fast build rule for target.
+f2c_coverage_planner_uninstall/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner_uninstall.dir/build.make CMakeFiles/f2c_coverage_planner_uninstall.dir/build
+.PHONY : f2c_coverage_planner_uninstall/fast
 
 #=============================================================================
 # Target rules for targets named f2c_coverage_planner_autogen
@@ -295,7 +331,10 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... test"
 	@echo "... f2c_coverage_planner_autogen"
+	@echo "... f2c_coverage_planner_uninstall"
+	@echo "... uninstall"
 	@echo "... f2c_coverage_planner"
 	@echo "... f2c_coverage_planner_autogen/mocs_compilation.o"
 	@echo "... f2c_coverage_planner_autogen/mocs_compilation.i"

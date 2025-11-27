@@ -133,6 +133,16 @@ else()
     message(WARNING "CGAL not found - alphashape will use fallback method")
 endif()
 
+# ROS2 dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+
+# Add ROS2 includes and libraries
+include_directories(${rclcpp_INCLUDE_DIRS})
+target_link_libraries(f2c_coverage_planner ${rclcpp_LIBRARIES})
+ament_target_dependencies(f2c_coverage_planner rclcpp std_msgs)
+
 # Install
 install(TARGETS f2c_coverage_planner
     RUNTIME DESTINATION bin

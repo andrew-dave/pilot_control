@@ -11,11 +11,14 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <iostream>
+#include <rclcpp/rclcpp.hpp>
 
 #include "coverage_gui.hpp"
 
 int main(int argc, char* argv[])
 {
+    rclcpp::init(argc, argv);
+
     // Create Qt application
     QApplication app(argc, argv);
     
@@ -56,6 +59,9 @@ int main(int argc, char* argv[])
     gui.show();
     
     // Run event loop
-    return app.exec();
+    int exit_code = app.exec();
+
+    rclcpp::shutdown();
+    return exit_code;
 }
 

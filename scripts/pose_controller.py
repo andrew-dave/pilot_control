@@ -397,6 +397,14 @@ class PoseController(Node):
             10
         )
 
+        # Subscriber for direct waypoint arrays from F2C GUI
+        self.waypoint_array_sub = self.create_subscription(
+            Float64MultiArray,
+            '/f2c_waypoints',
+            self.waypoint_array_callback,
+            10
+        )
+
         # Service to trigger graceful shutdown (zero torque → disarm → stop nodes)
         self.soft_shutdown_srv = self.create_service(
             Trigger,
@@ -1421,6 +1429,57 @@ class PoseController(Node):
 
         except Exception as e:
             self.get_logger().error(f'Error starting waypoint navigation: {str(e)}')
+
+    def waypoint_array_callback(self, msg):
+        """
+        Callback for waypoint arrays from F2C GUI.
+        Format: [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...] or [0.0] for navigation start signal
+        """
+        if len(msg.data) == 1 and msg.data[0] == 0.0:
+            # Navigation start signal
+            if hasattr(self, 'pending_waypoints') and self.pending_waypoints:
+                self.start_pending_navigation()
+            else:
+                self.get_logger().warn("Received navigation start signal but no waypoints pending")
+            return
+
+        if len(msg.data) % 4 != 0:
+            self.get_logger().error(f"Invalid waypoint array: length {len(msg.data)} not divisible by 4")
+            return
+
+        num_waypoints = len(msg.data) // 4
+        self.get_logger().info(f"📡 Received {num_waypoints} waypoints from F2C GUI")
+
+        # Store waypoints for later navigation start
+        self.pending_waypoints = []
+        for i in range(0, len(msg.data), 4):
+            x, y, z, yaw = msg.data[i:i+4]
+            self.pending_waypoints.append((x, y, yaw))  # Store x,y,yaw (z ignored)
+
+        print(f"[POSE CONTROLLER] Received {num_waypoints} waypoints from F2C:")
+        for idx, (x, y, yaw) in enumerate(self.pending_waypoints):
+            print(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}, yaw={math.degrees(yaw):.1f}°")
+
+    def start_pending_navigation(self):
+        """Start navigation with previously received waypoints"""
+        if not self.pending_waypoints:
+            self.get_logger().warn("No pending waypoints to navigate")
+            return
+
+        # Convert to pose controller format [(x,y), ...]
+        waypoint_pairs = [(wp[0], wp[1]) for wp in self.pending_waypoints]
+
+        # Initialize waypoint navigation
+        self.waypoints = waypoint_pairs
+        self.current_waypoint_index = 0
+        self.waypoint_navigation_active = True
+        self.yaw_alignment_phase = False
+
+        # Set first waypoint as target
+        self.set_next_waypoint_target()
+
+        self.get_logger().info(f"🚀 Started navigation through {len(self.waypoints)} waypoints")
+        print(f"[POSE CONTROLLER] Navigation started with {len(self.waypoints)} waypoints")
 
     def parse_waypoints_csv(self, csv_file_path: str) -> list:
         """

@@ -72,6 +72,8 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/f2c_coverage_planner.dir/clean
+clean: CMakeFiles/uninstall.dir/clean
+clean: CMakeFiles/f2c_coverage_planner_uninstall.dir/clean
 clean: CMakeFiles/f2c_coverage_planner_autogen.dir/clean
 .PHONY : clean
 
@@ -100,6 +102,58 @@ f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/rule
 CMakeFiles/f2c_coverage_planner.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner.dir/build.make CMakeFiles/f2c_coverage_planner.dir/clean
 .PHONY : CMakeFiles/f2c_coverage_planner.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/uninstall.dir
+
+# All Build rule for target.
+CMakeFiles/uninstall.dir/all: CMakeFiles/f2c_coverage_planner_uninstall.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uninstall.dir/build.make CMakeFiles/uninstall.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uninstall.dir/build.make CMakeFiles/uninstall.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num= "Built target uninstall"
+.PHONY : CMakeFiles/uninstall.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/uninstall.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles 0
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/uninstall.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles 0
+.PHONY : CMakeFiles/uninstall.dir/rule
+
+# Convenience name for target.
+uninstall: CMakeFiles/uninstall.dir/rule
+.PHONY : uninstall
+
+# clean rule for target.
+CMakeFiles/uninstall.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uninstall.dir/build.make CMakeFiles/uninstall.dir/clean
+.PHONY : CMakeFiles/uninstall.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/f2c_coverage_planner_uninstall.dir
+
+# All Build rule for target.
+CMakeFiles/f2c_coverage_planner_uninstall.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner_uninstall.dir/build.make CMakeFiles/f2c_coverage_planner_uninstall.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner_uninstall.dir/build.make CMakeFiles/f2c_coverage_planner_uninstall.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num= "Built target f2c_coverage_planner_uninstall"
+.PHONY : CMakeFiles/f2c_coverage_planner_uninstall.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/f2c_coverage_planner_uninstall.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles 0
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/f2c_coverage_planner_uninstall.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles 0
+.PHONY : CMakeFiles/f2c_coverage_planner_uninstall.dir/rule
+
+# Convenience name for target.
+f2c_coverage_planner_uninstall: CMakeFiles/f2c_coverage_planner_uninstall.dir/rule
+.PHONY : f2c_coverage_planner_uninstall
+
+# clean rule for target.
+CMakeFiles/f2c_coverage_planner_uninstall.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/f2c_coverage_planner_uninstall.dir/build.make CMakeFiles/f2c_coverage_planner_uninstall.dir/clean
+.PHONY : CMakeFiles/f2c_coverage_planner_uninstall.dir/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/f2c_coverage_planner_autogen.dir

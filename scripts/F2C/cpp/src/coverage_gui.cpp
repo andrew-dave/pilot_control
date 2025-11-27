@@ -468,8 +468,26 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     
     setupUI();
     setupConnections();
-    
-    setStatus("Ready");
+
+    // Initialize ROS2 (with error handling so GUI works even if ROS2 fails)
+    waypoints_published_ = false;
+    ros_initialized_ = false;
+    try {
+        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
+            "/f2c_waypoints", 10);
+
+        // Start ROS2 spinning in background thread
+        ros_thread_ = std::thread([this]() {
+            rclcpp::spin(ros_node_);
+        });
+        ros_initialized_ = true;
+        setStatus("Ready (ROS2 connected)");
+    } catch (const std::exception& e) {
+        std::cerr << "[F2C GUI] Warning: ROS2 initialization failed: " << e.what() << std::endl;
+        std::cerr << "[F2C GUI] Waypoint publishing will be disabled. GUI will still function." << std::endl;
+        setStatus("Ready (ROS2 unavailable - publishing disabled)");
+    }
 }
 
 void CoverageGUI::setupUI() {
@@ -856,14 +874,26 @@ QGroupBox* CoverageGUI::buildCoverageControls() {
 }
 
 QGroupBox* CoverageGUI::buildExportControls() {
-    QGroupBox* box = new QGroupBox("Export");
+    QGroupBox* box = new QGroupBox("Export & Navigation");
     QVBoxLayout* v = new QVBoxLayout(box);
-    
+
     QPushButton* btn_export_path = new QPushButton("Export Path CSV");
     btn_export_path->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
     connect(btn_export_path, &QPushButton::clicked, this, &CoverageGUI::exportPathCSV);
     v->addWidget(btn_export_path);
-    
+
+    // Add waypoint publishing buttons
+    QPushButton* btn_publish_waypoints = new QPushButton("📡 Publish Waypoints to Robot");
+    btn_publish_waypoints->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }");
+    connect(btn_publish_waypoints, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
+    v->addWidget(btn_publish_waypoints);
+
+    QPushButton* btn_start_navigation = new QPushButton("▶️ Start Navigation");
+    btn_start_navigation->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; }");
+    btn_start_navigation->setEnabled(false);  // Initially disabled
+    connect(btn_start_navigation, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
+    v->addWidget(btn_start_navigation);
+
     return box;
 }
 
@@ -1300,6 +1330,70 @@ void CoverageGUI::exportPathCSV() {
     } else {
         QMessageBox::critical(this, "Error", "Failed to save file");
     }
+}
+
+void CoverageGUI::publishWaypoints() {
+    if (path_.empty()) {
+        QMessageBox::warning(this, "No Path", "Generate a coverage path first before publishing waypoints.");
+        return;
+    }
+
+    if (!ros_initialized_) {
+        QMessageBox::warning(this, "ROS2 Unavailable", 
+            "ROS2 is not initialized. Cannot publish waypoints.\n\n"
+            "Check your network configuration and CycloneDDS settings.");
+        return;
+    }
+
+    // Create waypoint array message
+    auto msg = std_msgs::msg::Float64MultiArray();
+
+    // Add waypoints in format: [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
+    for (const auto& state : path_) {
+        msg.data.push_back(state.point.x);
+        msg.data.push_back(state.point.y);
+        msg.data.push_back(0.0);  // z coordinate (ground level)
+        msg.data.push_back(state.heading);  // heading/yaw in radians
+    }
+
+    // Publish to ROS2 topic
+    waypoint_pub_->publish(msg);
+    waypoints_published_ = true;
+
+    // Update status and enable navigation button
+    setStatus(QString("✅ Published %1 waypoints to robot").arg(path_.size()), 5000);
+
+    // Find and enable the start navigation button
+    for (auto* child : findChildren<QPushButton*>()) {
+        if (child->text().contains("Start Navigation")) {
+            child->setEnabled(true);
+            break;
+        }
+    }
+
+    // Log to console
+    std::cout << "[F2C GUI] Published " << path_.size() << " waypoints to /f2c_waypoints topic" << std::endl;
+}
+
+void CoverageGUI::startNavigation() {
+    if (!waypoints_published_) {
+        QMessageBox::warning(this, "Waypoints Not Published", "Please publish waypoints first.");
+        return;
+    }
+
+    if (!ros_initialized_) {
+        QMessageBox::warning(this, "ROS2 Unavailable", 
+            "ROS2 is not initialized. Cannot start navigation.");
+        return;
+    }
+
+    // Publish empty message to signal start of navigation
+    auto msg = std_msgs::msg::Float64MultiArray();
+    msg.data = {0.0};  // Special signal value
+    waypoint_pub_->publish(msg);
+
+    setStatus("🚀 Navigation started!", 3000);
+    std::cout << "[F2C GUI] Sent navigation start signal" << std::endl;
 }
 
 } // namespace f2c_cpp

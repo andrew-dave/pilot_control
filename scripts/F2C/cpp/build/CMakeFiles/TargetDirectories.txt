@@ -1,4 +1,7 @@
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/f2c_coverage_planner.dir
+/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/uninstall.dir
+/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/f2c_coverage_planner_uninstall.dir
+/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/test.dir
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/edit_cache.dir
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/rebuild_cache.dir
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/list_install_components.dir

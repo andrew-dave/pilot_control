@@ -1,5 +1,23 @@
 #!/bin/bash
-# F2C Coverage Planner Launcher
+# F2C Coverage Planner Launcher with ROS2 Support
+
+# Source ROS2 environment (try different distributions)
+if [ -f "/opt/ros/humble/setup.bash" ]; then
+    source /opt/ros/humble/setup.bash
+    ROS_DISTRO="humble"
+elif [ -f "/opt/ros/foxy/setup.bash" ]; then
+    source /opt/ros/foxy/setup.bash
+    ROS_DISTRO="foxy"
+elif [ -f "/opt/ros/galactic/setup.bash" ]; then
+    source /opt/ros/galactic/setup.bash
+    ROS_DISTRO="galactic"
+elif [ -f "/opt/ros/noetic/setup.bash" ]; then
+    source /opt/ros/noetic/setup.bash
+    ROS_DISTRO="noetic"
+else
+    echo "Warning: No ROS2 installation found. F2C waypoint publishing will not work."
+    echo "Please install ROS2 (Humble, Foxy, or Galactic recommended) to enable waypoint publishing features."
+fi
 
 # Set basic environment
 export DISPLAY=${DISPLAY:-:0}
@@ -8,8 +26,8 @@ export DISPLAY=${DISPLAY:-:0}
 export LD_LIBRARY_PATH="/usr/lib/f2c-coverage-planner:$LD_LIBRARY_PATH"
 
 # Add system ROS paths if available (fallback)
-if [ -d "/opt/ros/humble/lib" ]; then
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/humble/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/opt/ortools_vendor/lib"
+if [ -n "$ROS_DISTRO" ] && [ -d "/opt/ros/$ROS_DISTRO/lib" ]; then
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/$ROS_DISTRO/lib:/opt/ros/$ROS_DISTRO/lib/x86_64-linux-gnu:/opt/ros/$ROS_DISTRO/opt/ortools_vendor/lib"
 fi
 
 # Add other common library paths
