@@ -120,6 +120,9 @@ fi
 # Set basic environment
 export DISPLAY=${DISPLAY:-:0}
 
+# Ensure CycloneDDS uses the user config so desktop launches match terminal behavior
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-/home/avenblake/rf_cyclonedds.xml}"
+
 # Add bundled library path first (highest priority)
 export LD_LIBRARY_PATH="/usr/lib/f2c-coverage-planner:$LD_LIBRARY_PATH"
 
