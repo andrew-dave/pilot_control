@@ -842,7 +842,7 @@ class MPCAutonomousController(Node):
         
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
-        self.declare_parameter('max_linear_velocity', 0.4) # m/s
+        self.declare_parameter('max_linear_velocity', 0.5) # m/s
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         
         # MPC parameters

@@ -52,7 +52,7 @@ def generate_launch_description():
     )
     declare_max_linear_velocity_arg = DeclareLaunchArgument(
         'max_linear_velocity',
-        default_value='0.3',
+        default_value='0.5',
         description='Max linear velocity (m/s)'
     )
     declare_max_angular_velocity_arg = DeclareLaunchArgument(
