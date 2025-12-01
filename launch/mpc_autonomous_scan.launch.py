@@ -84,7 +84,7 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='5.0',
+        default_value='1.0',
         description='MPC cost weight for yaw error (higher to keep robot facing along the path and avoid backwards tracking)'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
