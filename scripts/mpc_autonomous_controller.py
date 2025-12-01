@@ -314,8 +314,12 @@ class SlipAwareMPC:
         constraint_row = 0
         for k in range(N):
             # Position in decision vector z = [u0, x1, u1, x2, ..., u_{N-1}, xN]
+            # For step k (0-based):
+            #   - u_k is always at index:      u_k_idx    = k * (nu + nx)
+            #   - x_{k+1} is always at index:  x_kp1_idx  = k * (nu + nx) + nu
+            #   - x_k (for k > 0) is at index: x_k_idx    = (k - 1) * (nu + nx) + nu
             u_k_idx = k * (nu + nx)
-            x_k_idx = k * (nu + nx) + nu if k > 0 else None  # x_k (for k>0)
+            x_k_idx = (k - 1) * (nu + nx) + nu if k > 0 else None  # x_k (for k>0)
             x_kp1_idx = k * (nu + nx) + nu  # x_{k+1}
             
             # Store indices for A_k and B_k updates
@@ -335,7 +339,7 @@ class SlipAwareMPC:
                         idx = len(data_values)
                         row_indices.append(constraint_row + i)
                         col_indices.append(x_k_idx + j)
-                        data_values.append(0.0)  # Placeholder, will be updated
+                        data_values.append(0.0)  # Placeholder, will be updated with -A_k
                         self.A_indices[k].append(idx)
                 
                 # -B_k[i,:]*u_k terms
@@ -390,7 +394,8 @@ class SlipAwareMPC:
                 # Rebuild A_indices using row/col mapping
                 new_A_indices = []
                 if k > 0:
-                    x_k_idx = k * (nu + nx) + nu
+                    # x_k is at index (k-1)*(nu + nx) + nu in the decision vector
+                    x_k_idx = (k - 1) * (nu + nx) + nu
                     for i in range(nx):
                         for j in range(nx):
                             row = k * nx + i
@@ -537,9 +542,9 @@ class SlipAwareMPC:
             #   v = (r/2) * (ωL + ωR)  [forward velocity]
             #   ω = (r/L) * (ωR - ωL)  [angular velocity]
             #
-            # Error state dynamics (linearized around small errors, using Kanayama-style error):
+            # Error state dynamics (linearized around small errors, Kanayama-style error):
             #   xe_dot ≈ v_ref - v
-            #   ye_dot ≈  v_ref * θe           [lateral drift, cannot be directly controlled]
+            #   ye_dot ≈ -v_ref * θe          [lateral drift, cannot be directly controlled]
             #   θe     = yaw_ref - yaw_current
             #   yaw_dot = ω = (r/L)*(ωR - ωL)
             #   ⇒ θe_dot = ω_ref - yaw_dot ≈ ω_ref - (r/L)*(ωR - ωL)
