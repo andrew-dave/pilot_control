@@ -847,7 +847,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         
         # MPC parameters
-        self.declare_parameter('mpc_horizon', 50)           # Prediction horizon steps
+        self.declare_parameter('mpc_horizon', 20)           # Prediction horizon steps
         self.declare_parameter('mpc_dt', 0.1)             # Time step for MPC (s)
         
         # Slip estimation parameters

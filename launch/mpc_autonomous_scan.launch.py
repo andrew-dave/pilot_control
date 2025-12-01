@@ -64,7 +64,7 @@ def generate_launch_description():
     # MPC optimization parameters
     declare_mpc_horizon_arg = DeclareLaunchArgument(
         'mpc_horizon',
-        default_value='50',
+        default_value='20',
         description='MPC prediction horizon (number of steps)'
     )
     declare_mpc_dt_arg = DeclareLaunchArgument(
