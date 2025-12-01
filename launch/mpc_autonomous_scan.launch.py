@@ -84,7 +84,7 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='20.0',
+        default_value='5.0',
         description='MPC cost weight for yaw error (higher to keep robot facing along the path and avoid backwards tracking)'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
@@ -99,7 +99,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_ye_arg = DeclareLaunchArgument(
         'mpc_weight_increase_ye',
-        default_value='1.0',
+        default_value='0.5',
         description='Linear weight increase factor per time step for ye error. Weight at step k = base_weight * (1 + weight_increase_ye * k). Example: 0.1 means 10% increase per step.'
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
@@ -160,7 +160,7 @@ def generate_launch_description():
     # Detect if we're in source (src/) or install (install/) directory
     path_str = str(launch_file_path)
     if '/src/' in path_str:
-        # Source location: src/pilot_control/scripts/odom_tilt_corrector.py
+        # Source location: src/pilot_controol/scripts/odom_tilt_corrector.py
         src_base = Path(path_str[:path_str.index('/src/') + 4])  # Include '/src'
         source_script_dir = src_base / 'pilot_control' / 'scripts'
         odom_tilt_corrector_path = str(source_script_dir / 'odom_tilt_corrector.py')
