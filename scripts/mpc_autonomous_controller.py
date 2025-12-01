@@ -954,7 +954,7 @@ class MPCAutonomousController(Node):
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
         self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
-        self.declare_parameter('mpc_Q_yaw', 20.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_Q_yaw',5.0)  # Weight for yaw error (higher to help lateral correction)
         self.declare_parameter('mpc_R_delta', 0.00005)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
