@@ -1520,7 +1520,7 @@ class MPCAutonomousController(Node):
         waypoint_positions = []
         
         proximity_threshold = 0.5  # [m] distance at which to start compressing waypoints
-        min_spacing = 0.02         # [m] minimum distance between consecutive waypoints
+        min_spacing = 0.04         # [m] minimum distance between consecutive waypoints
         
         if distance_to_target_along_path > proximity_threshold:
             # FAR REGION: use fixed cruising spacing along the path
