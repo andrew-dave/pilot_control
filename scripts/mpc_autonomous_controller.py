@@ -513,27 +513,22 @@ class SlipAwareMPC:
                     omega_ref = 0.0
             
             # Compute A_k matrix (based on reference trajectory)
-            # A_k = [[1, -ω_ref*Ts, 0],
-            #        [ω_ref*Ts, 1, -v_ref*Ts],
-            #        [0, 0, 1]]
+            # A_k = [[1, -ω_ref*Ts,      0],
+            #        [ω_ref*Ts,    1,  v_ref*Ts],
+            #        [0,          0,      1]]
             #
             # Lateral error dynamics (with our error definitions, matching PoseController):
             #   - Error state: x = [xe, ye, θe]^T in BODY frame
             #   - θe = yaw_ref - yaw_current  (same as PoseController d_yaw)
             #   - ye = e_lat = -sin(yaw)*dx + cos(yaw)*dy
             #
-            # For a straight path with v_ref > 0 and small angles:
-            #   - Around yaw ≈ 0, ye ≈ y (robot global Y with +Y left)
-            #   - y_dot ≈ v * yaw
-            #   - With θe = yaw_ref - yaw and yaw_ref ≈ 0, we have yaw ≈ -θe
-            #     so ye_dot ≈ -v * θe
-            #
-            # Therefore the linearized coupling is:
-            #   ye_dot ≈ -v_ref * θe
-            # so the discrete-time term is A_k[1,2] = -v_ref * Ts.
+            # For a straight path with v_ref > 0 and small errors, using the standard
+            # Kanayama-style error dynamics, we have approximately:
+            #   ye_dot ≈  v_ref * θe
+            # so the discrete-time term is A_k[1,2] =  v_ref * Ts.
             A_k = np.array([
                 [1.0, -omega_ref * Ts, 0.0],
-                [omega_ref * Ts, 1.0, -v_ref * Ts],
+                [omega_ref * Ts, 1.0,  v_ref * Ts],
                 [0.0, 0.0, 1.0]
             ])
             
@@ -632,7 +627,7 @@ class SlipAwareMPC:
         
         A_0 = np.array([
             [1.0, -omega_ref * self.Ts, 0.0],
-            [omega_ref * self.Ts, 1.0, -v_ref * self.Ts],
+            [omega_ref * self.Ts, 1.0,  v_ref * self.Ts],
             [0.0, 0.0, 1.0]
         ])
         
