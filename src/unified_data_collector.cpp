@@ -713,13 +713,20 @@ private:
   void buildStreamingPipeline() {
     std::ostringstream oss;
     
+    RCLCPP_INFO(this->get_logger(), "Camera devices: LEFT=%s RIGHT=%s",
+                cfg_.left_device.c_str(), cfg_.right_device.c_str());
+    RCLCPP_INFO(this->get_logger(), "Pipeline mode: %s, Resolution: %dx%d@%dfps",
+                cfg_.use_mjpeg_pipeline ? "MJPEG" : "RAW",
+                cfg_.cap_w, cfg_.cap_h, cfg_.cap_fps);
+    
     // LEFT camera (stream + frame capture)
+    // Use io-mode=mmap for reliable buffer handling, jpegparse for frame boundary detection
     if (cfg_.use_mjpeg_pipeline) {
-      oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
+      oss << "v4l2src name=v4l2src_left device=" << cfg_.left_device << " do-timestamp=true io-mode=mmap "
           << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
-          << "! jpegdec ! videoconvert ! video/x-raw,format=I420 ";
+          << "! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=I420 ";
     } else {
-      oss << "v4l2src device=" << cfg_.left_device << " do-timestamp=true "
+      oss << "v4l2src name=v4l2src_left device=" << cfg_.left_device << " do-timestamp=true io-mode=mmap "
           << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
           << "! videoconvert ! video/x-raw,format=I420 ";
     }
@@ -740,14 +747,15 @@ private:
         << "! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
     // RIGHT camera (frame capture only)
+    // Use io-mode=mmap for reliable buffer handling, jpegparse for frame boundary detection
     if (cfg_.use_mjpeg_pipeline) {
       oss << "\n"
-          << "v4l2src device=" << cfg_.right_device << " do-timestamp=true "
+          << "v4l2src name=v4l2src_right device=" << cfg_.right_device << " do-timestamp=true io-mode=mmap "
           << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
-          << "! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
+          << "! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
     } else {
       oss << "\n"
-          << "v4l2src device=" << cfg_.right_device << " do-timestamp=true "
+          << "v4l2src name=v4l2src_right device=" << cfg_.right_device << " do-timestamp=true io-mode=mmap "
           << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
           << "! videoconvert ! video/x-raw,format=BGR ";
     }
@@ -755,6 +763,8 @@ private:
         << "! appsink name=right_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
     pipeline_str_ = oss.str();
+    RCLCPP_INFO(this->get_logger(), "GStreamer streaming config: host=%s port=%d bitrate=%dkbps mtu=%d",
+                cfg_.stream_host.c_str(), cfg_.stream_port, cfg_.stream_bitrate_kbps, cfg_.rtp_mtu);
     RCLCPP_INFO(this->get_logger(), "Launching GStreamer pipeline:\n%s", pipeline_str_.c_str());
 
     GError* err = nullptr;
@@ -799,7 +809,11 @@ private:
       bus_watch_id_ = gst_bus_add_watch(bus_, &UnifiedDataCollector::bus_func, this);
       auto ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
       if (ret == GST_STATE_CHANGE_FAILURE) {
-        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING");
+        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING - check camera devices and network");
+      } else if (ret == GST_STATE_CHANGE_ASYNC) {
+        RCLCPP_INFO(this->get_logger(), "Pipeline state change pending (async)");
+      } else {
+        RCLCPP_INFO(this->get_logger(), "GStreamer pipeline started successfully");
       }
       g_main_loop_run(loop_);
       if (bus_watch_id_) {
@@ -845,7 +859,16 @@ private:
     // Use buffer timestamp if available, otherwise current time
     GstClockTime timestamp = GST_BUFFER_PTS(buffer);
     if (timestamp == GST_CLOCK_TIME_NONE) {
-      timestamp = gst_clock_get_time(gst_element_get_clock(appsink));
+      GstClock* clock = gst_element_get_clock(appsink);
+      if (clock) {
+        timestamp = gst_clock_get_time(clock);
+        gst_object_unref(clock);
+      } else {
+        // Fallback to system time in nanoseconds
+        timestamp = static_cast<GstClockTime>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+      }
     }
     frame.ts_ns = timestamp; // Already in nanoseconds
     frame.image = image_copy;
@@ -869,6 +892,26 @@ private:
                      GST_OBJECT_NAME(msg->src), err ? err->message : "unknown");
         if (dbg) { RCLCPP_ERROR(self->get_logger(), "Debug: %s", dbg); g_free(dbg); }
         if (err) g_error_free(err);
+        break;
+      }
+      case GST_MESSAGE_WARNING: {
+        GError* err = nullptr; gchar* dbg = nullptr;
+        gst_message_parse_warning(msg, &err, &dbg);
+        RCLCPP_WARN(self->get_logger(), "GStreamer WARNING from %s: %s",
+                    GST_OBJECT_NAME(msg->src), err ? err->message : "unknown");
+        if (dbg) { RCLCPP_DEBUG(self->get_logger(), "Debug: %s", dbg); g_free(dbg); }
+        if (err) g_error_free(err);
+        break;
+      }
+      case GST_MESSAGE_STATE_CHANGED: {
+        // Only log state changes for the pipeline itself, not child elements
+        if (GST_MESSAGE_SRC(msg) == GST_OBJECT(self->pipeline_.get())) {
+          GstState old_state, new_state, pending_state;
+          gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+          RCLCPP_DEBUG(self->get_logger(), "Pipeline state: %s -> %s",
+                       gst_element_state_get_name(old_state),
+                       gst_element_state_get_name(new_state));
+        }
         break;
       }
       default:
