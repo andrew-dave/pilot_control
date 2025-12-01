@@ -857,7 +857,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('lookahead_distance', 0.5)  # m
         
         # Stopping criteria
-        self.declare_parameter('target_reached_threshold', 0.02)  # Stop when within 2cm of target (m)
+        self.declare_parameter('target_reached_threshold', 0.05)  # Stop when within 2cm of target (m)
         
         # Topic names
         self.declare_parameter('odometry_topic', '/Odometry_tilt_corrected_diff')
@@ -948,9 +948,9 @@ class MPCAutonomousController(Node):
         # MPC cost weights (penalize xe, ye more than yaw_e)
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
         self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
-        self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
+        self.declare_parameter('mpc_Q_ye', 10.0)  # Weight for position error y (much higher for lateral correction)
         self.declare_parameter('mpc_Q_yaw',5.0)  # Weight for yaw error (higher to help lateral correction)
-        self.declare_parameter('mpc_R_delta', 0.0001)  # Weight for control input change
+        self.declare_parameter('mpc_R_delta', 0.00007)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
         # Weight at step k = base_weight * (1 + weight_increase * k)
@@ -1473,9 +1473,12 @@ class MPCAutonomousController(Node):
 
         # Check if we need to adjust spacing due to proximity to target
         max_distance_needed = waypoint_spacing * self.mpc_horizon
-
-        # Only adjust spacing when very close to target (within horizon distance)
-        proximity_threshold = 0.5 #max_distance_needed * 1.2  # 20% buffer
+        
+        # Only adjust spacing when very close to target.
+        # Within this "braking distance" we will both:
+        #   1) Compress waypoints so the horizon lands on the target, and
+        #   2) Apply a deceleration profile on the reference speed.
+        proximity_threshold = 0.5  # [m] distance from target at which to start braking profile
         if distance_to_target_along_path < proximity_threshold:
             # Adjust spacing so last waypoint hits target exactly
             if self.mpc_horizon > 0:
@@ -1494,7 +1497,7 @@ class MPCAutonomousController(Node):
         # Generate waypoints along the path
         # Method: Find closest point on path, then move forward along path
         waypoints = []
-        waypoint_positions = []  # Store positions for velocity computation
+        waypoint_positions = []  # Store positions and remaining distance for velocity computation
         
         for k in range(self.mpc_horizon):
             # Distance along path from closest point
@@ -1510,6 +1513,9 @@ class MPCAutonomousController(Node):
             waypoint_x = self.path_start_x + t_waypoint * path_dx
             waypoint_y = self.path_start_y + t_waypoint * path_dy
             
+            # Remaining distance from this waypoint to the target along the path
+            remaining_dist = max((1.0 - t_waypoint) * path_length, 0.0)
+            
             
             # Yaw should be along the path direction (heading to target)
             # For a straight line path, yaw should point along the path direction
@@ -1517,28 +1523,48 @@ class MPCAutonomousController(Node):
             waypoint_yaw = heading_to_target
             waypoint_yaw = self.normalize_angle(waypoint_yaw)
             
-            waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
+            waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw, remaining_dist))
         
-        # Compute velocities for each waypoint
-        # For a straight line path: v_ref = 0.4 m/s along path direction, w_ref = 0
-        cruising_speed = 0.5  # m/s along path
+        # Compute velocities for each waypoint.
+        # We use a braking profile near the target:
+        #   - For remaining_dist >= proximity_threshold: v_ref = cruising_speed
+        #   - For remaining_dist <  proximity_threshold: v_ref ramps linearly down
+        #       from cruising_speed to min_speed (not to zero) as remaining_dist → 0.
+        # The robot is then stopped by the external target_reached_threshold logic,
+        # creating an effectively "instant" drop from ~min_speed to 0 at the waypoint.
+        cruising_speed = 0.5  # m/s along path (maximum desired cruise speed)
+        min_speed = 0.2       # m/s minimum approach speed near the target
         path_heading = math.atan2(path_dy, path_dx)  # Heading along path
         
         for k in range(self.mpc_horizon):
-            current_pos = waypoint_positions[k]
+            waypoint_x, waypoint_y, waypoint_yaw, remaining_dist = waypoint_positions[k]
+            
+            # Reference speed profile based on remaining distance to target
+            if remaining_dist >= proximity_threshold:
+                v_ref = cruising_speed
+            else:
+                # Linear ramp from cruising_speed at proximity_threshold down to min_speed at target
+                if proximity_threshold > 1e-6:
+                    ratio = remaining_dist / proximity_threshold  # 1 → cruising_speed, 0 → min_speed
+                else:
+                    ratio = 0.0
+                v_ref = min_speed + (cruising_speed - min_speed) * ratio
+                # Ensure we never command below the minimum approach speed
+                if v_ref < min_speed:
+                    v_ref = min_speed
             
             # Velocity components in global frame: v_ref along path direction
             # vx_ref = v_ref * cos(heading), vy_ref = v_ref * sin(heading)
-            vx_ref = cruising_speed * math.cos(path_heading)
-            vy_ref = cruising_speed * math.sin(path_heading)
+            vx_ref = v_ref * math.cos(path_heading)
+            vy_ref = v_ref * math.sin(path_heading)
             
             # Angular velocity should be zero for straight line path
             vyaw_ref = 0.0
             
             waypoint = np.array([
-                current_pos[0],  # x
-                current_pos[1],  # y
-                current_pos[2],  # yaw
+                waypoint_x,        # x
+                waypoint_y,        # y
+                waypoint_yaw,      # yaw
                 vx_ref,
                 vy_ref,
                 vyaw_ref
