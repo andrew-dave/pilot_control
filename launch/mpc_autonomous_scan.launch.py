@@ -89,7 +89,7 @@ def generate_launch_description():
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
         'mpc_R_delta',
-        default_value='0.01',
+        default_value='0.001',
         description='MPC cost weight for control input change (delta u)'
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
