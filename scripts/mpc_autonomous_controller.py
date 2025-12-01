@@ -69,7 +69,7 @@ class SlipAwareMPC:
     State: Error vector x = [xe, ye, θe]^T (Error in Body Frame)
     Input: Wheel velocities u = [ωL, ωR]^T (rad/s)
     
-    Dynamics: x_{k+1} = A_k*x_k + B_k*u_k
+    Dynamics: x_{k+1} = A_k*x_k + B_k*u_kta
     - A_k depends on reference trajectory (v_ref, omega_ref)
     - B_k depends on slip ratios (λ_L, λ_R)
     """
@@ -950,7 +950,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
         self.declare_parameter('mpc_Q_yaw',5.0)  # Weight for yaw error (higher to help lateral correction)
-        self.declare_parameter('mpc_R_delta', 0.00005)  # Weight for control input change
+        self.declare_parameter('mpc_R_delta', 0.1)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
         # Weight at step k = base_weight * (1 + weight_increase * k)
