@@ -1475,7 +1475,7 @@ class MPCAutonomousController(Node):
         max_distance_needed = waypoint_spacing * self.mpc_horizon
 
         # Only adjust spacing when very close to target (within horizon distance)
-        proximity_threshold = max_distance_needed * 1.2  # 20% buffer
+        proximity_threshold = 0.5 #max_distance_needed * 1.2  # 20% buffer
         if distance_to_target_along_path < proximity_threshold:
             # Adjust spacing so last waypoint hits target exactly
             if self.mpc_horizon > 0:
