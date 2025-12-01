@@ -64,7 +64,7 @@ def generate_launch_description():
     # MPC optimization parameters
     declare_mpc_horizon_arg = DeclareLaunchArgument(
         'mpc_horizon',
-        default_value='5',
+        default_value='50',
         description='MPC prediction horizon (number of steps)'
     )
     declare_mpc_dt_arg = DeclareLaunchArgument(
@@ -79,12 +79,12 @@ def generate_launch_description():
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
         'mpc_Q_ye',
-        default_value='20.0',
+        default_value='50.0',
         description='MPC cost weight for position error y (higher for lateral correction)'
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='20.0',
+        default_value='5.0',
         description='MPC cost weight for yaw error (higher to keep robot facing along the path and avoid backwards tracking)'
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
