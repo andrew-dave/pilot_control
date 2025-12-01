@@ -29,7 +29,7 @@ Topics:
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64MultiArray, Float64
+from std_msgs.msg import Float64MultiArray, Float64, String
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage, ControllerStatus
 from odrive_can.srv import AxisState
@@ -43,6 +43,7 @@ from collections import deque
 import time
 import os
 import signal
+import csv
 
 # Optional dependencies for MPC
 try:
@@ -855,9 +856,11 @@ class MPCAutonomousController(Node):
         
         # Waypoint parameters
         self.declare_parameter('lookahead_distance', 0.5)  # m
+        # Optional CSV file containing a sequence of waypoints for fully autonomous runs
+        self.declare_parameter('waypoints_csv_path', '')   # Path to CSV with waypoints [x,y] per row
         
         # Stopping criteria
-        self.declare_parameter('target_reached_threshold', 0.05)  # Stop when within 2cm of target (m)
+        self.declare_parameter('target_reached_threshold', 0.05)  # Stop when within threshold of target (m)
         
         # Topic names
         self.declare_parameter('odometry_topic', '/Odometry_tilt_corrected_diff')
@@ -892,6 +895,7 @@ class MPCAutonomousController(Node):
         
         # Waypoint parameters
         self.lookahead_distance = self.get_parameter('lookahead_distance').value
+        self.waypoints_csv_path = self.get_parameter('waypoints_csv_path').value
         
         # Stopping criteria
         self.target_reached_threshold = self.get_parameter('target_reached_threshold').value
@@ -949,7 +953,7 @@ class MPCAutonomousController(Node):
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
         self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 10.0)  # Weight for position error y (much higher for lateral correction)
-        self.declare_parameter('mpc_Q_yaw',1.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_Q_yaw',10.0)  # Weight for yaw error (higher to help lateral correction)
         self.declare_parameter('mpc_R_delta', 0.00007)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
@@ -1008,11 +1012,17 @@ class MPCAutonomousController(Node):
         self.has_target = False
         self.target_reached = False  # Flag to track if target has been reached
         
-        # Path planning state
+        # Path planning state for current single target
         self.path_start_x = 0.0  # Initial position when target was set
         self.path_start_y = 0.0
         self.path_start_yaw = 0.0
         self.path_initialized = False  # Whether path has been initialized
+        
+        # Waypoint sequence state (for CSV-based navigation)
+        self.waypoints: List[Tuple[float, float]] = []
+        self.current_waypoint_index: int = 0
+        self.waypoint_navigation_active: bool = False
+        self.previous_waypoint: Optional[Tuple[float, float]] = None
         
         # Control outputs
         self.left_wheel_velocity = 0.0   # rad/s (motor turns/s)
@@ -1056,6 +1066,16 @@ class MPCAutonomousController(Node):
             10
         )
         self.get_logger().info('Subscribed to target pose: /set_target_pose')
+        
+        # Subscriber to start waypoint navigation from CSV (similar to pose_controller)
+        # Receives std_msgs/String with CSV file path.
+        self.waypoint_nav_sub = self.create_subscription(
+            String,
+            '/start_waypoint_navigation',
+            self.start_waypoint_navigation_callback,
+            10
+        )
+        self.get_logger().info('Subscribed to waypoint CSV topic: /start_waypoint_navigation')
         
         # ============================================================
         # ROS PUBLISHERS
@@ -1232,6 +1252,25 @@ class MPCAutonomousController(Node):
             self.get_logger().info(f'  /mpc_control/solver_inputs - Solver inputs [P_nnz, A_nnz, l_min, l_max, u_min, u_max, xe, ye, θe]')
             self.get_logger().info(f'  /mpc_control/solver_cost - Solver cost [computed_cost, OSQP_obj_val, iter, solve_time_ms]')
         self.get_logger().info('='*70)
+        
+        # ============================================================
+        # OPTIONAL WAYPOINT CSV INITIALIZATION
+        # ============================================================
+        if isinstance(self.waypoints_csv_path, str) and self.waypoints_csv_path.strip():
+            loaded = self._load_waypoints_from_csv(self.waypoints_csv_path.strip())
+            if loaded:
+                self.waypoints = loaded
+                self.waypoint_navigation_active = True
+                self.current_waypoint_index = 0
+                self.previous_waypoint = None
+                self.get_logger().info(
+                    f'Waypoint CSV loaded: {len(self.waypoints)} waypoints from '
+                    f'"{self.waypoints_csv_path}"'
+                )
+            else:
+                self.get_logger().warn(
+                    f'Waypoint CSV path set but no waypoints loaded: "{self.waypoints_csv_path}"'
+                )
     
     # ============================================================
     # CALLBACK: ODOMETRY
@@ -1554,6 +1593,146 @@ class MPCAutonomousController(Node):
         return waypoints
     
     # ============================================================
+    # WAYPOINT SEQUENCE (CSV) SUPPORT
+    # ============================================================
+    
+    def _load_waypoints_from_csv(self, csv_file_path: str) -> List[Tuple[float, float]]:
+        """
+        Load a sequence of waypoints from a CSV file.
+        
+        Expected format: each row contains at least two columns [x, y, ...].
+        A header row is allowed and will be skipped if it contains typical
+        keywords such as 'x', 'y', 'waypoint', or 'point'.
+        """
+        waypoints: List[Tuple[float, float]] = []
+        try:
+            with open(csv_file_path, 'r') as csvfile:
+                reader = csv.reader(csvfile)
+                for row_num, row in enumerate(reader):
+                    if not row:
+                        continue
+                    try:
+                        x = float(row[0].strip())
+                        y = float(row[1].strip())
+                        waypoints.append((x, y))
+                    except (ValueError, IndexError):
+                        # Check if this might be a header row
+                        if row_num == 0 and any(
+                            keyword in ' '.join(row).lower()
+                            for keyword in ['x', 'y', 'waypoint', 'point']
+                        ):
+                            continue  # Skip header
+                        else:
+                            self.get_logger().warn(
+                                f'Skipping invalid row {row_num + 1} in waypoint CSV: {row}'
+                            )
+                            continue
+        except Exception as e:
+            self.get_logger().error(
+                f'Error parsing waypoint CSV file "{csv_file_path}": {e}'
+            )
+            return []
+        
+        if waypoints:
+            self.get_logger().info(
+                f'Parsed {len(waypoints)} waypoints from "{csv_file_path}"'
+            )
+        return waypoints
+    
+    def _set_next_waypoint_target(self) -> None:
+        """
+        Set the next waypoint in the CSV sequence as the current MPC target.
+        
+        Behavior:
+        - target_x, target_y: current waypoint coordinates.
+        - target_yaw: heading from previous waypoint to current waypoint
+          (or current yaw for the very first waypoint).
+        - Path start is set to the robot's current pose so we generate a
+        straight-line path segment from the current position to the waypoint.
+        """
+        if not self.waypoint_navigation_active:
+            return
+        if self.current_waypoint_index >= len(self.waypoints):
+            # No more waypoints
+            self.has_target = False
+            return
+        
+        wp_x, wp_y = self.waypoints[self.current_waypoint_index]
+        self.target_x = float(wp_x)
+        self.target_y = float(wp_y)
+        
+        # Compute target yaw based on previous waypoint if available
+        if self.previous_waypoint is not None:
+            dx = self.target_x - self.previous_waypoint[0]
+            dy = self.target_y - self.previous_waypoint[1]
+            self.target_yaw = math.atan2(dy, dx)
+        else:
+            # First waypoint: use current yaw as target yaw
+            self.target_yaw = self.current_yaw
+        
+        # Initialize path start at current pose for straight-line control
+        self.path_start_x = self.current_x
+        self.path_start_y = self.current_y
+        self.path_start_yaw = self.current_yaw
+        self.path_initialized = True
+        
+        self.has_target = True
+        self.target_reached = False
+        
+        self.get_logger().info(
+            f'🎯 New waypoint target {self.current_waypoint_index + 1}/'
+            f'{len(self.waypoints)}: x={self.target_x:.2f}, y={self.target_y:.2f}, '
+            f'yaw_target={math.degrees(self.target_yaw):.1f}°'
+        )
+    
+    def start_waypoint_navigation_callback(self, msg: String) -> None:
+        """
+        Topic callback to start waypoint navigation with CSV file.
+        Receives std_msgs/String message containing CSV file path.
+        """
+        try:
+            csv_file_path = msg.data.strip()
+            if not csv_file_path:
+                self.get_logger().error('Received empty CSV file path for waypoint navigation')
+                return
+            
+            if not os.path.exists(csv_file_path):
+                self.get_logger().error(f'CSV file not found: {csv_file_path}')
+                return
+            
+            # Parse waypoints from CSV
+            waypoints = self._load_waypoints_from_csv(csv_file_path)
+            if len(waypoints) < 1:
+                self.get_logger().error(f'No valid waypoints found in CSV: {csv_file_path}')
+                return
+            
+            # Ensure odometry is initialized before starting navigation
+            if not self.pose_initialized:
+                self.get_logger().error(
+                    'Odometry not initialized yet - cannot start waypoint navigation'
+                )
+                return
+            
+            # Initialize waypoint navigation
+            self.waypoints = waypoints
+            self.current_waypoint_index = 0
+            self.waypoint_navigation_active = True
+            
+            # For first waypoint, use current position as previous waypoint so
+            # the target yaw is along the line from current pose to first waypoint
+            self.previous_waypoint = (self.current_x, self.current_y)
+            
+            # Start navigation to first waypoint immediately
+            self._set_next_waypoint_target()
+            
+            self.get_logger().info(
+                f'✓ Waypoint navigation started: {len(waypoints)} waypoints '
+                f'loaded from "{csv_file_path}"'
+            )
+        except Exception as e:
+            self.get_logger().error(f'Error starting waypoint navigation: {e}')
+    
+    # ============================================================
     # ERROR STATE COMPUTATION
     # ============================================================
     
@@ -1833,7 +2012,17 @@ class MPCAutonomousController(Node):
             self.publish_zero_velocity()
             return
         
-        # Check if target is set
+        # If using CSV-based waypoint navigation and we don't currently have a target,
+        # set the next waypoint as the current target (once pose is initialized).
+        if self.waypoint_navigation_active and not self.has_target:
+            if self.current_waypoint_index < len(self.waypoints):
+                self._set_next_waypoint_target()
+            else:
+                # No more waypoints → stop
+                self.publish_zero_velocity()
+                return
+        
+        # Check if target is set (either via /set_target_pose or waypoint CSV)
         if not self.has_target:
             self.publish_zero_velocity()
             return
@@ -1846,16 +2035,34 @@ class MPCAutonomousController(Node):
             
             if distance_to_target <= self.target_reached_threshold:
                 self.target_reached = True
-                self.has_target = False
-                self.publish_zero_velocity()
-                self.get_logger().info(
-                    f'✅ Target reached! Distance: {distance_to_target*100:.1f}cm (threshold: {self.target_reached_threshold*100:.1f}cm)'
-                )
-                self.get_logger().info(
-                    f'   Final position: x={self.current_x:.3f}m, y={self.current_y:.3f}m, '
-                    f'target: x={self.target_x:.3f}m, y={self.target_y:.3f}m'
-                )
-                return
+                
+                # If we are following a CSV waypoint sequence, move to the next waypoint
+                if self.waypoint_navigation_active and self.current_waypoint_index < len(self.waypoints) - 1:
+                    self.get_logger().info(
+                        f'✅ Waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)} '
+                        f'reached at x={self.current_x:.3f}m, y={self.current_y:.3f}m'
+                    )
+                    # Update previous waypoint and advance index
+                    self.previous_waypoint = (self.target_x, self.target_y)
+                    self.current_waypoint_index += 1
+                    # Clear current target; next loop will call _set_next_waypoint_target()
+                    self.has_target = False
+                    # Optionally send a brief stop at the waypoint
+                    self.publish_zero_velocity()
+                    return
+                else:
+                    # Final target reached (single target or last waypoint)
+                    self.has_target = False
+                    self.publish_zero_velocity()
+                    self.get_logger().info(
+                        f'✅ Target reached! Distance: {distance_to_target*100:.1f}cm '
+                        f'(threshold: {self.target_reached_threshold*100:.1f}cm)'
+                    )
+                    self.get_logger().info(
+                        f'   Final position: x={self.current_x:.3f}m, y={self.current_y:.3f}m, '
+                        f'target: x={self.target_x:.3f}m, y={self.target_y:.3f}m'
+                    )
+                    return
         
         # If target reached, stop
         if self.target_reached:
