@@ -74,7 +74,7 @@ def generate_launch_description():
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
         'mpc_Q_xe',
-        default_value='5.0',
+        default_value='15.0',
         description='MPC cost weight for position error x'
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
