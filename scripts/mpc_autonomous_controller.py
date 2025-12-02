@@ -1510,7 +1510,7 @@ class MPCAutonomousController(Node):
         closest_y = self.path_start_y + t_closest * path_dy
 
         # Compute waypoint spacing: distance traveled at cruising speed for one time step
-        cruising_speed = 1.0 # Fixed cruising speed as requested
+        cruising_speed = 0.5 # Fixed cruising speed as requested
         waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be 0.04m)
 
         # Compute distance from closest point to target along path
