@@ -26,6 +26,29 @@
 
 namespace f2c_cpp {
 
+namespace {
+
+constexpr double kWaypointDuplicateEpsilon = 1e-6;
+
+PathStateList dedupePathStates(const PathStateList& path) {
+    PathStateList filtered;
+    filtered.reserve(path.size());
+    for (const auto& state : path) {
+        if (!filtered.empty()) {
+            double dx = state.point.x - filtered.back().point.x;
+            double dy = state.point.y - filtered.back().point.y;
+            if (std::fabs(dx) <= kWaypointDuplicateEpsilon &&
+                std::fabs(dy) <= kWaypointDuplicateEpsilon) {
+                continue;
+            }
+        }
+        filtered.push_back(state);
+    }
+    return filtered;
+}
+
+} // namespace
+
 // =============================================================================
 // PlotWidget Implementation
 // =============================================================================
@@ -1845,11 +1868,14 @@ void CoverageGUI::publishWaypoints() {
         return;
     }
 
+    // Remove consecutive duplicates to avoid sending repeated points
+    PathStateList deduped_path = dedupePathStates(path_);
+
     // Create waypoint array message
     auto msg = std_msgs::msg::Float64MultiArray();
 
     // Add waypoints in format: [x1,y1, x2,y2, ...]
-    for (const auto& state : path_) {
+    for (const auto& state : deduped_path) {
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
     }
@@ -1859,7 +1885,7 @@ void CoverageGUI::publishWaypoints() {
     waypoints_published_ = true;
 
     // Update status and enable navigation button
-    setStatus(QString("✅ Published %1 waypoints to robot").arg(path_.size()), 5000);
+    setStatus(QString("✅ Published %1 waypoints to robot").arg(deduped_path.size()), 5000);
 
     // Find and enable the start navigation button
     for (auto* child : findChildren<QPushButton*>()) {

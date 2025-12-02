@@ -1266,6 +1266,29 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
 // Export Functions
 // =============================================================================
 
+namespace {
+
+constexpr double kWaypointDuplicateEpsilon = 1e-6;
+
+PathStateList dedupePathStates(const PathStateList& path) {
+    PathStateList filtered;
+    filtered.reserve(path.size());
+    for (const auto& state : path) {
+        if (!filtered.empty()) {
+            double dx = state.point.x - filtered.back().point.x;
+            double dy = state.point.y - filtered.back().point.y;
+            if (std::fabs(dx) <= kWaypointDuplicateEpsilon &&
+                std::fabs(dy) <= kWaypointDuplicateEpsilon) {
+                continue;
+            }
+        }
+        filtered.push_back(state);
+    }
+    return filtered;
+}
+
+} // namespace
+
 bool savePathToCSV(const PathStateList& path, const std::string& filename) {
     std::ofstream file(filename);
     if (!file.is_open()) {
@@ -1273,7 +1296,8 @@ bool savePathToCSV(const PathStateList& path, const std::string& filename) {
     }
     
     file << "x,y\n";
-    for (const auto& state : path) {
+    PathStateList deduped_path = dedupePathStates(path);
+    for (const auto& state : deduped_path) {
         file << std::fixed << std::setprecision(6) 
              << state.point.x << "," << state.point.y << "\n";
     }
