@@ -6,6 +6,7 @@
 #include <odrive_can/msg/controller_status.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <tf2/LinearMath/Quaternion.h>
@@ -153,6 +154,11 @@ public:
             "/left/controller_status", 10, std::bind(&DiffDriveController::left_status_callback, this, std::placeholders::_1));
         right_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
             "/right/controller_status", 10, std::bind(&DiffDriveController::right_status_callback, this, std::placeholders::_1));
+        
+        // MPC autonomy enable subscription - when active, ignore cmd_vel to let MPC control motors
+        mpc_autonomy_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+            "/mpc_autonomy_enable", 10, std::bind(&DiffDriveController::mpc_autonomy_callback, this, std::placeholders::_1));
+        RCLCPP_INFO(this->get_logger(), "Subscribed to /mpc_autonomy_enable for MPC handoff");
         
         // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
         // third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
@@ -394,8 +400,31 @@ private:
     }
 
 
+    // ---------------- MPC Autonomy Callback ----------------
+    void mpc_autonomy_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+        bool new_state = msg->data;
+        if (new_state != mpc_autonomy_active_) {
+            mpc_autonomy_active_ = new_state;
+            if (mpc_autonomy_active_) {
+                RCLCPP_INFO(this->get_logger(), "🤖 MPC AUTONOMY ENABLED - diff_drive_controller yielding motor control");
+                // Send zero command to stop any ongoing motion before MPC takes over
+                send_zero_torque();
+            } else {
+                RCLCPP_INFO(this->get_logger(), "🎮 MANUAL TELEOP ENABLED - diff_drive_controller resuming motor control");
+            }
+        }
+    }
+
     // ---------------- Command Velocity ----------------
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
+        // SAFETY: When MPC autonomy is active, ignore all cmd_vel commands
+        // This prevents fighting for motor control between teleop and MPC
+        if (mpc_autonomy_active_) {
+            // Don't log every ignored message to avoid spam, but update time
+            last_cmd_time_ = this->get_clock()->now();
+            return;
+        }
+        
         const double linear_vel  = msg->linear.x;   // m/s
         const double angular_vel = msg->angular.z;  // rad/s
         last_cmd_time_           = this->get_clock()->now();
@@ -752,6 +781,9 @@ private:
 
     bool   invert_left_{true}, invert_right_{false};
     
+    // MPC autonomy state - when true, ignore cmd_vel and let MPC control motors
+    bool   mpc_autonomy_active_{false};
+    
     // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
     // bool   invert_third_{false};
     // double third_wheel_radius_{0.03}, third_gear_ratio_{1.0};
@@ -780,6 +812,7 @@ private:
     
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_sub_;
     
     // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
     // rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr third_status_sub_;

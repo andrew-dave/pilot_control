@@ -1,5 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <std_srvs/srv/set_bool.hpp>
@@ -25,6 +26,7 @@ public:
         // Initialize angular magnitude used for A/D turns
         ang_mag_ = std::min(1.0, std::max(0.0, max_angular_velocity_));
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+        mpc_autonomy_pub_ = create_publisher<std_msgs::msg::Bool>("/mpc_autonomy_enable", 10);
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
         gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
@@ -56,7 +58,8 @@ public:
         
         RCLCPP_INFO(get_logger(), "SDL window created successfully");
         RCLCPP_INFO(get_logger(), "Teleop started. Controls:");
-        RCLCPP_INFO(get_logger(), "  WASD - Move robot");
+        RCLCPP_INFO(get_logger(), "  WASD - Move robot (disabled when MPC active)");
+        RCLCPP_INFO(get_logger(), "  X - Toggle MPC autonomous control");
         RCLCPP_INFO(get_logger(), "  E - Arm motors");
         RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
         RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
@@ -148,103 +151,93 @@ public:
     void arm_motors() {
         RCLCPP_INFO(get_logger(), "Arming motors (CLOSED_LOOP_CONTROL)...");
         
-        // Check if services are available
-        if (!left_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "Left ODrive service not available!");
-            return;
-        }
-        if (!right_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
-            return;
-        }
-        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
-            return;
-        }
-        
-        RCLCPP_INFO(get_logger(), "ODrive services available, sending arm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
         request->axis_requested_state = 8; // CLOSED_LOOP_CONTROL
         
-        auto left_future = left_axis_client_->async_send_request(request);
-        auto right_future = right_axis_client_->async_send_request(request);
-        auto gpr_future = gpr_axis_client_->async_send_request(request);
+        // Send async requests with callbacks - no blocking!
+        auto left_future = left_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ Left motor armed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Left motor arm failed: %s", e.what());
+                }
+            });
         
-        // Wait for responses
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto left_response = left_future.get();
-            RCLCPP_INFO(get_logger(), "Left motor arm successful - State: %d, Errors: %d", 
-                       left_response->axis_state, left_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get left motor arm response");
-        }
+        auto right_future = right_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ Right motor armed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Right motor arm failed: %s", e.what());
+                }
+            });
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), right_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto right_response = right_future.get();
-            RCLCPP_INFO(get_logger(), "Right motor arm successful - State: %d, Errors: %d", 
-                       right_response->axis_state, right_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get right motor arm response");
-        }
+        auto gpr_future = gpr_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ GPR motor armed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ GPR motor arm failed: %s", e.what());
+                }
+            });
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto gpr_response = gpr_future.get();
-            RCLCPP_INFO(get_logger(), "GPR motor arm successful - State: %d, Errors: %d", 
-                       gpr_response->axis_state, gpr_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor arm response");
-        }
+        // Suppress unused variable warnings
+        (void)left_future;
+        (void)right_future;
+        (void)gpr_future;
     }
 
     void disarm_motors() {
         RCLCPP_INFO(get_logger(), "Disarming motors (IDLE)...");
         
-        // Check if services are available
-        if (!left_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "Left ODrive service not available!");
-            return;
-        }
-        if (!right_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "Right ODrive service not available!");
-            return;
-        }
-        if (!gpr_axis_client_->wait_for_service(std::chrono::seconds(2))) {
-            RCLCPP_ERROR(get_logger(), "GPR ODrive service not available!");
-            return;
-        }
-        
-        RCLCPP_INFO(get_logger(), "ODrive services available, sending disarm requests...");
         auto request = std::make_shared<odrive_can::srv::AxisState::Request>();
         request->axis_requested_state = 1; // IDLE
         
-        auto left_future = left_axis_client_->async_send_request(request);
-        auto right_future = right_axis_client_->async_send_request(request);
-        auto gpr_future = gpr_axis_client_->async_send_request(request);
+        // Send async requests with callbacks - no blocking!
+        auto left_future = left_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ Left motor disarmed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Left motor disarm failed: %s", e.what());
+                }
+            });
         
-        // Wait for responses
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), left_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto left_response = left_future.get();
-            RCLCPP_INFO(get_logger(), "Left motor disarm successful - State: %d, Errors: %d", 
-                       left_response->axis_state, left_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get left motor disarm response");
-        }
+        auto right_future = right_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ Right motor disarmed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ Right motor disarm failed: %s", e.what());
+                }
+            });
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), right_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto right_response = right_future.get();
-            RCLCPP_INFO(get_logger(), "Right motor disarm successful - State: %d, Errors: %d", 
-                       right_response->axis_state, right_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get right motor disarm response");
-        }
+        auto gpr_future = gpr_axis_client_->async_send_request(request,
+            [this](rclcpp::Client<odrive_can::srv::AxisState>::SharedFuture resp) {
+                try {
+                    auto result = resp.get();
+                    RCLCPP_INFO(this->get_logger(), "✓ GPR motor disarmed - State: %d, Errors: %d", 
+                               result->axis_state, result->active_errors);
+                } catch (const std::exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "✗ GPR motor disarm failed: %s", e.what());
+                }
+            });
         
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), gpr_future, std::chrono::seconds(5)) == rclcpp::FutureReturnCode::SUCCESS) {
-            auto gpr_response = gpr_future.get();
-            RCLCPP_INFO(get_logger(), "GPR motor disarm successful - State: %d, Errors: %d", 
-                       gpr_response->axis_state, gpr_response->active_errors);
-        } else {
-            RCLCPP_ERROR(get_logger(), "Failed to get GPR motor disarm response");
-        }
+        // Suppress unused variable warnings
+        (void)left_future;
+        (void)right_future;
+        (void)gpr_future;
     }
 
     // ---------------- GPR line control ----------------
@@ -434,27 +427,59 @@ private:
                     double old = ang_mag_;
                     ang_mag_ = std::max(0.0, ang_mag_ - 0.1);
                     RCLCPP_INFO(get_logger(), "Angular magnitude decreased: %.2f -> %.2f rad/s", old, ang_mag_);
+                } else if (event.key.keysym.sym == SDLK_x) {
+                    // Toggle MPC autonomous control
+                    mpc_autonomy_enabled_ = !mpc_autonomy_enabled_;
+                    auto msg = std_msgs::msg::Bool();
+                    msg.data = mpc_autonomy_enabled_;
+                    mpc_autonomy_pub_->publish(msg);
+                    if (mpc_autonomy_enabled_) {
+                        RCLCPP_INFO(get_logger(), "");
+                        RCLCPP_INFO(get_logger(), "╔═══════════════════════════════════════════════════════╗");
+                        RCLCPP_INFO(get_logger(), "║  🤖 MPC AUTONOMOUS CONTROL: ENABLED                   ║");
+                        RCLCPP_INFO(get_logger(), "║  • WASD teleop DISABLED - MPC controls motors         ║");
+                        RCLCPP_INFO(get_logger(), "║  • Other keys (M,R,T,B,G,E,Q) still work              ║");
+                        RCLCPP_INFO(get_logger(), "║  • Press X again to return to manual control          ║");
+                        RCLCPP_INFO(get_logger(), "╚═══════════════════════════════════════════════════════╝");
+                        RCLCPP_INFO(get_logger(), "");
+                    } else {
+                        RCLCPP_INFO(get_logger(), "");
+                        RCLCPP_INFO(get_logger(), "╔═══════════════════════════════════════════════════════╗");
+                        RCLCPP_INFO(get_logger(), "║  🎮 MANUAL TELEOP CONTROL: ENABLED                    ║");
+                        RCLCPP_INFO(get_logger(), "║  • WASD teleop ACTIVE - manual motor control          ║");
+                        RCLCPP_INFO(get_logger(), "║  • MPC autonomous control DISABLED                    ║");
+                        RCLCPP_INFO(get_logger(), "║  • Press X to enable MPC autonomous mode              ║");
+                        RCLCPP_INFO(get_logger(), "╚═══════════════════════════════════════════════════════╝");
+                        RCLCPP_INFO(get_logger(), "");
+                    }
                 }
             }
         }
 
-        const Uint8* keys = SDL_GetKeyboardState(NULL);
-        // Robot teleoperation (WASD)
-        if (keys[SDL_SCANCODE_W]) {
-            cmd_vel_msg.linear.x = 0.4;  // Forward
-        } else if (keys[SDL_SCANCODE_S]) {
-            cmd_vel_msg.linear.x = -0.4; // Backward
-        }
-        if (keys[SDL_SCANCODE_A]) {
-            cmd_vel_msg.angular.z = ang_mag_; // Left (adjustable)
-        } else if (keys[SDL_SCANCODE_D]) {
-            cmd_vel_msg.angular.z = -ang_mag_; // Right (adjustable)
-        }
+        // Only process WASD teleop when MPC autonomous control is DISABLED
+        // When MPC is active, we don't send any cmd_vel to avoid fighting for motor control
+        if (!mpc_autonomy_enabled_) {
+            const Uint8* keys = SDL_GetKeyboardState(NULL);
+            // Robot teleoperation (WASD)
+            if (keys[SDL_SCANCODE_W]) {
+                cmd_vel_msg.linear.x = 0.4;  // Forward
+            } else if (keys[SDL_SCANCODE_S]) {
+                cmd_vel_msg.linear.x = -0.4; // Backward
+            }
+            if (keys[SDL_SCANCODE_A]) {
+                cmd_vel_msg.angular.z = ang_mag_; // Left (adjustable)
+            } else if (keys[SDL_SCANCODE_D]) {
+                cmd_vel_msg.angular.z = -ang_mag_; // Right (adjustable)
+            }
 
-        cmd_vel_pub_->publish(cmd_vel_msg);
+            cmd_vel_pub_->publish(cmd_vel_msg);
+        }
+        // Note: When MPC is enabled, we intentionally don't publish cmd_vel
+        // This ensures diff_drive_controller doesn't interfere with MPC motor commands
     }
 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_pub_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr gpr_axis_client_;
@@ -496,6 +521,9 @@ private:
     double max_linear_velocity_{1.5};
     double max_angular_velocity_{3.5};
     double ang_mag_{0.5};
+    
+    // MPC autonomy state - when true, WASD teleop is disabled and MPC controls motors
+    bool mpc_autonomy_enabled_{false};
 };
 
 int main(int argc, char *argv[]) {

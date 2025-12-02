@@ -1028,6 +1028,9 @@ class MPCAutonomousController(Node):
         self.waypoint_navigation_active: bool = False
         self.previous_waypoint: Optional[Tuple[float, float]] = None
         
+        # Pending waypoints from F2C GUI (stored until "Start Navigation" is pressed)
+        self.pending_waypoints: List[Tuple[float, float]] = []
+        
         # Control outputs
         self.left_wheel_velocity = 0.0   # rad/s (motor turns/s)
         self.right_wheel_velocity = 0.0  # rad/s (motor turns/s)
@@ -1769,7 +1772,10 @@ class MPCAutonomousController(Node):
         Callback for waypoint arrays from F2C GUI.
         Format (same as pose_controller):
           [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
-        We start autonomous navigation immediately upon receiving a valid list.
+        
+        Behavior:
+          - When receiving waypoint list: Store in pending_waypoints (don't start yet)
+          - When receiving [0.0] signal: Start navigation with pending waypoints
         """
         try:
             data = list(msg.data)
@@ -1777,10 +1783,10 @@ class MPCAutonomousController(Node):
                 self.get_logger().warn('Received empty /f2c_waypoints message')
                 return
 
-            # In pose_controller, [0.0] is used as a "start" signal for pending waypoints.
-            # Here we start immediately from the full list, so we ignore pure [0.0] messages.
+            # [0.0] is the "Start Navigation" signal from F2C GUI
             if len(data) == 1 and data[0] == 0.0:
-                self.get_logger().info('Received /f2c_waypoints start signal [0.0] - ignored (MPC starts on full list)')
+                self.get_logger().info('Received /f2c_waypoints start signal [0.0]')
+                self._start_pending_navigation()
                 return
 
             if len(data) % 4 != 0:
@@ -1799,26 +1805,60 @@ class MPCAutonomousController(Node):
                 self.get_logger().error('Parsed zero waypoints from /f2c_waypoints')
                 return
 
-            if not self.pose_initialized:
-                self.get_logger().error(
-                    'Odometry not initialized yet - cannot start F2C waypoint navigation'
-                )
-                return
-
-            # Initialize waypoint navigation from F2C list
-            self.waypoints = waypoints_xy
-            self.current_waypoint_index = 0
-            self.waypoint_navigation_active = True
-            self.previous_waypoint = (self.current_x, self.current_y)
-
-            # Start navigation to first waypoint immediately
-            self._set_next_waypoint_target()
-
-            self.get_logger().info(
-                f'🚀 F2C waypoint navigation started: {num_waypoints} waypoints from /f2c_waypoints'
-            )
+            # Store waypoints as pending (don't start navigation yet)
+            self.pending_waypoints = waypoints_xy
+            
+            self.get_logger().info('')
+            self.get_logger().info('╔═══════════════════════════════════════════════════════╗')
+            self.get_logger().info(f'║  📡 RECEIVED {num_waypoints} WAYPOINTS FROM F2C GUI')
+            self.get_logger().info('║  ⏳ Waiting for "Start Navigation" button...         ║')
+            self.get_logger().info('║  (Or press X to enable MPC, then click Start)        ║')
+            self.get_logger().info('╚═══════════════════════════════════════════════════════╝')
+            self.get_logger().info('')
+            
+            # Log first few waypoints for verification
+            for idx, (x, y) in enumerate(waypoints_xy[:5]):
+                self.get_logger().info(f'  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}')
+            if num_waypoints > 5:
+                self.get_logger().info(f'  ... and {num_waypoints - 5} more waypoints')
+                
         except Exception as e:
             self.get_logger().error(f'Error handling /f2c_waypoints: {e}')
+    
+    def _start_pending_navigation(self) -> None:
+        """
+        Start navigation with previously received pending waypoints.
+        Called when "Start Navigation" button is pressed in F2C GUI (sends [0.0] signal).
+        """
+        if not self.pending_waypoints:
+            self.get_logger().warn('⚠️  No pending waypoints to navigate - publish waypoints first!')
+            return
+        
+        if not self.pose_initialized:
+            self.get_logger().error(
+                '❌ Odometry not initialized yet - cannot start navigation'
+            )
+            return
+        
+        # Transfer pending waypoints to active navigation
+        self.waypoints = self.pending_waypoints.copy()
+        self.pending_waypoints = []  # Clear pending
+        self.current_waypoint_index = 0
+        self.waypoint_navigation_active = True
+        self.previous_waypoint = (self.current_x, self.current_y)
+        
+        # Start navigation to first waypoint
+        self._set_next_waypoint_target()
+        
+        self.get_logger().info('')
+        self.get_logger().info('╔═══════════════════════════════════════════════════════╗')
+        self.get_logger().info(f'║  🚀 NAVIGATION STARTED: {len(self.waypoints)} waypoints')
+        if self.autonomy_enabled:
+            self.get_logger().info('║  ✅ MPC autonomy is ENABLED - robot will move         ║')
+        else:
+            self.get_logger().info('║  ⚠️  MPC autonomy DISABLED - press X to enable!       ║')
+        self.get_logger().info('╚═══════════════════════════════════════════════════════╝')
+        self.get_logger().info('')
     
     def autonomy_enable_callback(self, msg: Bool) -> None:
         """
