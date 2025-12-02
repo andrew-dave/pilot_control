@@ -1202,6 +1202,11 @@ class MPCAutonomousController(Node):
         self._arm_timer = self.create_timer(1.0, self._attempt_arm_motors)
         self._last_log_time_ns = {}  # For throttled logging
         
+        # Control loop timing diagnostics
+        self._last_control_time_ns: Optional[int] = None
+        self._control_freq_ema: Optional[float] = None
+        self._last_control_freq_log_time_ns: int = 0
+        
         # ============================================================
         # CONTROL LOOP TIMER
         # ============================================================
@@ -1504,7 +1509,7 @@ class MPCAutonomousController(Node):
         closest_y = self.path_start_y + t_closest * path_dy
 
         # Compute waypoint spacing: distance traveled at cruising speed for one time step
-        cruising_speed = 0.5  # Fixed cruising speed as requested
+        cruising_speed = 1.0 # Fixed cruising speed as requested
         waypoint_spacing = cruising_speed * self.mpc_dt  # m (should be 0.04m)
 
         # Compute distance from closest point to target along path
@@ -2003,6 +2008,27 @@ class MPCAutonomousController(Node):
         """
         Main control loop - runs at specified frequency.
         """
+        # --- Control loop timing diagnostics (measure actual frequency) ---
+        now_ns = self.get_clock().now().nanoseconds
+        if self._last_control_time_ns is not None:
+            dt = (now_ns - self._last_control_time_ns) / 1e9
+            if dt > 1e-6:
+                inst_freq = 1.0 / dt
+                if self._control_freq_ema is None:
+                    self._control_freq_ema = inst_freq
+                else:
+                    alpha = 0.1  # smoothing factor for EMA
+                    self._control_freq_ema = (1.0 - alpha) * self._control_freq_ema + alpha * inst_freq
+                
+                # Log the EMA control frequency at most every 5 seconds
+                if now_ns - self._last_control_freq_log_time_ns >= int(5.0 * 1e9):
+                    self._last_control_freq_log_time_ns = now_ns
+                    if self._control_freq_ema is not None:
+                        self.get_logger().info(
+                            f'Control loop frequency (EMA): {self._control_freq_ema:.2f} Hz '
+                            f'(requested: {self.control_freq:.2f} Hz)'
+                        )
+        self._last_control_time_ns = now_ns
         # Check if pose and encoders are initialized
         if not self.pose_initialized:
             self.publish_zero_velocity()
@@ -2081,9 +2107,6 @@ class MPCAutonomousController(Node):
             pass
         
         # Generate local waypoints for MPC
-        self.get_logger().info(
-            f'Current pos: x={self.current_x:.3f}, y={self.current_y:.3f}, yaw={self.current_yaw:.3f}'
-        )
         reference_trajectory = self.generate_local_waypoints()
 
         if len(reference_trajectory) == 0:
@@ -2096,12 +2119,6 @@ class MPCAutonomousController(Node):
         if len(reference_trajectory) > 0:
             ref_waypoint = reference_trajectory[0]  # First waypoint (ahead on path)
             current_error = self.compute_error_state(ref_waypoint)
-            
-            # Log for debugging
-            self.get_logger().info(
-                f'MPC Reference (Waypoint 0): x={ref_waypoint[0]:.3f}, y={ref_waypoint[1]:.3f}, '
-                f'yaw={ref_waypoint[2]:.3f}'
-            )
         else:
             # Fallback: compute relative to closest point if no waypoints
             path_dx = self.target_x - self.path_start_x
@@ -2128,16 +2145,16 @@ class MPCAutonomousController(Node):
                 current_error = np.array([0.0, 0.0, 0.0])
                 self.get_logger().warn('No waypoints and path length too small, using zero error')
         
-        # Debug: Log waypoint and error state information
-        if len(reference_trajectory) > 0:
-            self.get_logger().info(
+        # Debug: Log waypoint and error state information (only if solver debug is enabled)
+        if self.solver_debug_enabled and len(reference_trajectory) > 0:
+            self.get_logger().debug(
                 f'MPC Current Error: xe={current_error[0]:.3f}, ye={current_error[1]:.3f}, '
                 f'θe={current_error[2]:.3f} (relative to first waypoint, should be zero when reached)'
             )
             # Log first few waypoints for verification
             for k in range(min(3, len(reference_trajectory))):
                 wp = reference_trajectory[k]
-                self.get_logger().info(
+                self.get_logger().debug(
                     f'MPC Waypoint {k}: x={wp[0]:.3f}, y={wp[1]:.3f}, yaw={wp[2]:.3f}, '
                     f'v={math.sqrt(wp[3]**2 + wp[4]**2):.3f}, w={wp[5]:.3f}'
                 )
