@@ -2067,16 +2067,37 @@ class MPCAutonomousController(Node):
         
         # Check if target has been reached (stopping criteria)
         if not self.target_reached:
-            # Compute forward error: distance to target projected along the robot's
-            # current heading direction (body-frame x axis). This ignores pure
-            # lateral offset and only considers progress along the path direction.
-            dx_to_target = self.target_x - self.current_x
-            dy_to_target = self.target_y - self.current_y
-            cos_yaw = math.cos(self.current_yaw)
-            sin_yaw = math.sin(self.current_yaw)
-            forward_error = cos_yaw * dx_to_target + sin_yaw * dy_to_target
+            # Compute distance to target ALONG THE PATH LINE, not Euclidean distance
+            # and not along the robot's current heading. This uses the straight-line
+            # segment from path_start -> target and measures how much distance
+            # remains along that segment, ignoring lateral offset.
+            dx_path = self.target_x - self.path_start_x
+            dy_path = self.target_y - self.path_start_y
+            path_length = math.sqrt(dx_path*dx_path + dy_path*dy_path)
             
-            if abs(forward_error) <= self.target_reached_threshold:
+            if path_length > 1e-6:
+                path_dir_x = dx_path / path_length
+                path_dir_y = dy_path / path_length
+                
+                to_current_x = self.current_x - self.path_start_x
+                to_current_y = self.current_y - self.path_start_y
+                
+                # Signed distance from start along the path line
+                s_current = to_current_x * path_dir_x + to_current_y * path_dir_y
+                # Clamp to [0, path_length]
+                if s_current < 0.0:
+                    s_current = 0.0
+                elif s_current > path_length:
+                    s_current = path_length
+                
+                distance_along_line_remaining = path_length - s_current
+            else:
+                # Degenerate path: fall back to simple Euclidean distance
+                dx_to_target = self.target_x - self.current_x
+                dy_to_target = self.target_y - self.current_y
+                distance_along_line_remaining = math.sqrt(dx_to_target**2 + dy_to_target**2)
+            
+            if distance_along_line_remaining <= self.target_reached_threshold:
                 self.target_reached = True
                 
                 # If we are following a CSV waypoint sequence, move to the next waypoint
@@ -2098,7 +2119,8 @@ class MPCAutonomousController(Node):
                     self.has_target = False
                     self.publish_zero_velocity()
                     self.get_logger().info(
-                        f'✅ Target reached! Forward error: {forward_error:.3f} m '
+                        f'✅ Target reached! Distance along path line: '
+                        f'{distance_along_line_remaining:.3f} m '
                         f'(threshold: {self.target_reached_threshold:.3f} m)'
                     )
                     self.get_logger().info(
