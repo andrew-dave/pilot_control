@@ -384,7 +384,7 @@ def generate_launch_description():
             # Control parameters
             'control_frequency': 10.0,          # Hz
             'max_linear_velocity': 0.5,         # m/s
-            'max_angular_velocity': 4.0,        # rad/s
+            'max_angular_velocity': 1.0,        # rad/s
 
             # MPC parameters
             'mpc_horizon': 50,

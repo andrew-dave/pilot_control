@@ -76,7 +76,8 @@ class SlipAwareMPC:
     """
     
     def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None, 
-                 weight_increase_xe=0.0, weight_increase_ye=0.0, weight_increase_yaw=0.0):
+                 weight_increase_xe=0.0, weight_increase_ye=0.0, weight_increase_yaw=0.0,
+                 v_min=None, v_max=None, omega_min=None, omega_max=None):
         """
         Initialize MPC optimizer.
         
@@ -98,11 +99,16 @@ class SlipAwareMPC:
                                Weight at step k = base_weight * (1 + weight_increase_ye * k)
             weight_increase_yaw: Linear weight increase factor per time step for yaw error.
                                 Weight at step k = base_weight * (1 + weight_increase_yaw * k)
+            v_min, v_max: Optional bounds on linear velocity v of the robot [m/s].
+                          If not provided, they are derived from wheel limits.
+            omega_min, omega_max: Optional bounds on angular velocity ω of the robot [rad/s].
+                                  If not provided, they are derived from wheel limits.
         """
         self.N = N
         self.Ts = Ts
         self.r = r
         self.L = L
+        # Wheel limits (rad/s)
         self.w_min = w_min
         self.w_max = w_max
         self.logger = logger
@@ -114,6 +120,26 @@ class SlipAwareMPC:
         self.nx = 3  # [xe, ye, θe]
         self.nu = 2  # [ωL, ωR]
         self.nz = N * (self.nu + self.nx)  # Decision vector size
+
+        # ------------------------------------------------------------
+        # Robot-level velocity limits (v and ω) for constraints
+        # ------------------------------------------------------------
+        # If not explicitly provided, derive conservative values from wheel limits.
+        # v = (r/2)*(ωL + ωR)  ⇒ |v| ≤ r * |w_max|
+        # ω = (r/L)*(ωR - ωL)  ⇒ |ω| ≤ 2*r*|w_max|/L
+        if v_max is None:
+            v_max = abs(self.r * self.w_max)
+        if v_min is None:
+            v_min = -v_max
+        if omega_max is None:
+            omega_max = abs(2.0 * self.r * self.w_max / self.L) if self.L != 0.0 else 0.0
+        if omega_min is None:
+            omega_min = -omega_max
+
+        self.v_min = float(v_min)
+        self.v_max = float(v_max)
+        self.omega_min = float(omega_min)
+        self.omega_max = float(omega_max)
         
         # Base cost matrix Q (for states) - will be scaled per time step in setup()
         self.Q_xe_base = Q_xe
@@ -161,6 +187,8 @@ class SlipAwareMPC:
         nx = self.nx
         nu = self.nu
         nz = self.nz
+        r = self.r
+        L = self.L
         
         # ============================================================
         # STEP 1: BUILD COST MATRIX P
@@ -298,7 +326,11 @@ class SlipAwareMPC:
         
         # Number of constraints
         n_dynamics = N * nx  # Dynamics constraints
-        n_input_bounds = N * nu  # Input bound constraints
+        # For inputs we now constrain robot linear velocity v and angular velocity ω
+        # instead of individual wheel speeds. Each step contributes:
+        #   - 1 constraint for v
+        #   - 1 constraint for ω
+        n_input_bounds = N * 2
         n_constraints = n_dynamics + n_input_bounds
         
         # Build constraint matrix structure using COO format
@@ -353,14 +385,42 @@ class SlipAwareMPC:
             
             constraint_row += nx
         
-        # Input bound constraints: w_min <= u_k <= w_max
+        # Input bound constraints: bounds on robot v and ω
+        #
+        # v = (r/2) * (ωL + ωR)
+        # ω = (r/L) * (ωR - ωL)
+        #
+        # We encode these as linear inequalities in terms of wheel speeds.
         for k in range(N):
             u_k_idx = k * (nu + nx)
-            for j in range(nu):
-                row_indices.append(constraint_row)
-                col_indices.append(u_k_idx + j)
-                data_values.append(1.0)  # Identity for input bounds
-                constraint_row += 1
+
+            # --- Linear velocity constraint: v_min <= v <= v_max ---
+            # Row for v: coefficients on [ωL, ωR] -> [r/2, r/2]
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 0)  # ωL
+            data_values.append(r / 2.0)
+
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 1)  # ωR
+            data_values.append(r / 2.0)
+            constraint_row += 1
+
+            # --- Angular velocity constraint: omega_min <= ω <= omega_max ---
+            # Row for ω: coefficients on [ωL, ωR] -> [-r/L, +r/L]
+            # Guard against L == 0 just in case (should not happen in practice).
+            if L != 0.0:
+                coeff_omega = r / L
+            else:
+                coeff_omega = 0.0
+
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 0)  # ωL
+            data_values.append(-coeff_omega)
+
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 1)  # ωR
+            data_values.append(coeff_omega)
+            constraint_row += 1
         
         # Create sparse constraint matrix
         # Store COO format first to preserve index mapping
@@ -430,12 +490,18 @@ class SlipAwareMPC:
         # Dynamics constraints: equality (bounds = 0, will be updated for initial state)
         # Already zeros, no change needed
         
-        # Input bounds: w_min <= u_k <= w_max
+        # Input bounds: robot-level v and ω limits per step
         for k in range(N):
-            for j in range(nu):
-                bound_idx = n_dynamics + k * nu + j
-                self.l_constr[bound_idx] = self.w_min
-                self.u_constr[bound_idx] = self.w_max
+            # Index for v constraint at step k
+            v_idx = n_dynamics + 2 * k
+            # Index for ω constraint at step k
+            omega_idx = n_dynamics + 2 * k + 1
+
+            self.l_constr[v_idx] = self.v_min
+            self.u_constr[v_idx] = self.v_max
+
+            self.l_constr[omega_idx] = self.omega_min
+            self.u_constr[omega_idx] = self.omega_max
         
         # ============================================================
         # STEP 4: SETUP OSQP SOLVER
@@ -844,7 +910,7 @@ class MPCAutonomousController(Node):
         # Control parameters
         self.declare_parameter('control_frequency', 10.0)  # Hz
         self.declare_parameter('max_linear_velocity', 0.5) # m/s
-        self.declare_parameter('max_angular_velocity', 4.0) # rad/s
+        self.declare_parameter('max_angular_velocity', 1.0) # rad/s
         
         # MPC parameters
         self.declare_parameter('mpc_horizon', 50)           # Prediction horizon steps
@@ -982,8 +1048,9 @@ class MPCAutonomousController(Node):
         # Get solver debug setting
         self.solver_debug_enabled = self.get_parameter('solver_debug_enabled').value
         
-        # Compute wheel velocity limits (rad/s)
-        # Convert max linear velocity to max wheel angular velocity
+        # Compute wheel velocity limits (rad/s) from max linear velocity.
+        # These are used as physical wheel caps; MPC constraints are applied
+        # on robot linear and angular velocity (v, ω), not directly on wheels.
         max_wheel_vel_rev_per_s = self.max_linear_vel / (self.wheel_radius * 2.0 * math.pi)
         w_max = max_wheel_vel_rev_per_s * 2.0 * math.pi  # rad/s
         w_min = -w_max
@@ -1003,7 +1070,12 @@ class MPCAutonomousController(Node):
             logger=self.get_logger(),
             weight_increase_xe=mpc_weight_increase_xe,
             weight_increase_ye=mpc_weight_increase_ye,
-            weight_increase_yaw=mpc_weight_increase_yaw
+            weight_increase_yaw=mpc_weight_increase_yaw,
+            # Robot-level velocity limits (used for constraints inside MPC)
+            v_min=-self.max_linear_vel,
+            v_max=self.max_linear_vel,
+            omega_min=-self.max_angular_vel,
+            omega_max=self.max_angular_vel
         )
         
         # Set solver debug flag on optimizer
