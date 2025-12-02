@@ -89,7 +89,7 @@ def generate_launch_description():
     )
     declare_mpc_R_delta_arg = DeclareLaunchArgument(
         'mpc_R_delta',
-        default_value='0.00012',
+        default_value='0.00010',
         description='MPC cost weight for control input change (delta u)'
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
@@ -99,7 +99,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_ye_arg = DeclareLaunchArgument(
         'mpc_weight_increase_ye',
-        default_value='0.0',
+        default_value='0.1',
         description='Linear weight increase factor per time step for ye error. Weight at step k = base_weight * (1 + weight_increase_ye * k). Example: 0.1 means 10% increase per step.'
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(

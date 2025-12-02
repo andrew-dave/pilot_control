@@ -2067,11 +2067,16 @@ class MPCAutonomousController(Node):
         
         # Check if target has been reached (stopping criteria)
         if not self.target_reached:
+            # Compute forward error: distance to target projected along the robot's
+            # current heading direction (body-frame x axis). This ignores pure
+            # lateral offset and only considers progress along the path direction.
             dx_to_target = self.target_x - self.current_x
             dy_to_target = self.target_y - self.current_y
-            distance_to_target = math.sqrt(dx_to_target**2 + dy_to_target**2)
+            cos_yaw = math.cos(self.current_yaw)
+            sin_yaw = math.sin(self.current_yaw)
+            forward_error = cos_yaw * dx_to_target + sin_yaw * dy_to_target
             
-            if distance_to_target <= self.target_reached_threshold:
+            if abs(forward_error) <= self.target_reached_threshold:
                 self.target_reached = True
                 
                 # If we are following a CSV waypoint sequence, move to the next waypoint
@@ -2093,8 +2098,8 @@ class MPCAutonomousController(Node):
                     self.has_target = False
                     self.publish_zero_velocity()
                     self.get_logger().info(
-                        f'✅ Target reached! Distance: {distance_to_target*100:.1f}cm '
-                        f'(threshold: {self.target_reached_threshold*100:.1f}cm)'
+                        f'✅ Target reached! Forward error: {forward_error:.3f} m '
+                        f'(threshold: {self.target_reached_threshold:.3f} m)'
                     )
                     self.get_logger().info(
                         f'   Final position: x={self.current_x:.3f}m, y={self.current_y:.3f}m, '
