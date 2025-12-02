@@ -99,12 +99,12 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_ye_arg = DeclareLaunchArgument(
         'mpc_weight_increase_ye',
-        default_value='0.5',
+        default_value='0.0',
         description='Linear weight increase factor per time step for ye error. Weight at step k = base_weight * (1 + weight_increase_ye * k). Example: 0.1 means 10% increase per step.'
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         'mpc_weight_increase_yaw',
-        default_value='0.1',
+        default_value='0.0',
         description='Linear weight increase factor per time step for yaw error. Weight at step k = base_weight * (1 + weight_increase_yaw * k). Example: 0.1 means 10% increase per step.'
     )
     
