@@ -1205,6 +1205,7 @@ class MPCAutonomousController(Node):
         # Control loop timing diagnostics
         self._last_control_time_ns: Optional[int] = None
         self._control_freq_ema: Optional[float] = None
+        self._control_dt_ema: Optional[float] = None
         self._last_control_freq_log_time_ns: int = 0
         
         # ============================================================
@@ -2008,7 +2009,7 @@ class MPCAutonomousController(Node):
         """
         Main control loop - runs at specified frequency.
         """
-        # --- Control loop timing diagnostics (measure actual frequency) ---
+        # --- Control loop timing diagnostics (measure actual dt and frequency) ---
         now_ns = self.get_clock().now().nanoseconds
         if self._last_control_time_ns is not None:
             dt = (now_ns - self._last_control_time_ns) / 1e9
@@ -2020,12 +2021,23 @@ class MPCAutonomousController(Node):
                     alpha = 0.1  # smoothing factor for EMA
                     self._control_freq_ema = (1.0 - alpha) * self._control_freq_ema + alpha * inst_freq
                 
-                # Log the EMA control frequency at most every 5 seconds
+                # Track an EMA of dt as well
+                if self._control_dt_ema is None:
+                    self._control_dt_ema = dt
+                else:
+                    alpha = 0.1
+                    self._control_dt_ema = (1.0 - alpha) * self._control_dt_ema + alpha * dt
+                
+                # Optional per-cycle debug of dt (only visible at DEBUG log level)
+                self.get_logger().debug(f'MPC control loop dt: {dt*1000.0:.3f} ms')
+                
+                # Log the EMA timing at most every 5 seconds
                 if now_ns - self._last_control_freq_log_time_ns >= int(5.0 * 1e9):
                     self._last_control_freq_log_time_ns = now_ns
-                    if self._control_freq_ema is not None:
+                    if self._control_freq_ema is not None and self._control_dt_ema is not None:
                         self.get_logger().info(
-                            f'Control loop frequency (EMA): {self._control_freq_ema:.2f} Hz '
+                            f'Control loop timing (EMA): dt={self._control_dt_ema*1000.0:.2f} ms, '
+                            f'freq={self._control_freq_ema:.2f} Hz '
                             f'(requested: {self.control_freq:.2f} Hz)'
                         )
         self._last_control_time_ns = now_ns

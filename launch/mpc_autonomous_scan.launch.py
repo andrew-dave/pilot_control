@@ -252,7 +252,7 @@ def generate_launch_description():
             'mpc_weight_increase_yaw': LaunchConfiguration('mpc_weight_increase_yaw'),
             
             # Solver debug
-            'solver_debug_enabled': True,
+            'solver_debug_enabled': False,
             
             # Slip estimation parameters
             'slip_history_length': LaunchConfiguration('slip_history_length'),
