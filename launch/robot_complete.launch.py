@@ -392,7 +392,7 @@ def generate_launch_description():
             'mpc_Q_xe': 15.0,
             'mpc_Q_ye': 20.0,
             'mpc_Q_yaw': 5.0,
-            'mpc_R_delta': 0.00010,
+            'mpc_R_delta': 0.00015,
             'mpc_weight_increase_xe': 0.0,
             'mpc_weight_increase_ye': 0.1,
             'mpc_weight_increase_yaw': 0.0,
