@@ -491,7 +491,11 @@ private:
 
         // Watchdog: if no cmd_vel recently, coast all motors
         const double ms_since_cmd = (current_time - last_cmd_time_).seconds() * 1000.0;
-        if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
+        if (mpc_autonomy_active_) {
+            // When MPC is active we intentionally stay silent - do not send zero torque packets.
+            // Keep last_cmd_time_ fresh so that teleop resumes cleanly once MPC is disabled.
+            last_cmd_time_ = current_time;
+        } else if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
             send_zero_torque();
         }
 
