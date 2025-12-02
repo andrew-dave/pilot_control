@@ -2142,7 +2142,13 @@ class MPCAutonomousController(Node):
         """
         Main control loop - runs at specified frequency.
         """
-        # --- Control loop timing diagnostics (measure actual dt and frequency) ---
+        # If autonomy is not enabled, do nothing at all.
+        # Let diff_drive_controller handle motor control via teleop.
+        # No logging, no timing diagnostics - completely silent.
+        if not self.autonomy_enabled:
+            return
+        
+        # --- Control loop timing diagnostics (only when autonomy enabled) ---
         now_ns = self.get_clock().now().nanoseconds
         if self._last_control_time_ns is not None:
             dt = (now_ns - self._last_control_time_ns) / 1e9
@@ -2174,11 +2180,6 @@ class MPCAutonomousController(Node):
                             f'(requested: {self.control_freq:.2f} Hz)'
                         )
         self._last_control_time_ns = now_ns
-        
-        # If autonomy is not enabled, keep outputs at zero and do nothing else.
-        if not self.autonomy_enabled:
-            self.publish_zero_velocity()
-            return
         # Check if pose and encoders are initialized
         if not self.pose_initialized:
             self.publish_zero_velocity()
