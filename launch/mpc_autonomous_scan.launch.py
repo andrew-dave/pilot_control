@@ -254,6 +254,9 @@ def generate_launch_description():
             # Solver debug
             'solver_debug_enabled': False,
             
+            # Autonomy default: start enabled when using this dedicated MPC launch
+            'mpc_autonomy_enabled_default': True,
+            
             # Slip estimation parameters
             'slip_history_length': LaunchConfiguration('slip_history_length'),
             'slip_estimation_window': LaunchConfiguration('slip_estimation_window'),

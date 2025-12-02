@@ -366,6 +366,57 @@ def generate_launch_description():
         ]
     )
 
+    # MPC Autonomous Controller - MPC-based autonomous waypoint navigation
+    # Uses tilt-corrected odometry and ODrive CAN wheel encoders.
+    mpc_controller_node = Node(
+        package='pilot_control',
+        executable='mpc_autonomous_controller.py',
+        name='mpc_autonomous_controller',
+        output='screen',
+        parameters=[{
+            # Robot kinematics
+            'wheel_radius': LaunchConfiguration('wheel_radius'),
+            'wheel_base': LaunchConfiguration('wheel_base'),
+            'gear_ratio': 1.0,
+            'invert_left': False,
+            'invert_right': True,
+
+            # Control parameters
+            'control_frequency': 10.0,          # Hz
+            'max_linear_velocity': 0.5,         # m/s
+            'max_angular_velocity': 4.0,        # rad/s
+
+            # MPC parameters
+            'mpc_horizon': 50,
+            'mpc_dt': 0.1,
+            'mpc_Q_xe': 5.0,
+            'mpc_Q_ye': 20.0,
+            'mpc_Q_yaw': 5.0,
+            'mpc_R_delta': 0.00012,
+            'mpc_weight_increase_xe': 0.0,
+            'mpc_weight_increase_ye': 0.0,
+            'mpc_weight_increase_yaw': 0.0,
+
+            # Slip estimation parameters
+            'slip_history_length': 100,
+            'slip_estimation_window': 1.0,
+
+            # Waypoint / stopping parameters
+            'lookahead_distance': 0.5,
+            'target_reached_threshold': 0.05,
+
+            # Topic names (match existing robot wiring)
+            'odometry_topic': '/Odometry_tilt_corrected_diff',
+            'left_control_topic': '/left/control_message',
+            'right_control_topic': '/right/control_message',
+            'left_encoder_topic': '/left/controller_status',
+            'right_encoder_topic': '/right/controller_status',
+
+            # Solver debug
+            'solver_debug_enabled': False,
+        }]
+    )
+
     # Auto-start data collection after unified_data_collector is ready
     # start_recording = ExecuteProcess(
     #     cmd=['ros2', 'service', 'call', '/video_record_set', 'std_srvs/srv/SetBool', '{data: true}'],
@@ -397,6 +448,7 @@ def generate_launch_description():
                 right_odrive_node,
                 gpr_odrive_node,
                 diff_drive_controller,
+                mpc_controller_node,
                 livox_driver,  # Core 1 (dedicated)
                 fast_lio_node,  # Core 0 (dedicated, single-threaded SLAM)
                 # laser_map_rotator_node,

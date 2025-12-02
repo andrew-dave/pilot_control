@@ -29,7 +29,7 @@ Topics:
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64MultiArray, Float64, String
+from std_msgs.msg import Float64MultiArray, Float64, String, Bool
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage, ControllerStatus
 from odrive_can.srv import AxisState
@@ -900,6 +900,10 @@ class MPCAutonomousController(Node):
         # Stopping criteria
         self.target_reached_threshold = self.get_parameter('target_reached_threshold').value
         
+        # Autonomy default enable flag (can be overridden per-launch)
+        self.declare_parameter('mpc_autonomy_enabled_default', False)
+        self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
+        
         # Topic names
         odometry_topic = self.get_parameter('odometry_topic').value
         left_control_topic = self.get_parameter('left_control_topic').value
@@ -1076,6 +1080,28 @@ class MPCAutonomousController(Node):
             10
         )
         self.get_logger().info('Subscribed to waypoint CSV topic: /start_waypoint_navigation')
+        
+        # Subscriber for direct waypoint arrays from F2C GUI
+        # Format (same as pose_controller): [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
+        # or [0.0] as a potential start signal (ignored here, we start on full list).
+        self.f2c_waypoint_array_sub = self.create_subscription(
+            Float64MultiArray,
+            '/f2c_waypoints',
+            self.f2c_waypoint_array_callback,
+            10
+        )
+        self.get_logger().info('Subscribed to F2C waypoints: /f2c_waypoints')
+        
+        # Subscriber to enable/disable MPC autonomy (e.g. from a key-watcher node).
+        # When autonomy is disabled, this node will idle and publish zero velocity
+        # even if waypoints/targets have been received.
+        self.autonomy_enable_sub = self.create_subscription(
+            Bool,
+            '/mpc_autonomy_enable',
+            self.autonomy_enable_callback,
+            10
+        )
+        self.get_logger().info('Subscribed to autonomy enable topic: /mpc_autonomy_enable')
         
         # ============================================================
         # ROS PUBLISHERS
@@ -1738,6 +1764,73 @@ class MPCAutonomousController(Node):
         except Exception as e:
             self.get_logger().error(f'Error starting waypoint navigation: {e}')
     
+    def f2c_waypoint_array_callback(self, msg: Float64MultiArray) -> None:
+        """
+        Callback for waypoint arrays from F2C GUI.
+        Format (same as pose_controller):
+          [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
+        We start autonomous navigation immediately upon receiving a valid list.
+        """
+        try:
+            data = list(msg.data)
+            if len(data) == 0:
+                self.get_logger().warn('Received empty /f2c_waypoints message')
+                return
+
+            # In pose_controller, [0.0] is used as a "start" signal for pending waypoints.
+            # Here we start immediately from the full list, so we ignore pure [0.0] messages.
+            if len(data) == 1 and data[0] == 0.0:
+                self.get_logger().info('Received /f2c_waypoints start signal [0.0] - ignored (MPC starts on full list)')
+                return
+
+            if len(data) % 4 != 0:
+                self.get_logger().error(
+                    f'/f2c_waypoints length {len(data)} not divisible by 4; expected [x,y,z,yaw,...]'
+                )
+                return
+
+            num_waypoints = len(data) // 4
+            waypoints_xy: List[Tuple[float, float]] = []
+            for i in range(0, len(data), 4):
+                x, y, z, yaw = data[i:i+4]
+                waypoints_xy.append((float(x), float(y)))  # we ignore z, yaw for now
+
+            if not waypoints_xy:
+                self.get_logger().error('Parsed zero waypoints from /f2c_waypoints')
+                return
+
+            if not self.pose_initialized:
+                self.get_logger().error(
+                    'Odometry not initialized yet - cannot start F2C waypoint navigation'
+                )
+                return
+
+            # Initialize waypoint navigation from F2C list
+            self.waypoints = waypoints_xy
+            self.current_waypoint_index = 0
+            self.waypoint_navigation_active = True
+            self.previous_waypoint = (self.current_x, self.current_y)
+
+            # Start navigation to first waypoint immediately
+            self._set_next_waypoint_target()
+
+            self.get_logger().info(
+                f'🚀 F2C waypoint navigation started: {num_waypoints} waypoints from /f2c_waypoints'
+            )
+        except Exception as e:
+            self.get_logger().error(f'Error handling /f2c_waypoints: {e}')
+    
+    def autonomy_enable_callback(self, msg: Bool) -> None:
+        """
+        Enable or disable MPC autonomy.
+        When disabled, the controller will publish zero velocity even if targets
+        or waypoints are available. This allows manual driving first, then
+        enabling autonomy (e.g. via a keyboard-triggered node).
+        """
+        self.autonomy_enabled = bool(msg.data)
+        state = 'ENABLED' if self.autonomy_enabled else 'DISABLED'
+        self.get_logger().info(f'MPC autonomy {state} via /mpc_autonomy_enable')
+    
     # ============================================================
     # ERROR STATE COMPUTATION
     # ============================================================
@@ -2041,6 +2134,11 @@ class MPCAutonomousController(Node):
                             f'(requested: {self.control_freq:.2f} Hz)'
                         )
         self._last_control_time_ns = now_ns
+        
+        # If autonomy is not enabled, keep outputs at zero and do nothing else.
+        if not self.autonomy_enabled:
+            self.publish_zero_velocity()
+            return
         # Check if pose and encoders are initialized
         if not self.pose_initialized:
             self.publish_zero_velocity()
