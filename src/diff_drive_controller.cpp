@@ -407,8 +407,7 @@ private:
             mpc_autonomy_active_ = new_state;
             if (mpc_autonomy_active_) {
                 RCLCPP_INFO(this->get_logger(), "🤖 MPC AUTONOMY ENABLED - diff_drive_controller yielding motor control");
-                // Send zero command to stop any ongoing motion before MPC takes over
-                send_zero_torque();
+                // Don't send any command - just yield control to MPC immediately
             } else {
                 RCLCPP_INFO(this->get_logger(), "🎮 MANUAL TELEOP ENABLED - diff_drive_controller resuming motor control");
             }

@@ -1770,8 +1770,7 @@ class MPCAutonomousController(Node):
     def f2c_waypoint_array_callback(self, msg: Float64MultiArray) -> None:
         """
         Callback for waypoint arrays from F2C GUI.
-        Format (same as pose_controller):
-          [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
+        Format: [x1, y1, x2, y2, ...] (pairs of x,y coordinates)
         
         Behavior:
           - When receiving waypoint list: Store in pending_waypoints (don't start yet)
@@ -1789,17 +1788,17 @@ class MPCAutonomousController(Node):
                 self._start_pending_navigation()
                 return
 
-            if len(data) % 4 != 0:
+            if len(data) % 2 != 0:
                 self.get_logger().error(
-                    f'/f2c_waypoints length {len(data)} not divisible by 4; expected [x,y,z,yaw,...]'
+                    f'/f2c_waypoints length {len(data)} not divisible by 2; expected [x1,y1, x2,y2, ...]'
                 )
                 return
 
-            num_waypoints = len(data) // 4
+            num_waypoints = len(data) // 2
             waypoints_xy: List[Tuple[float, float]] = []
-            for i in range(0, len(data), 4):
-                x, y, z, yaw = data[i:i+4]
-                waypoints_xy.append((float(x), float(y)))  # we ignore z, yaw for now
+            for i in range(0, len(data), 2):
+                x, y = data[i], data[i+1]
+                waypoints_xy.append((float(x), float(y)))
 
             if not waypoints_xy:
                 self.get_logger().error('Parsed zero waypoints from /f2c_waypoints')
