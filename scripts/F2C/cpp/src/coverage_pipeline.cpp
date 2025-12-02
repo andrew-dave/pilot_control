@@ -120,6 +120,33 @@ PointCloudPtr filterByZBand(const PointCloudPtr& cloud, double z_band) {
     return filtered;
 }
 
+PointCloudPtr filterByZRange(const PointCloudPtr& cloud, double z_min, double z_max) {
+    if (cloud->empty()) {
+        return cloud;
+    }
+    
+    // Swap if min > max
+    if (z_min > z_max) {
+        std::swap(z_min, z_max);
+    }
+    
+    // Filter points within [z_min, z_max] range (relative to origin Z=0)
+    PointCloudPtr filtered(new PointCloud);
+    filtered->reserve(cloud->size());
+    
+    for (const auto& pt : cloud->points) {
+        if (pt.z >= z_min && pt.z <= z_max) {
+            filtered->push_back(pt);
+        }
+    }
+    
+    if (filtered->empty()) {
+        throw std::runtime_error("Z-range filter removed all points. Try adjusting Z min/max values.");
+    }
+    
+    return filtered;
+}
+
 PointCloudPtr subsampleRandom(const PointCloudPtr& cloud, size_t max_points) {
     if (max_points == 0 || cloud->size() <= max_points) {
         return cloud;
@@ -1000,46 +1027,34 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
             bool use_axial = config.use_axial_turns || (obstacles && !obstacles->empty());
             
             if (use_axial) {
-                // Get swaths from route if possible (ensures correct order)
-                PathStateList route_path;
-                try {
-                    auto route_swaths = f2c_route.getVectorSwaths();
-                    if (route_swaths.size() > 0) {
-                        // Build path from route's ordered swaths
-                        for (size_t i = 0; i < route_swaths.size(); ++i) {
-                            for (size_t j = 0; j < route_swaths.at(i).size(); ++j) {
-                                auto& sw = route_swaths.at(i).at(j);
-                                double dx = sw.endPoint().getX() - sw.startPoint().getX();
-                                double dy = sw.endPoint().getY() - sw.startPoint().getY();
-                                double heading = std::atan2(dy, dx);
-                                double vx = std::cos(heading);
-                                double vy = std::sin(heading);
-                                
-                                PathState start_state;
-                                start_state.point = Point2D(sw.startPoint().getX(), sw.startPoint().getY());
-                                start_state.heading = heading;
-                                start_state.vx = vx;
-                                start_state.vy = vy;
-                                route_path.push_back(start_state);
-                                
-                                PathState end_state;
-                                end_state.point = Point2D(sw.endPoint().getX(), sw.endPoint().getY());
-                                end_state.heading = heading;
-                                end_state.vx = vx;
-                                end_state.vy = vy;
-                                route_path.push_back(end_state);
-                            }
+                // For axial turns, use the route waypoints directly
+                // The route already contains the correct traversal order with proper
+                // direction for each swath (Boustrophedon alternates directions)
+                if (!result.route.empty()) {
+                    // Route waypoints are already in correct order - use them as path
+                    result.path = result.route;
+                    
+                    // Calculate headings between consecutive waypoints
+                    for (size_t i = 0; i < result.path.size(); ++i) {
+                        double heading;
+                        if (i + 1 < result.path.size()) {
+                            // Use direction to next point
+                            double dx = result.path[i+1].point.x - result.path[i].point.x;
+                            double dy = result.path[i+1].point.y - result.path[i].point.y;
+                            heading = std::atan2(dy, dx);
+                        } else if (i > 0) {
+                            // Last point - use same heading as arrival
+                            heading = result.path[i-1].heading;
+                        } else {
+                            heading = 0;
                         }
+                        result.path[i].heading = heading;
+                        result.path[i].vx = std::cos(heading);
+                        result.path[i].vy = std::sin(heading);
                     }
-                } catch (...) {
-                    // Fallback if getVectorSwaths fails
-                }
-                
-                if (route_path.empty()) {
-                    // Use our stored sorted swaths
-                    result.path = swathsToAxialTurnPath(result.swaths);
                 } else {
-                    result.path = route_path;
+                    // Fallback: use stored swaths
+                    result.path = swathsToAxialTurnPath(result.swaths);
                 }
             } else {
                 // No obstacles - use smooth Dubins curves

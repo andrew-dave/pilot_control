@@ -25,9 +25,13 @@
 #include <QSplitter>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QProcess>
+#include <QDir>
+#include <QDate>
 #include <QPainter>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QTimer>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -143,12 +147,17 @@ public:
 private slots:
     // File operations
     void loadPointCloud();
+    void fetchLatestMapFromRobot();
+    void loadPointCloudFromPath(const QString& path);
     
     // Processing
     void applyHeightCrop();
     void applyDownsample();
     void computeHull();
     void simplifyPolygon();
+    
+    // 3D Visualization
+    void showPointCloud3D();
     
     // ROI / Obstacles
     void toggleROISelection();
@@ -177,6 +186,9 @@ private slots:
     
     // UI updates
     void updateDownsampleUI(const QString& method);
+    
+    // ROS2 reconnection
+    void tryReconnectROS2();
 
 private:
     void setupUI();
@@ -214,8 +226,9 @@ private:
     // File controls
     QLabel* lbl_file_;
     
-    // Height controls
-    QDoubleSpinBox* spin_z_band_;
+    // Height controls (Z range filtering relative to robot origin Z=0)
+    QDoubleSpinBox* spin_z_min_;   // Minimum Z value (can be negative)
+    QDoubleSpinBox* spin_z_max_;   // Maximum Z value
     
     // Downsample controls
     QComboBox* combo_downsample_;
@@ -277,6 +290,15 @@ private:
     std::thread ros_thread_;
     bool waypoints_published_;
     bool ros_initialized_;
+    
+    // ROS2 reconnection timer (only active when disconnected)
+    QTimer* ros_reconnect_timer_;
+    
+    // Robot connection settings for map fetching
+    QString robot_host_ = "192.168.168.101";
+    QString robot_user_ = "roofus";
+    QString robot_data_path_ = "/R_DATA";
+    QString local_map_base_;  // Set to ~/Roofus_maps in constructor
 };
 
 } // namespace f2c_cpp

@@ -13,6 +13,16 @@
 #include <QToolTip>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
+#include <atomic>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
+#include <cstdlib>
+
+// PCL for 3D point cloud preview
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
 
 namespace f2c_cpp {
 
@@ -339,6 +349,38 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         }
     }
     
+    // Draw origin marker (robot position at 0,0)
+    {
+        QPointF origin = worldToScreen(Point2D(0.0, 0.0));
+        
+        // Check if origin is within view bounds (with some margin)
+        if (origin.x() > -50 && origin.x() < width() + 50 &&
+            origin.y() > -50 && origin.y() < height() + 50) {
+            
+            // Draw crosshairs
+            painter.setPen(QPen(QColor(220, 20, 60), 2));  // Crimson color
+            painter.drawLine(origin.x() - 18, origin.y(), origin.x() + 18, origin.y());  // Horizontal
+            painter.drawLine(origin.x(), origin.y() - 18, origin.x(), origin.y() + 18);  // Vertical
+            
+            // Draw circle around origin
+            painter.setPen(QPen(QColor(220, 20, 60), 2));
+            painter.setBrush(QColor(220, 20, 60, 40));  // Semi-transparent fill
+            painter.drawEllipse(origin, 12, 12);
+            
+            // Draw inner dot
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(220, 20, 60));
+            painter.drawEllipse(origin, 3, 3);
+            
+            // Draw label
+            painter.setPen(QColor(220, 20, 60));
+            painter.setFont(QFont("Sans Serif", 9, QFont::Bold));
+            painter.drawText(origin.x() + 16, origin.y() - 8, "Origin");
+            painter.setFont(QFont("Sans Serif", 8));
+            painter.drawText(origin.x() + 16, origin.y() + 6, "(0, 0)");
+        }
+    }
+    
     // Draw selection in progress
     if (selecting_ && !selection_points_.empty()) {
         painter.setPen(QPen(Qt::magenta, 1.5));
@@ -466,8 +508,16 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     setWindowTitle("Roof Coverage Planner (C++)");
     resize(1500, 900);
     
+    // Initialize robot map fetch settings
+    local_map_base_ = QDir::homePath() + "/Roofus_maps";
+    
     setupUI();
     setupConnections();
+
+    // Initialize ROS2 reconnection timer (will only run when disconnected)
+    ros_reconnect_timer_ = new QTimer(this);
+    ros_reconnect_timer_->setInterval(5000);  // Try every 5 seconds
+    connect(ros_reconnect_timer_, &QTimer::timeout, this, &CoverageGUI::tryReconnectROS2);
 
     // Initialize ROS2 (with error handling so GUI works even if ROS2 fails)
     waypoints_published_ = false;
@@ -485,8 +535,11 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         setStatus("Ready (ROS2 connected)");
     } catch (const std::exception& e) {
         std::cerr << "[F2C GUI] Warning: ROS2 initialization failed: " << e.what() << std::endl;
-        std::cerr << "[F2C GUI] Waypoint publishing will be disabled. GUI will still function." << std::endl;
-        setStatus("Ready (ROS2 unavailable - publishing disabled)");
+        std::cerr << "[F2C GUI] Starting background reconnection timer..." << std::endl;
+        setStatus("Ready (ROS2 unavailable - reconnecting...)");
+        
+        // Start the reconnection timer
+        ros_reconnect_timer_->start();
     }
 }
 
@@ -575,10 +628,18 @@ QGroupBox* CoverageGUI::buildFileControls() {
     QGroupBox* box = new QGroupBox("Point Cloud");
     QVBoxLayout* v = new QVBoxLayout(box);
     
+    // Load from local file
     QPushButton* btn_load = new QPushButton("Load PCD / PLY / XYZ");
     btn_load->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
     connect(btn_load, &QPushButton::clicked, this, &CoverageGUI::loadPointCloud);
     v->addWidget(btn_load);
+    
+    // Fetch from robot via SSH
+    QPushButton* btn_fetch = new QPushButton("📡 Fetch Latest from Robot");
+    btn_fetch->setToolTip("Download the latest map from robot (roofus@192.168.168.101)\nSaves to ~/Roofus_maps/");
+    btn_fetch->setStyleSheet("QPushButton { background-color: #e8f4f8; }");
+    connect(btn_fetch, &QPushButton::clicked, this, &CoverageGUI::fetchLatestMapFromRobot);
+    v->addWidget(btn_fetch);
     
     lbl_file_ = new QLabel("No file loaded");
     v->addWidget(lbl_file_);
@@ -587,22 +648,58 @@ QGroupBox* CoverageGUI::buildFileControls() {
 }
 
 QGroupBox* CoverageGUI::buildHeightControls() {
-    QGroupBox* box = new QGroupBox("Height Cropping");
+    QGroupBox* box = new QGroupBox("Height Cropping & 3D View");
     QVBoxLayout* v = new QVBoxLayout(box);
     
-    QHBoxLayout* h = new QHBoxLayout();
-    h->addWidget(new QLabel("Z-band ±"));
-    spin_z_band_ = new QDoubleSpinBox();
-    spin_z_band_->setRange(0.0, 10.0);
-    spin_z_band_->setSingleStep(0.05);
-    spin_z_band_->setValue(0.5);
-    h->addWidget(spin_z_band_);
-    v->addLayout(h);
+    // Info label explaining the Z range filtering
+    QLabel* info_label = new QLabel("Filter points relative to robot origin (Z=0):");
+    info_label->setStyleSheet("color: #666; font-size: 10px;");
+    v->addWidget(info_label);
+    
+    // Z minimum control (can be negative for below robot)
+    QHBoxLayout* h_min = new QHBoxLayout();
+    h_min->addWidget(new QLabel("Z min (m):"));
+    spin_z_min_ = new QDoubleSpinBox();
+    spin_z_min_->setRange(-50.0, 50.0);
+    spin_z_min_->setSingleStep(0.1);
+    spin_z_min_->setValue(-0.5);  // Default: 0.5m below robot
+    spin_z_min_->setToolTip("Minimum Z value (negative = below robot origin)");
+    h_min->addWidget(spin_z_min_);
+    v->addLayout(h_min);
+    
+    // Z maximum control
+    QHBoxLayout* h_max = new QHBoxLayout();
+    h_max->addWidget(new QLabel("Z max (m):"));
+    spin_z_max_ = new QDoubleSpinBox();
+    spin_z_max_->setRange(-50.0, 50.0);
+    spin_z_max_->setSingleStep(0.1);
+    spin_z_max_->setValue(0.5);  // Default: 0.5m above robot
+    spin_z_max_->setToolTip("Maximum Z value (positive = above robot origin)");
+    h_max->addWidget(spin_z_max_);
+    v->addLayout(h_max);
     
     QPushButton* btn_apply = new QPushButton("Apply Height Crop");
     btn_apply->setIcon(style()->standardIcon(QStyle::SP_ArrowDown));
+    btn_apply->setToolTip("Keep only points with Z between Z min and Z max\n"
+                          "(relative to robot origin at Z=0)");
     connect(btn_apply, &QPushButton::clicked, this, &CoverageGUI::applyHeightCrop);
     v->addWidget(btn_apply);
+    
+    // 3D Visualization button
+    QPushButton* btn_view3d = new QPushButton("View Point Cloud (3D)");
+    btn_view3d->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
+    btn_view3d->setToolTip("Open interactive 3D viewer for the point cloud.\n"
+                          "Controls:\n"
+                          "  • Left mouse: Rotate view\n"
+                          "  • Middle mouse / Shift+Left: Pan\n"
+                          "  • Scroll wheel: Zoom\n"
+                          "  • R: Reset camera\n"
+                          "  • C: Show camera parameters\n"
+                          "  • +/-: Increase/decrease point size\n"
+                          "  • G: Toggle coordinate system\n"
+                          "  • Q: Close viewer");
+    connect(btn_view3d, &QPushButton::clicked, this, &CoverageGUI::showPointCloud3D);
+    v->addWidget(btn_view3d);
     
     return box;
 }
@@ -1005,16 +1102,183 @@ void CoverageGUI::loadPointCloud() {
     showProgress(false);
 }
 
+void CoverageGUI::fetchLatestMapFromRobot() {
+    showProgress(true, "Connecting to robot...");
+    
+    // Build SSH command to find the latest .pcd file on robot
+    QString find_cmd = QString(
+        "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no %1@%2 "
+        "\"find %3 -name '*.pcd' -type f -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-\""
+    ).arg(robot_user_, robot_host_, robot_data_path_);
+    
+    QProcess find_process;
+    find_process.start("bash", QStringList() << "-c" << find_cmd);
+    
+    if (!find_process.waitForFinished(10000)) {
+        showProgress(false);
+        QMessageBox::warning(this, "Connection Failed", 
+            "Could not connect to robot.\nCheck if:\n"
+            "• Robot is powered on\n"
+            "• Microhard is connected (192.168.168.101)\n"
+            "• SSH keys are configured for roofus@192.168.168.101");
+        return;
+    }
+    
+    if (find_process.exitCode() != 0) {
+        showProgress(false);
+        QString error = QString::fromUtf8(find_process.readAllStandardError());
+        QMessageBox::warning(this, "SSH Error", "SSH command failed:\n" + error);
+        return;
+    }
+    
+    QString remote_path = QString::fromUtf8(find_process.readAllStandardOutput()).trimmed();
+    
+    if (remote_path.isEmpty()) {
+        showProgress(false);
+        QMessageBox::warning(this, "No Maps Found", 
+            "No .pcd map files found on robot at " + robot_data_path_);
+        return;
+    }
+    
+    // Create local folder structure: ~/Roofus_maps/December_01_2025/
+    QDate today = QDate::currentDate();
+    QString day_folder = today.toString("MMMM_dd_yyyy");  // e.g., "December_01_2025"
+    QString local_dir = local_map_base_ + "/" + day_folder;
+    QDir().mkpath(local_dir);
+    
+    // Extract filename and create local path
+    QFileInfo remote_info(remote_path);
+    QString local_path = local_dir + "/" + remote_info.fileName();
+    
+    // Check if file already exists locally
+    if (QFile::exists(local_path)) {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this, "File Exists", 
+            QString("Map already exists locally:\n%1\n\nOverwrite?").arg(local_path),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            showProgress(false);
+            // Offer to load existing file
+            reply = QMessageBox::question(this, "Load Existing?", 
+                "Load the existing local map instead?",
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+            if (reply == QMessageBox::Yes) {
+                loadPointCloudFromPath(local_path);
+            }
+            return;
+        }
+    }
+    
+    showProgress(true, "Downloading: " + remote_info.fileName());
+    
+    // SCP the file to local machine
+    QString scp_cmd = QString(
+        "scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no %1@%2:\"%3\" \"%4\""
+    ).arg(robot_user_, robot_host_, remote_path, local_path);
+    
+    QProcess scp_process;
+    scp_process.start("bash", QStringList() << "-c" << scp_cmd);
+    
+    if (!scp_process.waitForFinished(180000)) {  // 3 min timeout for large files
+        showProgress(false);
+        QMessageBox::warning(this, "Download Failed", 
+            "File transfer timed out.\nThe map file may be too large or connection is slow.");
+        return;
+    }
+    
+    if (scp_process.exitCode() != 0) {
+        showProgress(false);
+        QString error = QString::fromUtf8(scp_process.readAllStandardError());
+        QMessageBox::warning(this, "Download Failed", 
+            "Could not download map file:\n" + error);
+        return;
+    }
+    
+    showProgress(false);
+    
+    // Verify file exists locally
+    QFileInfo local_info(local_path);
+    if (!local_info.exists() || local_info.size() == 0) {
+        QMessageBox::warning(this, "Download Failed", "Map file was not saved correctly.");
+        return;
+    }
+    
+    // Show success and offer to load
+    QString msg = QString(
+        "✅ Map downloaded successfully!\n\n"
+        "File: %1\n"
+        "Size: %2 MB\n"
+        "Saved to: %3\n\n"
+        "Load this map now?"
+    ).arg(local_info.fileName())
+     .arg(local_info.size() / (1024.0 * 1024.0), 0, 'f', 2)
+     .arg(local_dir);
+    
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "Download Complete", msg,
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    
+    if (reply == QMessageBox::Yes) {
+        loadPointCloudFromPath(local_path);
+    }
+    
+    setStatus("Map saved: " + local_path);
+}
+
+void CoverageGUI::loadPointCloudFromPath(const QString& path) {
+    showProgress(true, "Loading point cloud...");
+    
+    try {
+        pcd_points_ = loadPointCloudFile(path.toStdString());
+        filtered_points_ = pcd_points_;
+        
+        loaded_file_ = path;
+        lbl_file_->setText(QFileInfo(path).fileName());
+        
+        // Clear old data
+        polygon_.clear();
+        roi_polygon_.clear();
+        obstacles_.clear();
+        swaths_.clear();
+        route_.clear();
+        path_.clear();
+        
+        lbl_roi_->setText("ROI: none");
+        lbl_obstacles_->setText("Obstacles: 0");
+        
+        plot_->clearAll();
+        
+        // Project points to 2D immediately for visualization
+        xy_2d_.clear();
+        xy_2d_.reserve(pcd_points_->size());
+        for (const auto& pt : pcd_points_->points) {
+            xy_2d_.emplace_back(pt.x, pt.y);
+        }
+        
+        refreshPlot();
+        setStatus(QString("Loaded %1 points from %2").arg(pcd_points_->size()).arg(QFileInfo(path).fileName()), 4000);
+        
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, "Error", QString("Failed to load: %1").arg(e.what()));
+    }
+    
+    showProgress(false);
+}
+
 void CoverageGUI::applyHeightCrop() {
     if (!pcd_points_ || pcd_points_->empty()) {
         QMessageBox::warning(this, "Warning", "Load a point cloud first.");
         return;
     }
     
-    showProgress(true, "Applying height crop...");
+    double z_min = spin_z_min_->value();
+    double z_max = spin_z_max_->value();
+    
+    showProgress(true, QString("Applying height crop [%1, %2]m...").arg(z_min).arg(z_max));
     
     try {
-        filtered_points_ = filterByZBand(pcd_points_, spin_z_band_->value());
+        // Use the new Z range filter (relative to robot origin Z=0)
+        filtered_points_ = filterByZRange(pcd_points_, z_min, z_max);
         
         // Project to 2D for visualization
         xy_2d_.clear();
@@ -1030,12 +1294,248 @@ void CoverageGUI::applyHeightCrop() {
         path_.clear();
         
         refreshPlot();
-        setStatus(QString("Filtered to %1 points").arg(filtered_points_->size()), 4000);
+        setStatus(QString("Filtered to %1 points (Z: %2 to %3 m)")
+                  .arg(filtered_points_->size())
+                  .arg(z_min, 0, 'f', 2)
+                  .arg(z_max, 0, 'f', 2), 4000);
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
     }
     
     showProgress(false);
+}
+
+void CoverageGUI::showPointCloud3D() {
+    // Use filtered cloud if available, otherwise use raw cloud
+    PointCloudPtr cloud = filtered_points_ ? filtered_points_ : pcd_points_;
+    
+    if (!cloud || cloud->empty()) {
+        QMessageBox::warning(this, "Warning", 
+            "Load a point cloud first.\n\n"
+            "Use 'Load PCD / PLY / XYZ' to load a file.");
+        return;
+    }
+    
+    setStatus(QString("Preparing 3D viewer with %1 points...").arg(cloud->size()));
+    showProgress(true, "Saving temporary point cloud...");
+    
+    // Save point cloud to a temporary file (avoids VTK/Qt threading conflicts)
+    std::string temp_pcd = "/tmp/f2c_viewer_temp.pcd";
+    std::string temp_path_csv = "/tmp/f2c_viewer_path.csv";
+    
+    // Create colored point cloud based on Z height
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    colored_cloud->reserve(cloud->size());
+    
+    // Calculate bounds
+    float min_z = std::numeric_limits<float>::max();
+    float max_z = std::numeric_limits<float>::lowest();
+    
+    for (const auto& pt : cloud->points) {
+        min_z = std::min(min_z, pt.z);
+        max_z = std::max(max_z, pt.z);
+    }
+    
+    float z_range = max_z - min_z;
+    if (z_range < 0.001f) z_range = 1.0f;
+    
+    // Apply height-based coloring
+    for (const auto& pt : cloud->points) {
+        pcl::PointXYZRGB colored_pt;
+        colored_pt.x = pt.x;
+        colored_pt.y = pt.y;
+        colored_pt.z = pt.z;
+        
+        float t = (pt.z - min_z) / z_range;
+        t = std::max(0.0f, std::min(1.0f, t));
+        
+        // Rainbow gradient: blue -> cyan -> green -> yellow -> red
+        uint8_t r, g, b;
+        if (t < 0.25f) {
+            float s = t / 0.25f;
+            r = 0; g = static_cast<uint8_t>(255 * s); b = 255;
+        } else if (t < 0.5f) {
+            float s = (t - 0.25f) / 0.25f;
+            r = 0; g = 255; b = static_cast<uint8_t>(255 * (1 - s));
+        } else if (t < 0.75f) {
+            float s = (t - 0.5f) / 0.25f;
+            r = static_cast<uint8_t>(255 * s); g = 255; b = 0;
+        } else {
+            float s = (t - 0.75f) / 0.25f;
+            r = 255; g = static_cast<uint8_t>(255 * (1 - s)); b = 0;
+        }
+        
+        colored_pt.r = r;
+        colored_pt.g = g;
+        colored_pt.b = b;
+        colored_cloud->push_back(colored_pt);
+    }
+    
+    // Save to temp file
+    if (pcl::io::savePCDFileBinary(temp_pcd, *colored_cloud) != 0) {
+        QMessageBox::critical(this, "Error", "Failed to save temporary point cloud file.");
+        showProgress(false);
+        return;
+    }
+    
+    // Save path to CSV if available
+    bool has_path = !path_.empty();
+    if (has_path) {
+        std::ofstream path_out(temp_path_csv);
+        path_out << "x,y,z\n";
+        for (const auto& state : path_) {
+            // Use Z=0 for path points (robot operates on XY plane at origin height)
+            path_out << std::fixed << std::setprecision(6) 
+                     << state.point.x << "," << state.point.y << ",0.0\n";
+        }
+        path_out.close();
+    }
+    
+    showProgress(false);
+    
+    // Try different viewer options in order of preference
+    std::string viewer_cmd;
+    
+    // Check for Open3D via Python (preferred - supports path visualization)
+    if (system("python3 -c 'import open3d' > /dev/null 2>&1") == 0) {
+        // Create a Python script for Open3D visualization with origin and path
+        std::string py_script = R"PYTHON(
+import open3d as o3d
+import numpy as np
+import sys
+import os
+
+pcd_file = sys.argv[1]
+path_file = sys.argv[2] if len(sys.argv) > 2 else None
+
+pcd = o3d.io.read_point_cloud(pcd_file)
+print(f"Loaded {len(pcd.points)} points")
+
+vis = o3d.visualization.Visualizer()
+vis.create_window(window_name="F2C 3D Viewer - Point Cloud + Path", width=1200, height=900)
+vis.add_geometry(pcd)
+
+opt = vis.get_render_option()
+opt.point_size = 2.0
+opt.background_color = np.array([0.08, 0.08, 0.12])
+opt.show_coordinate_frame = True
+
+origin_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.15)
+origin_sphere.translate([0, 0, 0])
+origin_sphere.paint_uniform_color([0.9, 0.1, 0.1])
+vis.add_geometry(origin_sphere)
+
+axis_length = 1.0
+axis_radius = 0.03
+
+x_axis = o3d.geometry.TriangleMesh.create_cylinder(radius=axis_radius, height=axis_length)
+x_axis.rotate(o3d.geometry.get_rotation_matrix_from_xyz([0, np.pi/2, 0]), center=[0,0,0])
+x_axis.translate([axis_length/2, 0, 0])
+x_axis.paint_uniform_color([1, 0.2, 0.2])
+vis.add_geometry(x_axis)
+
+y_axis = o3d.geometry.TriangleMesh.create_cylinder(radius=axis_radius, height=axis_length)
+y_axis.rotate(o3d.geometry.get_rotation_matrix_from_xyz([-np.pi/2, 0, 0]), center=[0,0,0])
+y_axis.translate([0, axis_length/2, 0])
+y_axis.paint_uniform_color([0.2, 1, 0.2])
+vis.add_geometry(y_axis)
+
+z_axis = o3d.geometry.TriangleMesh.create_cylinder(radius=axis_radius, height=axis_length)
+z_axis.translate([0, 0, axis_length/2])
+z_axis.paint_uniform_color([0.2, 0.2, 1])
+vis.add_geometry(z_axis)
+
+if path_file and os.path.exists(path_file):
+    try:
+        path_data = np.loadtxt(path_file, delimiter=',', skiprows=1)
+        if len(path_data) > 1:
+            print(f"Loaded path with {len(path_data)} waypoints")
+            
+            lines = [[i, i+1] for i in range(len(path_data)-1)]
+            colors = [[0, 0.9, 0.3] for _ in lines]
+            
+            path_line = o3d.geometry.LineSet()
+            path_line.points = o3d.utility.Vector3dVector(path_data)
+            path_line.lines = o3d.utility.Vector2iVector(lines)
+            path_line.colors = o3d.utility.Vector3dVector(colors)
+            vis.add_geometry(path_line)
+            
+            start_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+            start_sphere.translate(path_data[0])
+            start_sphere.paint_uniform_color([0, 1, 0])
+            vis.add_geometry(start_sphere)
+            
+            end_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+            end_sphere.translate(path_data[-1])
+            end_sphere.paint_uniform_color([1, 1, 0])
+            vis.add_geometry(end_sphere)
+            
+            print("Path visualization added (green line, green=start, yellow=end)")
+    except Exception as e:
+        print(f"Could not load path: {e}")
+
+ctr = vis.get_view_control()
+ctr.set_zoom(0.7)
+
+print("\nControls:")
+print("  Left drag: Rotate | Scroll: Zoom | Shift+drag: Pan")
+print("  R: Reset view | Q: Close")
+print("\nLegend:")
+print("  Red sphere: Origin (0,0,0)")
+print("  RGB axes: X(red), Y(green), Z(blue)")
+print("  Green line: Coverage path")
+
+vis.run()
+vis.destroy_window()
+)PYTHON";
+        
+        std::string py_file = "/tmp/f2c_viewer.py";
+        std::ofstream py_out(py_file);
+        py_out << py_script;
+        py_out.close();
+        
+        if (has_path) {
+            viewer_cmd = "python3 " + py_file + " " + temp_pcd + " " + temp_path_csv + " &";
+            setStatus("Opening Open3D viewer with path (close window when done)", 5000);
+        } else {
+            viewer_cmd = "python3 " + py_file + " " + temp_pcd + " &";
+            setStatus("Opening Open3D viewer (close window when done)", 5000);
+        }
+    }
+    // Check for pcl_viewer (fallback - no path support but shows coordinate frame)
+    else if (system("which pcl_viewer > /dev/null 2>&1") == 0) {
+        // pcl_viewer with coordinate axes
+        viewer_cmd = "pcl_viewer " + temp_pcd + " -ps 2 -ax 1.0 &";
+        if (has_path) {
+            setStatus("Opening pcl_viewer (path not shown - install Open3D for path viz)", 5000);
+        } else {
+            setStatus("Opening pcl_viewer (press Q to close)", 5000);
+        }
+    }
+    // Check for CloudCompare
+    else if (system("which CloudCompare > /dev/null 2>&1") == 0) {
+        viewer_cmd = "CloudCompare " + temp_pcd + " &";
+        setStatus("Opening CloudCompare", 5000);
+    }
+    else {
+        QMessageBox::warning(this, "No 3D Viewer Found",
+            "Could not find a suitable 3D point cloud viewer.\n\n"
+            "Please install one of the following:\n"
+            "  • Open3D (pip install open3d) - recommended for path visualization\n"
+            "  • pcl-tools (sudo apt install pcl-tools)\n"
+            "  • CloudCompare (sudo apt install cloudcompare)\n\n"
+            "The colored point cloud has been saved to:\n" + 
+            QString::fromStdString(temp_pcd));
+        return;
+    }
+    
+    // Launch viewer in background
+    int result = system(viewer_cmd.c_str());
+    if (result != 0) {
+        QMessageBox::warning(this, "Warning", 
+            "Failed to launch 3D viewer.\n"
+            "You can manually open the file:\n" + QString::fromStdString(temp_pcd));
+    }
 }
 
 void CoverageGUI::applyDownsample() {
@@ -1348,12 +1848,10 @@ void CoverageGUI::publishWaypoints() {
     // Create waypoint array message
     auto msg = std_msgs::msg::Float64MultiArray();
 
-    // Add waypoints in format: [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...]
+    // Add waypoints in format: [x1,y1, x2,y2, ...]
     for (const auto& state : path_) {
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
-        msg.data.push_back(0.0);  // z coordinate (ground level)
-        msg.data.push_back(state.heading);  // heading/yaw in radians
     }
 
     // Publish to ROS2 topic
@@ -1394,6 +1892,40 @@ void CoverageGUI::startNavigation() {
 
     setStatus("🚀 Navigation started!", 3000);
     std::cout << "[F2C GUI] Sent navigation start signal" << std::endl;
+}
+
+void CoverageGUI::tryReconnectROS2() {
+    // Already connected - stop the timer
+    if (ros_initialized_) {
+        ros_reconnect_timer_->stop();
+        return;
+    }
+    
+    std::cout << "[F2C GUI] Attempting ROS2 reconnection..." << std::endl;
+    
+    try {
+        // Try to initialize ROS2
+        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
+            "/f2c_waypoints", 10);
+
+        // Start ROS2 spinning in background thread
+        ros_thread_ = std::thread([this]() {
+            rclcpp::spin(ros_node_);
+        });
+        
+        ros_initialized_ = true;
+        
+        // Success! Stop the reconnection timer
+        ros_reconnect_timer_->stop();
+        
+        setStatus("✅ ROS2 connected!", 5000);
+        std::cout << "[F2C GUI] ROS2 reconnection successful!" << std::endl;
+        
+    } catch (const std::exception& e) {
+        // Still not available - timer will try again
+        setStatus("ROS2 unavailable - retrying...", 4500);
+    }
 }
 
 } // namespace f2c_cpp

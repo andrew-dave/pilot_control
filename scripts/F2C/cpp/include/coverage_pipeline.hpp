@@ -125,9 +125,21 @@ struct CoverageResult {
 PointCloudPtr loadPointCloudFile(const std::string& path);
 
 /**
- * @brief Filter points within +/- z_band of median Z
+ * @brief Filter points within +/- z_band of median Z (legacy)
  */
 PointCloudPtr filterByZBand(const PointCloudPtr& cloud, double z_band);
+
+/**
+ * @brief Filter points within [z_min, z_max] range relative to origin (Z=0)
+ * @param cloud Input point cloud
+ * @param z_min Minimum Z value (can be negative, e.g., -0.5 for below robot)
+ * @param z_max Maximum Z value (e.g., 1.0 for 1m above robot)
+ * @return Filtered point cloud with only points where z_min <= Z <= z_max
+ * 
+ * This is useful for robot applications where Z=0 is the robot's position
+ * and you want to filter points relative to the robot, not the median height.
+ */
+PointCloudPtr filterByZRange(const PointCloudPtr& cloud, double z_min, double z_max);
 
 /**
  * @brief Random subsampling

@@ -30,7 +30,8 @@ else()
     message(STATUS "Using Qt6: ${Qt6Core_VERSION}")
 endif()
 
-# Find PCL without its GUI components to avoid VTK Qt conflicts
+# Find PCL (no visualization component to avoid Qt/VTK conflicts)
+# 3D viewing is done via external viewers (pcl_viewer, Open3D, CloudCompare)
 find_package(PCL 1.10 REQUIRED COMPONENTS common io filters)
 find_package(Eigen3 REQUIRED)
 find_package(Fields2Cover QUIET)
@@ -88,7 +89,7 @@ add_executable(f2c_coverage_planner
     ${GUI_SOURCES}
 )
 
-# Link libraries - use filtered PCL libs without VTK visualization
+# Link libraries - PCL libs (no visualization to avoid VTK conflicts)
 set(PCL_FILTERED_LIBS
     ${PCL_COMMON_LIBRARIES}
     ${PCL_IO_LIBRARIES}

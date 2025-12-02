@@ -1433,7 +1433,7 @@ class PoseController(Node):
     def waypoint_array_callback(self, msg):
         """
         Callback for waypoint arrays from F2C GUI.
-        Format: [x1,y1,z1,yaw1, x2,y2,z2,yaw2, ...] or [0.0] for navigation start signal
+        Format: [x1,y1, x2,y2, ...] or [0.0] for navigation start signal
         """
         if len(msg.data) == 1 and msg.data[0] == 0.0:
             # Navigation start signal
@@ -1443,22 +1443,22 @@ class PoseController(Node):
                 self.get_logger().warn("Received navigation start signal but no waypoints pending")
             return
 
-        if len(msg.data) % 4 != 0:
-            self.get_logger().error(f"Invalid waypoint array: length {len(msg.data)} not divisible by 4")
+        if len(msg.data) % 2 != 0:
+            self.get_logger().error(f"Invalid waypoint array: length {len(msg.data)} not divisible by 2")
             return
 
-        num_waypoints = len(msg.data) // 4
+        num_waypoints = len(msg.data) // 2
         self.get_logger().info(f"📡 Received {num_waypoints} waypoints from F2C GUI")
 
         # Store waypoints for later navigation start
         self.pending_waypoints = []
-        for i in range(0, len(msg.data), 4):
-            x, y, z, yaw = msg.data[i:i+4]
-            self.pending_waypoints.append((x, y, yaw))  # Store x,y,yaw (z ignored)
+        for i in range(0, len(msg.data), 2):
+            x, y = msg.data[i:i+2]
+            self.pending_waypoints.append((x, y))
 
         print(f"[POSE CONTROLLER] Received {num_waypoints} waypoints from F2C:")
-        for idx, (x, y, yaw) in enumerate(self.pending_waypoints):
-            print(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}, yaw={math.degrees(yaw):.1f}°")
+        for idx, (x, y) in enumerate(self.pending_waypoints):
+            print(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}")
 
     def start_pending_navigation(self):
         """Start navigation with previously received waypoints"""
