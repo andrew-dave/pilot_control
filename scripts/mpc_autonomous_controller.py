@@ -847,7 +847,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('max_angular_velocity', 4.0) # rad/s
         
         # MPC parameters
-        self.declare_parameter('mpc_horizon', 20)           # Prediction horizon steps
+        self.declare_parameter('mpc_horizon', 50)           # Prediction horizon steps
         self.declare_parameter('mpc_dt', 0.1)             # Time step for MPC (s)
         
         # Slip estimation parameters
@@ -955,16 +955,16 @@ class MPCAutonomousController(Node):
         
         # MPC cost weights (penalize xe, ye more than yaw_e)
         # Note: Q_ye is higher because lateral errors must be corrected through rotation (harder to correct)
-        self.declare_parameter('mpc_Q_xe', 5.0)  # Weight for position error x
-        self.declare_parameter('mpc_Q_ye', 10.0)  # Weight for position error y (much higher for lateral correction)
-        self.declare_parameter('mpc_Q_yaw',10.0)  # Weight for yaw error (higher to help lateral correction)
-        self.declare_parameter('mpc_R_delta', 0.00007)  # Weight for control input change
+        self.declare_parameter('mpc_Q_xe', 15.0)  # Weight for position error x
+        self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
+        self.declare_parameter('mpc_Q_yaw',5.0)  # Weight for yaw error (higher to help lateral correction)
+        self.declare_parameter('mpc_R_delta', 0.00010)  # Weight for control input change
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
         # Weight at step k = base_weight * (1 + weight_increase * k)
         # Example: 0.1 means 10% increase per step (step 0: 1.0x, step 1: 1.1x, step 2: 1.2x, ...)
         self.declare_parameter('mpc_weight_increase_xe', 0.0)  # Weight increase factor for xe error
-        self.declare_parameter('mpc_weight_increase_ye', 1.0)  # Weight increase factor for ye error
+        self.declare_parameter('mpc_weight_increase_ye', 0.1)  # Weight increase factor for ye error
         self.declare_parameter('mpc_weight_increase_yaw', 0.0)  # Weight increase factor for yaw error
         
         # Solver debug parameter
