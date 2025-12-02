@@ -1057,28 +1057,95 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                     result.path = swathsToAxialTurnPath(result.swaths);
                 }
             } else {
-                // No obstacles - use smooth Dubins curves
-                try {
-                    F2CRobot robot(config.swath_width, config.swath_width);
-                    robot.setMinTurningRadius(config.turn_radius);
-                    
-                    f2c::pp::PathPlanning pp;
-                    f2c::pp::DubinsCurves dubins;
-                    F2CPath f2c_path = pp.planPath(robot, f2c_route, dubins);
-                    
-                    // Extract path states from F2C path
-                    for (size_t i = 0; i < f2c_path.size(); ++i) {
-                        auto state = f2c_path.getState(i);
-                        PathState ps;
-                        ps.point = Point2D(state.point.getX(), state.point.getY());
-                        ps.heading = state.angle;
-                        ps.vx = std::cos(ps.heading);
-                        ps.vy = std::sin(ps.heading);
-                        result.path.push_back(ps);
+                // Use path planner based on config
+                // "none" means straight lines (use route directly like axial turns)
+                if (config.path_planner == "none") {
+                    // Straight path - use route waypoints directly
+                    if (!result.route.empty()) {
+                        result.path = result.route;
+                        // Calculate headings between consecutive waypoints
+                        for (size_t i = 0; i < result.path.size(); ++i) {
+                            double heading;
+                            if (i + 1 < result.path.size()) {
+                                double dx = result.path[i+1].point.x - result.path[i].point.x;
+                                double dy = result.path[i+1].point.y - result.path[i].point.y;
+                                heading = std::atan2(dy, dx);
+                            } else if (i > 0) {
+                                heading = result.path[i-1].heading;
+                            } else {
+                                heading = 0;
+                            }
+                            result.path[i].heading = heading;
+                            result.path[i].vx = std::cos(heading);
+                            result.path[i].vy = std::sin(heading);
+                        }
+                    } else {
+                        result.path = swathsToAxialTurnPath(result.swaths);
                     }
-                } catch (const std::exception& e) {
-                    std::cerr << "Path planning warning: " << e.what() << std::endl;
-                    result.path = swathsToAxialTurnPath(result.swaths);
+                } else {
+                    // Use smooth curves (Dubins or Reeds-Shepp)
+                    try {
+                        F2CRobot robot(config.swath_width, config.swath_width);
+                        robot.setMinTurningRadius(config.turn_radius);
+                        
+                        f2c::pp::PathPlanning pp;
+                        F2CPath f2c_path;
+                        
+                        // Select path planner based on config
+                        if (config.path_planner == "dubins") {
+                            f2c::pp::DubinsCurves planner;
+                            f2c_path = pp.planPath(robot, f2c_route, planner);
+                        } else if (config.path_planner == "dubins_cc") {
+                            f2c::pp::DubinsCurvesCC planner;
+                            f2c_path = pp.planPath(robot, f2c_route, planner);
+                        } else if (config.path_planner == "reeds") {
+                            f2c::pp::ReedsSheppCurves planner;
+                            f2c_path = pp.planPath(robot, f2c_route, planner);
+                        } else if (config.path_planner == "reeds_hc") {
+                            f2c::pp::ReedsSheppCurvesHC planner;
+                            f2c_path = pp.planPath(robot, f2c_route, planner);
+                        } else {
+                            // Default to Dubins
+                            f2c::pp::DubinsCurves planner;
+                            f2c_path = pp.planPath(robot, f2c_route, planner);
+                        }
+                        
+                        // Extract path states from F2C path
+                        for (size_t i = 0; i < f2c_path.size(); ++i) {
+                            auto state = f2c_path.getState(i);
+                            PathState ps;
+                            ps.point = Point2D(state.point.getX(), state.point.getY());
+                            ps.heading = state.angle;
+                            ps.vx = std::cos(ps.heading);
+                            ps.vy = std::sin(ps.heading);
+                            result.path.push_back(ps);
+                        }
+                        
+                        // IMPORTANT: Ensure path ends at the last route waypoint
+                        // Smooth curve planners may not sample exactly at endpoints
+                        if (!result.path.empty() && !result.route.empty()) {
+                            const auto& last_route = result.route.back();
+                            const auto& last_path = result.path.back();
+                            double dx = last_route.point.x - last_path.point.x;
+                            double dy = last_route.point.y - last_path.point.y;
+                            double dist = std::sqrt(dx*dx + dy*dy);
+                            
+                            // If last path point differs from last route point by > 1cm, append it
+                            if (dist > 0.01) {
+                                PathState end_state;
+                                end_state.point = last_route.point;
+                                // Use heading from last path point
+                                end_state.heading = last_path.heading;
+                                end_state.vx = std::cos(end_state.heading);
+                                end_state.vy = std::sin(end_state.heading);
+                                result.path.push_back(end_state);
+                            }
+                        }
+                        
+                    } catch (const std::exception& e) {
+                        std::cerr << "Path planning warning: " << e.what() << std::endl;
+                        result.path = swathsToAxialTurnPath(result.swaths);
+                    }
                 }
             }
             
