@@ -1673,20 +1673,41 @@ class MPCAutonomousController(Node):
                 waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
         
         # Compute velocities for each waypoint.
-        # For a straight line path: v_ref = cruising_speed along path direction, w_ref = 0
-        cruising_speed = 0.5  # m/s along path
+        # For a straight line path: v_ref is along path direction (gated by yaw error), w_ref = 0
+        cruising_speed = 0.5  # m/s along path (maximum desired forward speed)
         path_heading = math.atan2(path_dy, path_dx)  # Heading along path
-        
+
+        # Yaw error between robot and path heading
+        yaw_err = self.normalize_angle(path_heading - self.current_yaw)
+        abs_yaw_err = abs(yaw_err)
+
+        # Yaw thresholds for forward speed gating
+        # - For |yaw_err| >= yaw_stop: v_ref = 0 (pure rotation)
+        # - For |yaw_err| <= yaw_full: v_ref = cruising_speed
+        # - In between: linearly ramp v_ref from 0 to cruising_speed
+        yaw_stop = math.radians(20.0)  # ~20 degrees
+        yaw_full = math.radians(10.0)  # ~10 degrees
+
         for k in range(self.mpc_horizon):
             waypoint_x, waypoint_y, waypoint_yaw = waypoint_positions[k]
-            
+
+            # Gated forward speed based on current yaw error
+            if abs_yaw_err >= yaw_stop:
+                v_ref = 0.0
+            elif abs_yaw_err <= yaw_full:
+                v_ref = cruising_speed
+            else:
+                # Linear interpolation between 0 and cruising_speed
+                ratio = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
+                v_ref = cruising_speed * (1.0 - ratio)
+
             # Velocity components in global frame: v_ref along path direction
-            vx_ref = cruising_speed * math.cos(path_heading)
-            vy_ref = cruising_speed * math.sin(path_heading)
-            
+            vx_ref = v_ref * math.cos(path_heading)
+            vy_ref = v_ref * math.sin(path_heading)
+
             # Angular velocity should be zero for straight line path
             vyaw_ref = 0.0
-            
+
             waypoint = np.array([
                 waypoint_x,   # x
                 waypoint_y,   # y
