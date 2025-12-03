@@ -1673,7 +1673,9 @@ class MPCAutonomousController(Node):
                 waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
         
         # Compute velocities for each waypoint.
-        # For a straight line path: v_ref is along path direction (gated by yaw error), w_ref = 0
+        # For a straight line path: v_ref is along path direction (gated by yaw error),
+        # but only near the start of the segment (small t_closest). Deeper along the line
+        # we allow full cruising speed regardless of small yaw errors.
         cruising_speed = 0.5  # m/s along path (maximum desired forward speed)
         path_heading = math.atan2(path_dy, path_dx)  # Heading along path
 
@@ -1681,25 +1683,34 @@ class MPCAutonomousController(Node):
         yaw_err = self.normalize_angle(path_heading - self.current_yaw)
         abs_yaw_err = abs(yaw_err)
 
-        # Yaw thresholds for forward speed gating
+        # Yaw thresholds for forward speed gating (tighter bounds)
         # - For |yaw_err| >= yaw_stop: v_ref = 0 (pure rotation)
         # - For |yaw_err| <= yaw_full: v_ref = cruising_speed
         # - In between: linearly ramp v_ref from 0 to cruising_speed
-        yaw_stop = math.radians(20.0)  # ~20 degrees
-        yaw_full = math.radians(10.0)  # ~10 degrees
+        yaw_stop = math.radians(15.0)  # ~15 degrees
+        yaw_full = math.radians(5.0)   # ~5 degrees
+
+        # Only apply yaw-based gating when we are near the start of the line
+        # (t_closest small). Once sufficiently along the segment, always use
+        # full cruising speed.
+        t_gate = 0.2  # Gate region: only for t_closest <= 0.2
 
         for k in range(self.mpc_horizon):
             waypoint_x, waypoint_y, waypoint_yaw = waypoint_positions[k]
 
-            # Gated forward speed based on current yaw error
-            if abs_yaw_err >= yaw_stop:
-                v_ref = 0.0
-            elif abs_yaw_err <= yaw_full:
-                v_ref = cruising_speed
+            if t_closest <= t_gate:
+                # Gated forward speed based on current yaw error (near start of line)
+                if abs_yaw_err >= yaw_stop:
+                    v_ref = 0.0
+                elif abs_yaw_err <= yaw_full:
+                    v_ref = cruising_speed
+                else:
+                    # Linear interpolation between 0 and cruising_speed
+                    ratio = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
+                    v_ref = cruising_speed * (1.0 - ratio)
             else:
-                # Linear interpolation between 0 and cruising_speed
-                ratio = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
-                v_ref = cruising_speed * (1.0 - ratio)
+                # Past the gate region: always use full cruising speed
+                v_ref = cruising_speed
 
             # Velocity components in global frame: v_ref along path direction
             vx_ref = v_ref * math.cos(path_heading)
