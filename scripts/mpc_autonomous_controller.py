@@ -977,7 +977,7 @@ class MPCAutonomousController(Node):
         self.declare_parameter('waypoints_csv_path', '')   # Path to CSV with waypoints [x,y] per row
         
         # Stopping criteria
-        self.declare_parameter('target_reached_threshold', 0.05)  # Stop when within threshold of target (m)
+        self.declare_parameter('target_reached_threshold', 0.01)  # Stop when within threshold of target (m)
         
         # Topic names
         self.declare_parameter('odometry_topic', '/Odometry_tilt_corrected_diff')
@@ -1738,8 +1738,8 @@ class MPCAutonomousController(Node):
         # - For |yaw_err| >= yaw_stop: v_ref = 0 (pure rotation)
         # - For |yaw_err| <= yaw_full: v_ref = cruising_speed
         # - In between: linearly ramp v_ref from 0 to cruising_speed
-        yaw_stop = math.radians(15.0)  # ~15 degrees
-        yaw_full = math.radians(5.0)   # ~5 degrees
+        yaw_stop = math.radians(5.0)  # ~5 degrees
+        yaw_full = math.radians(2.0)   # ~2 degrees
 
         # Only apply yaw-based gating when we are near the start of the line,
         # within a fixed physical distance from the start (e.g. first 10 cm).

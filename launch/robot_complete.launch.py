@@ -403,7 +403,7 @@ def generate_launch_description():
 
             # Waypoint / stopping parameters
             'lookahead_distance': 0.5,
-            'target_reached_threshold': 0.02,
+            'target_reached_threshold': 0.01,
 
             # Topic names (match existing robot wiring)
             'odometry_topic': '/Odometry_tilt_corrected_diff',
