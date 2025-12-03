@@ -384,14 +384,14 @@ def generate_launch_description():
             # Control parameters
             'control_frequency': 10.0,          # Hz
             'max_linear_velocity': 0.5,         # m/s
-            'max_angular_velocity': 1.0,        # rad/s
+            'max_angular_velocity': 2.0,        # rad/s
 
             # MPC parameters
             'mpc_horizon': 50,
             'mpc_dt': 0.1,
-            'mpc_Q_xe': 15.0,
+            'mpc_Q_xe': 12.0,
             'mpc_Q_ye': 20.0,
-            'mpc_Q_yaw': 5.0,
+            'mpc_Q_yaw': 3.0,
             'mpc_R_delta': 0.00010,
             'mpc_weight_increase_xe': 0.0,
             'mpc_weight_increase_ye': 0.1,
