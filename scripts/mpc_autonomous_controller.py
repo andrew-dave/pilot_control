@@ -1708,6 +1708,14 @@ class MPCAutonomousController(Node):
                     # Linear interpolation between 0 and cruising_speed
                     ratio = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
                     v_ref = cruising_speed * (1.0 - ratio)
+                
+                # Additionally gate v_ref based on how far we are along the line (t_closest):
+                # very small t_closest -> very small forward speed, even if yaw is good.
+                # This sharpens the "turn first, then go" behavior.
+                ratio_t = max(0.0, min(1.0, t_closest / t_gate))  # in [0,1]
+                p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
+                f_t = ratio_t ** p_shape
+                v_ref *= f_t
             else:
                 # Past the gate region: always use full cruising speed
                 v_ref = cruising_speed
