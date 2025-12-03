@@ -389,13 +389,13 @@ def generate_launch_description():
             # MPC parameters
             'mpc_horizon': 50,
             'mpc_dt': 0.1,
-            'mpc_Q_xe': 15.0,
+            'mpc_Q_xe': 20.0,
             'mpc_Q_ye': 15.0,
             'mpc_Q_yaw': 5.0,
-            'mpc_R_delta': 0.00012,
+            'mpc_R_delta': 0.00015,
             'mpc_weight_increase_xe': 0.00,
-            'mpc_weight_increase_ye': 0.00,
-            'mpc_weight_increase_yaw': 0.2,
+            'mpc_weight_increase_ye': 0.10,
+            'mpc_weight_increase_yaw': 0.20,
 
             # Slip estimation parameters
             'slip_history_length': 100,
