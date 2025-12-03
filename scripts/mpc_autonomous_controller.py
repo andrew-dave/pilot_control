@@ -1746,8 +1746,9 @@ class MPCAutonomousController(Node):
         # full cruising speed.
         t_gate = 0.2  # Gate region: only for t_closest <= 0.2
 
-        # Compute a scalar v_scale \in [0,1] that will be used both to gate v_ref
-        # and to gate the MPC v-constraints via set_velocity_bound_scale().
+        # Compute scalar scales in [0,1]:
+        #   - v_scale_bounds: used to gate MPC v-constraints (how much forward speed is allowed)
+        #   - v_scale_ref:    used to gate v_ref in the reference trajectory (how much we "ask for")
         if t_closest <= t_gate:
             # Yaw-based gating near the start of the line
             if abs_yaw_err >= yaw_stop:
@@ -1759,23 +1760,27 @@ class MPCAutonomousController(Node):
                 ratio_yaw = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
                 yaw_scale = 1.0 - max(0.0, min(1.0, ratio_yaw))
             
-            # Additionally gate based on progress along the line (t_closest)
+            # Additionally gate reference speed based on progress along the line (t_closest)
             ratio_t = max(0.0, min(1.0, t_closest / t_gate))  # in [0,1]
             p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
             f_t = ratio_t ** p_shape
-
-            v_scale = yaw_scale * f_t
+            
+            # Bounds: only yaw-based (so once yaw is aligned, MPC is allowed to move)
+            v_scale_bounds = yaw_scale
+            # Reference: yaw and t-based shaping (turn-first-then-go behavior)
+            v_scale_ref = yaw_scale * f_t
         else:
-            v_scale = 1.0
+            v_scale_bounds = 1.0
+            v_scale_ref = 1.0
 
         # Store v_scale for use in MPC constraints (velocity bounds gating)
-        self._current_v_scale = float(v_scale)
+        self._current_v_scale = float(v_scale_bounds)
 
         for k in range(self.mpc_horizon):
             waypoint_x, waypoint_y, waypoint_yaw = waypoint_positions[k]
 
-            # Use the same v_scale for v_ref
-            v_ref = cruising_speed * v_scale
+            # Use v_scale_ref for v_ref
+            v_ref = cruising_speed * v_scale_ref
 
             # Velocity components in global frame: v_ref along path direction
             vx_ref = v_ref * math.cos(path_heading)
