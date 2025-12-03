@@ -1769,7 +1769,7 @@ class MPCAutonomousController(Node):
             f_t = ratio_t ** p_shape
             
             # Bounds: only yaw-based (so once yaw is aligned, MPC is allowed to move)
-            v_scale_bounds = yaw_scale
+            v_scale_bounds = yaw_scale/2.0
             # Reference: yaw and t-based shaping (turn-first-then-go behavior)
             v_scale_ref = yaw_scale * f_t
         else:
