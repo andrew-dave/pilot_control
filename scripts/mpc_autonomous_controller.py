@@ -1741,15 +1741,18 @@ class MPCAutonomousController(Node):
         yaw_stop = math.radians(15.0)  # ~15 degrees
         yaw_full = math.radians(5.0)   # ~5 degrees
 
-        # Only apply yaw-based gating when we are near the start of the line
-        # (t_closest small). Once sufficiently along the segment, always use
-        # full cruising speed.
-        t_gate = 0.2  # Gate region: only for t_closest <= 0.2
+        # Only apply yaw-based gating when we are near the start of the line,
+        # within a fixed physical distance from the start (e.g. first 10 cm).
+        # Once sufficiently along the segment, always use full cruising speed.
+        d_gate = 0.10  # [m] gate region length from path start
+
+        # Distance from start to closest point along the path
+        s_closest = t_closest * path_length
 
         # Compute scalar scales in [0,1]:
         #   - v_scale_bounds: used to gate MPC v-constraints (how much forward speed is allowed)
         #   - v_scale_ref:    used to gate v_ref in the reference trajectory (how much we "ask for")
-        if t_closest <= t_gate:
+        if s_closest <= d_gate:
             # Yaw-based gating near the start of the line
             if abs_yaw_err >= yaw_stop:
                 yaw_scale = 0.0
@@ -1760,8 +1763,8 @@ class MPCAutonomousController(Node):
                 ratio_yaw = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
                 yaw_scale = 1.0 - max(0.0, min(1.0, ratio_yaw))
             
-            # Additionally gate reference speed based on progress along the line (t_closest)
-            ratio_t = max(0.0, min(1.0, t_closest / t_gate))  # in [0,1]
+            # Additionally gate reference speed based on progress along the line (distance from start)
+            ratio_t = max(0.0, min(1.0, s_closest / d_gate))  # in [0,1]
             p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
             f_t = ratio_t ** p_shape
             
