@@ -140,6 +140,10 @@ class SlipAwareMPC:
         self.v_max = float(v_max)
         self.omega_min = float(omega_min)
         self.omega_max = float(omega_max)
+
+        # Store base values so we can apply dynamic scaling to v-bounds
+        self._v_min_base = self.v_min
+        self._v_max_base = self.v_max
         
         # Base cost matrix Q (for states) - will be scaled per time step in setup()
         self.Q_xe_base = Q_xe
@@ -166,6 +170,20 @@ class SlipAwareMPC:
         
         # Previous solution for warm starting
         self.prev_solution = None
+
+    def set_velocity_bound_scale(self, scale: float) -> None:
+        """
+        Scale the robot linear velocity bounds by the given factor in [0, 1].
+        scale = 1.0 -> full v_min/v_max
+        scale = 0.0 -> v constrained to (approximately) zero.
+        """
+        try:
+            s = float(scale)
+        except (TypeError, ValueError):
+            s = 1.0
+        s = max(0.0, min(1.0, s))
+        self.v_min = self._v_min_base * s
+        self.v_max = self._v_max_base * s
     
     def setup(self):
         """
@@ -528,6 +546,32 @@ class SlipAwareMPC:
         if self.logger:
             self.logger.info('✓ MPC optimizer initialized')
         return True
+
+    def update_v_bounds(self, v_scale: float) -> None:
+        """
+        Update the linear velocity bounds for all steps by a scale factor.
+
+        Args:
+            v_scale: Scale factor in [0, 1] applied to |v_max|.
+                     v_max_k = v_scale * self.v_max, v_min_k = -v_max_k.
+        """
+        if not self.initialized:
+            return
+
+        # Clamp scale to [0, 1]
+        v_scale = max(0.0, min(1.0, float(v_scale)))
+
+        N = self.N
+        nx = self.nx
+        n_dynamics = N * nx
+
+        scaled_v_max = self.v_max * v_scale
+        scaled_v_min = -scaled_v_max
+
+        for k in range(N):
+            v_idx = n_dynamics + 2 * k
+            self.l_constr[v_idx] = scaled_v_min
+            self.u_constr[v_idx] = scaled_v_max
     
     def update_matrices(self, ref_traj, slip_left, slip_right):
         """
@@ -705,6 +749,13 @@ class SlipAwareMPC:
         for i in range(self.nx):
             self.l_constr[i] = rhs_0[i]
             self.u_constr[i] = rhs_0[i]
+
+        # Also refresh robot-level v bounds (v_min/v_max may have been scaled dynamically)
+        n_dynamics = self.N * self.nx
+        for k in range(self.N):
+            v_idx = n_dynamics + 2 * k
+            self.l_constr[v_idx] = self.v_min
+            self.u_constr[v_idx] = self.v_max
         
         # Warm start
         if self.prev_solution is not None:
@@ -1695,30 +1746,36 @@ class MPCAutonomousController(Node):
         # full cruising speed.
         t_gate = 0.2  # Gate region: only for t_closest <= 0.2
 
+        # Compute a scalar v_scale \in [0,1] that will be used both to gate v_ref
+        # and to gate the MPC v-constraints via set_velocity_bound_scale().
+        if t_closest <= t_gate:
+            # Yaw-based gating near the start of the line
+            if abs_yaw_err >= yaw_stop:
+                yaw_scale = 0.0
+            elif abs_yaw_err <= yaw_full:
+                yaw_scale = 1.0
+            else:
+                # Linear interpolation between 0 and 1 as yaw_err goes from yaw_stop -> yaw_full
+                ratio_yaw = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
+                yaw_scale = 1.0 - max(0.0, min(1.0, ratio_yaw))
+            
+            # Additionally gate based on progress along the line (t_closest)
+            ratio_t = max(0.0, min(1.0, t_closest / t_gate))  # in [0,1]
+            p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
+            f_t = ratio_t ** p_shape
+
+            v_scale = yaw_scale * f_t
+        else:
+            v_scale = 1.0
+
+        # Store v_scale for use in MPC constraints (velocity bounds gating)
+        self._current_v_scale = float(v_scale)
+
         for k in range(self.mpc_horizon):
             waypoint_x, waypoint_y, waypoint_yaw = waypoint_positions[k]
 
-            if t_closest <= t_gate:
-                # Gated forward speed based on current yaw error (near start of line)
-                if abs_yaw_err >= yaw_stop:
-                    v_ref = 0.0
-                elif abs_yaw_err <= yaw_full:
-                    v_ref = cruising_speed
-                else:
-                    # Linear interpolation between 0 and cruising_speed
-                    ratio = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
-                    v_ref = cruising_speed * (1.0 - ratio)
-                
-                # Additionally gate v_ref based on how far we are along the line (t_closest):
-                # very small t_closest -> very small forward speed, even if yaw is good.
-                # This sharpens the "turn first, then go" behavior.
-                ratio_t = max(0.0, min(1.0, t_closest / t_gate))  # in [0,1]
-                p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
-                f_t = ratio_t ** p_shape
-                v_ref *= f_t
-            else:
-                # Past the gate region: always use full cruising speed
-                v_ref = cruising_speed
+            # Use the same v_scale for v_ref
+            v_ref = cruising_speed * v_scale
 
             # Velocity components in global frame: v_ref along path direction
             vx_ref = v_ref * math.cos(path_heading)
@@ -2448,7 +2505,13 @@ class MPCAutonomousController(Node):
                     f'v={math.sqrt(wp[3]**2 + wp[4]**2):.3f}, w={wp[5]:.3f}'
                 )
         
-        # Solve MPC optimization
+        # Solve MPC optimization (apply dynamic v-bound gating if available)
+        if hasattr(self, '_current_v_scale'):
+            try:
+                self.mpc_optimizer.set_velocity_bound_scale(self._current_v_scale)
+            except Exception:
+                pass
+
         u0_optimal, solve_time_ms, solution = self.mpc_optimizer.solve(
             current_error,
             reference_trajectory,
