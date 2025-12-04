@@ -74,12 +74,12 @@ def generate_launch_description():
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
         'mpc_Q_xe',
-        default_value='15.0',
+        default_value='20.0',
         description='MPC cost weight for position error x'
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
         'mpc_Q_ye',
-        default_value='20.0',
+        default_value='15.0',
         description='MPC cost weight for position error y (higher for lateral correction)'
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
@@ -87,10 +87,15 @@ def generate_launch_description():
         default_value='5.0',
         description='MPC cost weight for yaw error (higher to keep robot facing along the path and avoid backwards tracking)'
     )
-    declare_mpc_R_delta_arg = DeclareLaunchArgument(
-        'mpc_R_delta',
-        default_value='0.00010',
-        description='MPC cost weight for control input change (delta u)'
+    declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
+        'mpc_R_delta_v',
+        default_value='0.00015',
+        description='MPC cost weight for change in linear velocity (delta v)'
+    )
+    declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
+        'mpc_R_delta_omega',
+        default_value='0.00015',
+        description='MPC cost weight for change in angular velocity (delta omega)'
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
         'mpc_weight_increase_xe',
@@ -104,7 +109,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         'mpc_weight_increase_yaw',
-        default_value='0.0',
+        default_value='0.2',
         description='Linear weight increase factor per time step for yaw error. Weight at step k = base_weight * (1 + weight_increase_yaw * k). Example: 0.1 means 10% increase per step.'
     )
     
@@ -246,7 +251,8 @@ def generate_launch_description():
             'mpc_Q_xe': LaunchConfiguration('mpc_Q_xe'),
             'mpc_Q_ye': LaunchConfiguration('mpc_Q_ye'),
             'mpc_Q_yaw': LaunchConfiguration('mpc_Q_yaw'),
-            'mpc_R_delta': LaunchConfiguration('mpc_R_delta'),
+            'mpc_R_delta_v': LaunchConfiguration('mpc_R_delta_v'),
+            'mpc_R_delta_omega': LaunchConfiguration('mpc_R_delta_omega'),
             'mpc_weight_increase_xe': LaunchConfiguration('mpc_weight_increase_xe'),
             'mpc_weight_increase_ye': LaunchConfiguration('mpc_weight_increase_ye'),
             'mpc_weight_increase_yaw': LaunchConfiguration('mpc_weight_increase_yaw'),
@@ -351,7 +357,8 @@ def generate_launch_description():
         declare_mpc_Q_xe_arg,
         declare_mpc_Q_ye_arg,
         declare_mpc_Q_yaw_arg,
-        declare_mpc_R_delta_arg,
+        declare_mpc_R_delta_v_arg,
+        declare_mpc_R_delta_omega_arg,
         declare_mpc_weight_increase_xe_arg,
         declare_mpc_weight_increase_ye_arg,
         declare_mpc_weight_increase_yaw_arg,

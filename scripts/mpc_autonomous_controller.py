@@ -66,17 +66,17 @@ except ImportError:
 
 class SlipAwareMPC:
     """
-    Linear Time-Varying (LTV) MPC for differential drive robot with slip compensation.
+    Linear Time-Varying (LTV) MPC for differential drive robot.
     
     State: Error vector x = [xe, ye, θe]^T (Error in Body Frame)
-    Input: Wheel velocities u = [ωL, ωR]^T (rad/s)
+    Input: Robot body velocities u = [v, ω]^T (m/s, rad/s)
     
-    Dynamics: x_{k+1} = A_k*x_k + B_k*u_kta
+    Dynamics: x_{k+1} = A_k*x_k + B_k*u_k
     - A_k depends on reference trajectory (v_ref, omega_ref)
-    - B_k depends on slip ratios (λ_L, λ_R)
     """
     
-    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw, R_delta, logger=None, 
+    def __init__(self, N, Ts, r, L, w_min, w_max, Q_xe, Q_ye, Q_yaw,
+                 R_delta_v, R_delta_omega, logger=None,
                  weight_increase_xe=0.0, weight_increase_ye=0.0, weight_increase_yaw=0.0,
                  v_min=None, v_max=None, omega_min=None, omega_max=None):
         """
@@ -119,7 +119,7 @@ class SlipAwareMPC:
         
         # State and control dimensions
         self.nx = 3  # [xe, ye, θe]
-        self.nu = 2  # [ωL, ωR]
+        self.nu = 2  # [v, ω]
         self.nz = N * (self.nu + self.nx)  # Decision vector size
 
         # ------------------------------------------------------------
@@ -153,7 +153,8 @@ class SlipAwareMPC:
         self.Q = sparse.diags([Q_xe, Q_ye, Q_yaw])  # Keep for backward compatibility, but will use scaled versions
         
         # Cost matrix R_delta (for control input changes: delta u = u_k - u_{k-1})
-        self.R_delta = sparse.diags([R_delta, R_delta])
+        # Allow different penalties for v and ω.
+        self.R_delta = sparse.diags([R_delta_v, R_delta_omega])
         
         # OSQP solver
         self.solver = None
@@ -404,41 +405,20 @@ class SlipAwareMPC:
             
             constraint_row += nx
         
-        # Input bound constraints: bounds on robot v and ω
-        #
-        # v = (r/2) * (ωL + ωR)
-        # ω = (r/L) * (ωR - ωL)
-        #
-        # We encode these as linear inequalities in terms of wheel speeds.
+        # Input bound constraints: direct bounds on robot v and ω
         for k in range(N):
             u_k_idx = k * (nu + nx)
 
-            # --- Linear velocity constraint: v_min <= v <= v_max ---
-            # Row for v: coefficients on [ωL, ωR] -> [r/2, r/2]
+            # --- Linear velocity constraint: v_min <= v_k <= v_max ---
             row_indices.append(constraint_row)
-            col_indices.append(u_k_idx + 0)  # ωL
-            data_values.append(r / 2.0)
-
-            row_indices.append(constraint_row)
-            col_indices.append(u_k_idx + 1)  # ωR
-            data_values.append(r / 2.0)
+            col_indices.append(u_k_idx + 0)  # v
+            data_values.append(1.0)
             constraint_row += 1
 
-            # --- Angular velocity constraint: omega_min <= ω <= omega_max ---
-            # Row for ω: coefficients on [ωL, ωR] -> [-r/L, +r/L]
-            # Guard against L == 0 just in case (should not happen in practice).
-            if L != 0.0:
-                coeff_omega = r / L
-            else:
-                coeff_omega = 0.0
-
+            # --- Angular velocity constraint: omega_min <= ω_k <= omega_max ---
             row_indices.append(constraint_row)
-            col_indices.append(u_k_idx + 0)  # ωL
-            data_values.append(-coeff_omega)
-
-            row_indices.append(constraint_row)
-            col_indices.append(u_k_idx + 1)  # ωR
-            data_values.append(coeff_omega)
+            col_indices.append(u_k_idx + 1)  # ω
+            data_values.append(1.0)
             constraint_row += 1
         
         # Create sparse constraint matrix
@@ -588,8 +568,6 @@ class SlipAwareMPC:
         
         N = self.N
         Ts = self.Ts
-        r = self.r
-        L = self.L
         nx = self.nx
         nu = self.nu
         
@@ -602,10 +580,6 @@ class SlipAwareMPC:
             if self.logger:
                 self.logger.error(f'A_constr data size mismatch: {len(A_constr_data)} != {expected_size}')
             return
-        
-        # Slip efficiency factors
-        eta_L = 1.0 - slip_left
-        eta_R = 1.0 - slip_right
         
         # Update A and B matrices for each step
         for k in range(N):
@@ -644,29 +618,23 @@ class SlipAwareMPC:
                 [0.0, 0.0, 1.0]
             ])
             
-            # Compute B_k matrix (based on slip ratios)
-            # Differential drive forward kinematics:
-            #   v = (r/2) * (ωL + ωR)  [forward velocity]
-            #   ω = (r/L) * (ωR - ωL)  [angular velocity]
+            # Compute B_k matrix for inputs [v, ω].
             #
-            # Error state dynamics (linearized around small errors, Kanayama-style error):
+            # Error state dynamics (linearized around small errors, Kanayama-style):
             #   xe_dot ≈ v_ref - v
-            #   ye_dot ≈ -v_ref * θe          [lateral drift, cannot be directly controlled]
-            #   θe     = yaw_ref - yaw_current
-            #   yaw_dot = ω = (r/L)*(ωR - ωL)
-            #   ⇒ θe_dot = ω_ref - yaw_dot ≈ ω_ref - (r/L)*(ωR - ωL)
+            #   ye_dot ≈ v_ref * θe          [no direct control via v, ω]
+            #   θe_dot ≈ ω_ref - ω
             #
-            # So the continuous-time Jacobian J = ∂[xe_dot, ye_dot, θe_dot]/∂[ωL, ωR] is:
-            #   Row 0 (xe):  ∂xe_dot/∂ωL = -r/2,   ∂xe_dot/∂ωR = -r/2
-            #   Row 1 (ye):  ≈ 0, 0  (no direct control of lateral error)
-            #   Row 2 (θe):  ∂θe_dot/∂ωL = +r/L,   ∂θe_dot/∂ωR = -r/L   (because θe_dot = ω_ref - ω)
+            # Continuous-time Jacobian wrt [v, ω]:
+            #   Row 0 (xe):  ∂xe_dot/∂v = -1, ∂xe_dot/∂ω = 0
+            #   Row 1 (ye):  ≈ 0, 0
+            #   Row 2 (θe):  ∂θe_dot/∂v = 0, ∂θe_dot/∂ω = -1
             #
-            # Discrete-time B_k is simply Ts * J. The constraint matrix stores -B_k, but the
-            # underlying dynamics model uses B_k directly in x_{k+1} = A_k x_k + B_k u_k.
+            # Discrete-time B_k = Ts * J
             B_k = Ts * np.array([
-                [-r/2.0 * eta_L, -r/2.0 * eta_R],  # xe: correct sign for xe_dot = v_ref - v
-                [0.0, 0.0],                         # ye: cannot be directly controlled
-                [ r/L * eta_L, -r/L * eta_R]        # θe: correct sign for θe_dot = ω_ref - ω
+                [-1.0, 0.0],
+                [ 0.0, 0.0],
+                [ 0.0,-1.0]
             ])
             
             # Update sparse matrix data
@@ -810,7 +778,7 @@ class SlipAwareMPC:
 
         # Extract control
         solution = result.x
-        u0_optimal = solution[:self.nu]  # First control input [ωL, ωR]
+        u0_optimal = solution[:self.nu]  # First control input [v, ω]
 
         # Debug: Enhanced solver diagnostics
         if self.logger and hasattr(self, 'solver_debug_enabled') and self.solver_debug_enabled:
@@ -1086,7 +1054,9 @@ class MPCAutonomousController(Node):
         self.declare_parameter('mpc_Q_xe', 15.0)  # Weight for position error x
         self.declare_parameter('mpc_Q_ye', 20.0)  # Weight for position error y (much higher for lateral correction)
         self.declare_parameter('mpc_Q_yaw',5.0)  # Weight for yaw error (higher to help lateral correction)
-        self.declare_parameter('mpc_R_delta', 0.00010)  # Weight for control input change
+        # Separate weights for Δv and Δω
+        self.declare_parameter('mpc_R_delta_v', 0.00010)     # Weight for change in linear velocity
+        self.declare_parameter('mpc_R_delta_omega', 0.00010) # Weight for change in angular velocity
         
         # Weight scaling: increase weights linearly into the future (separate factors for each error term)
         # Weight at step k = base_weight * (1 + weight_increase * k)
@@ -1102,7 +1072,8 @@ class MPCAutonomousController(Node):
         mpc_Q_xe = self.get_parameter('mpc_Q_xe').value
         mpc_Q_ye = self.get_parameter('mpc_Q_ye').value
         mpc_Q_yaw = self.get_parameter('mpc_Q_yaw').value
-        mpc_R_delta = self.get_parameter('mpc_R_delta').value
+        mpc_R_delta_v = self.get_parameter('mpc_R_delta_v').value
+        mpc_R_delta_omega = self.get_parameter('mpc_R_delta_omega').value
         mpc_weight_increase_xe = self.get_parameter('mpc_weight_increase_xe').value
         mpc_weight_increase_ye = self.get_parameter('mpc_weight_increase_ye').value
         mpc_weight_increase_yaw = self.get_parameter('mpc_weight_increase_yaw').value
@@ -1128,7 +1099,8 @@ class MPCAutonomousController(Node):
             Q_xe=mpc_Q_xe,
             Q_ye=mpc_Q_ye,
             Q_yaw=mpc_Q_yaw,
-            R_delta=mpc_R_delta,
+            R_delta_v=mpc_R_delta_v,
+            R_delta_omega=mpc_R_delta_omega,
             logger=self.get_logger(),
             weight_increase_xe=mpc_weight_increase_xe,
             weight_increase_ye=mpc_weight_increase_ye,
@@ -2547,26 +2519,33 @@ class MPCAutonomousController(Node):
             right_slip
         )
         
-        # Extract wheel velocities (rad/s)
-        omega_L = u0_optimal[0]
-        omega_R = u0_optimal[1]
-        
+        # Extract commanded body velocities
+        v_cmd = float(u0_optimal[0])
+        omega_cmd = float(u0_optimal[1])
+
+        # Convert (v_cmd, omega_cmd) to wheel angular velocities (rad/s)
+        # v = (r/2)(ωL + ωR), ω = (r/L)(ωR - ωL)
+        if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
+            omega_L = 0.0
+            omega_R = 0.0
+        else:
+            r = self.wheel_radius
+            L = self.wheel_base
+            omega_L = (v_cmd / r) - (omega_cmd * L / (2.0 * r))
+            omega_R = (v_cmd / r) + (omega_cmd * L / (2.0 * r))
+
         # Convert to motor rev/s (accounting for gear ratio)
         left_rps = omega_L / (2.0 * math.pi * self.gear_ratio)
         right_rps = omega_R / (2.0 * math.pi * self.gear_ratio)
-        
+
         # Publish wheel velocities
         self.publish_wheel_velocities(left_rps, right_rps)
         
         # Publish diagnostic messages
         try:
-            # Convert to linear and angular velocities for diagnostics
-            linear_vel = (omega_L + omega_R) * self.wheel_radius / 2.0
-            angular_vel = (omega_R - omega_L) * self.wheel_radius / self.wheel_base
-
             twist_msg = Twist()
-            twist_msg.linear.x = linear_vel
-            twist_msg.angular.z = angular_vel
+            twist_msg.linear.x = v_cmd
+            twist_msg.angular.z = omega_cmd
             self.cmd_pub.publish(twist_msg)
 
             # Only publish MPC-specific diagnostics if solution exists
