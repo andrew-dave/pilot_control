@@ -1017,9 +1017,11 @@ class MPCAutonomousController(Node):
         # Stopping criteria
         self.target_reached_threshold = self.get_parameter('target_reached_threshold').value
         
-        # Autonomy default enable flag (can be overridden per-launch)
+        # Autonomy and behavior flags (can be overridden per-launch)
         self.declare_parameter('mpc_autonomy_enabled_default', False)
+        self.declare_parameter('enable_yaw_gating', False)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
         self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
+        self.enable_yaw_gating: bool = bool(self.get_parameter('enable_yaw_gating').value)
         
         # Topic names
         odometry_topic = self.get_parameter('odometry_topic').value
@@ -1724,26 +1726,13 @@ class MPCAutonomousController(Node):
                 waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
         
         # Compute velocities for each waypoint.
-        # For a straight line path: v_ref is along path direction (gated by yaw error),
-        # but only near the start of the segment (small t_closest). Deeper along the line
-        # we allow full cruising speed regardless of small yaw errors.
+        # For a straight line path: v_ref is along path direction. We can optionally
+        # shape v_ref near the start of the segment based on distance along the line,
+        # and (optionally) also gate based on yaw error if enable_yaw_gating is True.
         cruising_speed = 0.5  # m/s along path (maximum desired forward speed)
         path_heading = math.atan2(path_dy, path_dx)  # Heading along path
 
-        # Yaw error between robot and path heading
-        yaw_err = self.normalize_angle(path_heading - self.current_yaw)
-        abs_yaw_err = abs(yaw_err)
-
-        # Yaw thresholds for forward speed gating (tighter bounds)
-        # - For |yaw_err| >= yaw_stop: v_ref = 0 (pure rotation)
-        # - For |yaw_err| <= yaw_full: v_ref = cruising_speed
-        # - In between: linearly ramp v_ref from 0 to cruising_speed
-        yaw_stop = math.radians(5.0)  # ~5 degrees
-        yaw_full = math.radians(2.0)   # ~2 degrees
-
-        # Only apply yaw-based gating when we are near the start of the line,
-        # within a fixed physical distance from the start (e.g. first 10 cm).
-        # Once sufficiently along the segment, always use full cruising speed.
+        # Gating region: fixed distance from start of line where we may shape v_ref / bounds
         d_gate = 0.10  # [m] gate region length from path start
 
         # Distance from start to closest point along the path
@@ -1752,29 +1741,56 @@ class MPCAutonomousController(Node):
         # Compute scalar scales in [0,1]:
         #   - v_scale_bounds: used to gate MPC v-constraints (how much forward speed is allowed)
         #   - v_scale_ref:    used to gate v_ref in the reference trajectory (how much we "ask for")
-        if s_closest <= d_gate:
-            # Yaw-based gating near the start of the line
-            if abs_yaw_err >= yaw_stop:
-                yaw_scale = 0.0
-            elif abs_yaw_err <= yaw_full:
-                yaw_scale = 1.0
+        if self.enable_yaw_gating:
+            # -------- Yaw + distance-based gating (feature enabled) --------
+            # Yaw error between robot and path heading
+            yaw_err = self.normalize_angle(path_heading - self.current_yaw)
+            abs_yaw_err = abs(yaw_err)
+
+            # Yaw thresholds:
+            # - |yaw_err| >= yaw_stop: v_ref ~ 0 (prefer pure rotation)
+            # - |yaw_err| <= yaw_full: v_ref ~ cruising_speed
+            # - In between: ramp 0 -> cruising_speed
+            yaw_stop = math.radians(5.0)  # tighter thresholds
+            yaw_full = math.radians(2.0)
+
+            if s_closest <= d_gate:
+                # Yaw-based scaling near start
+                if abs_yaw_err >= yaw_stop:
+                    yaw_scale = 0.0
+                elif abs_yaw_err <= yaw_full:
+                    yaw_scale = 1.0
+                else:
+                    ratio_yaw = (abs_yaw_err - yaw_full) / (yaw_stop - yaw_full)
+                    ratio_yaw = max(0.0, min(1.0, ratio_yaw))
+                    yaw_scale = 1.0 - ratio_yaw
+
+                # Distance-based shaping (0 -> 1 over first d_gate meters)
+                ratio_t = max(0.0, min(1.0, s_closest / d_gate))
+                p_shape = 2.0
+                f_t = ratio_t ** p_shape
+
+                # Bounds: use yaw only (optionally slightly tightened)
+                v_scale_bounds = yaw_scale
+                # Reference: combine yaw and distance shaping
+                v_scale_ref = yaw_scale * f_t
             else:
-                # Linear interpolation between 0 and 1 as yaw_err goes from yaw_stop -> yaw_full
-                ratio_yaw = (abs_yaw_err - yaw_stop) / (yaw_full - yaw_stop)
-                yaw_scale = 1.0 - max(0.0, min(1.0, ratio_yaw))
-            
-            # Additionally gate reference speed based on progress along the line (distance from start)
-            ratio_t = max(0.0, min(1.0, s_closest / d_gate))  # in [0,1]
-            p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
-            f_t = ratio_t ** p_shape
-            
-            # Bounds: only yaw-based (so once yaw is aligned, MPC is allowed to move)
-            v_scale_bounds = yaw_scale/2.0
-            # Reference: yaw and t-based shaping (turn-first-then-go behavior)
-            v_scale_ref = yaw_scale * f_t
+                v_scale_bounds = 1.0
+                v_scale_ref = 1.0
         else:
-            v_scale_bounds = 1.0
-            v_scale_ref = 1.0
+            # -------- Distance-only shaping (yaw gating disabled) --------
+            if s_closest <= d_gate:
+                ratio_t = max(0.0, min(1.0, s_closest / d_gate))  # in [0,1]
+                p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
+                f_t = ratio_t ** p_shape
+
+                # Bounds: keep full velocity bounds (no gating on constraints)
+                v_scale_bounds = 1.0
+                # Reference: distance-based shaping (small v_ref very close to start)
+                v_scale_ref = f_t
+            else:
+                v_scale_bounds = 1.0
+                v_scale_ref = 1.0
 
         # Store v_scale for use in MPC constraints (velocity bounds gating)
         self._current_v_scale = float(v_scale_bounds)
