@@ -1025,7 +1025,7 @@ class MPCAutonomousController(Node):
         # error_ref_ahead_min_scale: starting fraction of nominal lookahead distance at s=0
         # error_ref_gate_distance:   distance from path start over which we ramp to full lookahead
         self.declare_parameter('error_ref_ahead_min_scale', 0.02)   # e.g. 0.1 = 1/10th
-        self.declare_parameter('error_ref_gate_distance', 0.10)    # e.g. 0.10 m = first 10 cm
+        self.declare_parameter('error_ref_gate_distance', 0.20)    # e.g. 0.10 m = first 10 cm
 
         self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
         self.enable_yaw_gating: bool = bool(self.get_parameter('enable_yaw_gating').value)
@@ -1735,74 +1735,31 @@ class MPCAutonomousController(Node):
                 waypoint_positions.append((waypoint_x, waypoint_y, waypoint_yaw))
         
         # Compute velocities for each waypoint.
-        # For a straight line path: v_ref is along path direction. We can optionally
-        # shape v_ref near the start of the segment based on distance along the line,
-        # and (optionally) also gate based on yaw error if enable_yaw_gating is True.
+        # For a straight line path: v_ref is along path direction. We scale v_ref
+        # near the start of the segment based on distance along the line, using the
+        # same gate distance and minimum scale concept as for the error-reference
+        # lookahead. We no longer gate the MPC v-bounds here; only v_ref is shaped.
         cruising_speed = 0.5  # m/s along path (maximum desired forward speed)
         path_heading = math.atan2(path_dy, path_dx)  # Heading along path
 
-        # Gating region: fixed distance from start of line where we may shape v_ref / bounds
-        d_gate = 0.10  # [m] gate region length from path start
+        # Gating region: distance from start of line where we scale v_ref
+        d_gate_v = float(self.error_ref_gate_distance)  # [m]
 
         # Distance from start to closest point along the path
         s_closest = t_closest * path_length
 
-        # Compute scalar scales in [0,1]:
-        #   - v_scale_bounds: used to gate MPC v-constraints (how much forward speed is allowed)
-        #   - v_scale_ref:    used to gate v_ref in the reference trajectory (how much we "ask for")
-        if self.enable_yaw_gating:
-            # -------- Yaw + distance-based gating (feature enabled) --------
-            # Yaw error between robot and path heading
-            yaw_err = self.normalize_angle(path_heading - self.current_yaw)
-            abs_yaw_err = abs(yaw_err)
-
-            # Yaw thresholds:
-            # - |yaw_err| >= yaw_stop: v_ref ~ 0 (prefer pure rotation)
-            # - |yaw_err| <= yaw_full: v_ref ~ cruising_speed
-            # - In between: ramp 0 -> cruising_speed
-            yaw_stop = math.radians(5.0)  # tighter thresholds
-            yaw_full = math.radians(2.0)
-
-            if s_closest <= d_gate:
-                # Yaw-based scaling near start
-                if abs_yaw_err >= yaw_stop:
-                    yaw_scale = 0.0
-                elif abs_yaw_err <= yaw_full:
-                    yaw_scale = 1.0
-                else:
-                    ratio_yaw = (abs_yaw_err - yaw_full) / (yaw_stop - yaw_full)
-                    ratio_yaw = max(0.0, min(1.0, ratio_yaw))
-                    yaw_scale = 1.0 - ratio_yaw
-
-                # Distance-based shaping (0 -> 1 over first d_gate meters)
-                ratio_t = max(0.0, min(1.0, s_closest / d_gate))
-                p_shape = 2.0
-                f_t = ratio_t ** p_shape
-
-                # Bounds: use yaw only (optionally slightly tightened)
-                v_scale_bounds = yaw_scale
-                # Reference: combine yaw and distance shaping
-                v_scale_ref = yaw_scale * f_t
-            else:
-                v_scale_bounds = 1.0
-                v_scale_ref = 1.0
+        # Compute v_ref scale in [0,1]:
+        #   - At s=0:    scale = error_ref_ahead_min_scale (e.g. 1/20 of full v_ref)
+        #   - At s>=d_gate_v: scale = 1.0 (full v_ref)
+        if d_gate_v > 1e-6 and s_closest <= d_gate_v:
+            start_scale = max(0.0, min(1.0, float(self.error_ref_ahead_min_scale)))
+            ratio_s = s_closest / d_gate_v
+            v_scale_ref = start_scale + (1.0 - start_scale) * ratio_s
         else:
-            # -------- Distance-only shaping (yaw gating disabled) --------
-            if s_closest <= d_gate:
-                ratio_t = max(0.0, min(1.0, s_closest / d_gate))  # in [0,1]
-                p_shape = 2.0  # shape exponent; >1 makes behavior sharper near start
-                f_t = ratio_t ** p_shape
+            v_scale_ref = 1.0
 
-                # Bounds: keep full velocity bounds (no gating on constraints)
-                v_scale_bounds = 1.0
-                # Reference: distance-based shaping (small v_ref very close to start)
-                v_scale_ref = f_t
-            else:
-                v_scale_bounds = 1.0
-                v_scale_ref = 1.0
-
-        # Store v_scale for use in MPC constraints (velocity bounds gating)
-        self._current_v_scale = float(v_scale_bounds)
+        # We no longer gate the MPC v-bounds based on this; keep full bounds.
+        self._current_v_scale = 1.0
 
         for k in range(self.mpc_horizon):
             waypoint_x, waypoint_y, waypoint_yaw = waypoint_positions[k]
