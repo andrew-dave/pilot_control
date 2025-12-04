@@ -100,7 +100,8 @@ class AccelMPC:
         Q_xe: float,
         Q_ye: float,
         Q_yaw: float,
-        R_delta: float,
+        R_delta_v: float,
+        R_delta_omega: float,
         logger=None,
         weight_increase_xe: float = 0.0,
         weight_increase_ye: float = 0.0,
@@ -128,7 +129,9 @@ class AccelMPC:
         self.Q_xe_base = float(Q_xe)
         self.Q_ye_base = float(Q_ye)
         self.Q_yaw_base = float(Q_yaw)
-        self.R_delta_val = float(R_delta)
+        # Separate Δ-costs for linear and angular velocity
+        self.R_delta_v = float(R_delta_v)
+        self.R_delta_omega = float(R_delta_omega)
 
         self.weight_increase_xe = float(weight_increase_xe)
         self.weight_increase_ye = float(weight_increase_ye)
@@ -209,12 +212,17 @@ class AccelMPC:
             P_data.append(w_yaw)
 
         # Control cost: ||Δu_k||^2_R for each step (no cross-terms between steps)
+        # Allow different penalties for Δv and Δω.
         for k in range(N):
             u_k_start = k * (nu + nx)
-            for i in range(nu):
-                P_row.append(u_k_start + i)
-                P_col.append(u_k_start + i)
-                P_data.append(self.R_delta_val)
+            # Δv
+            P_row.append(u_k_start + 0)
+            P_col.append(u_k_start + 0)
+            P_data.append(self.R_delta_v)
+            # Δω
+            P_row.append(u_k_start + 1)
+            P_col.append(u_k_start + 1)
+            P_data.append(self.R_delta_omega)
 
         P_coo = sparse.coo_matrix((P_data, (P_row, P_col)), shape=(nz, nz))
         P_sym = (P_coo + P_coo.T) / 2.0
@@ -622,7 +630,10 @@ class AccelMPC:
         for k in range(self.N):
             u_idx = k * (nu + nx)
             uk = solution[u_idx : u_idx + nu]
-            cost += self.R_delta_val * float(uk[0] ** 2 + uk[1] ** 2)
+            cost += (
+                self.R_delta_v * float(uk[0] ** 2)
+                + self.R_delta_omega * float(uk[1] ** 2)
+            )
 
         return float(cost)
 
@@ -661,7 +672,9 @@ class MPCAccelController(Node):
         self.declare_parameter("mpc_Q_xe", 15.0)
         self.declare_parameter("mpc_Q_ye", 20.0)
         self.declare_parameter("mpc_Q_yaw", 5.0)
-        self.declare_parameter("mpc_R_delta", 0.01)
+        # Separate Δ-costs for linear and angular velocity
+        self.declare_parameter("mpc_R_delta_v", 0.01)
+        self.declare_parameter("mpc_R_delta_omega", 0.0015)
         # Optional time-varying weight scaling (same semantics as slip-aware MPC)
         self.declare_parameter("mpc_weight_increase_xe", 0.0)
         self.declare_parameter("mpc_weight_increase_ye", 0.0)
@@ -690,7 +703,8 @@ class MPCAccelController(Node):
         mpc_Q_xe = float(self.get_parameter("mpc_Q_xe").value)
         mpc_Q_ye = float(self.get_parameter("mpc_Q_ye").value)
         mpc_Q_yaw = float(self.get_parameter("mpc_Q_yaw").value)
-        mpc_R_delta = float(self.get_parameter("mpc_R_delta").value)
+        mpc_R_delta_v = float(self.get_parameter("mpc_R_delta_v").value)
+        mpc_R_delta_omega = float(self.get_parameter("mpc_R_delta_omega").value)
         mpc_weight_increase_xe = float(self.get_parameter("mpc_weight_increase_xe").value)
         mpc_weight_increase_ye = float(self.get_parameter("mpc_weight_increase_ye").value)
         mpc_weight_increase_yaw = float(self.get_parameter("mpc_weight_increase_yaw").value)
@@ -754,7 +768,8 @@ class MPCAccelController(Node):
             Q_xe=mpc_Q_xe,
             Q_ye=mpc_Q_ye,
             Q_yaw=mpc_Q_yaw,
-            R_delta=mpc_R_delta,
+            R_delta_v=mpc_R_delta_v,
+            R_delta_omega=mpc_R_delta_omega,
             logger=self.get_logger(),
             weight_increase_xe=mpc_weight_increase_xe,
             weight_increase_ye=mpc_weight_increase_ye,
