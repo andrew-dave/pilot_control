@@ -1020,7 +1020,7 @@ class MPCAutonomousController(Node):
         
         # Autonomy and behavior flags (can be overridden per-launch)
         self.declare_parameter('mpc_autonomy_enabled_default', False)
-        self.declare_parameter('enable_yaw_gating', True)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
+        self.declare_parameter('enable_yaw_gating', False)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
         self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
         self.enable_yaw_gating: bool = bool(self.get_parameter('enable_yaw_gating').value)
         
@@ -2484,37 +2484,74 @@ class MPCAutonomousController(Node):
             self.publish_zero_velocity()
             return
         
-        # Compute error state for MPC (use first waypoint as reference for forward progress)
-        # The error state should be zero when robot reaches the first waypoint
-        # This ensures forward progress along the path
-        if len(reference_trajectory) > 0:
-            ref_waypoint = reference_trajectory[0]  # First waypoint (ahead on path)
-            current_error = self.compute_error_state(ref_waypoint)
-        else:
-            # Fallback: compute relative to closest point if no waypoints
-            path_dx = self.target_x - self.path_start_x
-            path_dy = self.target_y - self.path_start_y
-            path_length = math.sqrt(path_dx*path_dx + path_dy*path_dy)
-            if path_length > 1e-6:
-                path_dir_x = path_dx / path_length
-                path_dir_y = path_dy / path_length
-                to_current_x = self.current_x - self.path_start_x
-                to_current_y = self.current_y - self.path_start_y
-                t_closest = (to_current_x * path_dir_x + to_current_y * path_dir_y) / path_length
-                t_closest = np.clip(t_closest, 0.0, 1.0)
-                
-                closest_x = self.path_start_x + t_closest * path_dx
-                closest_y = self.path_start_y + t_closest * path_dy
+        # Compute error state for MPC.
+        # We want the controller to focus more on lateral and yaw correction
+        # in the first few centimeters of the line. To do that, we adapt the
+        # reference point used for error computation:
+        #   - Beyond a small distance d_gate from the start of the line:
+        #       use the first waypoint in the horizon (as before).
+        #   - Within the first d_gate meters:
+        #       use a reference point that is much closer along the line,
+        #       with an "ahead" distance that grows from a small fraction
+        #       (e.g. 1/10) of the nominal spacing up to the full spacing
+        #       as we move from 0 to d_gate.
+        path_dx = self.target_x - self.path_start_x
+        path_dy = self.target_y - self.path_start_y
+        path_length = math.sqrt(path_dx * path_dx + path_dy * path_dy)
+
+        if path_length > 1e-6:
+            # Direction of the path
+            path_dir_x = path_dx / path_length
+            path_dir_y = path_dy / path_length
+
+            # Projection of current position onto the path
+            to_current_x = self.current_x - self.path_start_x
+            to_current_y = self.current_y - self.path_start_y
+            t_closest = (to_current_x * path_dir_x + to_current_y * path_dir_y) / path_length
+            t_closest = np.clip(t_closest, 0.0, 1.0)
+
+            # Distance from path start to closest point
+            s_closest = float(t_closest * path_length)
+
+            # Gating region from start of line where we modify the ahead distance
+            d_gate = 0.10  # [m] first 10 cm along the path
+
+            if s_closest <= d_gate:
+                # Nominal ahead distance (approximate waypoint spacing)
+                nominal_ahead = 0.04  # [m], consistent with min_spacing / cruising_speed * dt
+
+                # Scale factor for ahead distance:
+                #   at s=0      -> scale = 0.1 (1/10 of nominal ahead)
+                #   at s=d_gate -> scale = 1.0 (full nominal ahead)
+                ratio_s = s_closest / max(d_gate, 1e-6)
+                ahead_scale = 0.1 + 0.9 * ratio_s
+                ahead_dist = ahead_scale * nominal_ahead
+
+                # Target distance along path for reference point
+                s_ref = min(s_closest + ahead_dist, path_length)
+                t_ref = s_ref / path_length
+
+                ref_x = self.path_start_x + t_ref * path_dx
+                ref_y = self.path_start_y + t_ref * path_dy
                 path_heading = math.atan2(path_dy, path_dx)
-                
-                closest_waypoint = np.array([
-                    closest_x, closest_y, path_heading,
-                    0.4 * math.cos(path_heading), 0.4 * math.sin(path_heading), 0.0
+
+                # Build a synthetic reference waypoint close ahead on the line
+                cruising_speed = 0.5
+                ref_waypoint = np.array([
+                    ref_x, ref_y, path_heading,
+                    cruising_speed * math.cos(path_heading),
+                    cruising_speed * math.sin(path_heading),
+                    0.0
                 ])
-                current_error = self.compute_error_state(closest_waypoint)
+                current_error = self.compute_error_state(ref_waypoint)
             else:
-                current_error = np.array([0.0, 0.0, 0.0])
-                self.get_logger().warn('No waypoints and path length too small, using zero error')
+                # Outside the first d_gate meters: use first waypoint as before
+                ref_waypoint = reference_trajectory[0]
+                current_error = self.compute_error_state(ref_waypoint)
+        else:
+            # Path length too small: fall back to using first waypoint directly
+            ref_waypoint = reference_trajectory[0]
+            current_error = self.compute_error_state(ref_waypoint)
         
         # Debug: Log waypoint and error state information (only if solver debug is enabled)
         if self.solver_debug_enabled and len(reference_trajectory) > 0:
