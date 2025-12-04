@@ -1021,8 +1021,16 @@ class MPCAutonomousController(Node):
         # Autonomy and behavior flags (can be overridden per-launch)
         self.declare_parameter('mpc_autonomy_enabled_default', False)
         self.declare_parameter('enable_yaw_gating', False)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
+        # Parameters for error-reference lookahead shaping near the start of a line
+        # error_ref_ahead_min_scale: starting fraction of nominal lookahead distance at s=0
+        # error_ref_gate_distance:   distance from path start over which we ramp to full lookahead
+        self.declare_parameter('error_ref_ahead_min_scale', 0.02)   # e.g. 0.1 = 1/10th
+        self.declare_parameter('error_ref_gate_distance', 0.10)    # e.g. 0.10 m = first 10 cm
+
         self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
         self.enable_yaw_gating: bool = bool(self.get_parameter('enable_yaw_gating').value)
+        self.error_ref_ahead_min_scale: float = float(self.get_parameter('error_ref_ahead_min_scale').value)
+        self.error_ref_gate_distance: float = float(self.get_parameter('error_ref_gate_distance').value)
         
         # Topic names
         odometry_topic = self.get_parameter('odometry_topic').value
@@ -2514,17 +2522,18 @@ class MPCAutonomousController(Node):
             s_closest = float(t_closest * path_length)
 
             # Gating region from start of line where we modify the ahead distance
-            d_gate = 0.10  # [m] first 10 cm along the path
+            d_gate = float(self.error_ref_gate_distance)  # [m]
 
             if s_closest <= d_gate:
                 # Nominal ahead distance (approximate waypoint spacing)
                 nominal_ahead = 0.04  # [m], consistent with min_spacing / cruising_speed * dt
-
+                
                 # Scale factor for ahead distance:
-                #   at s=0      -> scale = 0.1 (1/10 of nominal ahead)
+                #   at s=0      -> scale = error_ref_ahead_min_scale
                 #   at s=d_gate -> scale = 1.0 (full nominal ahead)
+                start_scale = max(0.0, min(1.0, float(self.error_ref_ahead_min_scale)))
                 ratio_s = s_closest / max(d_gate, 1e-6)
-                ahead_scale = 0.1 + 0.9 * ratio_s
+                ahead_scale = start_scale + (1.0 - start_scale) * ratio_s
                 ahead_dist = ahead_scale * nominal_ahead
 
                 # Target distance along path for reference point
