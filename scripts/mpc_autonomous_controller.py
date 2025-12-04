@@ -1020,7 +1020,7 @@ class MPCAutonomousController(Node):
         
         # Autonomy and behavior flags (can be overridden per-launch)
         self.declare_parameter('mpc_autonomy_enabled_default', False)
-        self.declare_parameter('enable_yaw_gating', TRUE)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
+        self.declare_parameter('enable_yaw_gating', True)  # If True, gate v_ref/v_bounds based on yaw error near start of segment
         self.autonomy_enabled: bool = bool(self.get_parameter('mpc_autonomy_enabled_default').value)
         self.enable_yaw_gating: bool = bool(self.get_parameter('enable_yaw_gating').value)
         
