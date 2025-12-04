@@ -94,7 +94,7 @@ def generate_launch_description():
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         'mpc_R_delta_omega',
-        default_value='0.0015',
+        default_value='0.005',
         description='MPC cost weight for change in angular velocity (delta omega)'
     )
     # Error-reference lookahead shaping near start of line
@@ -120,7 +120,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         'mpc_weight_increase_yaw',
-        default_value='0.5',
+        default_value='0.2',
         description='Linear weight increase factor per time step for yaw error. Weight at step k = base_weight * (1 + weight_increase_yaw * k). Example: 0.1 means 10% increase per step.'
     )
     
