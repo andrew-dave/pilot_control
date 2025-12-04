@@ -40,10 +40,15 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
+from odrive_can.srv import AxisState
+from std_srvs.srv import Trigger, Empty
 
 import numpy as np
 import math
 from typing import List, Tuple, Optional
+import time
+import os
+import signal
 
 # Optional dependencies for MPC
 try:
@@ -803,6 +808,32 @@ class MPCAccelController(Node):
             Float64MultiArray, "/mpc_accel/reference_trajectory", 10
         )
 
+        # ODrive axis state / clear error clients for arming/disarming
+        self.left_axis_client = self.create_client(
+            AxisState, "/left/request_axis_state"
+        )
+        self.right_axis_client = self.create_client(
+            AxisState, "/right/request_axis_state"
+        )
+
+        self.left_clear_client = self.create_client(Empty, "/left/clear_errors")
+        self.right_clear_client = self.create_client(Empty, "/right/clear_errors")
+
+        # Optional shutdown mapping client (same as main MPC controller)
+        self.shutdown_client = self.create_client(Trigger, "/shutdown_mapping")
+
+        # Motor arming state
+        self._arm_attempts = 0
+        self._arm_max_attempts = 5
+        self._arm_timer = self.create_timer(1.0, self._attempt_arm_motors)
+
+        # Soft shutdown service for this accel controller
+        self.soft_shutdown_srv = self.create_service(
+            Trigger,
+            "/mpc_accel_autonomous_controller/soft_shutdown",
+            self._soft_shutdown_service,
+        )
+
         # Control loop timer
         period = 1.0 / self.control_freq if self.control_freq > 0.0 else 0.1
         self.control_timer = self.create_timer(period, self.control_loop)
@@ -1208,6 +1239,116 @@ class MPCAccelController(Node):
 
     def send_zero_velocity(self) -> None:
         self.publish_wheel_velocities(0.0, 0.0)
+
+    # -----------------------------
+    # Motor arming / soft shutdown
+    # -----------------------------
+    def _soft_shutdown_service(self, request, response):
+        """
+        Service callback for graceful shutdown of the accel controller.
+        Performs: zero velocity → disarm ODrives → optional shutdown signal.
+        """
+        del request
+        self.get_logger().warning(
+            "🛑 Accel MPC soft shutdown requested → zero velocity, disarm ODrives"
+        )
+        try:
+            self._send_zero_velocity()
+            self._disarm_odrives()
+            self._call_shutdown_service()
+            # Optionally signal parent launch to stop
+            try:
+                os.kill(os.getppid(), signal.SIGINT)
+            except Exception:
+                pass
+            response.success = True
+            response.message = "Accel MPC shutdown initiated"
+        except Exception as e:
+            response.success = False
+            response.message = f"Error during accel MPC shutdown: {e}"
+        return response
+
+    def _send_zero_velocity(self) -> None:
+        """
+        Send zero-velocity commands multiple times to ensure delivery.
+        """
+        for _ in range(3):
+            self.send_zero_velocity()
+            time.sleep(0.02)
+
+    def _disarm_odrives(self) -> None:
+        """
+        Request IDLE state for both ODrive axes to disarm motors.
+        """
+        try:
+            req_idle = AxisState.Request()
+            req_idle.axis_requested_state = 1  # IDLE
+
+            if self.left_axis_client.service_is_ready():
+                self.left_axis_client.call_async(req_idle)
+            if self.right_axis_client.service_is_ready():
+                self.right_axis_client.call_async(req_idle)
+
+            time.sleep(0.2)
+        except Exception as e:
+            self.get_logger().warn(f"Error disarming ODrives (accel controller): {e}")
+
+    def _call_shutdown_service(self) -> None:
+        """
+        Call the shutdown service (if available) to stop mapping nodes.
+        """
+        try:
+            if self.shutdown_client.service_is_ready():
+                req = Trigger.Request()
+                self.shutdown_client.call_async(req)
+        except Exception as e:
+            self.get_logger().warn(
+                f"Error calling external shutdown service (accel controller): {e}"
+            )
+
+    def _attempt_arm_motors(self) -> None:
+        """
+        Attempt to arm ODrive motors by requesting CLOSED_LOOP_CONTROL state.
+        Retries up to _arm_max_attempts times.
+        """
+        if self._arm_attempts >= self._arm_max_attempts:
+            self._arm_timer.cancel()
+            return
+        self._arm_attempts += 1
+
+        # Ensure service availability
+        if not (
+            self.left_axis_client.service_is_ready()
+            and self.right_axis_client.service_is_ready()
+            and self.left_clear_client.service_is_ready()
+            and self.right_clear_client.service_is_ready()
+        ):
+            self.get_logger().warn(
+                "Waiting for ODrive CAN services to be ready (accel controller)..."
+            )
+            return
+
+        try:
+            # Clear errors first
+            self.left_clear_client.call_async(Empty.Request())
+            self.right_clear_client.call_async(Empty.Request())
+            time.sleep(0.1)
+
+            # Request CLOSED_LOOP_CONTROL (state 8) for both axes
+            req_left = AxisState.Request()
+            req_left.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
+            req_right = AxisState.Request()
+            req_right.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
+
+            self.left_axis_client.call_async(req_left)
+            self.right_axis_client.call_async(req_right)
+            self.get_logger().info(
+                "Arming ODrive axes (CLOSED_LOOP_CONTROL requested by accel controller)"
+            )
+            # Stop timer after successful dispatch
+            self._arm_timer.cancel()
+        except Exception as e:
+            self.get_logger().warn(f"Arm attempt failed (accel controller): {e}")
 
     # -----------------------------
     # Utility functions
