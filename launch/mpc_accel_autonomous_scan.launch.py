@@ -174,6 +174,40 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Accel MPC controller script path (works in both src/ and install layouts)
+    if "/src/" in path_str:
+        # Source layout: src/pilot_control/scripts/mpc_accel_autonomous_controller.py
+        src_base = Path(path_str[: path_str.index("/src/") + 4])
+        source_script_dir = src_base / "pilot_control" / "scripts"
+        mpc_accel_controller_path = str(
+            source_script_dir / "mpc_accel_autonomous_controller.py"
+        )
+    elif "/install/" in path_str:
+        # Install layout: install/pilot_control/lib/pilot_control/mpc_accel_autonomous_controller.py
+        install_base = Path(path_str[: path_str.index("/install/") + 8])
+        install_script_dir = install_base / "pilot_control" / "lib" / "pilot_control"
+        mpc_accel_controller_path = str(
+            install_script_dir / "mpc_accel_autonomous_controller.py"
+        )
+    else:
+        # Fallback: relative to this launch file (for dev/test)
+        source_script_dir = launch_file_path.parent.parent / "scripts"
+        mpc_accel_controller_path = str(
+            source_script_dir / "mpc_accel_autonomous_controller.py"
+        )
+
+    # Run the accel MPC controller as a plain Python process. The node itself
+    # declares parameters with sensible defaults and can also be overridden
+    # via standard ROS2 parameter mechanisms if needed.
+    mpc_accel_controller_proc = ExecuteProcess(
+        cmd=[
+            "python3",
+            mpc_accel_controller_path,
+            "--ros-args",
+        ],
+        output="screen",
+    )
+
     # CAN setup
     can_setup = ExecuteProcess(
         cmd=[
@@ -220,50 +254,6 @@ def generate_launch_description():
             }
         ],
         output="screen",
-    )
-
-    # Acceleration-based MPC controller node
-    mpc_accel_node = Node(
-        package="pilot_control",
-        executable="mpc_accel_autonomous_controller.py",
-        prefix="taskset -c 5",
-        name="mpc_accel_autonomous_controller",
-        output="screen",
-        parameters=[
-            {
-                # Robot kinematics
-                "wheel_radius": LaunchConfiguration("wheel_radius"),
-                "wheel_base": LaunchConfiguration("wheel_base"),
-                "gear_ratio": LaunchConfiguration("gear_ratio"),
-                "invert_left": LaunchConfiguration("invert_left"),
-                "invert_right": LaunchConfiguration("invert_right"),
-                # Control
-                "control_frequency": LaunchConfiguration("control_frequency"),
-                "max_linear_velocity": LaunchConfiguration("max_linear_velocity"),
-                "max_angular_velocity": LaunchConfiguration("max_angular_velocity"),
-                # MPC
-                "mpc_horizon": LaunchConfiguration("mpc_horizon"),
-                "mpc_dt": LaunchConfiguration("mpc_dt"),
-                "mpc_Q_xe": LaunchConfiguration("mpc_Q_xe"),
-                "mpc_Q_ye": LaunchConfiguration("mpc_Q_ye"),
-                "mpc_Q_yaw": LaunchConfiguration("mpc_Q_yaw"),
-                "mpc_R_delta_v": LaunchConfiguration("mpc_R_delta_v"),
-                "mpc_R_delta_omega": LaunchConfiguration("mpc_R_delta_omega"),
-                "mpc_weight_increase_xe": LaunchConfiguration(
-                    "mpc_weight_increase_xe"
-                ),
-                "mpc_weight_increase_ye": LaunchConfiguration(
-                    "mpc_weight_increase_ye"
-                ),
-                "mpc_weight_increase_yaw": LaunchConfiguration(
-                    "mpc_weight_increase_yaw"
-                ),
-                # Topics
-                "odometry_topic": LaunchConfiguration("odometry_topic"),
-                "left_control_topic": LaunchConfiguration("left_control_topic"),
-                "right_control_topic": LaunchConfiguration("right_control_topic"),
-            }
-        ],
     )
 
     # Livox driver
@@ -378,7 +368,7 @@ def generate_launch_description():
                     livox_driver,
                     fast_lio_node,
                     odom_tilt_corrector_proc,
-                    mpc_accel_node,
+                    mpc_accel_controller_proc,
                     body_to_foot_transform,
                     camera_init_to_foot_init_transform,
                     shutdown_service_node,
