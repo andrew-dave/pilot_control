@@ -89,13 +89,24 @@ def generate_launch_description():
     )
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         'mpc_R_delta_v',
-        default_value='0.0010',
+        default_value='0.0050',
         description='MPC cost weight for change in linear velocity (delta v)'
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         'mpc_R_delta_omega',
-        default_value='0.00020',
+        default_value='0.0010',
         description='MPC cost weight for change in angular velocity (delta omega)'
+    )
+    # Error-reference lookahead shaping near start of line
+    declare_error_ref_ahead_min_scale_arg = DeclareLaunchArgument(
+        'error_ref_ahead_min_scale',
+        default_value='0.02',
+        description='Starting fraction of nominal lookahead distance at s=0 along the path line.'
+    )
+    declare_error_ref_gate_distance_arg = DeclareLaunchArgument(
+        'error_ref_gate_distance',
+        default_value='0.20',
+        description='Distance from path start (m) over which lookahead and v_ref ramp from min scale to full.'
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
         'mpc_weight_increase_xe',
@@ -256,6 +267,9 @@ def generate_launch_description():
             'mpc_weight_increase_xe': LaunchConfiguration('mpc_weight_increase_xe'),
             'mpc_weight_increase_ye': LaunchConfiguration('mpc_weight_increase_ye'),
             'mpc_weight_increase_yaw': LaunchConfiguration('mpc_weight_increase_yaw'),
+            # Error reference shaping near start of each segment
+            'error_ref_ahead_min_scale': LaunchConfiguration('error_ref_ahead_min_scale'),
+            'error_ref_gate_distance': LaunchConfiguration('error_ref_gate_distance'),
             
             # Solver debug
             'solver_debug_enabled': False,
@@ -362,6 +376,8 @@ def generate_launch_description():
         declare_mpc_weight_increase_xe_arg,
         declare_mpc_weight_increase_ye_arg,
         declare_mpc_weight_increase_yaw_arg,
+        declare_error_ref_ahead_min_scale_arg,
+        declare_error_ref_gate_distance_arg,
         declare_slip_history_length_arg,
         declare_slip_estimation_window_arg,
         declare_lookahead_distance_arg,
