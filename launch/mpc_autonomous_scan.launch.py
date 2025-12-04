@@ -94,7 +94,7 @@ def generate_launch_description():
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         'mpc_R_delta_omega',
-        default_value='0.0010',
+        default_value='0.0050',
         description='MPC cost weight for change in angular velocity (delta omega)'
     )
     # Error-reference lookahead shaping near start of line
