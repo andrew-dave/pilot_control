@@ -1293,6 +1293,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qbrush.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
  /usr/include/c++/11/fstream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \

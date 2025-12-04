@@ -11,6 +11,8 @@
 #include <QPen>
 #include <QBrush>
 #include <QToolTip>
+#include <QFileInfo>
+#include <QFile>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
@@ -531,12 +533,26 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     setWindowTitle("Roof Coverage Planner (C++)");
     resize(1500, 900);
     
-    // Initialize robot map fetch settings
+    // Initialize robot map fetch settings (user-agnostic)
     local_map_base_ = QDir::homePath() + "/Roofus_maps";
+    
+    // Initialize CycloneDDS config paths (user-agnostic)
+    dds_rf_config_path_ = QDir::homePath() + "/rf_cyclonedds.xml";
+    dds_wifi_config_path_ = QDir::homePath() + "/wifi_cyclonedds.xml";
 
-    // Load persisted robot host (defaults to 192.168.168.101)
+    // Load persisted settings
     QSettings settings("PilotControl", "F2CCoveragePlanner");
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
+    dds_profile_ = settings.value("dds_profile", "rf").toString();  // Default to RF
+    
+    // Set CYCLONEDDS_URI environment variable based on saved profile
+    QString dds_config = currentDdsConfigPath();
+    if (QFile::exists(dds_config)) {
+        qputenv("CYCLONEDDS_URI", dds_config.toUtf8());
+        std::cout << "[F2C GUI] Using CycloneDDS config: " << dds_config.toStdString() << std::endl;
+    } else {
+        std::cerr << "[F2C GUI] Warning: DDS config not found: " << dds_config.toStdString() << std::endl;
+    }
     
     setupUI();
     setupConnections();
@@ -559,7 +575,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
             rclcpp::spin(ros_node_);
         });
         ros_initialized_ = true;
-        setStatus("Ready (ROS2 connected)");
+        setStatus(QString("Ready (ROS2 connected via %1)").arg(dds_profile_.toUpper()));
     } catch (const std::exception& e) {
         std::cerr << "[F2C GUI] Warning: ROS2 initialization failed: " << e.what() << std::endl;
         std::cerr << "[F2C GUI] Starting background reconnection timer..." << std::endl;
@@ -652,8 +668,44 @@ void CoverageGUI::setupConnections() {
 }
 
 QGroupBox* CoverageGUI::buildFileControls() {
-    QGroupBox* box = new QGroupBox("Point Cloud");
+    QGroupBox* box = new QGroupBox("Point Cloud & Network");
     QVBoxLayout* v = new QVBoxLayout(box);
+    
+    // CycloneDDS profile selection (RF vs WiFi)
+    QHBoxLayout* dds_layout = new QHBoxLayout();
+    dds_layout->addWidget(new QLabel("Network:"));
+    radio_dds_rf_ = new QRadioButton("RF (Microhard)");
+    radio_dds_wifi_ = new QRadioButton("WiFi");
+    radio_dds_rf_->setToolTip("Use RF CycloneDDS config (~/" + QFileInfo(dds_rf_config_path_).fileName() + ")");
+    radio_dds_wifi_->setToolTip("Use WiFi CycloneDDS config (~/" + QFileInfo(dds_wifi_config_path_).fileName() + ")");
+    
+    // Set initial selection based on persisted profile
+    if (dds_profile_ == "wifi") {
+        radio_dds_wifi_->setChecked(true);
+    } else {
+        radio_dds_rf_->setChecked(true);
+    }
+    
+    dds_layout->addWidget(radio_dds_rf_);
+    dds_layout->addWidget(radio_dds_wifi_);
+    dds_layout->addStretch();
+    v->addLayout(dds_layout);
+    
+    // DDS status label
+    lbl_dds_status_ = new QLabel();
+    lbl_dds_status_->setStyleSheet("color: #666; font-size: 10px;");
+    QString config_path = currentDdsConfigPath();
+    if (QFile::exists(config_path)) {
+        lbl_dds_status_->setText("✓ Config: ~/" + QFileInfo(config_path).fileName());
+        lbl_dds_status_->setStyleSheet("color: green; font-size: 10px;");
+    } else {
+        lbl_dds_status_->setText("⚠ Config not found: ~/" + QFileInfo(config_path).fileName());
+        lbl_dds_status_->setStyleSheet("color: orange; font-size: 10px;");
+    }
+    v->addWidget(lbl_dds_status_);
+    
+    // Connect radio buttons to profile change handler
+    connect(radio_dds_rf_, &QRadioButton::toggled, this, &CoverageGUI::onDdsProfileChanged);
     
     // Robot IP configuration
     QHBoxLayout* ip_layout = new QHBoxLayout();
@@ -1975,12 +2027,113 @@ void CoverageGUI::tryReconnectROS2() {
         // Success! Stop the reconnection timer
         ros_reconnect_timer_->stop();
         
-        setStatus("✅ ROS2 connected!", 5000);
+        setStatus(QString("✅ ROS2 connected via %1!").arg(dds_profile_.toUpper()), 5000);
         std::cout << "[F2C GUI] ROS2 reconnection successful!" << std::endl;
         
     } catch (const std::exception& e) {
         // Still not available - timer will try again
         setStatus("ROS2 unavailable - retrying...", 4500);
+    }
+}
+
+QString CoverageGUI::currentDdsConfigPath() const {
+    if (dds_profile_ == "wifi") {
+        return dds_wifi_config_path_;
+    }
+    return dds_rf_config_path_;
+}
+
+void CoverageGUI::onDdsProfileChanged() {
+    // Determine which profile is now selected
+    QString new_profile = radio_dds_rf_->isChecked() ? "rf" : "wifi";
+    
+    // Skip if unchanged
+    if (new_profile == dds_profile_) {
+        return;
+    }
+    
+    dds_profile_ = new_profile;
+    
+    // Persist the selection
+    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    settings.setValue("dds_profile", dds_profile_);
+    
+    // Update status label
+    QString config_path = currentDdsConfigPath();
+    if (QFile::exists(config_path)) {
+        lbl_dds_status_->setText("✓ Config: ~/" + QFileInfo(config_path).fileName());
+        lbl_dds_status_->setStyleSheet("color: green; font-size: 10px;");
+    } else {
+        lbl_dds_status_->setText("⚠ Config not found: ~/" + QFileInfo(config_path).fileName());
+        lbl_dds_status_->setStyleSheet("color: orange; font-size: 10px;");
+    }
+    
+    std::cout << "[F2C GUI] DDS profile changed to: " << dds_profile_.toStdString() << std::endl;
+    
+    // Update environment variable
+    qputenv("CYCLONEDDS_URI", config_path.toUtf8());
+    
+    // Reinitialize ROS2 with new DDS config
+    reinitializeROS2();
+}
+
+void CoverageGUI::reinitializeROS2() {
+    setStatus(QString("Switching to %1 network...").arg(dds_profile_.toUpper()));
+    
+    // Stop reconnection timer if running
+    ros_reconnect_timer_->stop();
+    
+    // Shutdown existing ROS2 connection if any
+    if (ros_initialized_) {
+        std::cout << "[F2C GUI] Shutting down ROS2 for profile switch..." << std::endl;
+        
+        // Stop the spin thread by shutting down the node's context
+        if (ros_node_) {
+            rclcpp::shutdown();
+            
+            // Wait for thread to finish
+            if (ros_thread_.joinable()) {
+                ros_thread_.join();
+            }
+            
+            // Reset pointers
+            waypoint_pub_.reset();
+            ros_node_.reset();
+        }
+        
+        ros_initialized_ = false;
+        waypoints_published_ = false;
+        
+        // Reinitialize rclcpp for the new configuration
+        // Note: rclcpp::init should be called again after shutdown
+        int argc = 0;
+        char** argv = nullptr;
+        rclcpp::init(argc, argv);
+    }
+    
+    // Try to initialize with new config
+    QString config_path = currentDdsConfigPath();
+    if (!QFile::exists(config_path)) {
+        setStatus(QString("⚠ %1 config not found - ROS2 may fail").arg(dds_profile_.toUpper()), 5000);
+    }
+    
+    try {
+        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
+            "/f2c_waypoints", 10);
+
+        ros_thread_ = std::thread([this]() {
+            rclcpp::spin(ros_node_);
+        });
+        
+        ros_initialized_ = true;
+        setStatus(QString("✅ ROS2 connected via %1").arg(dds_profile_.toUpper()), 5000);
+        std::cout << "[F2C GUI] ROS2 reinitialized with " << dds_profile_.toStdString() << " profile" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "[F2C GUI] ROS2 reinit failed: " << e.what() << std::endl;
+        setStatus(QString("ROS2 unavailable on %1 - retrying...").arg(dds_profile_.toUpper()));
+        ros_reconnect_timer_->start();
     }
 }
 

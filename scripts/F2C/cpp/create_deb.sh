@@ -120,8 +120,34 @@ fi
 # Set basic environment
 export DISPLAY=${DISPLAY:-:0}
 
-# Ensure CycloneDDS uses the user config so desktop launches match terminal behavior
-export CYCLONEDDS_URI="${CYCLONEDDS_URI:-/home/avenblake/rf_cyclonedds.xml}"
+# Determine CycloneDDS config (user-agnostic)
+# Read saved profile from QSettings config file if it exists
+SETTINGS_FILE="$HOME/.config/PilotControl/F2CCoveragePlanner.conf"
+DDS_PROFILE="rf"  # Default to RF
+
+if [ -f "$SETTINGS_FILE" ]; then
+    # Extract dds_profile value from INI-style config
+    SAVED_PROFILE=$(grep -E "^dds_profile=" "$SETTINGS_FILE" 2>/dev/null | cut -d'=' -f2)
+    if [ -n "$SAVED_PROFILE" ]; then
+        DDS_PROFILE="$SAVED_PROFILE"
+    fi
+fi
+
+# Select appropriate config file based on profile
+if [ "$DDS_PROFILE" = "wifi" ]; then
+    DDS_CONFIG="$HOME/wifi_cyclonedds.xml"
+else
+    DDS_CONFIG="$HOME/rf_cyclonedds.xml"
+fi
+
+# Set CYCLONEDDS_URI if config file exists, otherwise let CycloneDDS auto-discover
+if [ -f "$DDS_CONFIG" ]; then
+    export CYCLONEDDS_URI="$DDS_CONFIG"
+    echo "Using CycloneDDS config: $DDS_CONFIG"
+else
+    echo "Warning: DDS config not found at $DDS_CONFIG"
+    echo "CycloneDDS will use auto-discovery (may not work on all networks)"
+fi
 
 # Add bundled library path first (highest priority)
 export LD_LIBRARY_PATH="/usr/lib/f2c-coverage-planner:$LD_LIBRARY_PATH"

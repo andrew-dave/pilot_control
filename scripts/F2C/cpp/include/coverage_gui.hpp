@@ -191,6 +191,9 @@ private slots:
     
     // ROS2 reconnection
     void tryReconnectROS2();
+    
+    // DDS profile switching
+    void onDdsProfileChanged();
 
 private:
     void setupUI();
@@ -228,6 +231,11 @@ private:
     // File controls
     QLabel* lbl_file_;
     QLineEdit* txt_robot_ip_;
+    
+    // DDS profile controls
+    QRadioButton* radio_dds_rf_;
+    QRadioButton* radio_dds_wifi_;
+    QLabel* lbl_dds_status_;
     
     // Height controls (Z range filtering relative to robot origin Z=0)
     QDoubleSpinBox* spin_z_min_;   // Minimum Z value (can be negative)
@@ -302,6 +310,17 @@ private:
     QString robot_user_ = "roofus";
     QString robot_data_path_ = "/R_DATA";
     QString local_map_base_;  // Set to ~/Roofus_maps in constructor
+    
+    // CycloneDDS profile settings (user-agnostic paths)
+    QString dds_profile_;           // "rf" or "wifi"
+    QString dds_rf_config_path_;    // ~/rf_cyclonedds.xml
+    QString dds_wifi_config_path_;  // ~/wifi_cyclonedds.xml
+    
+    // Helper to get current DDS config path
+    QString currentDdsConfigPath() const;
+    
+    // Helper to shutdown and reinitialize ROS2 with new DDS config
+    void reinitializeROS2();
 };
 
 } // namespace f2c_cpp
