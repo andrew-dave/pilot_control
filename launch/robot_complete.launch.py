@@ -27,7 +27,7 @@ def generate_launch_description():
     # Declare launch arguments
     declare_wheel_radius_arg = DeclareLaunchArgument(
         'wheel_radius',
-        default_value='0.072',
+        default_value='0.09',
         description='Radius of the wheels in meters.'
     )
     declare_wheel_base_arg = DeclareLaunchArgument(
@@ -389,7 +389,7 @@ def generate_launch_description():
             # MPC parameters
             'mpc_horizon': 50,
             'mpc_dt': 0.1,
-            'mpc_Q_xe': 30.0,
+            'mpc_Q_xe': 20.0,
             'mpc_Q_ye': 15.0,
             'mpc_Q_yaw': 5.0,
             'mpc_R_delta': 0.00015,
