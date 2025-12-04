@@ -84,7 +84,7 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         'mpc_Q_yaw',
-        default_value='10.0',
+        default_value='4.0',
         description='MPC cost weight for yaw error (higher to keep robot facing along the path and avoid backwards tracking)'
     )
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
@@ -120,7 +120,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         'mpc_weight_increase_yaw',
-        default_value='0.2',
+        default_value='0.5',
         description='Linear weight increase factor per time step for yaw error. Weight at step k = base_weight * (1 + weight_increase_yaw * k). Example: 0.1 means 10% increase per step.'
     )
     
