@@ -533,6 +533,10 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     
     // Initialize robot map fetch settings
     local_map_base_ = QDir::homePath() + "/Roofus_maps";
+
+    // Load persisted robot host (defaults to 192.168.168.101)
+    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    robot_host_ = settings.value("robot_ip", robot_host_).toString();
     
     setupUI();
     setupConnections();
@@ -651,6 +655,15 @@ QGroupBox* CoverageGUI::buildFileControls() {
     QGroupBox* box = new QGroupBox("Point Cloud");
     QVBoxLayout* v = new QVBoxLayout(box);
     
+    // Robot IP configuration
+    QHBoxLayout* ip_layout = new QHBoxLayout();
+    ip_layout->addWidget(new QLabel("Robot IP:"));
+    txt_robot_ip_ = new QLineEdit(robot_host_);
+    txt_robot_ip_->setPlaceholderText("e.g. 192.168.168.101");
+    txt_robot_ip_->setToolTip("IP address for fetching maps via SSH");
+    ip_layout->addWidget(txt_robot_ip_);
+    v->addLayout(ip_layout);
+    
     // Load from local file
     QPushButton* btn_load = new QPushButton("Load PCD / PLY / XYZ");
     btn_load->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
@@ -659,9 +672,25 @@ QGroupBox* CoverageGUI::buildFileControls() {
     
     // Fetch from robot via SSH
     QPushButton* btn_fetch = new QPushButton("📡 Fetch Latest from Robot");
-    btn_fetch->setToolTip("Download the latest map from robot (roofus@192.168.168.101)\nSaves to ~/Roofus_maps/");
+    auto updateFetchTooltip = [this, btn_fetch]() {
+        btn_fetch->setToolTip(
+            QString("Download the latest map from robot (%1@%2)\nSaves to ~/Roofus_maps/")
+            .arg(robot_user_, robot_host_));
+    };
+    updateFetchTooltip();
     btn_fetch->setStyleSheet("QPushButton { background-color: #e8f4f8; }");
     connect(btn_fetch, &QPushButton::clicked, this, &CoverageGUI::fetchLatestMapFromRobot);
+    
+    connect(txt_robot_ip_, &QLineEdit::editingFinished, this, [this, updateFetchTooltip]() mutable {
+        QString trimmed = txt_robot_ip_->text().trimmed();
+        if (trimmed != txt_robot_ip_->text()) {
+            txt_robot_ip_->setText(trimmed);
+        }
+        robot_host_ = trimmed;
+        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        settings.setValue("robot_ip", robot_host_);
+        updateFetchTooltip();
+    });
     v->addWidget(btn_fetch);
     
     lbl_file_ = new QLabel("No file loaded");
@@ -1126,7 +1155,7 @@ void CoverageGUI::loadPointCloud() {
 }
 
 void CoverageGUI::fetchLatestMapFromRobot() {
-    showProgress(true, "Connecting to robot...");
+    showProgress(true, QString("Connecting to %1...").arg(robot_host_));
     
     // Build SSH command to find the latest .pcd file on robot
     QString find_cmd = QString(
@@ -1140,10 +1169,11 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     if (!find_process.waitForFinished(10000)) {
         showProgress(false);
         QMessageBox::warning(this, "Connection Failed", 
-            "Could not connect to robot.\nCheck if:\n"
-            "• Robot is powered on\n"
-            "• Microhard is connected (192.168.168.101)\n"
-            "• SSH keys are configured for roofus@192.168.168.101");
+            QString("Could not connect to robot.\nCheck if:\n"
+                    "• Robot is powered on\n"
+                    "• Microhard is connected (%1)\n"
+                    "• SSH keys are configured for %2@%1")
+                .arg(robot_host_, robot_user_));
         return;
     }
     

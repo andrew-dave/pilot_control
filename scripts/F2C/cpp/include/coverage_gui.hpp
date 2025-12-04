@@ -14,6 +14,7 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QLineEdit>
 #include <QDoubleSpinBox>
 #include <QSpinBox>
 #include <QComboBox>
@@ -28,6 +29,7 @@
 #include <QProcess>
 #include <QDir>
 #include <QDate>
+#include <QSettings>
 #include <QPainter>
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -225,6 +227,7 @@ private:
     
     // File controls
     QLabel* lbl_file_;
+    QLineEdit* txt_robot_ip_;
     
     // Height controls (Z range filtering relative to robot origin Z=0)
     QDoubleSpinBox* spin_z_min_;   // Minimum Z value (can be negative)
