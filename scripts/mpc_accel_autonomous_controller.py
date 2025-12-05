@@ -313,6 +313,22 @@ class AccelMPC:
             data_values.append(1.0)
             constraint_row += 1
 
+        # Rate bounds: Δv and Δω limits on the control inputs
+        for k in range(N):
+            u_k_idx = k * (nu + nx)
+
+            # Δv_k row
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 0)  # Δv index in decision vector
+            data_values.append(1.0)
+            constraint_row += 1
+
+            # Δω_k row
+            row_indices.append(constraint_row)
+            col_indices.append(u_k_idx + 1)  # Δω index in decision vector
+            data_values.append(1.0)
+            constraint_row += 1
+
         A_coo = sparse.coo_matrix(
             (data_values, (row_indices, col_indices)),
             shape=(n_constraints, nz),
@@ -434,7 +450,7 @@ class AccelMPC:
         self,
         v_ref: float,
         omega_ref: float,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Build augmented A and B for a given reference velocity.
 
@@ -476,18 +492,32 @@ class AccelMPC:
         A_aug[0:3, 3:5] = B_err
         # Bottom-right already identity for [v, ω]
 
-        # Augmented B (5x2): Δv, Δω affect both error states (via B_err) and [v, ω]
+        # Augmented B (5x2): Δv, Δω only affect [v, ω] directly
+        # The effect on error states comes through A_aug[0:3, 3:5] @ [v, ω]_k
+        # NOT through a direct B term. Δu changes v,ω at step k+1, which then
+        # affects error dynamics at step k+2 through the A matrix.
         B_aug = np.zeros((self.nx, self.nu))
-        B_aug[0:3, :] = B_err        # Immediate effect on [xe, ye, θe]
+        # No direct effect on error states: B_aug[0:3, :] = 0
         B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k
         B_aug[4, 1] = 1.0            # ω_{k+1} = ω_k + Δω_k
 
-        return A_aug, B_aug
+        # Affine term: captures the reference velocity contributions
+        # c_k = [Ts * v_ref, 0, Ts * ω_ref, 0, 0]^T
+        c_affine = np.zeros(self.nx)
+        c_affine[0] = Ts * v_ref     # xe_dot has +v_ref term
+        c_affine[2] = Ts * omega_ref  # θe_dot has +ω_ref term
 
-    def update_matrices(self, ref_traj: List[np.ndarray]) -> None:
-        """Update dynamic matrices (A_aug_k, B_aug) in constraint matrix."""
+        return A_aug, B_aug, c_affine
+
+    def update_matrices(self, ref_traj: List[np.ndarray]) -> List[np.ndarray]:
+        """
+        Update dynamic matrices (A_aug_k, B_aug) in constraint matrix.
+        
+        Returns:
+            List of affine terms c_k for each step in the horizon.
+        """
         if not self.initialized:
-            return
+            return [np.zeros(self.nx) for _ in range(self.N)]
 
         N = self.N
         nx = self.nx
@@ -497,7 +527,10 @@ class AccelMPC:
         if len(A_data) != len(self.A_constr.data):
             if self.logger:
                 self.logger.error("A_constr data size mismatch during update")
-            return
+            return [np.zeros(nx) for _ in range(N)]
+
+        # Store affine terms for each step
+        affine_terms: List[np.ndarray] = []
 
         for k in range(N):
             if k < len(ref_traj):
@@ -510,7 +543,8 @@ class AccelMPC:
             v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
             omega_ref = float(wp[5])
 
-            A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref)
+            A_aug, B_aug, c_affine = self._build_A_aug_and_B_aug(v_ref, omega_ref)
+            affine_terms.append(c_affine)
 
             # -A_aug x_k terms (k>0)
             if k > 0 and k in self.A_indices:
@@ -536,6 +570,8 @@ class AccelMPC:
 
         self.A_constr.data = A_data
         self.solver.update(Ax=A_data)
+        
+        return affine_terms
 
     def solve(
         self,
@@ -564,8 +600,8 @@ class AccelMPC:
 
         solve_start = _time.time()
 
-        # Update dynamics matrices based on new reference
-        self.update_matrices(ref_traj)
+        # Update dynamics matrices based on new reference and get affine terms
+        affine_terms = self.update_matrices(ref_traj)
 
         # Initial augmented state x0 = [xe, ye, θe, v, ω]
         x0 = np.zeros(self.nx)
@@ -582,17 +618,29 @@ class AccelMPC:
             v_ref0 = 0.0
             omega_ref0 = 0.0
 
-        A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0)
-        rhs0 = A_aug0 @ x0
+        A_aug0, _, c_affine0 = self._build_A_aug_and_B_aug(v_ref0, omega_ref0)
+        # RHS for k=0 dynamics: A_0 @ x_0 + c_0 (affine term)
+        rhs0 = A_aug0 @ x0 + c_affine0
 
-        # First nx dynamics rows: equality constraint to rhs0
+        # First nx dynamics rows (k=0): equality constraint to rhs0
         for i in range(self.nx):
             self.l_constr[i] = rhs0[i]
             self.u_constr[i] = rhs0[i]
 
-        # Refresh v bounds in case they were scaled
+        # For k>0 dynamics rows, include affine terms in RHS
+        # Constraint: x_{k+1} - A_k @ x_k - B_k @ Δu_k = c_k
         N = self.N
-        n_dynamics = N * self.nx
+        nx = self.nx
+        for k in range(1, N):
+            c_k = affine_terms[k] if k < len(affine_terms) else np.zeros(nx)
+            for i in range(nx):
+                row_idx = k * nx + i
+                self.l_constr[row_idx] = c_k[i]
+                self.u_constr[row_idx] = c_k[i]
+
+        # Refresh v and ω bounds
+        n_dynamics = N * nx
+        n_input_bounds = N * 2
         for k in range(N):
             v_idx = n_dynamics + 2 * k
             omega_idx = n_dynamics + 2 * k + 1
@@ -600,6 +648,14 @@ class AccelMPC:
             self.u_constr[v_idx] = self.v_max
             self.l_constr[omega_idx] = self.omega_min
             self.u_constr[omega_idx] = self.omega_max
+
+            # Refresh rate bounds (Δv, Δω)
+            dv_idx = n_dynamics + n_input_bounds + 2 * k
+            domega_idx = n_dynamics + n_input_bounds + 2 * k + 1
+            self.l_constr[dv_idx] = -self.dv_max
+            self.u_constr[dv_idx] = self.dv_max
+            self.l_constr[domega_idx] = -self.domega_max
+            self.u_constr[domega_idx] = self.domega_max
 
         # Warm start
         if self.prev_solution is not None and len(self.prev_solution) == self.nz:
