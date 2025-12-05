@@ -2856,13 +2856,13 @@ void CoverageGUI::computeReprojectionError() {
     }
     
     // Get current robot trail
-    std::vector<Point2D> trail;
+    std::vector<Point2D> full_trail;
     {
         std::lock_guard<std::mutex> lock(robot_pose_mutex_);
-        trail = robot_trail_;
+        full_trail = robot_trail_;
     }
     
-    if (trail.size() < 2) {
+    if (full_trail.size() < 2) {
         QMessageBox::warning(this, "No Trail", 
             "Robot trail is empty. Move the robot first.");
         return;
@@ -2871,6 +2871,40 @@ void CoverageGUI::computeReprojectionError() {
     // Parameters
     const double sample_interval = 0.05;  // 5cm sampling along trail
     const double max_association_dist = 1.0;  // 1m threshold
+    const double start_threshold = 0.05;  // 5cm threshold to detect path start
+    
+    // Find where trail first enters the path region (within 5cm of first waypoint)
+    // This excludes the approach path before the robot starts following the planned route
+    const Point2D& first_waypoint = path_points.front();
+    size_t trail_start_idx = 0;
+    bool found_start = false;
+    
+    for (size_t i = 0; i < full_trail.size(); ++i) {
+        double dist_to_start = std::hypot(full_trail[i].x - first_waypoint.x,
+                                          full_trail[i].y - first_waypoint.y);
+        if (dist_to_start <= start_threshold) {
+            trail_start_idx = i;
+            found_start = true;
+            break;
+        }
+    }
+    
+    if (!found_start) {
+        QMessageBox::information(this, "Path Not Started", 
+            QString("Robot trail never came within %1 cm of the first waypoint.\n"
+                    "Make sure the robot has started following the planned path.")
+                .arg(start_threshold * 100, 0, 'f', 0));
+        return;
+    }
+    
+    // Use only the portion of trail from path start onward
+    std::vector<Point2D> trail(full_trail.begin() + trail_start_idx, full_trail.end());
+    
+    if (trail.size() < 2) {
+        QMessageBox::warning(this, "Insufficient Trail", 
+            "Not enough trail data after reaching the first waypoint.");
+        return;
+    }
     
     reproj_lines_.clear();
     
@@ -2936,8 +2970,14 @@ void CoverageGUI::computeReprojectionError() {
     plot_->setReprojectionLines(reproj_lines_);
     
     // Update status
-    QString status = QString("Reprojection: %1 samples (5cm), avg=%2 cm, max=%3 cm")
+    double trail_length_m = 0;
+    for (size_t i = 1; i < trail.size(); ++i) {
+        trail_length_m += std::hypot(trail[i].x - trail[i-1].x, trail[i].y - trail[i-1].y);
+    }
+    
+    QString status = QString("Reprojection: %1 samples over %2m, avg=%3 cm, max=%4 cm")
         .arg(reproj_lines_.size())
+        .arg(trail_length_m, 0, 'f', 1)
         .arg(avg_error * 100, 0, 'f', 1)
         .arg(max_error * 100, 0, 'f', 1);
     if (lbl_reproj_status_) {
@@ -2947,7 +2987,8 @@ void CoverageGUI::computeReprojectionError() {
     setStatus(status, 5000);
     
     std::cout << "[F2C GUI] Reprojection error computed: " << reproj_lines_.size() 
-              << " samples (5cm), avg=" << (avg_error * 100) << " cm, max=" << (max_error * 100) << " cm" << std::endl;
+              << " samples over " << trail_length_m << "m, avg=" << (avg_error * 100) 
+              << " cm, max=" << (max_error * 100) << " cm" << std::endl;
 }
 
 void CoverageGUI::clearReprojectionError() {
