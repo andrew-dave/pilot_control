@@ -476,10 +476,11 @@ class AccelMPC:
         A_aug[0:3, 3:5] = B_err
         # Bottom-right already identity for [v, ω]
 
-        # Augmented B (5x2): Δv, Δω directly affect v, ω
+        # Augmented B (5x2): Δv, Δω affect both error states (via B_err) and [v, ω]
         B_aug = np.zeros((self.nx, self.nu))
-        B_aug[3, 0] = 1.0  # v_{k+1} = v_k + Δv_k
-        B_aug[4, 1] = 1.0  # ω_{k+1} = ω_k + Δω_k
+        B_aug[0:3, :] = B_err        # Immediate effect on [xe, ye, θe]
+        B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k
+        B_aug[4, 1] = 1.0            # ω_{k+1} = ω_k + Δω_k
 
         return A_aug, B_aug
 
