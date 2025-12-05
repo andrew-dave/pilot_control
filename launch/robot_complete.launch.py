@@ -114,8 +114,8 @@ def generate_launch_description():
             'right_device': '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0',
             
             # Streaming settings
-            'stream_host': '10.105.41.180', # TODO: change to 10.105.41.180 (R), 192.168.168.102 (R) / 10.105.41.193 (A), 192.168.168.100 (A)
-            'stream_port': 5602, # TODO: change to 5602 (R) / 5600 (A)
+            'stream_host': '192.168.168.100', # TODO: change to 10.105.41.180 (R), 192.168.168.102 (R) / 10.105.41.193 (A), 192.168.168.100 (A)
+            'stream_port': 5600, # TODO: change to 5602 (R) / 5600 (A)
             'stream_bitrate_kbps': 800,
             'rtp_mtu': 1200,
             

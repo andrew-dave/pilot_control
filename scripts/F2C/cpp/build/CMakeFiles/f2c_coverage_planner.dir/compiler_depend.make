@@ -2811,6 +2811,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
   /usr/include/c++/11/fstream \
@@ -9231,6 +9233,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Geometry/Rotation2D.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame:
+
 /usr/include/boost/foreach_fwd.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/GeneralProduct.h:
@@ -9382,6 +9386,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
+
+/usr/include/boost/variant/detail/variant_io.hpp:
+
+/usr/include/boost/algorithm/string/detail/finder.hpp:
 
 /usr/include/pcl-1.12/pcl/type_traits.h:
 
@@ -9660,12 +9670,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess:
 
 /usr/include/boost/mpl/vector/aux_/item.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
-
-/usr/include/boost/algorithm/string/detail/finder.hpp:
-
-/usr/include/boost/variant/detail/variant_io.hpp:
 
 /usr/include/boost/mpl/insert_range_fwd.hpp:
 

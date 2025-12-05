@@ -2794,21 +2794,64 @@ void CoverageGUI::startNavigation() {
     std::cout << "[F2C GUI] Sent navigation start signal" << std::endl;
 }
 
-void CoverageGUI::computeReprojectionError() {
-    // Determine which waypoints to use based on current mode
-    std::vector<Point2D> waypoints;
-    if (isCustomModeActive()) {
-        waypoints = custom_waypoints_;
-    } else {
-        // Use F2C path waypoints
-        for (const auto& state : path_) {
-            waypoints.push_back(state.point);
+// Helper: find closest point on a line segment to a given point
+static Point2D closestPointOnSegment(const Point2D& p, const Point2D& a, const Point2D& b) {
+    double dx = b.x - a.x;
+    double dy = b.y - a.y;
+    double len_sq = dx * dx + dy * dy;
+    
+    if (len_sq < 1e-10) {
+        // Degenerate segment
+        return a;
+    }
+    
+    // Project p onto line, clamped to segment [0,1]
+    double t = std::max(0.0, std::min(1.0,
+        ((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq));
+    
+    return Point2D{a.x + t * dx, a.y + t * dy};
+}
+
+// Helper: find closest point on a polyline path to a given point
+static std::pair<Point2D, double> closestPointOnPath(const Point2D& p, const std::vector<Point2D>& path) {
+    if (path.empty()) {
+        return {p, std::numeric_limits<double>::max()};
+    }
+    if (path.size() == 1) {
+        double dist = std::hypot(p.x - path[0].x, p.y - path[0].y);
+        return {path[0], dist};
+    }
+    
+    Point2D best_point = path[0];
+    double best_dist = std::numeric_limits<double>::max();
+    
+    for (size_t i = 1; i < path.size(); ++i) {
+        Point2D closest = closestPointOnSegment(p, path[i-1], path[i]);
+        double dist = std::hypot(p.x - closest.x, p.y - closest.y);
+        if (dist < best_dist) {
+            best_dist = dist;
+            best_point = closest;
         }
     }
     
-    if (waypoints.empty()) {
+    return {best_point, best_dist};
+}
+
+void CoverageGUI::computeReprojectionError() {
+    // Determine which waypoints to use based on current mode
+    std::vector<Point2D> path_points;
+    if (isCustomModeActive()) {
+        path_points = custom_waypoints_;
+    } else {
+        // Use F2C path waypoints
+        for (const auto& state : path_) {
+            path_points.push_back(state.point);
+        }
+    }
+    
+    if (path_points.size() < 2) {
         QMessageBox::warning(this, "No Path", 
-            "No waypoints available. Generate or draw a path first.");
+            "Need at least 2 waypoints. Generate or draw a path first.");
         return;
     }
     
@@ -2825,41 +2868,57 @@ void CoverageGUI::computeReprojectionError() {
         return;
     }
     
-    // Parameters - 1m threshold
-    const double max_association_dist = 1.0;
+    // Parameters
+    const double sample_interval = 0.05;  // 5cm sampling along trail
+    const double max_association_dist = 1.0;  // 1m threshold
     
     reproj_lines_.clear();
     
-    for (size_t wp_idx = 0; wp_idx < waypoints.size(); ++wp_idx) {
-        const Point2D& wp = waypoints[wp_idx];
+    // Resample the trail at 5cm intervals
+    std::vector<Point2D> sampled_trail;
+    sampled_trail.push_back(trail[0]);
+    double accumulated_dist = 0;
+    
+    for (size_t i = 1; i < trail.size(); ++i) {
+        double seg_dist = std::hypot(trail[i].x - trail[i-1].x, 
+                                      trail[i].y - trail[i-1].y);
+        accumulated_dist += seg_dist;
         
-        // Find closest trail point within threshold
-        double min_dist = std::numeric_limits<double>::max();
-        Point2D closest_trail;
-        bool found = false;
-        
-        for (const auto& tp : trail) {
-            double dist = std::hypot(tp.x - wp.x, tp.y - wp.y);
-            if (dist < min_dist && dist <= max_association_dist) {
-                min_dist = dist;
-                closest_trail = tp;
-                found = true;
-            }
+        // Add sample points at each 5cm interval
+        while (accumulated_dist >= sample_interval) {
+            // Interpolate position at sample point
+            double overshoot = accumulated_dist - sample_interval;
+            double ratio = (seg_dist > 1e-6) ? (seg_dist - overshoot) / seg_dist : 1.0;
+            
+            Point2D sample;
+            sample.x = trail[i-1].x + ratio * (trail[i].x - trail[i-1].x);
+            sample.y = trail[i-1].y + ratio * (trail[i].y - trail[i-1].y);
+            sampled_trail.push_back(sample);
+            
+            accumulated_dist -= sample_interval;
         }
+    }
+    
+    // For each sampled trail point, find closest point on planned path
+    int sample_index = 0;
+    for (const auto& trail_pt : sampled_trail) {
+        auto [closest_path_pt, dist] = closestPointOnPath(trail_pt, path_points);
         
-        if (found) {
+        // Only include if within threshold
+        if (dist <= max_association_dist) {
             ReprojectionLine line;
-            line.waypoint = wp;
-            line.traversed = closest_trail;
-            line.error_m = min_dist;
-            line.waypoint_index = static_cast<int>(wp_idx);
+            line.waypoint = closest_path_pt;  // Point on planned path
+            line.traversed = trail_pt;         // Point on robot trail
+            line.error_m = dist;
+            line.waypoint_index = sample_index;
             reproj_lines_.push_back(line);
         }
+        sample_index++;
     }
     
     if (reproj_lines_.empty()) {
         QMessageBox::information(this, "No Match", 
-            "No trail points found within 1m of any waypoint.\n"
+            "No trail points found within 1m of the planned path.\n"
             "Make sure the robot has traversed near the path.");
         return;
     }
@@ -2877,7 +2936,7 @@ void CoverageGUI::computeReprojectionError() {
     plot_->setReprojectionLines(reproj_lines_);
     
     // Update status
-    QString status = QString("Reprojection: %1 points, avg=%2 cm, max=%3 cm")
+    QString status = QString("Reprojection: %1 samples (5cm), avg=%2 cm, max=%3 cm")
         .arg(reproj_lines_.size())
         .arg(avg_error * 100, 0, 'f', 1)
         .arg(max_error * 100, 0, 'f', 1);
@@ -2888,7 +2947,7 @@ void CoverageGUI::computeReprojectionError() {
     setStatus(status, 5000);
     
     std::cout << "[F2C GUI] Reprojection error computed: " << reproj_lines_.size() 
-              << " points, avg=" << (avg_error * 100) << " cm, max=" << (max_error * 100) << " cm" << std::endl;
+              << " samples (5cm), avg=" << (avg_error * 100) << " cm, max=" << (max_error * 100) << " cm" << std::endl;
 }
 
 void CoverageGUI::clearReprojectionError() {

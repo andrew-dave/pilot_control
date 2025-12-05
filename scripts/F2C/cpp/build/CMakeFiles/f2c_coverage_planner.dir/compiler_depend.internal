@@ -2813,6 +2813,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h
  /usr/include/c++/11/fstream
