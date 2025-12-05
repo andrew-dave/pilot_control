@@ -731,11 +731,14 @@ class SlipAwareMPC:
             # Shift previous solution: [u0, x1, u1, x2, ...] -> [u1, x2, u2, x3, ...]
             prev_sol = self.prev_solution
             warm_start = np.zeros(self.nz)
-            
-            if len(prev_sol) >= (self.nu + self.nx):
-                warm_start[:-self.nu] = prev_sol[self.nu:]
-                warm_start[-self.nu:] = prev_sol[-self.nu:]
-            
+            step_size = self.nu + self.nx
+
+            if len(prev_sol) >= step_size:
+                warm_start[:-step_size] = prev_sol[step_size:]
+                warm_start[-step_size:] = prev_sol[-step_size:]
+            else:
+                warm_start[: len(prev_sol)] = prev_sol
+
             self.solver.warm_start(x=warm_start)
         
         # Debug: Log solver inputs
@@ -2454,8 +2457,9 @@ class MPCAutonomousController(Node):
             d_gate = float(self.error_ref_gate_distance)  # [m]
 
             if s_closest <= d_gate:
-                # Nominal ahead distance (approximate waypoint spacing)
-                nominal_ahead = 0.04  # [m], consistent with min_spacing / cruising_speed * dt
+                # Nominal ahead distance matches FAR-region waypoint spacing
+                cruising_speed = 0.5  # Keep aligned with generate_local_waypoints()
+                nominal_ahead = cruising_speed * self.mpc_dt
                 
                 # Scale factor for ahead distance:
                 #   at s=0      -> scale = error_ref_ahead_min_scale
@@ -2474,7 +2478,6 @@ class MPCAutonomousController(Node):
                 path_heading = math.atan2(path_dy, path_dx)
 
                 # Build a synthetic reference waypoint close ahead on the line
-                cruising_speed = 0.5
                 ref_waypoint = np.array([
                     ref_x, ref_y, path_heading,
                     cruising_speed * math.cos(path_heading),
