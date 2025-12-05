@@ -540,6 +540,9 @@ PNG_PNG_INCLUDE_DIR:PATH=/usr/include
 //Path to a program.
 Python3_EXECUTABLE:FILEPATH=/usr/bin/python3
 
+//The directory containing a CMake configuration file for Qt5Concurrent.
+Qt5Concurrent_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Concurrent
+
 //The directory containing a CMake configuration file for Qt5Core.
 Qt5Core_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
 
@@ -973,6 +976,21 @@ orocos_kdl_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/liborocos-kdl.so
 orocos_kdl_vendor_DIR:PATH=/opt/ros/humble/share/orocos_kdl_vendor/cmake
 
 //Path to a library.
+pkgcfg_lib_GST_glib-2.0:FILEPATH=/usr/lib/x86_64-linux-gnu/libglib-2.0.so
+
+//Path to a library.
+pkgcfg_lib_GST_gobject-2.0:FILEPATH=/usr/lib/x86_64-linux-gnu/libgobject-2.0.so
+
+//Path to a library.
+pkgcfg_lib_GST_gstbase-1.0:FILEPATH=/usr/lib/x86_64-linux-gnu/libgstbase-1.0.so
+
+//Path to a library.
+pkgcfg_lib_GST_gstreamer-1.0:FILEPATH=/usr/lib/x86_64-linux-gnu/libgstreamer-1.0.so
+
+//Path to a library.
+pkgcfg_lib_GST_gstvideo-1.0:FILEPATH=/usr/lib/x86_64-linux-gnu/libgstvideo-1.0.so
+
+//Path to a library.
 pkgcfg_lib_PC_EXPAT_expat:FILEPATH=/usr/lib/x86_64-linux-gnu/libexpat.so
 
 //Path to a library.
@@ -1349,6 +1367,8 @@ FIND_PACKAGE_MESSAGE_DETAILS_PCL_SEARCH:INTERNAL=[/usr/lib/x86_64-linux-gnu/libp
 FIND_PACKAGE_MESSAGE_DETAILS_PCL_VISUALIZATION:INTERNAL=[/usr/lib/x86_64-linux-gnu/libpcl_visualization.so][/usr/include/pcl-1.12][v()]
 //Details about finding PNG
 FIND_PACKAGE_MESSAGE_DETAILS_PNG:INTERNAL=[/usr/lib/x86_64-linux-gnu/libpng.so][/usr/include][v1.6.37()]
+//Details about finding PkgConfig
+FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[/usr/bin/pkg-config][v0.29.2()]
 //Details about finding Python3
 FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[/usr/bin/python3][cfound components: Interpreter ][v3.10.12()]
 //Details about finding TIFF
@@ -1387,6 +1407,47 @@ GDAL_LIBRARY-ADVANCED:INTERNAL=1
 GLEW_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: GLEW_LIBRARY
 GLEW_LIBRARY-ADVANCED:INTERNAL=1
+GST_CFLAGS:INTERNAL=-pthread;-I/usr/include/gstreamer-1.0;-I/usr/include/orc-0.4;-I/usr/include/gstreamer-1.0;-I/usr/include/x86_64-linux-gnu;-I/usr/include/glib-2.0;-I/usr/lib/x86_64-linux-gnu/glib-2.0/include
+GST_CFLAGS_I:INTERNAL=
+GST_CFLAGS_OTHER:INTERNAL=-pthread
+GST_FOUND:INTERNAL=1
+GST_INCLUDEDIR:INTERNAL=
+GST_INCLUDE_DIRS:INTERNAL=/usr/include/gstreamer-1.0;/usr/include/orc-0.4;/usr/include/gstreamer-1.0;/usr/include/x86_64-linux-gnu;/usr/include/glib-2.0;/usr/lib/x86_64-linux-gnu/glib-2.0/include
+GST_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lgstvideo-1.0;-lgstbase-1.0;-lgstreamer-1.0;-lgobject-2.0;-lglib-2.0
+GST_LDFLAGS_OTHER:INTERNAL=
+GST_LIBDIR:INTERNAL=
+GST_LIBRARIES:INTERNAL=gstvideo-1.0;gstbase-1.0;gstreamer-1.0;gobject-2.0;glib-2.0
+GST_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu
+GST_LIBS:INTERNAL=
+GST_LIBS_L:INTERNAL=
+GST_LIBS_OTHER:INTERNAL=
+GST_LIBS_PATHS:INTERNAL=
+GST_MODULE_NAME:INTERNAL=
+GST_PREFIX:INTERNAL=
+GST_STATIC_CFLAGS:INTERNAL=-pthread;-I/usr/include/gstreamer-1.0;-I/usr/include/orc-0.4;-I/usr/include/gstreamer-1.0;-I/usr/include/x86_64-linux-gnu;-I/usr/include/glib-2.0;-I/usr/lib/x86_64-linux-gnu/glib-2.0/include
+GST_STATIC_CFLAGS_I:INTERNAL=
+GST_STATIC_CFLAGS_OTHER:INTERNAL=-pthread
+GST_STATIC_INCLUDE_DIRS:INTERNAL=/usr/include/gstreamer-1.0;/usr/include/orc-0.4;/usr/include/gstreamer-1.0;/usr/include/x86_64-linux-gnu;/usr/include/glib-2.0;/usr/lib/x86_64-linux-gnu/glib-2.0/include
+GST_STATIC_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lgstvideo-1.0;-lm;-lorc-0.4;-lm;-pthread;-lgstbase-1.0;-lgstreamer-1.0;-lm;-ldl;-Wl,--export-dynamic;-lgmodule-2.0;-pthread;-lunwind;-llzma;-ldw;-lbz2;-llzma;-pthread;-lpthread;-lelf;-lz;-lgobject-2.0;-lffi;-lglib-2.0;-pthread;-lm;-lpcre
+GST_STATIC_LDFLAGS_OTHER:INTERNAL=-pthread;-Wl,--export-dynamic;-pthread
+GST_STATIC_LIBDIR:INTERNAL=
+GST_STATIC_LIBRARIES:INTERNAL=gstvideo-1.0;m;orc-0.4;m;gstbase-1.0;gstreamer-1.0;m;dl;gmodule-2.0;unwind;lzma;dw;bz2;lzma;pthread;elf;z;gobject-2.0;ffi;glib-2.0;m;pcre
+GST_STATIC_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu
+GST_STATIC_LIBS:INTERNAL=
+GST_STATIC_LIBS_L:INTERNAL=
+GST_STATIC_LIBS_OTHER:INTERNAL=
+GST_STATIC_LIBS_PATHS:INTERNAL=
+GST_VERSION:INTERNAL=
+GST_gstreamer-1.0_INCLUDEDIR:INTERNAL=/usr/include
+GST_gstreamer-1.0_LIBDIR:INTERNAL=/usr/lib/x86_64-linux-gnu
+GST_gstreamer-1.0_MODULE_NAME:INTERNAL=gstreamer-1.0
+GST_gstreamer-1.0_PREFIX:INTERNAL=/usr
+GST_gstreamer-1.0_VERSION:INTERNAL=1.20.3
+GST_gstreamer-video-1.0_INCLUDEDIR:INTERNAL=/usr/include
+GST_gstreamer-video-1.0_LIBDIR:INTERNAL=/usr/lib/x86_64-linux-gnu
+GST_gstreamer-video-1.0_MODULE_NAME:INTERNAL=gstreamer-video-1.0
+GST_gstreamer-video-1.0_PREFIX:INTERNAL=/usr
+GST_gstreamer-video-1.0_VERSION:INTERNAL=1.20.1
 //ADVANCED property for variable: JPEG_INCLUDE_DIR
 JPEG_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: JPEG_LIBRARY_DEBUG
@@ -1908,6 +1969,7 @@ _Python3_EXECUTABLE:INTERNAL=/usr/bin/python3
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;10;12;64;;cpython-310-x86_64-linux-gnu;/usr/lib/python3.10;/usr/lib/python3.10;/usr/lib/python3/dist-packages;/usr/lib/python3/dist-packages
 _Python3_INTERPRETER_SIGNATURE:INTERNAL=0f3e53742e142b1d9e50e4ca5b901dd8
+__pkg_config_arguments_GST:INTERNAL=REQUIRED;gstreamer-1.0;gstreamer-video-1.0
 __pkg_config_arguments_PC_EIGEN:INTERNAL=eigen3
 __pkg_config_arguments_PC_EXPAT:INTERNAL=QUIET;expat
 __pkg_config_arguments_PC_FLANN:INTERNAL=flann
@@ -1915,6 +1977,7 @@ __pkg_config_arguments_PC_OPENNI:INTERNAL=QUIET;libopenni
 __pkg_config_arguments_PC_OPENNI2:INTERNAL=QUIET;libopenni2
 __pkg_config_arguments_PC_libusb:INTERNAL=libusb-1.0
 __pkg_config_arguments_PKG_FONTCONFIG:INTERNAL=QUIET;fontconfig
+__pkg_config_checked_GST:INTERNAL=1
 __pkg_config_checked_PC_EIGEN:INTERNAL=1
 __pkg_config_checked_PC_EXPAT:INTERNAL=1
 __pkg_config_checked_PC_FLANN:INTERNAL=1
@@ -1940,6 +2003,16 @@ double-conversion_INCLUDE_DIR-ADVANCED:INTERNAL=1
 double-conversion_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: libusb_LIBRARIES
 libusb_LIBRARIES-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GST_glib-2.0
+pkgcfg_lib_GST_glib-2.0-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GST_gobject-2.0
+pkgcfg_lib_GST_gobject-2.0-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GST_gstbase-1.0
+pkgcfg_lib_GST_gstbase-1.0-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GST_gstreamer-1.0
+pkgcfg_lib_GST_gstreamer-1.0-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GST_gstvideo-1.0
+pkgcfg_lib_GST_gstvideo-1.0-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_PC_EXPAT_expat
 pkgcfg_lib_PC_EXPAT_expat-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_PC_EXPAT_m

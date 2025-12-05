@@ -5,6 +5,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_srvs/srv/set_bool.hpp>
+#include <std_msgs/msg/string.hpp>
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
@@ -267,6 +268,9 @@ struct CsvJob {
   // JPEG XL compression parameters
   int jxl_effort = 7;
   double jxl_distance = 1.0;
+  // Camera switch flag (marks rows captured during camera switch transition)
+  bool camera_switching = false;
+  std::string streaming_camera = "left";  // Which camera is currently streaming
 };
 
 class CsvWriter {
@@ -355,7 +359,8 @@ private:
           << job.vx << "," << job.vy << "," << job.vz << ","
           << job.wx << "," << job.wy << "," << job.wz << ","
           << thermo_bin << "," << thermal_color_png << ","
-          << left_jxl << "," << right_jxl << "\n";
+          << left_jxl << "," << right_jxl << ","
+          << (job.camera_switching ? "1" : "0") << "," << job.streaming_camera << "\n";
 
       if (++rows_since_flush >= flush_every_rows_) { csv.flush(); rows_since_flush = 0; }
     }
@@ -387,6 +392,15 @@ public:
         "/video_record_set",
         std::bind(&UnifiedDataCollector::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
     RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
+    
+    // Camera stream selection subscriber (for switching between left/right cameras)
+    camera_select_sub_ = this->create_subscription<std_msgs::msg::String>(
+        "/stream_camera_select", 10,
+        std::bind(&UnifiedDataCollector::onCameraSelect, this, std::placeholders::_1));
+    
+    // Camera status publisher (publishes current streaming camera)
+    camera_status_pub_ = this->create_publisher<std_msgs::msg::String>("/stream_camera_status", 10);
+    RCLCPP_INFO(this->get_logger(), "Camera selection topic: /stream_camera_select (\"left\" or \"right\")");
 
     // ROS wiring
     auto qos = rclcpp::SensorDataQoS().keep_last(100);
@@ -537,7 +551,67 @@ private:
     job.wy = msg->twist.twist.angular.y;
     job.wz = msg->twist.twist.angular.z;
 
+    // Set camera switch flag if within grace period
+    job.camera_switching = camera_switching_.load();
+    if (!job.camera_switching) {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - camera_switch_start_).count();
+      if (elapsed < kCameraSwitchGracePeriodMs) {
+        job.camera_switching = true;
+      }
+    }
+    job.streaming_camera = streaming_right_camera_.load() ? "right" : "left";
+    
     writer_.enqueue(std::move(job));
+  }
+
+  // ---------- Camera selection ----------
+  void onCameraSelect(const std_msgs::msg::String::SharedPtr msg) {
+    std::string camera = msg->data;
+    std::transform(camera.begin(), camera.end(), camera.begin(), ::tolower);
+    
+    bool want_right = (camera == "right" || camera == "r");
+    bool currently_right = streaming_right_camera_.load();
+    
+    if (want_right == currently_right) {
+      RCLCPP_INFO(this->get_logger(), "Already streaming %s camera", camera.c_str());
+      publishCameraStatus();
+      return;
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Switching stream to %s camera...", want_right ? "RIGHT" : "LEFT");
+    
+    // Set switching flag and timestamp
+    camera_switching_.store(true);
+    camera_switch_start_ = std::chrono::steady_clock::now();
+    
+    // Stop current pipeline
+    if (pipeline_) {
+      gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
+    }
+    
+    // Update which camera to stream
+    streaming_right_camera_.store(want_right);
+    
+    // Rebuild and restart pipeline
+    try {
+      buildStreamingPipeline();
+      startStreamingLoop();
+      RCLCPP_INFO(this->get_logger(), "Successfully switched to %s camera", want_right ? "RIGHT" : "LEFT");
+    } catch (const std::exception& e) {
+      RCLCPP_ERROR(this->get_logger(), "Failed to switch camera: %s", e.what());
+    }
+    
+    // Clear switching flag (grace period still applies via timestamp)
+    camera_switching_.store(false);
+    
+    publishCameraStatus();
+  }
+  
+  void publishCameraStatus() {
+    auto msg = std_msgs::msg::String();
+    msg.data = streaming_right_camera_.load() ? "right" : "left";
+    camera_status_pub_->publish(msg);
   }
 
   // ---------- Recording control ----------
@@ -570,7 +644,8 @@ private:
                       "dt_thermal_ms,dt_left_ms,dt_right_ms,"
                       "px,py,pz,qx,qy,qz,qw,"
                       "vx,vy,vz,wx,wy,wz,"
-                      "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl\n";
+                      "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl,"
+                      "camera_switching,streaming_camera\n";
       csv_stream_->flush();
       
       recording_active_ = true;
@@ -711,16 +786,22 @@ private:
   }
 
   void buildStreamingPipeline() {
+    // Clean up existing appsink references
+    left_appsink_ = nullptr;
+    right_appsink_ = nullptr;
+    
     std::ostringstream oss;
+    
+    bool stream_right = streaming_right_camera_.load();
     
     RCLCPP_INFO(this->get_logger(), "Camera devices: LEFT=%s RIGHT=%s",
                 cfg_.left_device.c_str(), cfg_.right_device.c_str());
-    RCLCPP_INFO(this->get_logger(), "Pipeline mode: %s, Resolution: %dx%d@%dfps",
+    RCLCPP_INFO(this->get_logger(), "Pipeline mode: %s, Resolution: %dx%d@%dfps, STREAMING: %s",
                 cfg_.use_mjpeg_pipeline ? "MJPEG" : "RAW",
-                cfg_.cap_w, cfg_.cap_h, cfg_.cap_fps);
+                cfg_.cap_w, cfg_.cap_h, cfg_.cap_fps,
+                stream_right ? "RIGHT" : "LEFT");
     
-    // LEFT camera (stream + frame capture)
-    // Use io-mode=mmap for reliable buffer handling, jpegparse for frame boundary detection
+    // LEFT camera
     if (cfg_.use_mjpeg_pipeline) {
       oss << "v4l2src name=v4l2src_left device=" << cfg_.left_device << " do-timestamp=true io-mode=mmap "
           << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
@@ -732,34 +813,50 @@ private:
     }
     oss << "! tee name=T_left ";
 
-    // Stream branch
-    oss << " T_left. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=15/1 "
-        << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
-        << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps << " key-int-max=30 bframes=0 "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au "
-        << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
-        << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
+    // LEFT stream branch (only if streaming left)
+    if (!stream_right) {
+      oss << " T_left. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
+          << "! videorate ! video/x-raw,framerate=15/1 "
+          << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
+          << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps << " key-int-max=30 bframes=0 "
+          << "! video/x-h264,stream-format=byte-stream,alignment=au "
+          << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
+          << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
+    }
 
-    // Frame capture branch (appsink for left)
+    // LEFT frame capture branch (appsink)
     oss << " T_left. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
         << "! videoconvert ! video/x-raw,format=BGR "
         << "! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
-    // RIGHT camera (frame capture only)
-    // Use io-mode=mmap for reliable buffer handling, jpegparse for frame boundary detection
+    // RIGHT camera
     if (cfg_.use_mjpeg_pipeline) {
       oss << "\n"
           << "v4l2src name=v4l2src_right device=" << cfg_.right_device << " do-timestamp=true io-mode=mmap "
           << "! image/jpeg,width=" << cfg_.cap_w << ",height=" << cfg_.cap_h << ",framerate=" << cfg_.cap_fps << "/1 "
-          << "! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=BGR ";
+          << "! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=I420 ";
     } else {
       oss << "\n"
           << "v4l2src name=v4l2src_right device=" << cfg_.right_device << " do-timestamp=true io-mode=mmap "
           << "! video/x-raw,format=" << cfg_.raw_format << ",width=" << cfg_.raw_w << ",height=" << cfg_.raw_h << ",framerate=" << cfg_.raw_fps << "/1 "
-          << "! videoconvert ! video/x-raw,format=BGR ";
+          << "! videoconvert ! video/x-raw,format=I420 ";
     }
-    oss << "! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
+    oss << "! tee name=T_right ";
+    
+    // RIGHT stream branch (only if streaming right)
+    if (stream_right) {
+      oss << " T_right. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
+          << "! videorate ! video/x-raw,framerate=15/1 "
+          << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
+          << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps << " key-int-max=30 bframes=0 "
+          << "! video/x-h264,stream-format=byte-stream,alignment=au "
+          << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
+          << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
+    }
+    
+    // RIGHT frame capture branch (appsink)
+    oss << " T_right. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
+        << "! videoconvert ! video/x-raw,format=BGR "
         << "! appsink name=right_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
     pipeline_str_ = oss.str();
@@ -938,6 +1035,12 @@ private:
   std::atomic<bool> recording_active_;
   std::atomic<bool> shutting_down_;
   std::chrono::steady_clock::time_point last_log_time_;
+  
+  // Camera streaming selection
+  std::atomic<bool> streaming_right_camera_{false};  // false = left, true = right
+  std::atomic<bool> camera_switching_{false};        // true during pipeline rebuild
+  std::chrono::steady_clock::time_point camera_switch_start_;
+  static constexpr int kCameraSwitchGracePeriodMs = 3000;  // Mark rows for 3s after switch
 
   FrameRing ring_;
   CsvWriter writer_;
@@ -948,6 +1051,8 @@ private:
   // ROS
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_srv_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_select_sub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;
 
   // Thermal Camera
   seekcamera_manager_t* mgr_ = nullptr;

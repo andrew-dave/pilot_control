@@ -140,6 +140,7 @@ f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/build.make
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Concurrent.so.5.15.3
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_io.so
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_filters.so
 f2c_coverage_planner: /home/avenblake/pilot_ws/install/fields2cover/lib/libFields2Cover.so
@@ -563,11 +564,6 @@ f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.74.0
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libboost_date_time.so.1.74.0
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libboost_iostreams.so.1.74.0
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0
-f2c_coverage_planner: /usr/lib/libgdal.so
-f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libm.so
-f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libgmpxx.so
-f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libmpfr.so
-f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libgmp.so
 f2c_coverage_planner: /opt/ros/humble/lib/libstd_msgs__rosidl_generator_c.so
 f2c_coverage_planner: /opt/ros/humble/lib/libstd_msgs__rosidl_typesupport_fastrtps_c.so
 f2c_coverage_planner: /opt/ros/humble/lib/libstd_msgs__rosidl_typesupport_fastrtps_cpp.so
@@ -579,6 +575,11 @@ f2c_coverage_planner: /opt/ros/humble/lib/libstd_msgs__rosidl_generator_py.so
 f2c_coverage_planner: /opt/ros/humble/lib/liblibstatistics_collector.so
 f2c_coverage_planner: /opt/ros/humble/lib/librcl.so
 f2c_coverage_planner: /opt/ros/humble/lib/libtracetools.so
+f2c_coverage_planner: /usr/lib/libgdal.so
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libm.so
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libgmpxx.so
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libmpfr.so
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libgmp.so
 f2c_coverage_planner: /opt/ros/humble/lib/libnav_msgs__rosidl_typesupport_c.so
 f2c_coverage_planner: /opt/ros/humble/lib/libnav_msgs__rosidl_generator_c.so
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/liborocos-kdl.so

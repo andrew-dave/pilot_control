@@ -15,6 +15,9 @@
 #include <QFile>
 #include <QFrame>
 #include <QSignalBlocker>
+#include <QtConcurrent>
+#include <QFutureWatcher>
+#include <QStyleFactory>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
@@ -32,6 +35,183 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace f2c_cpp {
+
+// =============================================================================
+// VideoStreamWidget Implementation
+// =============================================================================
+
+VideoStreamWidget::VideoStreamWidget(QWidget* parent) : QWidget(parent) {
+    setMinimumSize(320, 240);
+    setAttribute(Qt::WA_NativeWindow, true);
+    setAttribute(Qt::WA_OpaquePaintEvent, true);
+    
+    // Set black background
+    QPalette pal = palette();
+    pal.setColor(QPalette::Window, Qt::black);
+    setAutoFillBackground(true);
+    setPalette(pal);
+    
+    // Initialize GStreamer (safe to call multiple times)
+    if (!gst_is_initialized()) {
+        gst_init(nullptr, nullptr);
+    }
+}
+
+VideoStreamWidget::~VideoStreamWidget() {
+    destroyPipeline();
+}
+
+void VideoStreamWidget::setupPipeline(int port) {
+    destroyPipeline();
+    
+    // Build pipeline string matching the user's command
+    QString pipelineStr = QString(
+        "udpsrc port=%1 caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96, clock-rate=90000\" "
+        "! rtpjitterbuffer latency=200 "
+        "! queue max-size-buffers=1 leaky=downstream "
+        "! rtph264depay "
+        "! h264parse disable-passthrough=true config-interval=-1 "
+        "! avdec_h264 "
+        "! videorate ! video/x-raw,framerate=15/1 "
+        "! videoscale ! video/x-raw,width=640,height=480 "
+        "! videoconvert "
+        "! xvimagesink sync=false name=videosink"
+    ).arg(port);
+    
+    GError* error = nullptr;
+    pipeline_ = gst_parse_launch(pipelineStr.toUtf8().constData(), &error);
+    
+    if (error) {
+        QString errMsg = QString("Pipeline error: %1").arg(error->message);
+        g_error_free(error);
+        emit streamError(errMsg);
+        std::cerr << "[VideoStream] " << errMsg.toStdString() << std::endl;
+        return;
+    }
+    
+    if (!pipeline_) {
+        emit streamError("Failed to create pipeline");
+        return;
+    }
+    
+    // Set up bus sync handler to embed video in widget
+    GstBus* bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
+    gst_bus_set_sync_handler(bus, busSyncHandler, this, nullptr);
+    gst_bus_add_watch(bus, busCallback, this);
+    gst_object_unref(bus);
+    
+    current_port_ = port;
+    std::cout << "[VideoStream] Pipeline created for port " << port << std::endl;
+}
+
+GstBusSyncReply VideoStreamWidget::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer data) {
+    Q_UNUSED(bus);
+    VideoStreamWidget* self = static_cast<VideoStreamWidget*>(data);
+    
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT) {
+        if (gst_is_video_overlay_prepare_window_handle_message(msg)) {
+            // Embed video in our widget
+            WId winId = self->winId();
+            gst_video_overlay_set_window_handle(
+                GST_VIDEO_OVERLAY(GST_MESSAGE_SRC(msg)), 
+                static_cast<guintptr>(winId)
+            );
+            gst_message_unref(msg);
+            return GST_BUS_DROP;
+        }
+    }
+    return GST_BUS_PASS;
+}
+
+gboolean VideoStreamWidget::busCallback(GstBus* bus, GstMessage* msg, gpointer data) {
+    Q_UNUSED(bus);
+    VideoStreamWidget* self = static_cast<VideoStreamWidget*>(data);
+    
+    switch (GST_MESSAGE_TYPE(msg)) {
+        case GST_MESSAGE_ERROR: {
+            GError* err = nullptr;
+            gchar* debug = nullptr;
+            gst_message_parse_error(msg, &err, &debug);
+            QString errMsg = QString("Stream error: %1").arg(err ? err->message : "unknown");
+            if (err) g_error_free(err);
+            if (debug) g_free(debug);
+            
+            QMetaObject::invokeMethod(self, [self, errMsg]() {
+                emit self->streamError(errMsg);
+            }, Qt::QueuedConnection);
+            break;
+        }
+        case GST_MESSAGE_EOS:
+            QMetaObject::invokeMethod(self, [self]() {
+                self->playing_ = false;
+                emit self->streamStopped();
+            }, Qt::QueuedConnection);
+            break;
+        case GST_MESSAGE_STATE_CHANGED:
+            if (GST_MESSAGE_SRC(msg) == GST_OBJECT(self->pipeline_)) {
+                GstState old_state, new_state, pending_state;
+                gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+                if (new_state == GST_STATE_PLAYING) {
+                    QMetaObject::invokeMethod(self, [self]() {
+                        self->playing_ = true;
+                        emit self->streamStarted();
+                    }, Qt::QueuedConnection);
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return TRUE;
+}
+
+void VideoStreamWidget::startStream(int port) {
+    setupPipeline(port);
+    if (pipeline_) {
+        GstStateChangeReturn ret = gst_element_set_state(pipeline_, GST_STATE_PLAYING);
+        if (ret == GST_STATE_CHANGE_FAILURE) {
+            emit streamError("Failed to start stream");
+            std::cerr << "[VideoStream] Failed to set pipeline to PLAYING" << std::endl;
+        } else {
+            std::cout << "[VideoStream] Starting stream on port " << port << std::endl;
+        }
+    }
+}
+
+void VideoStreamWidget::stopStream() {
+    if (pipeline_) {
+        gst_element_set_state(pipeline_, GST_STATE_NULL);
+        playing_ = false;
+        emit streamStopped();
+        std::cout << "[VideoStream] Stream stopped" << std::endl;
+    }
+}
+
+void VideoStreamWidget::destroyPipeline() {
+    if (pipeline_) {
+        gst_element_set_state(pipeline_, GST_STATE_NULL);
+        gst_object_unref(pipeline_);
+        pipeline_ = nullptr;
+        playing_ = false;
+    }
+}
+
+void VideoStreamWidget::showEvent(QShowEvent* event) {
+    QWidget::showEvent(event);
+    if (auto_start_on_show_ && !playing_) {
+        startStream(current_port_);
+    }
+}
+
+void VideoStreamWidget::hideEvent(QHideEvent* event) {
+    QWidget::hideEvent(event);
+    // Optionally stop when hidden to save resources
+    // stopStream();
+}
+
+// =============================================================================
+// PlotWidget and CoverageGUI Implementation
+// =============================================================================
 
 namespace {
 
@@ -154,6 +334,37 @@ void PlotWidget::setReprojectionLines(const std::vector<ReprojectionLine>& lines
 void PlotWidget::clearReprojectionLines() {
     reproj_lines_.clear();
     hovered_reproj_index_ = -1;
+    update();
+}
+
+void PlotWidget::startRectangleMode() {
+    drawing_rectangle_ = true;
+    rect_points_.clear();
+    selecting_ = false;  // Cancel any other selection
+    selection_points_.clear();
+    setCursor(Qt::CrossCursor);
+    update();
+}
+
+void PlotWidget::cancelRectangleMode() {
+    drawing_rectangle_ = false;
+    rect_points_.clear();
+    setCursor(Qt::ArrowCursor);
+    update();
+}
+
+void PlotWidget::setDarkMode(bool enabled) {
+    dark_mode_ = enabled;
+    
+    QPalette pal = palette();
+    if (dark_mode_) {
+        pal.setColor(QPalette::Window, QColor(30, 30, 35));
+        pal.setColor(QPalette::WindowText, Qt::white);
+    } else {
+        pal.setColor(QPalette::Window, Qt::white);
+        pal.setColor(QPalette::WindowText, Qt::black);
+    }
+    setPalette(pal);
     update();
 }
 
@@ -357,10 +568,11 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing);
     
     // Background
-    painter.fillRect(rect(), Qt::white);
+    painter.fillRect(rect(), dark_mode_ ? QColor(30, 30, 35) : Qt::white);
     
     // Draw grid
-    painter.setPen(QPen(QColor(200, 200, 200), 1, Qt::DashLine));
+    QColor grid_color = dark_mode_ ? QColor(60, 60, 70) : QColor(200, 200, 200);
+    painter.setPen(QPen(grid_color, 1, Qt::DashLine));
     double grid_step = std::pow(10, std::floor(std::log10(std::max(data_max_x_ - data_min_x_, data_max_y_ - data_min_y_) / 5)));
     for (double x = std::floor(data_min_x_ / grid_step) * grid_step; x <= data_max_x_; x += grid_step) {
         QPointF p1 = worldToScreen(Point2D(x, data_min_y_));
@@ -627,8 +839,80 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         }
     }
     
+    // Draw rectangle in progress (3-click tool)
+    if (drawing_rectangle_ && !rect_points_.empty()) {
+        painter.setPen(QPen(QColor(0, 150, 255), 2, Qt::DashLine));
+        painter.setBrush(QColor(0, 150, 255, 40));
+        
+        if (rect_points_.size() == 1) {
+            // First point set - draw line to cursor
+            QPointF p1 = worldToScreen(rect_points_[0]);
+            painter.drawLine(p1, cursor_pos_);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 150, 255));
+            painter.drawEllipse(p1, 6, 6);
+        } else if (rect_points_.size() == 2) {
+            // Two points set - show rectangle preview based on cursor position
+            Point2D p1 = rect_points_[0];
+            Point2D p2 = rect_points_[1];
+            Point2D cursor_world = screenToWorld(cursor_pos_);
+            
+            // Calculate perpendicular direction
+            double dx = p2.x - p1.x;
+            double dy = p2.y - p1.y;
+            double len = std::hypot(dx, dy);
+            if (len > 1e-6) {
+                double perp_x = -dy / len;
+                double perp_y = dx / len;
+                
+                // Project cursor onto perpendicular to get width
+                double width = (cursor_world.x - p1.x) * perp_x + (cursor_world.y - p1.y) * perp_y;
+                
+                // Calculate 4 corners
+                Point2D c1 = p1;
+                Point2D c2 = p2;
+                Point2D c3 = {p2.x + width * perp_x, p2.y + width * perp_y};
+                Point2D c4 = {p1.x + width * perp_x, p1.y + width * perp_y};
+                
+                QPolygonF rect_preview;
+                rect_preview << worldToScreen(c1) << worldToScreen(c2) 
+                             << worldToScreen(c3) << worldToScreen(c4);
+                rect_preview << rect_preview.first();
+                
+                painter.drawPolygon(rect_preview);
+                
+                // Draw dimension text
+                painter.setPen(QColor(0, 150, 255));
+                painter.setFont(QFont("Sans Serif", 9, QFont::Bold));
+                QPointF mid1 = (worldToScreen(c1) + worldToScreen(c2)) / 2;
+                QPointF mid2 = (worldToScreen(c1) + worldToScreen(c4)) / 2;
+                painter.drawText(mid1 + QPointF(5, -5), QString("%1 m").arg(len, 0, 'f', 2));
+                painter.drawText(mid2 + QPointF(5, -5), QString("%1 m").arg(std::abs(width), 0, 'f', 2));
+            }
+            
+            // Draw corner points
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 150, 255));
+            painter.drawEllipse(worldToScreen(p1), 6, 6);
+            painter.drawEllipse(worldToScreen(p2), 6, 6);
+        }
+        
+        // Draw instructions
+        painter.setPen(dark_mode_ ? Qt::white : Qt::black);
+        painter.setFont(QFont("Sans Serif", 9));
+        QString hint;
+        if (rect_points_.empty()) {
+            hint = "Click first corner";
+        } else if (rect_points_.size() == 1) {
+            hint = "Click to define base edge direction";
+        } else {
+            hint = "Click to set rectangle width";
+        }
+        painter.drawText(10, height() - 10, hint);
+    }
+    
     // Draw title
-    painter.setPen(Qt::black);
+    painter.setPen(dark_mode_ ? Qt::white : Qt::black);
     painter.setFont(QFont("Sans Serif", 10, QFont::Bold));
     painter.drawText(10, 20, "2D Projection / Coverage");
 }
@@ -638,6 +922,47 @@ void PlotWidget::mousePressEvent(QMouseEvent* event) {
         if (custom_draw_mode_) {
             Point2D world = screenToWorld(event->pos());
             emit customWaypointRequested(world);
+            return;
+        }
+        
+        // Rectangle drawing mode (3-click)
+        if (drawing_rectangle_) {
+            Point2D world = screenToWorld(event->pos());
+            rect_points_.push_back(world);
+            
+            if (rect_points_.size() >= 3) {
+                // Complete the rectangle
+                Point2D p1 = rect_points_[0];
+                Point2D p2 = rect_points_[1];
+                Point2D p3 = rect_points_[2];
+                
+                // Calculate perpendicular direction
+                double dx = p2.x - p1.x;
+                double dy = p2.y - p1.y;
+                double len = std::hypot(dx, dy);
+                
+                if (len > 1e-6) {
+                    double perp_x = -dy / len;
+                    double perp_y = dx / len;
+                    
+                    // Project p3 onto perpendicular to get width
+                    double width = (p3.x - p1.x) * perp_x + (p3.y - p1.y) * perp_y;
+                    
+                    // Build rectangle polygon
+                    Polygon2D rect;
+                    rect.push_back(p1);
+                    rect.push_back(p2);
+                    rect.push_back({p2.x + width * perp_x, p2.y + width * perp_y});
+                    rect.push_back({p1.x + width * perp_x, p1.y + width * perp_y});
+                    
+                    // Exit rectangle mode and emit
+                    drawing_rectangle_ = false;
+                    rect_points_.clear();
+                    setCursor(Qt::ArrowCursor);
+                    emit rectangleCompleted(rect);
+                }
+            }
+            update();
             return;
         }
         
@@ -654,12 +979,48 @@ void PlotWidget::mousePressEvent(QMouseEvent* event) {
             setCursor(Qt::ClosedHandCursor);
         }
     } else if (event->button() == Qt::RightButton) {
-        if (selecting_) {
+        if (drawing_rectangle_) {
+            cancelRectangleMode();
+        } else if (selecting_) {
             finishSelection();
         }
     } else if (event->button() == Qt::MiddleButton) {
         resetView();
     }
+}
+
+void PlotWidget::mouseDoubleClickEvent(QMouseEvent* event) {
+    // Double-click to finish polygon selection (ROI or obstacle)
+    if (selecting_ && event->button() == Qt::LeftButton) {
+        if (selection_points_.size() >= 3) {
+            finishSelection();
+        }
+        return;
+    }
+    QWidget::mouseDoubleClickEvent(event);
+}
+
+void PlotWidget::keyPressEvent(QKeyEvent* event) {
+    // Press Enter/Return to finish polygon selection
+    if (selecting_) {
+        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+            if (selection_points_.size() >= 3) {
+                finishSelection();
+            }
+            return;
+        } else if (event->key() == Qt::Key_Escape) {
+            cancelSelection();
+            return;
+        }
+    }
+    
+    // Escape to cancel rectangle mode
+    if (drawing_rectangle_ && event->key() == Qt::Key_Escape) {
+        cancelRectangleMode();
+        return;
+    }
+    
+    QWidget::keyPressEvent(event);
 }
 
 void PlotWidget::mouseMoveEvent(QMouseEvent* event) {
@@ -796,9 +1157,19 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     }
     
     fit_view_pending_ = true;
+    
+    // Initialize async point cloud loader
+    pcd_watcher_ = new QFutureWatcher<PointCloudPtr>(this);
+    connect(pcd_watcher_, &QFutureWatcher<PointCloudPtr>::finished, 
+            this, &CoverageGUI::onPointCloudLoaded);
+    
+    // Load dark mode preference (reuse settings from above)
+    dark_mode_ = settings.value("dark_mode", false).toBool();
+    
     setupUI();
     setupConnections();
     refreshCustomPathUI();
+    applyTheme();  // Apply saved theme
 
     // Initialize ROS2 reconnection timer (will only run when disconnected)
     ros_reconnect_timer_ = new QTimer(this);
@@ -856,19 +1227,18 @@ void CoverageGUI::setupUI() {
     QWidget* central = new QWidget();
     QHBoxLayout* main_layout = new QHBoxLayout(central);
     
-    // Use regular horizontal layout instead of splitter for fixed panel width
-    // Controls panel - fixed width
+    // LEFT: Controls panel - fixed width
     QScrollArea* controls_scroll = new QScrollArea();
     controls_scroll->setWidgetResizable(true);
     controls_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    controls_scroll->setFixedWidth(380);  // Fixed width - won't resize
+    controls_scroll->setFixedWidth(380);
     
     QWidget* controls_container = new QWidget();
     QVBoxLayout* controls_layout = new QVBoxLayout(controls_container);
     controls_layout->setContentsMargins(12, 12, 12, 12);
     controls_layout->setSpacing(12);
     
-    // Single panel layout (no tabs)
+    // Standard panel layout with QGroupBox sections
     controls_layout->addWidget(buildFileControls());
     controls_layout->addWidget(buildRobotTrackingControls());
     controls_layout->addWidget(buildHeightControls());
@@ -876,19 +1246,21 @@ void CoverageGUI::setupUI() {
     controls_layout->addWidget(buildHullControls());
     controls_layout->addWidget(buildSimplifyControls());
     controls_layout->addWidget(buildPathPlanningControls());
+    controls_layout->addWidget(buildCoverageStatsControls());
     controls_layout->addWidget(buildExportControls());
     controls_layout->addStretch(1);
     
     controls_scroll->setWidget(controls_container);
     main_layout->addWidget(controls_scroll);
     
-    // Plot panel - takes remaining space
+    // CENTER: Plot panel - takes remaining space
     QWidget* plot_container = new QWidget();
     QVBoxLayout* plot_layout = new QVBoxLayout(plot_container);
     plot_layout->setContentsMargins(0, 0, 0, 0);
     
+    // Plot widget
     plot_ = new PlotWidget();
-    plot_->setMinimumSize(400, 400);  // Minimum plot size
+    plot_->setMinimumSize(400, 400);
     plot_->setRobotMarkerSize(robot_marker_size_m_);
     plot_layout->addWidget(plot_, 1);
     
@@ -903,15 +1275,38 @@ void CoverageGUI::setupUI() {
     toolbar->addWidget(btn_zoom_in);
     toolbar->addWidget(btn_zoom_out);
     toolbar->addStretch();
+    
+    // Dark mode toggle
+    btn_dark_mode_ = new QPushButton("🌙 Dark Mode");
+    btn_dark_mode_->setCheckable(true);
+    btn_dark_mode_->setChecked(dark_mode_);
+    btn_dark_mode_->setFixedWidth(110);
+    toolbar->addWidget(btn_dark_mode_);
+    
+    // View FOV button (video panel toggle)
+    btn_view_fov_ = new QPushButton("📹 View FOV");
+    btn_view_fov_->setCheckable(true);
+    btn_view_fov_->setToolTip("Toggle camera feed panel");
+    btn_view_fov_->setFixedWidth(100);
+    toolbar->addWidget(btn_view_fov_);
+    
     plot_layout->addLayout(toolbar);
     
     connect(btn_reset_view, &QPushButton::clicked, plot_, &PlotWidget::resetView);
     connect(btn_zoom_in, &QPushButton::clicked, plot_, &PlotWidget::zoomIn);
     connect(btn_zoom_out, &QPushButton::clicked, plot_, &PlotWidget::zoomOut);
+    connect(btn_dark_mode_, &QPushButton::toggled, this, &CoverageGUI::toggleDarkMode);
     
-    main_layout->addWidget(plot_container, 1);  // Stretch factor 1 - takes remaining space
+    main_layout->addWidget(plot_container, 1);
+    
+    // RIGHT: Layer visibility panel
+    QWidget* layer_panel = buildLayerPanel();
+    main_layout->addWidget(layer_panel);
     
     setCentralWidget(central);
+    
+    // Setup video panel (dockable)
+    setupVideoPanel();
     
     // Status bar
     status_bar_ = new QStatusBar();
@@ -928,6 +1323,7 @@ void CoverageGUI::setupConnections() {
     connect(plot_, &PlotWidget::obstacleSelected, this, &CoverageGUI::onObstacleSelected);
     connect(plot_, &PlotWidget::selectionCancelled, this, &CoverageGUI::onSelectionCancelled);
     connect(plot_, &PlotWidget::customWaypointRequested, this, &CoverageGUI::onPlotCustomWaypoint);
+    connect(plot_, &PlotWidget::rectangleCompleted, this, &CoverageGUI::onRectangleCompleted);
     
     // Path mode switching
     if (radio_mode_f2c_) {
@@ -956,6 +1352,181 @@ void CoverageGUI::setupConnections() {
             updateProgress(percent, QString::fromStdString(msg));
         }, Qt::QueuedConnection);
     });
+}
+
+void CoverageGUI::setupVideoPanel() {
+    // Create dockable video panel
+    video_dock_ = new QDockWidget("📹 Camera FOV", this);
+    video_dock_->setObjectName("videoDock");
+    video_dock_->setAllowedAreas(Qt::RightDockWidgetArea | Qt::BottomDockWidgetArea | Qt::LeftDockWidgetArea);
+    video_dock_->setFeatures(QDockWidget::DockWidgetClosable | 
+                             QDockWidget::DockWidgetMovable |
+                             QDockWidget::DockWidgetFloatable);
+    
+    QWidget* dock_content = new QWidget();
+    QVBoxLayout* dock_layout = new QVBoxLayout(dock_content);
+    dock_layout->setContentsMargins(6, 6, 6, 6);
+    dock_layout->setSpacing(6);
+    
+    // Camera selector
+    QHBoxLayout* cam_selector = new QHBoxLayout();
+    cam_selector->addWidget(new QLabel("Camera:"));
+    radio_cam_left_ = new QRadioButton("Left");
+    radio_cam_right_ = new QRadioButton("Right");
+    radio_cam_left_->setChecked(true);
+    
+    QButtonGroup* cam_group = new QButtonGroup(this);
+    cam_group->addButton(radio_cam_left_);
+    cam_group->addButton(radio_cam_right_);
+    
+    cam_selector->addWidget(radio_cam_left_);
+    cam_selector->addWidget(radio_cam_right_);
+    cam_selector->addStretch();
+    dock_layout->addLayout(cam_selector);
+    
+    // Port configuration
+    QHBoxLayout* port_layout = new QHBoxLayout();
+    port_layout->addWidget(new QLabel("Port:"));
+    spin_video_port_ = new QSpinBox();
+    spin_video_port_->setRange(1024, 65535);
+    spin_video_port_->setValue(5600);
+    spin_video_port_->setToolTip("UDP port for video stream");
+    port_layout->addWidget(spin_video_port_);
+    port_layout->addStretch();
+    dock_layout->addLayout(port_layout);
+    
+    // Video widget
+    video_widget_ = new VideoStreamWidget();
+    video_widget_->setMinimumSize(320, 240);
+    video_widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    dock_layout->addWidget(video_widget_, 1);
+    
+    // Status label
+    lbl_video_status_ = new QLabel("Stream: Stopped");
+    lbl_video_status_->setStyleSheet("color: #888; font-size: 10px;");
+    dock_layout->addWidget(lbl_video_status_);
+    
+    // Control buttons
+    QHBoxLayout* controls = new QHBoxLayout();
+    btn_video_play_ = new QPushButton("▶ Play");
+    btn_video_stop_ = new QPushButton("⏹ Stop");
+    btn_video_play_->setObjectName("btn_video_play");
+    btn_video_stop_->setObjectName("btn_video_stop");
+    btn_video_stop_->setEnabled(false);
+    controls->addWidget(btn_video_play_);
+    controls->addWidget(btn_video_stop_);
+    controls->addStretch();
+    dock_layout->addLayout(controls);
+    
+    video_dock_->setWidget(dock_content);
+    addDockWidget(Qt::RightDockWidgetArea, video_dock_);
+    video_dock_->hide();  // Hidden by default
+    
+    // Connections for video panel (btn_view_fov_ created in setupUI)
+    connect(btn_view_fov_, &QPushButton::toggled, this, &CoverageGUI::toggleVideoPanel);
+    connect(video_dock_, &QDockWidget::visibilityChanged, btn_view_fov_, &QPushButton::setChecked);
+    
+    connect(btn_video_play_, &QPushButton::clicked, this, &CoverageGUI::playVideoStream);
+    connect(btn_video_stop_, &QPushButton::clicked, this, &CoverageGUI::stopVideoStream);
+    
+    connect(radio_cam_right_, &QRadioButton::toggled, this, &CoverageGUI::onCameraToggled);
+    
+    connect(video_widget_, &VideoStreamWidget::streamStarted, this, [this]() {
+        lbl_video_status_->setText("Stream: Playing");
+        lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
+        btn_video_play_->setEnabled(false);
+        btn_video_stop_->setEnabled(true);
+    });
+    
+    connect(video_widget_, &VideoStreamWidget::streamStopped, this, [this]() {
+        lbl_video_status_->setText("Stream: Stopped");
+        lbl_video_status_->setStyleSheet("color: #888; font-size: 10px;");
+        btn_video_play_->setEnabled(true);
+        btn_video_stop_->setEnabled(false);
+    });
+    
+    connect(video_widget_, &VideoStreamWidget::streamError, this, [this](const QString& err) {
+        lbl_video_status_->setText("Error: " + err);
+        lbl_video_status_->setStyleSheet("color: red; font-size: 10px;");
+        btn_video_play_->setEnabled(true);
+        btn_video_stop_->setEnabled(false);
+    });
+    
+    // Setup ROS2 camera selection publisher if ROS is available
+    if (ros_initialized_ && ros_node_) {
+        camera_select_pub_ = ros_node_->create_publisher<std_msgs::msg::String>(
+            "/stream_camera_select", 10);
+        camera_status_sub_ = ros_node_->create_subscription<std_msgs::msg::String>(
+            "/stream_camera_status", 10,
+            std::bind(&CoverageGUI::onCameraStatusReceived, this, std::placeholders::_1));
+    }
+}
+
+void CoverageGUI::toggleVideoPanel() {
+    if (video_dock_) {
+        bool show = btn_view_fov_->isChecked();
+        video_dock_->setVisible(show);
+    }
+}
+
+void CoverageGUI::playVideoStream() {
+    if (video_widget_) {
+        int port = spin_video_port_->value();
+        video_widget_->startStream(port);
+        lbl_video_status_->setText("Stream: Connecting...");
+        lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
+    }
+}
+
+void CoverageGUI::stopVideoStream() {
+    if (video_widget_) {
+        video_widget_->stopStream();
+    }
+}
+
+void CoverageGUI::onCameraToggled(bool right_selected) {
+    QString camera = right_selected ? "right" : "left";
+    
+    // Publish camera selection to robot
+    if (ros_initialized_ && camera_select_pub_) {
+        auto msg = std_msgs::msg::String();
+        msg.data = camera.toStdString();
+        camera_select_pub_->publish(msg);
+        
+        setStatus(QString("Switching to %1 camera...").arg(camera));
+        
+        // If currently playing, restart stream after a delay
+        if (video_widget_ && video_widget_->isPlaying()) {
+            video_widget_->stopStream();
+            lbl_video_status_->setText("Switching camera...");
+            lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
+            
+            // Restart stream after pipeline rebuild (~2 seconds)
+            QTimer::singleShot(2500, this, [this]() {
+                if (video_widget_ && btn_view_fov_->isChecked()) {
+                    playVideoStream();
+                }
+            });
+        }
+    } else {
+        setStatus("ROS2 not available - camera switch requires robot connection");
+    }
+}
+
+void CoverageGUI::onCameraStatusReceived(const std_msgs::msg::String::SharedPtr msg) {
+    QString camera = QString::fromStdString(msg->data);
+    current_streaming_camera_ = camera;
+    
+    QMetaObject::invokeMethod(this, [this, camera]() {
+        // Update radio button to match actual streaming camera
+        bool is_right = (camera == "right");
+        QSignalBlocker blocker_left(radio_cam_left_);
+        QSignalBlocker blocker_right(radio_cam_right_);
+        radio_cam_left_->setChecked(!is_right);
+        radio_cam_right_->setChecked(is_right);
+        
+        setStatus(QString("Streaming: %1 camera").arg(camera));
+    }, Qt::QueuedConnection);
 }
 
 QGroupBox* CoverageGUI::buildFileControls() {
@@ -1021,7 +1592,7 @@ QGroupBox* CoverageGUI::buildFileControls() {
             .arg(robot_user_, robot_host_));
     };
     updateFetchTooltip();
-    btn_fetch->setStyleSheet("QPushButton { background-color: #e8f4f8; }");
+    btn_fetch->setObjectName("btn_fetch");  // For theme-aware styling
     connect(btn_fetch, &QPushButton::clicked, this, &CoverageGUI::fetchLatestMapFromRobot);
     
     connect(txt_robot_ip_, &QLineEdit::editingFinished, this, [this, updateFetchTooltip]() mutable {
@@ -1399,6 +1970,16 @@ QWidget* CoverageGUI::buildF2CControls() {
     connect(btn_roi_, &QPushButton::clicked, this, &CoverageGUI::toggleROISelection);
     roi_box->addWidget(btn_roi_);
     
+    // Rectangle drawing tool (3-click)
+    btn_rectangle_ = new QPushButton("📐 Rectangle");
+    btn_rectangle_->setCheckable(true);
+    btn_rectangle_->setToolTip("Draw a rectangle ROI with 3 clicks:\n"
+                               "1. First corner\n"
+                               "2. Defines base edge direction\n"
+                               "3. Sets width");
+    connect(btn_rectangle_, &QPushButton::clicked, this, &CoverageGUI::toggleRectangleMode);
+    roi_box->addWidget(btn_rectangle_);
+    
     btn_roi_clear_ = new QPushButton("Clear ROI");
     btn_roi_clear_->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
     connect(btn_roi_clear_, &QPushButton::clicked, this, &CoverageGUI::clearROI);
@@ -1475,7 +2056,7 @@ QWidget* CoverageGUI::buildCustomPathControls() {
     
     btn_custom_draw_ = new QPushButton("Enable drawing");
     btn_custom_draw_->setCheckable(true);
-    btn_custom_draw_->setStyleSheet("QPushButton:checked { background-color: #81C784; }");
+    btn_custom_draw_->setObjectName("btn_custom_draw");  // For theme-aware styling
     layout->addWidget(btn_custom_draw_);
     
     QHBoxLayout* edit_layout = new QHBoxLayout();
@@ -1498,6 +2079,54 @@ QWidget* CoverageGUI::buildCustomPathControls() {
     return widget;
 }
 
+QGroupBox* CoverageGUI::buildCoverageStatsControls() {
+    stats_group_ = new QGroupBox("Coverage Statistics");
+    QVBoxLayout* layout = new QVBoxLayout(stats_group_);
+    
+    // Robot speed for time estimation
+    QHBoxLayout* speed_layout = new QHBoxLayout();
+    speed_layout->addWidget(new QLabel("Robot speed (m/s):"));
+    spin_robot_speed_ = new QDoubleSpinBox();
+    spin_robot_speed_->setRange(0.1, 5.0);
+    spin_robot_speed_->setSingleStep(0.1);
+    spin_robot_speed_->setValue(0.5);
+    spin_robot_speed_->setToolTip("Used to estimate mission time");
+    speed_layout->addWidget(spin_robot_speed_);
+    layout->addLayout(speed_layout);
+    
+    connect(spin_robot_speed_, qOverload<double>(&QDoubleSpinBox::valueChanged), 
+            this, &CoverageGUI::updateCoverageStats);
+    
+    // Stats labels
+    QGridLayout* grid = new QGridLayout();
+    grid->setColumnStretch(1, 1);
+    
+    auto addStatRow = [&](int row, const QString& label, QLabel*& valueLabel) {
+        grid->addWidget(new QLabel(label), row, 0);
+        valueLabel = new QLabel("-");
+        valueLabel->setStyleSheet("font-weight: bold;");
+        grid->addWidget(valueLabel, row, 1, Qt::AlignRight);
+    };
+    
+    addStatRow(0, "Path length:", lbl_stats_path_length_);
+    addStatRow(1, "Coverage area:", lbl_stats_area_);
+    addStatRow(2, "Field area:", lbl_stats_coverage_);
+    addStatRow(3, "Swaths:", lbl_stats_swaths_);
+    addStatRow(4, "Turns:", lbl_stats_turns_);
+    addStatRow(5, "Waypoints:", lbl_stats_waypoints_);
+    addStatRow(6, "Est. time:", lbl_stats_time_);
+    
+    layout->addLayout(grid);
+    
+    // Refresh button
+    QPushButton* btn_refresh_stats = new QPushButton("Refresh Statistics");
+    btn_refresh_stats->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+    connect(btn_refresh_stats, &QPushButton::clicked, this, &CoverageGUI::updateCoverageStats);
+    layout->addWidget(btn_refresh_stats);
+    
+    return stats_group_;
+}
+
 QGroupBox* CoverageGUI::buildExportControls() {
     QGroupBox* box = new QGroupBox("Export & Navigation");
     QVBoxLayout* v = new QVBoxLayout(box);
@@ -1509,12 +2138,12 @@ QGroupBox* CoverageGUI::buildExportControls() {
 
     // Add waypoint publishing buttons (work for both F2C and Custom modes)
     btn_publish_waypoints_ = new QPushButton("📡 Publish Waypoints to Robot");
-    btn_publish_waypoints_->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }");
+    btn_publish_waypoints_->setObjectName("btn_publish");  // For theme-aware styling
     connect(btn_publish_waypoints_, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
     v->addWidget(btn_publish_waypoints_);
 
     btn_start_navigation_ = new QPushButton("▶️ Start Navigation");
-    btn_start_navigation_->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; }");
+    btn_start_navigation_->setObjectName("btn_navigation");  // For theme-aware styling
     btn_start_navigation_->setEnabled(false);  // Initially disabled
     connect(btn_start_navigation_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
     v->addWidget(btn_start_navigation_);
@@ -1544,6 +2173,306 @@ QGroupBox* CoverageGUI::buildExportControls() {
     v->addWidget(lbl_reproj_status_);
 
     return box;
+}
+
+// =============================================================================
+// Workflow Indicator
+// =============================================================================
+
+QWidget* CoverageGUI::buildWorkflowIndicator() {
+    QWidget* widget = new QWidget();
+    widget->setObjectName("workflowIndicator");
+    widget->setFixedHeight(50);
+    
+    QHBoxLayout* layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(10, 5, 10, 5);
+    layout->setSpacing(0);
+    
+    QStringList steps = {"Load", "Filter", "Hull", "Plan", "Export"};
+    QStringList icons = {"📁", "🔧", "⬡", "🗺️", "🚀"};
+    
+    workflow_btns_.clear();
+    
+    for (int i = 0; i < steps.size(); ++i) {
+        // Step button
+        QPushButton* btn = new QPushButton(QString("%1 %2").arg(icons[i], steps[i]));
+        btn->setObjectName(QString("workflow_step_%1").arg(i));
+        btn->setCheckable(true);
+        btn->setMinimumWidth(80);
+        btn->setProperty("step_index", i);
+        connect(btn, &QPushButton::clicked, this, [this, i]() {
+            onWorkflowStepClicked(i);
+        });
+        workflow_btns_.push_back(btn);
+        layout->addWidget(btn);
+        
+        // Arrow between steps (except after last)
+        if (i < steps.size() - 1) {
+            QLabel* arrow = new QLabel(" → ");
+            arrow->setStyleSheet("color: #888; font-size: 16px;");
+            layout->addWidget(arrow);
+        }
+    }
+    
+    layout->addStretch();
+    
+    // Style the workflow widget
+    widget->setStyleSheet(R"(
+        #workflowIndicator {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                        stop:0 #f8f9fa, stop:1 #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+        }
+        #workflowIndicator QPushButton {
+            border: 2px solid #adb5bd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background: white;
+            font-weight: bold;
+        }
+        #workflowIndicator QPushButton:checked {
+            background: #4a90d9;
+            color: white;
+            border-color: #357abd;
+        }
+        #workflowIndicator QPushButton:hover:!checked {
+            background: #e9ecef;
+        }
+        #workflowIndicator QPushButton[completed="true"] {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+    )");
+    
+    return widget;
+}
+
+void CoverageGUI::updateWorkflowSteps() {
+    // Determine current progress based on data state
+    int new_step = 0;
+    
+    if (pcd_points_ && !pcd_points_->empty()) {
+        new_step = 1;  // Loaded
+    }
+    if (filtered_points_ && !filtered_points_->empty() && 
+        (filtered_points_->size() != (pcd_points_ ? pcd_points_->size() : 0))) {
+        new_step = 2;  // Filtered
+    }
+    if (!polygon_.empty()) {
+        new_step = 3;  // Hull computed
+    }
+    if (!path_.empty() || !custom_waypoints_.empty()) {
+        new_step = 4;  // Path planned
+    }
+    if (waypoints_published_) {
+        new_step = 5;  // Exported/Published
+    }
+    
+    current_workflow_step_ = new_step;
+    
+    // Update button states
+    for (int i = 0; i < static_cast<int>(workflow_btns_.size()); ++i) {
+        bool completed = (i < current_workflow_step_);
+        bool current = (i == current_workflow_step_ - 1) || (i == 0 && current_workflow_step_ == 0);
+        
+        workflow_btns_[i]->setChecked(current);
+        workflow_btns_[i]->setProperty("completed", completed);
+        workflow_btns_[i]->style()->unpolish(workflow_btns_[i]);
+        workflow_btns_[i]->style()->polish(workflow_btns_[i]);
+    }
+    
+    // Update quick status
+    if (lbl_quick_status_) {
+        QStringList status_texts = {
+            "Ready to load point cloud",
+            "Point cloud loaded - apply filters",
+            "Filtered - compute hull",
+            "Hull ready - generate path",
+            "Path ready - publish to robot",
+            "Published! Ready to start"
+        };
+        if (current_workflow_step_ < status_texts.size()) {
+            lbl_quick_status_->setText(status_texts[current_workflow_step_]);
+        }
+    }
+}
+
+void CoverageGUI::onWorkflowStepClicked(int step) {
+    // Navigate to the corresponding toolbox section
+    if (toolbox_ && step < toolbox_->count()) {
+        toolbox_->setCurrentIndex(step);
+    }
+    
+    // Update visual state
+    for (int i = 0; i < static_cast<int>(workflow_btns_.size()); ++i) {
+        workflow_btns_[i]->setChecked(i == step);
+    }
+}
+
+// =============================================================================
+// Layer Visibility Panel
+// =============================================================================
+
+QWidget* CoverageGUI::buildLayerPanel() {
+    QGroupBox* box = new QGroupBox("👁 Layers");
+    box->setFixedWidth(150);
+    box->setObjectName("layerPanel");
+    
+    QVBoxLayout* layout = new QVBoxLayout(box);
+    layout->setSpacing(4);
+    
+    auto addLayerCheckbox = [&](const QString& label, QCheckBox*& checkbox, bool defaultChecked = true) {
+        checkbox = new QCheckBox(label);
+        checkbox->setChecked(defaultChecked);
+        connect(checkbox, &QCheckBox::toggled, this, &CoverageGUI::updateLayerVisibility);
+        layout->addWidget(checkbox);
+    };
+    
+    addLayerCheckbox("☁️ Points", chk_layer_points_, true);
+    addLayerCheckbox("⬡ Polygon", chk_layer_polygon_, true);
+    addLayerCheckbox("🟩 ROI", chk_layer_roi_, true);
+    addLayerCheckbox("⚠️ Obstacles", chk_layer_obstacles_, true);
+    addLayerCheckbox("═ Swaths", chk_layer_swaths_, true);
+    addLayerCheckbox("➜ Path", chk_layer_path_, true);
+    addLayerCheckbox("📍 Trail", chk_layer_trail_, true);
+    addLayerCheckbox("🤖 Robot", chk_layer_robot_, true);
+    
+    layout->addStretch();
+    
+    // All on/off buttons
+    QHBoxLayout* btn_layout = new QHBoxLayout();
+    QPushButton* btn_all_on = new QPushButton("All");
+    QPushButton* btn_all_off = new QPushButton("None");
+    btn_all_on->setFixedHeight(24);
+    btn_all_off->setFixedHeight(24);
+    
+    connect(btn_all_on, &QPushButton::clicked, this, [this]() {
+        chk_layer_points_->setChecked(true);
+        chk_layer_polygon_->setChecked(true);
+        chk_layer_roi_->setChecked(true);
+        chk_layer_obstacles_->setChecked(true);
+        chk_layer_swaths_->setChecked(true);
+        chk_layer_path_->setChecked(true);
+        chk_layer_trail_->setChecked(true);
+        chk_layer_robot_->setChecked(true);
+    });
+    
+    connect(btn_all_off, &QPushButton::clicked, this, [this]() {
+        chk_layer_points_->setChecked(false);
+        chk_layer_polygon_->setChecked(false);
+        chk_layer_roi_->setChecked(false);
+        chk_layer_obstacles_->setChecked(false);
+        chk_layer_swaths_->setChecked(false);
+        chk_layer_path_->setChecked(false);
+        chk_layer_trail_->setChecked(false);
+        chk_layer_robot_->setChecked(false);
+    });
+    
+    btn_layout->addWidget(btn_all_on);
+    btn_layout->addWidget(btn_all_off);
+    layout->addLayout(btn_layout);
+    
+    return box;
+}
+
+void CoverageGUI::updateLayerVisibility() {
+    // This function will be called when layer checkboxes change
+    // The actual visibility is handled in refreshPlot()
+    refreshPlot();
+}
+
+// =============================================================================
+// Quick Actions Bar
+// =============================================================================
+
+QWidget* CoverageGUI::buildQuickActionsBar() {
+    QWidget* bar = new QWidget();
+    bar->setObjectName("quickActionsBar");
+    bar->setFixedHeight(60);
+    
+    QHBoxLayout* layout = new QHBoxLayout(bar);
+    layout->setContentsMargins(15, 8, 15, 8);
+    layout->setSpacing(15);
+    
+    // Status label on left
+    lbl_quick_status_ = new QLabel("Ready");
+    lbl_quick_status_->setObjectName("quickStatus");
+    lbl_quick_status_->setMinimumWidth(200);
+    layout->addWidget(lbl_quick_status_);
+    
+    layout->addStretch();
+    
+    // Main action buttons
+    btn_quick_generate_ = new QPushButton("⚙️ Generate Path");
+    btn_quick_generate_->setObjectName("btn_quick_generate");
+    btn_quick_generate_->setMinimumWidth(140);
+    btn_quick_generate_->setMinimumHeight(36);
+    connect(btn_quick_generate_, &QPushButton::clicked, this, &CoverageGUI::generatePath);
+    layout->addWidget(btn_quick_generate_);
+    
+    btn_quick_publish_ = new QPushButton("📡 Publish");
+    btn_quick_publish_->setObjectName("btn_quick_publish");
+    btn_quick_publish_->setMinimumWidth(100);
+    btn_quick_publish_->setMinimumHeight(36);
+    connect(btn_quick_publish_, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
+    layout->addWidget(btn_quick_publish_);
+    
+    btn_quick_start_ = new QPushButton("▶️ Start");
+    btn_quick_start_->setObjectName("btn_quick_start");
+    btn_quick_start_->setMinimumWidth(90);
+    btn_quick_start_->setMinimumHeight(36);
+    btn_quick_start_->setEnabled(false);
+    connect(btn_quick_start_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
+    layout->addWidget(btn_quick_start_);
+    
+    // Style the bar
+    bar->setStyleSheet(R"(
+        #quickActionsBar {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                        stop:0 #f8f9fa, stop:1 #e9ecef);
+            border-top: 1px solid #dee2e6;
+        }
+        #quickStatus {
+            font-size: 12px;
+            color: #495057;
+            font-weight: bold;
+        }
+        #btn_quick_generate {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #btn_quick_generate:hover {
+            background-color: #5a6268;
+        }
+        #btn_quick_publish {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #btn_quick_publish:hover {
+            background-color: #218838;
+        }
+        #btn_quick_start {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #btn_quick_start:hover {
+            background-color: #0069d9;
+        }
+        #btn_quick_start:disabled {
+            background-color: #6c757d;
+        }
+    )");
+    
+    return bar;
 }
 
 void CoverageGUI::setStatus(const QString& text, int timeout_ms) {
@@ -1580,17 +2509,34 @@ CoverageConfig CoverageGUI::currentConfig() const {
 }
 
 void CoverageGUI::refreshPlot() {
-    plot_->setPoints(xy_2d_);
-    plot_->setPolygon(polygon_);
-    plot_->setROI(roi_polygon_);
-    plot_->setObstacles(obstacles_);
-    plot_->setSwaths(swaths_);
+    // Apply layer visibility settings
+    bool show_points = !chk_layer_points_ || chk_layer_points_->isChecked();
+    bool show_polygon = !chk_layer_polygon_ || chk_layer_polygon_->isChecked();
+    bool show_roi = !chk_layer_roi_ || chk_layer_roi_->isChecked();
+    bool show_obstacles = !chk_layer_obstacles_ || chk_layer_obstacles_->isChecked();
+    bool show_swaths = !chk_layer_swaths_ || chk_layer_swaths_->isChecked();
+    bool show_path = !chk_layer_path_ || chk_layer_path_->isChecked();
+    bool show_trail = !chk_layer_trail_ || chk_layer_trail_->isChecked();
+    bool show_robot = !chk_layer_robot_ || chk_layer_robot_->isChecked();
     
-    // Convert route PathStateList to use
-    plot_->setRoute(route_);
-    plot_->setPath(path_);
+    // Also check the robot tracking checkbox
+    if (chk_show_robot_ && !chk_show_robot_->isChecked()) {
+        show_robot = false;
+        show_trail = false;
+    }
+    
+    // Set data based on visibility
+    plot_->setPoints(show_points ? xy_2d_ : std::vector<Point2D>());
+    plot_->setPolygon(show_polygon ? polygon_ : Polygon2D());
+    plot_->setROI(show_roi ? roi_polygon_ : Polygon2D());
+    plot_->setObstacles(show_obstacles ? obstacles_ : std::vector<Polygon2D>());
+    plot_->setSwaths(show_swaths ? swaths_ : SwathList());
+    
+    // Set route and path
+    plot_->setRoute(show_path ? route_ : PathStateList());
+    plot_->setPath(show_path ? path_ : PathStateList());
     plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
-    plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty());
+    plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty() && show_path);
     
     std::optional<PathState> pose_copy;
     std::vector<Point2D> trail_copy;
@@ -1602,9 +2548,10 @@ void CoverageGUI::refreshPlot() {
         last_update_copy = last_robot_update_;
     }
     
-    bool show_robot = !chk_show_robot_ || chk_show_robot_->isChecked();
     if (!show_robot) {
         pose_copy.reset();
+    }
+    if (!show_trail) {
         trail_copy.clear();
     }
     
@@ -1648,44 +2595,8 @@ void CoverageGUI::loadPointCloud() {
     
     if (path.isEmpty()) return;
     
-    showProgress(true, "Loading point cloud...");
-    
-    try {
-        pcd_points_ = loadPointCloudFile(path.toStdString());
-        filtered_points_ = pcd_points_;
-        
-        loaded_file_ = path;
-        lbl_file_->setText(QFileInfo(path).fileName());
-        
-        // Clear old data
-        polygon_.clear();
-        roi_polygon_.clear();
-        obstacles_.clear();
-        swaths_.clear();
-        route_.clear();
-        path_.clear();
-        
-        lbl_roi_->setText("ROI: none");
-        lbl_obstacles_->setText("Obstacles: 0");
-        
-        plot_->clearAll();
-        
-        // Project points to 2D immediately for visualization
-        xy_2d_.clear();
-        xy_2d_.reserve(pcd_points_->size());
-        for (const auto& pt : pcd_points_->points) {
-            xy_2d_.emplace_back(pt.x, pt.y);
-        }
-        
-        scheduleFitToView();
-        refreshPlot();
-        setStatus(QString("Loaded %1 points").arg(pcd_points_->size()), 4000);
-        
-    } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString("Failed to load: %1").arg(e.what()));
-    }
-    
-    showProgress(false);
+    // Use async loading for better UI responsiveness
+    loadPointCloudAsync(path);
 }
 
 void CoverageGUI::clearRobotTrail() {
@@ -1712,7 +2623,7 @@ void CoverageGUI::fetchLatestMapFromRobot() {
         showProgress(false);
         QMessageBox::warning(this, "Connection Failed", 
             QString("Could not connect to robot.\nCheck if:\n"
-                    "• Robot is powered on\n"
+            "• Robot is powered on\n"
                     "• Microhard is connected (%1)\n"
                     "• SSH keys are configured for %2@%1")
                 .arg(robot_host_, robot_user_));
@@ -2389,6 +3300,7 @@ void CoverageGUI::generatePath() {
             route_ = result.route;
             path_ = result.path;
             refreshPlot();
+            updateCoverageStats();  // Update statistics after path generation
             setStatus(QString("Generated path with %1 states").arg(path_.size()), 4000);
         }
     } catch (const std::exception& e) {
@@ -2431,9 +3343,9 @@ void CoverageGUI::exportPathCSV() {
         }
         mode_label = "custom";
     } else {
-        if (path_.empty()) {
+    if (path_.empty()) {
             QMessageBox::warning(this, "Warning", "Generate F2C path first.");
-            return;
+        return;
         }
         export_path = path_;
         mode_label = "F2C";
@@ -2462,7 +3374,7 @@ void CoverageGUI::setupRobotTrackingSubscription() {
         updateRobotStatusLabel(false);
         return;
     }
-    
+
     QString topic_qt = robot_odom_topic_.trimmed();
     if (topic_qt.isEmpty()) {
         updateRobotStatusLabel(false);
@@ -2582,27 +3494,27 @@ void CoverageGUI::publishWaypoints() {
         // F2C coverage mode
         if (path_.empty()) {
             QMessageBox::warning(this, "No Path", "Generate a coverage path first before publishing waypoints.");
-            return;
-        }
-        
-        // Remove consecutive duplicates to avoid sending repeated points
-        PathStateList deduped_path = dedupePathStates(path_);
-        
+        return;
+    }
+
+    // Remove consecutive duplicates to avoid sending repeated points
+    PathStateList deduped_path = dedupePathStates(path_);
+
         msg.data.reserve(deduped_path.size() * 2);
-        for (const auto& state : deduped_path) {
-            msg.data.push_back(state.point.x);
-            msg.data.push_back(state.point.y);
+    for (const auto& state : deduped_path) {
+        msg.data.push_back(state.point.x);
+        msg.data.push_back(state.point.y);
         }
         waypoint_count = deduped_path.size();
         
         std::cout << "[F2C GUI] Published " << waypoint_count << " F2C waypoints to /f2c_waypoints topic" << std::endl;
     }
-    
+
     // Publish to ROS2 topic
     waypoint_pub_->publish(msg);
     waypoints_published_ = true;
-    
-    // Update status and enable navigation button
+
+    // Update status and enable navigation buttons
     setStatus(QString("✅ Published %1 waypoints to robot").arg(waypoint_count), 5000);
     
     if (btn_start_navigation_) {
@@ -2617,7 +3529,7 @@ void CoverageGUI::publishCustomPath() {
 
 void CoverageGUI::onPathModeChanged() {
     bool custom_mode = isCustomModeActive();
-    
+
     // Show/hide control panels
     if (f2c_controls_widget_) {
         f2c_controls_widget_->setVisible(!custom_mode);
@@ -2688,7 +3600,7 @@ void CoverageGUI::refreshCustomPathUI() {
             break;
         }
     }
-    
+
     if (lbl_custom_status_) {
         if (custom_waypoints_.empty()) {
             lbl_custom_status_->setText("No custom waypoints yet.");
@@ -2999,6 +3911,401 @@ void CoverageGUI::clearReprojectionError() {
         lbl_reproj_status_->setStyleSheet("color: #666; font-size: 10px;");
     }
     setStatus("Reprojection error cleared", 3000);
+}
+
+// =============================================================================
+// Async Point Cloud Loading
+// =============================================================================
+
+void CoverageGUI::loadPointCloudAsync(const QString& path) {
+    if (pcd_watcher_->isRunning()) {
+        QMessageBox::warning(this, "Busy", "Already loading a point cloud. Please wait.");
+        return;
+    }
+    
+    pending_load_path_ = path;
+    showProgress(true, "Loading point cloud...");
+    setStatus("Loading " + QFileInfo(path).fileName() + " (async)...");
+    
+    // Run loading in background thread
+    QFuture<PointCloudPtr> future = QtConcurrent::run([path]() -> PointCloudPtr {
+        try {
+            return loadPointCloudFile(path.toStdString());
+        } catch (const std::exception& e) {
+            std::cerr << "Async load error: " << e.what() << std::endl;
+            return nullptr;
+        }
+    });
+    
+    pcd_watcher_->setFuture(future);
+}
+
+void CoverageGUI::onPointCloudLoaded() {
+    showProgress(false);
+    
+    PointCloudPtr result = pcd_watcher_->result();
+    
+    if (!result || result->empty()) {
+        QMessageBox::critical(this, "Error", "Failed to load point cloud: " + pending_load_path_);
+        pending_load_path_.clear();
+        return;
+    }
+    
+    pcd_points_ = result;
+    filtered_points_ = pcd_points_;
+    loaded_file_ = pending_load_path_;
+    lbl_file_->setText(QFileInfo(pending_load_path_).fileName());
+    
+    // Clear old data
+    polygon_.clear();
+    roi_polygon_.clear();
+    obstacles_.clear();
+    swaths_.clear();
+    route_.clear();
+    path_.clear();
+    
+    lbl_roi_->setText("ROI: none");
+    lbl_obstacles_->setText("Obstacles: 0");
+    
+    plot_->clearAll();
+    
+    // Project points to 2D immediately for visualization
+    xy_2d_.clear();
+    xy_2d_.reserve(pcd_points_->size());
+    for (const auto& pt : pcd_points_->points) {
+        xy_2d_.emplace_back(pt.x, pt.y);
+    }
+    
+    scheduleFitToView();
+    refreshPlot();
+    setStatus(QString("Loaded %1 points from %2")
+              .arg(pcd_points_->size())
+              .arg(QFileInfo(pending_load_path_).fileName()), 4000);
+    
+    pending_load_path_.clear();
+}
+
+// =============================================================================
+// Dark Mode
+// =============================================================================
+
+void CoverageGUI::toggleDarkMode() {
+    dark_mode_ = btn_dark_mode_ ? btn_dark_mode_->isChecked() : !dark_mode_;
+    
+    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    settings.setValue("dark_mode", dark_mode_);
+    
+    applyTheme();
+}
+
+void CoverageGUI::applyTheme() {
+    QPalette palette;
+    QString styleSheet;
+    
+    if (dark_mode_) {
+        // Dark theme colors
+        palette.setColor(QPalette::Window, QColor(45, 45, 48));
+        palette.setColor(QPalette::WindowText, QColor(220, 220, 220));
+        palette.setColor(QPalette::Base, QColor(30, 30, 32));
+        palette.setColor(QPalette::AlternateBase, QColor(45, 45, 48));
+        palette.setColor(QPalette::ToolTipBase, QColor(60, 60, 65));
+        palette.setColor(QPalette::ToolTipText, QColor(220, 220, 220));
+        palette.setColor(QPalette::Text, QColor(220, 220, 220));
+        palette.setColor(QPalette::Button, QColor(55, 55, 58));
+        palette.setColor(QPalette::ButtonText, QColor(220, 220, 220));
+        palette.setColor(QPalette::BrightText, Qt::red);
+        palette.setColor(QPalette::Link, QColor(42, 130, 218));
+        palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        palette.setColor(QPalette::HighlightedText, Qt::white);
+        
+        styleSheet = R"(
+            QGroupBox {
+                border: 1px solid #555;
+                border-radius: 4px;
+                margin-top: 8px;
+                padding-top: 8px;
+                color: #ddd;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+                color: #aaa;
+            }
+            QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                background-color: #2d2d30;
+                border: 1px solid #555;
+                border-radius: 3px;
+                padding: 3px;
+                color: #ddd;
+            }
+            QPushButton {
+                background-color: #3d3d40;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 5px 10px;
+                color: #ddd;
+            }
+            QPushButton:hover {
+                background-color: #4d4d50;
+            }
+            QPushButton:pressed {
+                background-color: #2d2d30;
+            }
+            QPushButton:checked {
+                background-color: #2a82da;
+                color: white;
+            }
+            QListWidget {
+                background-color: #2d2d30;
+                border: 1px solid #555;
+                color: #ddd;
+            }
+            QScrollBar:vertical {
+                background: #2d2d30;
+                width: 12px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QStatusBar {
+                background-color: #2d2d30;
+                color: #aaa;
+            }
+            /* Special action buttons - dark mode */
+            #btn_fetch {
+                background-color: #1e5a6e;
+                color: #fff;
+                font-weight: bold;
+            }
+            #btn_fetch:hover {
+                background-color: #267a8e;
+            }
+            #btn_custom_draw:checked {
+                background-color: #2e7d32;
+                color: white;
+            }
+            #btn_publish {
+                background-color: #2e7d32;
+                color: white;
+                font-weight: bold;
+            }
+            #btn_publish:hover {
+                background-color: #388e3c;
+            }
+            #btn_navigation {
+                background-color: #1565c0;
+                color: white;
+                font-weight: bold;
+            }
+            #btn_navigation:hover {
+                background-color: #1976d2;
+            }
+            /* Layer panel - dark mode */
+            #layerPanel {
+                background-color: #2d2d30;
+            }
+        )";
+        
+        if (btn_dark_mode_) {
+            btn_dark_mode_->setText("☀️ Light Mode");
+        }
+    } else {
+        // Light theme (default Qt palette)
+        palette = QApplication::style()->standardPalette();
+        styleSheet = R"(
+            /* Special action buttons - light mode */
+            #btn_fetch {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                font-weight: bold;
+                border: 1px solid #90caf9;
+            }
+            #btn_fetch:hover {
+                background-color: #bbdefb;
+            }
+            #btn_custom_draw:checked {
+                background-color: #81C784;
+                color: white;
+            }
+            #btn_publish {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+            }
+            #btn_publish:hover {
+                background-color: #66bb6a;
+            }
+            #btn_navigation {
+                background-color: #2196F3;
+                color: white;
+                font-weight: bold;
+            }
+            #btn_navigation:hover {
+                background-color: #42a5f5;
+            }
+        )";
+        
+        if (btn_dark_mode_) {
+            btn_dark_mode_->setText("🌙 Dark Mode");
+        }
+    }
+    
+    QApplication::setPalette(palette);
+    qApp->setStyleSheet(styleSheet);
+    
+    // Update plot widget
+    if (plot_) {
+        plot_->setDarkMode(dark_mode_);
+    }
+}
+
+// =============================================================================
+// Coverage Statistics
+// =============================================================================
+
+CoverageStats CoverageGUI::computeStats() const {
+    CoverageStats stats;
+    
+    // Get path to analyze (F2C or custom)
+    std::vector<Point2D> path_points;
+    if (isCustomModeActive()) {
+        path_points = custom_waypoints_;
+    } else {
+        for (const auto& state : path_) {
+            path_points.push_back(state.point);
+        }
+    }
+    
+    // Compute path length
+    if (path_points.size() >= 2) {
+        for (size_t i = 1; i < path_points.size(); ++i) {
+            stats.path_length_m += std::hypot(
+                path_points[i].x - path_points[i-1].x,
+                path_points[i].y - path_points[i-1].y);
+        }
+    }
+    
+    // Count waypoints
+    stats.num_waypoints = static_cast<int>(path_points.size());
+    
+    // Count swaths and turns
+    stats.num_swaths = static_cast<int>(swaths_.size());
+    stats.num_turns = std::max(0, stats.num_swaths - 1);
+    
+    // Compute polygon/ROI area
+    const Polygon2D& field_poly = roi_polygon_.empty() ? polygon_ : roi_polygon_;
+    if (!field_poly.empty()) {
+        stats.polygon_area_m2 = polygonArea(field_poly);
+    }
+    
+    // Estimate coverage area (swath width × path length)
+    double swath_w = spin_swath_ ? spin_swath_->value() : 1.0;
+    stats.coverage_area_m2 = stats.path_length_m * swath_w;
+    
+    // Compute coverage percentage
+    if (stats.polygon_area_m2 > 0) {
+        stats.coverage_percent = std::min(100.0, 
+            (stats.coverage_area_m2 / stats.polygon_area_m2) * 100.0);
+    }
+    
+    // Estimate time based on robot speed
+    double speed = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
+    if (speed > 0) {
+        stats.estimated_time_min = (stats.path_length_m / speed) / 60.0;
+    }
+    
+    // Compute overlap (if coverage > field area, there's overlap)
+    if (stats.polygon_area_m2 > 0 && stats.coverage_area_m2 > stats.polygon_area_m2) {
+        stats.overlap_percent = ((stats.coverage_area_m2 - stats.polygon_area_m2) / 
+                                 stats.polygon_area_m2) * 100.0;
+    }
+    
+    return stats;
+}
+
+void CoverageGUI::updateCoverageStats() {
+    current_stats_ = computeStats();
+    
+    auto formatValue = [](double val, const QString& unit, int decimals = 1) -> QString {
+        if (val <= 0) return "-";
+        return QString("%1 %2").arg(val, 0, 'f', decimals).arg(unit);
+    };
+    
+    if (lbl_stats_path_length_) {
+        lbl_stats_path_length_->setText(formatValue(current_stats_.path_length_m, "m"));
+    }
+    if (lbl_stats_area_) {
+        lbl_stats_area_->setText(formatValue(current_stats_.coverage_area_m2, "m²"));
+    }
+    if (lbl_stats_coverage_) {
+        QString coverage = formatValue(current_stats_.polygon_area_m2, "m²");
+        if (current_stats_.coverage_percent > 0) {
+            coverage += QString(" (%1%)").arg(current_stats_.coverage_percent, 0, 'f', 0);
+        }
+        lbl_stats_coverage_->setText(coverage);
+    }
+    if (lbl_stats_swaths_) {
+        lbl_stats_swaths_->setText(current_stats_.num_swaths > 0 ? 
+            QString::number(current_stats_.num_swaths) : "-");
+    }
+    if (lbl_stats_turns_) {
+        lbl_stats_turns_->setText(current_stats_.num_turns > 0 ? 
+            QString::number(current_stats_.num_turns) : "-");
+    }
+    if (lbl_stats_waypoints_) {
+        lbl_stats_waypoints_->setText(current_stats_.num_waypoints > 0 ? 
+            QString::number(current_stats_.num_waypoints) : "-");
+    }
+    if (lbl_stats_time_) {
+        if (current_stats_.estimated_time_min > 0) {
+            int mins = static_cast<int>(current_stats_.estimated_time_min);
+            int secs = static_cast<int>((current_stats_.estimated_time_min - mins) * 60);
+            lbl_stats_time_->setText(QString("%1:%2")
+                .arg(mins).arg(secs, 2, 10, QChar('0')));
+        } else {
+            lbl_stats_time_->setText("-");
+        }
+    }
+}
+
+// =============================================================================
+// Rectangle Drawing Tool
+// =============================================================================
+
+void CoverageGUI::toggleRectangleMode() {
+    if (btn_rectangle_->isChecked()) {
+        // Cancel any other selection modes
+        if (btn_roi_) btn_roi_->setChecked(false);
+        if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        plot_->cancelSelection();
+        
+        plot_->startRectangleMode();
+        setStatus("Rectangle mode: Click first corner");
+    } else {
+        plot_->cancelRectangleMode();
+        setStatus("Rectangle mode cancelled");
+    }
+}
+
+void CoverageGUI::onRectangleCompleted(const Polygon2D& rect) {
+    // Use rectangle as ROI
+    roi_polygon_ = rect;
+    plot_->setROI(roi_polygon_);
+    
+    if (btn_rectangle_) {
+        btn_rectangle_->setChecked(false);
+    }
+    
+    // Compute area for display
+    double area = polygonArea(rect);
+    lbl_roi_->setText(QString("ROI: rectangle (%1 m²)").arg(area, 0, 'f', 1));
+    
+    setStatus(QString("Rectangle ROI set (area: %1 m²)").arg(area, 0, 'f', 1), 4000);
+    updateCoverageStats();
+    refreshPlot();
 }
 
 void CoverageGUI::tryReconnectROS2() {

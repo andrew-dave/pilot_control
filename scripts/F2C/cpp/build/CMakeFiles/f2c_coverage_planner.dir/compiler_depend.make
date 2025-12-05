@@ -428,6 +428,305 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainerfwd.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/c++/11/mutex \
+  /usr/include/c++/11/bits/std_mutex.h \
+  /usr/include/c++/11/bits/unique_lock.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhashfunctions.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h \
+  /usr/include/c++/11/cmath \
+  /usr/include/math.h \
+  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+  /usr/include/c++/11/bits/specfun.h \
+  /usr/include/c++/11/tr1/gamma.tcc \
+  /usr/include/c++/11/tr1/special_function_util.h \
+  /usr/include/c++/11/tr1/bessel_function.tcc \
+  /usr/include/c++/11/tr1/beta_function.tcc \
+  /usr/include/c++/11/tr1/ell_integral.tcc \
+  /usr/include/c++/11/tr1/exp_integral.tcc \
+  /usr/include/c++/11/tr1/hypergeometric.tcc \
+  /usr/include/c++/11/tr1/legendre_function.tcc \
+  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
+  /usr/include/c++/11/tr1/poly_hermite.tcc \
+  /usr/include/c++/11/tr1/poly_laguerre.tcc \
+  /usr/include/c++/11/tr1/riemann_zeta.tcc \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h \
+  /usr/include/c++/11/random \
+  /usr/include/c++/11/bits/random.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
+  /usr/include/c++/11/bits/random.tcc \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/c++/11/future \
+  /usr/include/c++/11/condition_variable \
+  /usr/include/c++/11/bits/atomic_futex.h \
+  /usr/include/c++/11/bits/std_thread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -462,13 +761,6 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/bits/sigthread.h \
   /usr/include/x86_64-linux-gnu/bits/signal_ext.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp \
-  /usr/include/c++/11/future \
-  /usr/include/c++/11/mutex \
-  /usr/include/c++/11/bits/std_mutex.h \
-  /usr/include/c++/11/bits/unique_lock.h \
-  /usr/include/c++/11/condition_variable \
-  /usr/include/c++/11/bits/atomic_futex.h \
-  /usr/include/c++/11/bits/std_thread.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_set.h \
@@ -714,30 +1006,6 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp \
-  /usr/include/c++/11/cmath \
-  /usr/include/math.h \
-  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
-  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
-  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
-  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
-  /usr/include/c++/11/bits/specfun.h \
-  /usr/include/c++/11/tr1/gamma.tcc \
-  /usr/include/c++/11/tr1/special_function_util.h \
-  /usr/include/c++/11/tr1/bessel_function.tcc \
-  /usr/include/c++/11/tr1/beta_function.tcc \
-  /usr/include/c++/11/tr1/ell_integral.tcc \
-  /usr/include/c++/11/tr1/exp_integral.tcc \
-  /usr/include/c++/11/tr1/hypergeometric.tcc \
-  /usr/include/c++/11/tr1/legendre_function.tcc \
-  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
-  /usr/include/c++/11/tr1/poly_hermite.tcc \
-  /usr/include/c++/11/tr1/poly_laguerre.tcc \
-  /usr/include/c++/11/tr1/riemann_zeta.tcc \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
@@ -1823,6 +2091,305 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainerfwd.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/c++/11/mutex \
+  /usr/include/c++/11/bits/std_mutex.h \
+  /usr/include/c++/11/bits/unique_lock.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhashfunctions.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h \
+  /usr/include/c++/11/cmath \
+  /usr/include/math.h \
+  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+  /usr/include/c++/11/bits/specfun.h \
+  /usr/include/c++/11/tr1/gamma.tcc \
+  /usr/include/c++/11/tr1/special_function_util.h \
+  /usr/include/c++/11/tr1/bessel_function.tcc \
+  /usr/include/c++/11/tr1/beta_function.tcc \
+  /usr/include/c++/11/tr1/ell_integral.tcc \
+  /usr/include/c++/11/tr1/exp_integral.tcc \
+  /usr/include/c++/11/tr1/hypergeometric.tcc \
+  /usr/include/c++/11/tr1/legendre_function.tcc \
+  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
+  /usr/include/c++/11/tr1/poly_hermite.tcc \
+  /usr/include/c++/11/tr1/poly_laguerre.tcc \
+  /usr/include/c++/11/tr1/riemann_zeta.tcc \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h \
+  /usr/include/c++/11/random \
+  /usr/include/c++/11/bits/random.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
+  /usr/include/c++/11/bits/random.tcc \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/c++/11/future \
+  /usr/include/c++/11/condition_variable \
+  /usr/include/c++/11/bits/atomic_futex.h \
+  /usr/include/c++/11/bits/std_thread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -1857,13 +2424,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/bits/sigthread.h \
   /usr/include/x86_64-linux-gnu/bits/signal_ext.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp \
-  /usr/include/c++/11/future \
-  /usr/include/c++/11/mutex \
-  /usr/include/c++/11/bits/std_mutex.h \
-  /usr/include/c++/11/bits/unique_lock.h \
-  /usr/include/c++/11/condition_variable \
-  /usr/include/c++/11/bits/atomic_futex.h \
-  /usr/include/c++/11/bits/std_thread.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_set.h \
@@ -2109,30 +2669,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp \
-  /usr/include/c++/11/cmath \
-  /usr/include/math.h \
-  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
-  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
-  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
-  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
-  /usr/include/c++/11/bits/specfun.h \
-  /usr/include/c++/11/tr1/gamma.tcc \
-  /usr/include/c++/11/tr1/special_function_util.h \
-  /usr/include/c++/11/tr1/bessel_function.tcc \
-  /usr/include/c++/11/tr1/beta_function.tcc \
-  /usr/include/c++/11/tr1/ell_integral.tcc \
-  /usr/include/c++/11/tr1/exp_integral.tcc \
-  /usr/include/c++/11/tr1/hypergeometric.tcc \
-  /usr/include/c++/11/tr1/legendre_function.tcc \
-  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
-  /usr/include/c++/11/tr1/poly_hermite.tcc \
-  /usr/include/c++/11/tr1/poly_laguerre.tcc \
-  /usr/include/c++/11/tr1/riemann_zeta.tcc \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
@@ -2793,8 +3329,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qapplication.h \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qguiapplication.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qinputmethod.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyle \
@@ -2808,13 +3342,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h \
   /usr/include/c++/11/fstream \
   /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
@@ -6909,6 +7442,272 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainerfwd.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhashfunctions.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h \
+  /usr/include/c++/11/random \
+  /usr/include/c++/11/bits/random.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
+  /usr/include/c++/11/bits/random.tcc \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -7427,8 +8226,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp
 
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h:
-
 ../src/main.cpp:
 
 /usr/include/CGAL/IO/Tee_for_output_iterator.h:
@@ -7485,8 +8282,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/iterator/iterator_adapter.hpp:
 
-/usr/include/boost/fusion/algorithm/transformation/pop_back.hpp:
-
 /usr/include/boost/mpl/aux_/pop_back_impl.hpp:
 
 /usr/include/boost/mpl/pop_back.hpp:
@@ -7500,8 +8295,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/mpl/front.hpp:
 
 /usr/include/boost/fusion/algorithm/query/find_fwd.hpp:
-
-/usr/include/boost/fusion/algorithm/query/detail/segmented_find.hpp:
 
 /usr/include/boost/fusion/algorithm/query/find.hpp:
 
@@ -7593,8 +8386,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/view/joint_view/detail/value_of_impl.hpp:
 
-/usr/include/boost/fusion/view/joint_view/detail/next_impl.hpp:
-
 /usr/include/boost/fusion/view/joint_view/joint_view_iterator.hpp:
 
 /usr/include/boost/fusion/adapted/mpl/detail/end_impl.hpp:
@@ -7621,8 +8412,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/view/iterator_range/detail/is_segmented_impl.hpp:
 
-/usr/include/boost/fusion/iterator/advance.hpp:
-
 /usr/include/boost/fusion/view/iterator_range/detail/at_impl.hpp:
 
 /usr/include/boost/fusion/view/iterator_range/detail/begin_impl.hpp:
@@ -7642,8 +8431,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/container/list/detail/next_impl.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/end.hpp:
 
 /usr/include/boost/fusion/support/detail/access.hpp:
 
@@ -7687,8 +8474,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/iterator/detail/advance.hpp:
 
-/usr/include/boost/fusion/support/iterator_base.hpp:
-
 /usr/include/boost/fusion/iterator/iterator_facade.hpp:
 
 /usr/include/boost/fusion/adapted/boost_tuple/boost_tuple_iterator.hpp:
@@ -7721,8 +8506,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Hilbert_sort_middle_2.h:
 
-/usr/include/CGAL/Hilbert_sort_base.h:
-
 /usr/include/CGAL/Hilbert_sort_median_2.h:
 
 /usr/include/CGAL/Hilbert_sort_2.h:
@@ -7741,13 +8524,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/stack:
 
-/usr/include/CGAL/Triangulation_data_structure_2.h:
-
 /usr/include/CGAL/tuple.h:
 
 /usr/include/CGAL/circulator_bases.h:
-
-/usr/include/CGAL/circulator.h:
 
 /usr/include/boost/mpl/pop_front.hpp:
 
@@ -7776,8 +8555,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Triangulation_structural_filtering_traits.h:
 
 /usr/include/boost/type_traits/integral_promotion.hpp:
-
-/usr/include/boost/type_traits/remove_cv_ref.hpp:
 
 /usr/include/boost/type_traits/remove_all_extents.hpp:
 
@@ -7867,8 +8644,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_y_at_x_2.h:
 
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Coplanar_3.h:
-
 /usr/include/boost/type_traits/has_unary_plus.hpp:
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_x_2.h:
@@ -7952,8 +8727,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/multiprecision/detail/big_lanczos.hpp:
 
 /usr/include/boost/multiprecision/cpp_int/import_export.hpp:
-
-/usr/include/boost/multiprecision/cpp_int/limits.hpp:
 
 /usr/include/boost/multiprecision/cpp_int/misc.hpp:
 
@@ -8115,8 +8888,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Tetrahedron_3_Triangle_3.h:
 
-/usr/include/CGAL/Intersections_3/internal/Tetrahedron_3_Tetrahedron_3_do_intersect.h:
-
 /usr/include/CGAL/Intersections_3/Sphere_3_Triangle_3.h:
 
 /usr/include/CGAL/Intersections_3/internal/Sphere_3_Tetrahedron_3_do_intersect.h:
@@ -8170,8 +8941,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/Point_3_Tetrahedron_3.h:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Sphere_3_intersection.h:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Ray_3_intersection.h:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Point_3_intersection.h:
 
@@ -8273,8 +9042,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Iso_cuboid_3_Line_3.h:
 
-/usr/include/CGAL/Intersections_3/Iso_cuboid_3_Iso_cuboid_3.h:
-
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Triangle_3_intersection.h:
 
 /usr/include/CGAL/Intersections_3/Bbox_3_Triangle_3.h:
@@ -8336,10 +9103,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/multiprecision/detail/min_max.hpp:
 
 /usr/include/CGAL/Intersections_2/Line_2_Line_2.h:
-
-/usr/include/CGAL/Intersections_2/Segment_2_Segment_2.h:
-
-/usr/include/CGAL/Intersections_2/Iso_rectangle_2_Triangle_2.h:
 
 /usr/include/CGAL/Intersections_2/Iso_rectangle_2_Segment_2.h:
 
@@ -8667,8 +9430,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
 
-/usr/include/boost/math/tools/rational.hpp:
-
 /usr/include/boost/math/special_functions/cbrt.hpp:
 
 /usr/include/CGAL/Kernel/Conic_misc.h:
@@ -8685,8 +9446,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Weighted_point_2.h:
 
-/usr/include/CGAL/Kernel/Return_base_tag.h:
-
 /usr/include/boost/fusion/sequence/intrinsic_fwd.hpp:
 
 /usr/include/CGAL/user_classes.h:
@@ -8694,8 +9453,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Kernel/global_functions_2.h:
 
 /usr/include/CGAL/Kernel/global_functions.h:
-
-/usr/include/CGAL/Bbox_3.h:
 
 /usr/include/CGAL/Bbox_2.h:
 
@@ -8741,267 +9498,247 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/variant/detail/enable_recursive.hpp:
 
-/usr/include/boost/mpl/assert.hpp:
+/usr/include/boost/mpl/size_t_fwd.hpp:
 
-/usr/include/boost/math/special_functions/erf.hpp:
+/usr/include/boost/mpl/size_t.hpp:
 
-/usr/include/boost/range/value_type.hpp:
+/usr/include/boost/mpl/max_element.hpp:
 
-/usr/include/boost/type_traits/has_equal_to.hpp:
+/usr/include/boost/math/tools/tuple.hpp:
 
-/usr/include/eigen3/Eigen/src/StlSupport/details.h:
+/usr/include/boost/type_traits/same_traits.hpp:
 
-/usr/include/eigen3/Eigen/src/StlSupport/StdVector.h:
+/usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_intersection.h:
 
-/usr/include/boost/mpl/min_max.hpp:
+/usr/include/boost/mpl/aux_/iter_push_front.hpp:
 
-/usr/include/CGAL/Homogeneous/Aff_transformationH3.h:
+/usr/include/CGAL/Distance_3/Point_3_Segment_3.h:
 
-/usr/include/CGAL/Simple_homogeneous.h:
+/usr/include/boost/mpl/aux_/insert_impl.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
+/usr/include/boost/core/nvp.hpp:
 
-/usr/include/boost/date_time/date_clock_device.hpp:
+/usr/include/boost/mpl/insert.hpp:
 
-/usr/include/boost/version.hpp:
+/usr/include/boost/mpl/aux_/insert_range_impl.hpp:
 
-/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h:
+/usr/include/boost/mpl/insert_range_fwd.hpp:
 
-/usr/include/CGAL/Triangulation_2.h:
+/usr/include/boost/mpl/aux_/front_impl.hpp:
 
-/usr/include/boost/date_time/gregorian_calendar.ipp:
+/usr/include/boost/mpl/front.hpp:
 
-/usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h:
+/usr/include/boost/mpl/aux_/empty_impl.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
+/usr/include/boost/mpl/empty.hpp:
 
-/usr/include/boost/mpl/vector/aux_/iterator.hpp:
+/usr/include/boost/math/special_functions/lanczos.hpp:
 
-/usr/include/boost/mpl/arg.hpp:
+/usr/include/boost/type_traits/has_nothrow_assign.hpp:
 
-/usr/include/c++/11/bits/deque.tcc:
+/usr/include/boost/type_traits/is_assignable.hpp:
 
-/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
+/usr/include/boost/type_traits/has_nothrow_constructor.hpp:
 
-/usr/include/boost/mpl/aux_/config/gcc.hpp:
+/usr/include/boost/type_traits/type_with_alignment.hpp:
 
-/usr/include/boost/mpl/erase.hpp:
+/usr/include/boost/random/linear_feedback_shift.hpp:
 
-/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
+/usr/include/boost/type_traits/alignment_of.hpp:
 
-/usr/include/boost/numeric/conversion/bounds.hpp:
+/usr/include/boost/type_traits/aligned_storage.hpp:
 
-/usr/include/eigen3/Eigen/src/Geometry/Homogeneous.h:
+/usr/include/boost/mpl/has_key_fwd.hpp:
 
-/usr/include/pcl-1.12/pcl/io/low_level_io.h:
+/usr/include/boost/integer/common_factor_ct.hpp:
 
-/usr/include/boost/fusion/mpl/push_back.hpp:
+/usr/include/boost/type_traits/has_trivial_destructor.hpp:
 
-/usr/include/eigen3/Eigen/src/Geometry/EulerAngles.h:
+/usr/include/boost/type_traits/has_trivial_copy.hpp:
 
-/usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
+/usr/include/boost/mpl/sizeof.hpp:
 
-/usr/include/boost/interprocess/permissions.hpp:
+/usr/include/boost/type_traits/is_stateless.hpp:
 
-/usr/include/CGAL/Aff_transformation_2.h:
+/usr/include/boost/blank.hpp:
 
-/usr/include/boost/date_time/gregorian/greg_duration.hpp:
-
-/usr/include/eigen3/Eigen/Householder:
-
-/usr/include/eigen3/Eigen/QR:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__struct.hpp:
-
-/usr/include/CGAL/boost/iterator/counting_iterator.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Segment_3_do_intersect.h:
-
-/usr/include/CGAL/Cartesian/Aff_transformation_rep_2.h:
-
-/usr/include/boost/concept/detail/has_constraints.hpp:
-
-/usr/include/eigen3/Eigen/src/LU/Determinant.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__traits.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/dynamic_storage.hpp:
-
-/usr/include/eigen3/Eigen/src/misc/Kernel.h:
-
-/usr/include/c++/11/bits/locale_facets_nonio.tcc:
-
-/usr/include/CGAL/license/Alpha_shapes_2.h:
-
-/usr/include/eigen3/Eigen/src/Core/GlobalFunctions.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/QFile:
-
-/usr/include/boost/move/detail/std_ns_begin.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/StlIterators.h:
-
-/usr/include/eigen3/Eigen/src/Core/VectorwiseOp.h:
-
-/usr/include/eigen3/Eigen/src/Core/CoreIterators.h:
-
-/usr/include/CGAL/Filtered_kernel_fwd.h:
-
-/usr/include/boost/optional/detail/optional_swap.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
-
-/usr/include/eigen3/Eigen/src/misc/RealSvd2x2.h:
-
-/usr/include/c++/11/bits/stl_iterator_base_types.h:
-
-/usr/include/eigen3/Eigen/src/LU/InverseImpl.h:
-
-/usr/include/boost/type_traits/has_multiplies.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_intersection.h:
-
-/usr/include/eigen3/Eigen/src/Core/products/Parallelizer.h:
-
-/usr/include/CGAL/representation_tags.h:
-
-/usr/include/boost/predef/library/std/cxx.h:
-
-/usr/include/eigen3/Eigen/src/Core/SelfAdjointView.h:
-
-/usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
-
-/usr/include/geos_c.h:
-
-/usr/include/boost/variant/recursive_wrapper.hpp:
-
-/usr/include/boost/predef/os.h:
-
-/usr/include/eigen3/Eigen/src/Core/Solve.h:
-
-/usr/include/boost/fusion/algorithm/transformation/erase.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/DiagonalProduct.h:
-
-/usr/include/eigen3/Eigen/src/Core/EigenBase.h:
-
-/usr/include/boost/mpl/not.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h:
-
-/usr/include/boost/mpl/iterator_tags.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/VectorBlock.h:
-
-/usr/include/c++/11/memory:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h:
-
-/usr/include/boost/core/use_default.hpp:
-
-/usr/include/boost/type_traits/has_left_shift.hpp:
-
-/usr/include/boost/core/swap.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Map.h:
-
-/usr/include/boost/utility.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/StableNorm.h:
-
-/usr/include/eigen3/Eigen/src/Core/PlainObjectBase.h:
-
-/usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
-
-/usr/include/CGAL/Simple_cartesian.h:
-
-/usr/include/boost/concept/detail/general.hpp:
-
-/usr/include/boost/predef/os/irix.h:
-
-/usr/include/pcl-1.12/pcl/PCLHeader.h:
-
-/usr/include/CGAL/Homogeneous/Iso_cuboidH3.h:
-
-/usr/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h:
-
-/usr/include/eigen3/Eigen/src/Core/Array.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/qos.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
-
-/usr/include/eigen3/Eigen/src/Core/Matrix.h:
-
-/usr/include/CGAL/GMP/Gmpzf_type.h:
-
-/usr/include/eigen3/Eigen/src/Core/NoAlias.h:
-
-/usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_do_intersect.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h:
-
-/usr/include/boost/integer/static_min_max.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/ReturnByValue.h:
-
-/usr/include/gdal/cpl_vsi.h:
-
-/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
-
-/usr/include/eigen3/Eigen/src/Core/DenseStorage.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdalign.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/BlasUtil.h:
-
-/usr/include/c++/11/tr1/ell_integral.tcc:
-
-/usr/include/boost/date_time/time_system_split.hpp:
-
-/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h:
-
-/usr/include/boost/type_traits/is_array.hpp:
-
-/usr/include/fenv.h:
+/usr/include/boost/variant/detail/std_hash.hpp:
 
 /usr/include/boost/variant/detail/apply_visitor_delayed.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/ArrayBase.h:
+/usr/include/boost/multiprecision/traits/is_restricted_conversion.hpp:
 
-/usr/include/CGAL/Cartesian/predicates_on_directions_2.h:
+/usr/include/boost/variant/detail/apply_visitor_binary.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Product.h:
+/usr/include/boost/type_traits/copy_cv.hpp:
 
-/usr/include/boost/mpl/find_if.hpp:
+/usr/include/boost/type_traits/copy_cv_ref.hpp:
 
-/usr/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h:
+/usr/include/boost/move/utility.hpp:
 
-/usr/include/boost/fusion/iterator/detail/segment_sequence.hpp:
+/usr/include/boost/variant/static_visitor.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/list_parameters.hpp:
+/usr/include/boost/variant/detail/visitation_impl.hpp:
 
-/usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h:
+/usr/include/boost/move/adl_move_swap.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory:
+/usr/include/boost/type_traits/enable_if.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/intra_process_setting.hpp:
+/usr/include/boost/variant/recursive_wrapper_fwd.hpp:
 
-/usr/include/eigen3/Eigen/src/plugins/ReshapedMethods.h:
+/usr/include/boost/type_traits/has_nothrow_copy.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h:
+/usr/include/boost/detail/reference_content.hpp:
 
-/usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
+/usr/include/boost/detail/call_traits.hpp:
+
+/usr/include/boost/call_traits.hpp:
+
+/usr/include/CGAL/license/Triangulation_2.h:
+
+/usr/include/boost/variant/detail/enable_recursive_fwd.hpp:
+
+/usr/include/boost/variant/detail/backup_holder.hpp:
+
+/usr/include/boost/variant/detail/substitute_fwd.hpp:
+
+/usr/include/boost/preprocessor/enum_shifted_params.hpp:
+
+/usr/include/boost/preprocessor/enum_params.hpp:
+
+/usr/include/boost/preprocessor/enum.hpp:
+
+/usr/include/boost/variant/variant_fwd.hpp:
+
+/usr/include/boost/core/demangle.hpp:
+
+/usr/include/boost/container_hash/hash_fwd.hpp:
+
+/usr/include/boost/type_index.hpp:
+
+/usr/include/boost/variant/variant.hpp:
+
+/usr/include/boost/variant.hpp:
+
+/usr/include/CGAL/Object.h:
+
+/usr/include/CGAL/aff_transformation_tags.h:
+
+/usr/include/boost/preprocessor/repetition/enum.hpp:
+
+/usr/include/CGAL/kernel_assertions.h:
+
+/usr/include/CGAL/kernel_config.h:
+
+/usr/include/CGAL/kernel_basic.h:
+
+/usr/include/CGAL/number_utils_classes.h:
+
+/usr/include/CGAL/Get_arithmetic_kernel.h:
+
+/usr/include/CGAL/Arithmetic_kernel/Arithmetic_kernel_base.h:
+
+/usr/include/CGAL/GMPXX_arithmetic_kernel.h:
+
+/usr/include/CGAL/Quotient.h:
+
+/usr/include/mpfr.h:
+
+/usr/include/CGAL/mpz_class.h:
+
+/usr/include/CGAL/gmpxx.h:
+
+/usr/include/CGAL/long_long.h:
+
+/usr/include/CGAL/tss.h:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Segment_3_intersection.h:
+
+/usr/include/CGAL/Modular_arithmetic/Residue_type.h:
+
+/usr/include/CGAL/Interval_nt.h:
+
+/usr/include/CGAL/number_utils.h:
+
+/usr/include/boost/multiprecision/traits/extract_exponent_type.hpp:
+
+/usr/include/CGAL/double.h:
+
+/usr/include/CGAL/float.h:
+
+/usr/include/x86_64-linux-gnu/bits/fenv.h:
+
+/usr/include/fenv.h:
+
+/usr/include/c++/11/fenv.h:
+
+/usr/include/CGAL/utils.h:
+
+/usr/include/CGAL/utils_classes.h:
+
+/usr/include/CGAL/array.h:
+
+/usr/include/boost/fusion/algorithm/query/detail/find_if.hpp:
+
+/usr/include/CGAL/IO/Color.h:
+
+/usr/include/CGAL/IO/io.h:
+
+/usr/include/CGAL/Algebraic_extension_traits.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Plane_3_intersection.h:
+
+/usr/include/CGAL/Scalar_factor_traits.h:
+
+/usr/include/gmpxx.h:
+
+/usr/include/CGAL/Rational_traits.h:
+
+/usr/include/CGAL/Real_embeddable_traits.h:
+
+/usr/include/CGAL/use.h:
+
+/usr/include/CGAL/Algebraic_structure_traits.h:
+
+/usr/include/boost/preprocessor/slot/detail/shared.hpp:
+
+/usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp:
+
+/usr/include/boost/preprocessor/facilities/intercept.hpp:
+
+/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+
+/usr/include/boost/preprocessor/slot/detail/def.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qfontdatabase.h:
+
+/usr/include/boost/preprocessor/slot/slot.hpp:
+
+/usr/include/boost/random/uniform_real_distribution.hpp:
+
+/usr/include/boost/preprocessor/iteration/iterate.hpp:
+
+/usr/include/boost/utility/result_of.hpp:
+
+/usr/include/CGAL/Cartesian/Sphere_3.h:
+
+/usr/include/boost/iterator/transform_iterator.hpp:
+
+/usr/include/CGAL/boost/iterator/transform_iterator.hpp:
+
+/usr/include/CGAL/Coercion_traits.h:
+
+/usr/include/CGAL/Kernel/mpl.h:
+
+/usr/include/CGAL/Quotient_fwd.h:
+
+/usr/include/CGAL/number_type_config.h:
+
+/usr/include/CGAL/exceptions.h:
 
 /usr/include/boost/predef/library/c/vms.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/IndexedViewHelper.h:
-
-/usr/include/boost/move/detail/type_traits.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
 
 /usr/include/eigen3/Eigen/src/Core/functors/StlFunctors.h:
 
@@ -9011,15 +9748,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/list/aux_/size.hpp:
 
-/usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp:
-
-/usr/include/boost/preprocessor/slot/detail/shared.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/functors/BinaryFunctors.h:
-
-/usr/include/eigen3/Eigen/src/LU/FullPivLU.h:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Tetrahedron_3.h:
 
@@ -9032,8 +9761,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/eigen3/Eigen/src/Core/arch/SSE/PacketMath.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h:
-
-/usr/include/endian.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/Settings.h:
 
@@ -9053,14 +9780,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/util/StaticAssert.h:
 
-/usr/include/eigen3/Eigen/src/Core/util/Meta.h:
-
-/usr/include/CGAL/Triangulation_ds_face_base_2.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
-
-/usr/include/c++/11/climits:
-
 /usr/include/CGAL/Sqrt_extension/Algebraic_extension_traits.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h:
@@ -9071,7 +9790,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/Dense:
 
-/usr/include/asm-generic/errno.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h:
 
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -9081,41 +9800,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
 
-/usr/include/boost/iterator/counting_iterator.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Redux.h:
-
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Triangle_3_do_intersect.h:
-
-/usr/include/c++/11/bits/ptr_traits.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/AssignEvaluator.h:
-
-/usr/include/boost/mpl/aux_/push_front_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/plugins/BlockMethods.h:
-
-/usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_intersection.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
-
 /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
-
-/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
-
-/usr/include/CGAL/Homogeneous_converter.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
-
-/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
 
 /usr/include/eigen3/Eigen/src/Core/functors/TernaryFunctors.h:
 
@@ -9125,11 +9812,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface.hpp:
-
 /usr/include/CGAL/Conic_2.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h:
 
 /usr/include/boost/type_traits/has_complement.hpp:
 
@@ -9151,19 +9840,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
 
-/usr/include/pcl-1.12/pcl/point_cloud.h:
+/usr/include/boost/type_index/stl_type_index.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_result_kind.hpp:
 
 /usr/include/boost/range/detail/common.hpp:
 
-/usr/include/boost/multiprecision/traits/is_byte_container.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Block.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/wait_result.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_subscription_payload.hpp:
 
 /opt/ros/humble/include/rcl/rcl/error_handling.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_subscription_payload.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_wait_set_mask.hpp:
 
@@ -9177,19 +9862,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/hash_bytes.h:
 
-/usr/include/boost/mpl/size_t_fwd.hpp:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__type_support.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__builder.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
+/usr/include/boost/fusion/iterator/detail/segment_sequence.hpp:
 
-/usr/include/boost/preprocessor/logical/and.hpp:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/list_parameters.hpp:
 
-/usr/include/boost/mpl/long_fwd.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qimage.h:
+/usr/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h:
 
@@ -9198,12 +9879,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__type_support.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__traits.hpp:
-
-/usr/include/CGAL/Intersections_3/Plane_3_Point_3.h:
-
-/usr/include/eigen3/Eigen/src/Core/Reverse.h:
-
-/usr/include/kdl/utilities/utility.h:
 
 /usr/include/boost/random/detail/seed_impl.hpp:
 
@@ -9231,23 +9906,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/thread:
 
-/usr/include/eigen3/Eigen/src/Geometry/Rotation2D.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame:
-
-/usr/include/boost/foreach_fwd.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/GeneralProduct.h:
-
-/usr/include/boost/mpl/size_t.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/create_client.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixVector.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/create_publisher.hpp:
 
 /usr/include/CGAL/Intersections_3/Bbox_3_Ray_3.h:
 
@@ -9263,10 +9924,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
 
-/usr/include/c++/11/bits/stl_deque.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__type_support.hpp:
-
 /usr/include/gdal/cpl_port.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__builder.hpp:
@@ -9274,6 +9931,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/Point_3_Ray_3.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends:
 
 /usr/include/boost/mpl/or.hpp:
 
@@ -9289,6 +9948,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rmw/rmw/init.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_factory.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/publisher_factory.hpp:
@@ -9301,7 +9962,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcpputils/rcpputils/shared_library.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__traits.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/dynamic_storage.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__struct.hpp:
 
 /usr/include/boost/math/special_functions/next.hpp:
 
@@ -9311,31 +9976,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/char_traits.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__struct.hpp:
+/usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/integer_range__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__builder.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__traits.hpp:
-
-/usr/include/boost/mpl/void_fwd.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h:
-
-/usr/include/boost/mpl/sequence_tag.hpp:
-
-/usr/include/boost/date_time/time_resolution_traits.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/integer_range__struct.hpp:
-
 /usr/include/boost/predef/architecture/x86.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_descriptor.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__builder.hpp:
 
@@ -9357,11 +10004,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcpputils/rcpputils/thread_safety_annotations.hpp:
 
-/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexEigenSolver.h:
-
 /usr/include/c++/11/bits/atomic_base.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_timers_interface_traits.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexEigenSolver.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process_buffer.hpp:
 
@@ -9373,111 +10020,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp:
 
+/usr/include/CGAL/Intersections_3/internal/Point_3_Ray_3_intersection.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h:
+
 /usr/include/boost/preprocessor/tuple/rem.hpp:
 
-/usr/include/c++/11/array:
-
-/usr/include/eigen3/Eigen/src/Geometry/RotationBase.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/typesupport_helpers.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
-
-/usr/include/boost/variant/detail/variant_io.hpp:
-
-/usr/include/boost/algorithm/string/detail/finder.hpp:
-
-/usr/include/pcl-1.12/pcl/type_traits.h:
-
-/usr/include/c++/11/tr1/poly_hermite.tcc:
-
-/usr/include/c++/11/bits/memoryfwd.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/Constants.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
-
-/usr/include/CGAL/Homogeneous/Weighted_point_3.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
-
-/usr/include/c++/11/tr1/hypergeometric.tcc:
-
-/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
-
-/usr/include/boost/fusion/algorithm/iteration/detail/segmented_fold.hpp:
-
-/usr/include/c++/11/bits/stl_stack.h:
-
-/usr/include/c++/11/tr1/beta_function.tcc:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Is_degenerate_3.h:
-
-/usr/include/CGAL/Cartesian/ft_constructions_2.h:
-
-/usr/include/boost/range/concepts.hpp:
-
-/usr/include/c++/11/tr1/special_function_util.h:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h:
-
-/opt/ros/humble/include/rmw/rmw/message_sequence.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h:
-
-/usr/include/c++/11/bits/specfun.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
-
-/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs.h:
-
-/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h:
-
-/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
-
-/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
-
-/usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
-
-/usr/include/c++/11/complex:
-
-/opt/ros/humble/include/rmw/rmw/subscription_options.h:
-
-/usr/include/boost/type_traits/has_unary_minus.hpp:
-
-/usr/include/boost/math/special_functions/sign.hpp:
-
-/usr/include/boost/predef/architecture/alpha.h:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/qos_parameters.hpp:
-
-/usr/include/c++/11/cmath:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__struct.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/AlignedBox.h:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/CwiseUnaryView.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__traits.hpp:
 
@@ -9501,6 +10050,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h:
+
 /usr/include/c++/11/bits/stl_list.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__type_support.hpp:
@@ -9510,6 +10061,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/view/single_view/detail/distance_impl.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__traits.hpp:
+
+/usr/include/CGAL/Intersections_2/Iso_rectangle_2_Triangle_2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h:
 
 /usr/include/boost/config/helper_macros.hpp:
 
@@ -9525,45 +10080,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/remove_reference.hpp:
 
+/usr/include/CGAL/Homogeneous_converter.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
+
+/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_payload.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/synchronization_policy_common.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_options.hpp:
 
-/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
-
-/usr/include/boost/smart_ptr/detail/local_sp_deleter.hpp:
-
-/usr/include/boost/predef/library/c/zos.h:
-
-/usr/include/eigen3/Eigen/src/Core/Swap.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
-
-/usr/include/boost/fusion/view/joint_view/detail/deref_data_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Select.h:
-
-/usr/include/boost/core/no_exceptions_support.hpp:
-
-/usr/include/boost/fusion/algorithm/transformation/pop_front.hpp:
-
-/usr/include/CGAL/Lazy_exact_nt.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/parameter.hpp:
-
-/usr/include/boost/math/special_functions/fpclassify.hpp:
-
-/usr/include/boost/predef/detail/os_detected.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_use_intra_process.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/rate.hpp:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__type_support.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h:
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp:
 
@@ -9571,35 +10102,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/disable_warnings.h:
 
-/usr/include/boost/type_traits/has_multiplies_assign.hpp:
-
-/usr/include/c++/11/tr1/riemann_zeta.tcc:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.hpp:
-
-/usr/include/eigen3/Eigen/src/QR/HouseholderQR.h:
-
-/usr/include/boost/mpl/distance.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Stride.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/timer.hpp:
-
-/usr/include/boost/fusion/container/list/detail/at_impl.hpp:
-
-/usr/include/CGAL/Homogeneous/predicates_on_directionsH2.h:
-
-/usr/include/eigen3/Eigen/src/Core/Transpositions.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
-
-/usr/include/boost/range/iterator.hpp:
-
-/opt/ros/humble/include/tracetools/tracetools/visibility_control.hpp:
 
 /usr/include/boost/mpl/aux_/config/dtp.hpp:
 
@@ -9643,17 +10150,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
+/usr/include/boost/move/traits.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h:
-
-/usr/include/boost/fusion/container/list/detail/empty_impl.hpp:
-
-/usr/include/boost/type_traits/is_fundamental.hpp:
-
-/usr/include/boost/mpl/distance_fwd.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription_base.hpp:
-
-/usr/include/boost/config/no_tr1/complex.hpp:
 
 /opt/ros/humble/include/rcl/rcl/network_flow_endpoints.h:
 
@@ -9671,8 +10172,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/vector/aux_/item.hpp:
 
-/usr/include/boost/mpl/insert_range_fwd.hpp:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h:
 
 /usr/include/CGAL/Cartesian/Circle_2.h:
@@ -9685,23 +10184,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/cxxabi.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h:
-
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/service_type_support.hpp:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/service_type_support_decl.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout:
+/usr/include/boost/smart_ptr/detail/local_sp_deleter.hpp:
 
-/opt/ros/humble/include/rmw/rmw/incompatible_qos_events_statuses.h:
+/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
 
-/usr/include/boost/mpl/aux_/integral_wrapper.hpp:
+/usr/include/eigen3/Eigen/src/LU/InverseImpl.h:
 
 /opt/ros/humble/include/rcl/rcl/logging_rosout.h:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/CommaInitializer.h:
 
 /usr/include/boost/type_traits/is_compound.hpp:
 
@@ -9711,9 +10206,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__traits.hpp:
 
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__struct.hpp:
+
 /usr/include/pcl-1.12/pcl/PCLPointField.h:
 
-/usr/include/eigen3/Eigen/src/Core/Random.h:
+/usr/include/c++/11/bits/locale_facets_nonio.tcc:
 
 /usr/include/boost/fusion/view/transform_view/detail/value_at_impl.hpp:
 
@@ -9723,27 +10220,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/locale_facets_nonio.h:
 
-/usr/include/c++/11/locale:
-
 /usr/include/CGAL/Cartesian/Point_3.h:
 
 /usr/include/c++/11/bits/shared_ptr_atomic.h:
 
 /opt/ros/humble/include/rcutils/rcutils/visibility_control_macros.h:
 
-/usr/include/boost/type_traits/aligned_storage.hpp:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__struct.hpp:
-
-/usr/include/CGAL/Gmp_coercion_traits.h:
-
-/usr/include/CGAL/Intersections_3/internal/Line_3_Triangle_3_do_intersect.h:
-
-/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication:
-
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h:
 
 /usr/include/boost/type_traits/has_minus_assign.hpp:
 
@@ -9751,19 +10236,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/math/policies/error_handling.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/event.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h:
-
-/usr/include/strings.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
-
-/usr/include/CGAL/Plane_3.h:
-
-/opt/ros/humble/include/rcl/rcl/graph.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qtextcursor.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/utilities.hpp:
 
@@ -9777,16 +10250,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcpputils/rcpputils/visibility_control.hpp:
 
-/usr/include/boost/optional/detail/optional_trivially_copyable_base.hpp:
-
-/usr/include/boost/lexical_cast/bad_lexical_cast.hpp:
-
-/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
-
-/usr/include/boost/next_prior.hpp:
-
-/usr/include/boost/predef/library/std/stlport.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/function_traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/expand_topic_or_service_name.hpp:
@@ -9797,27 +10260,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton:
 
-/usr/include/eigen3/Eigen/SVD:
-
 /usr/include/c++/11/bits/codecvt.h:
-
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Segment_3_intersection.h:
-
-/usr/include/CGAL/Modular_arithmetic/Residue_type.h:
 
 /usr/include/CGAL/Intersections_3/internal/Ray_3_Ray_3_intersection.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
 
-/usr/include/c++/11/tr1/exp_integral.tcc:
-
-/usr/include/CGAL/Intersections_3/Line_3_Plane_3.h:
-
-/usr/include/boost/random/poisson_distribution.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h:
-
-/usr/include/boost/mpl/limits/vector.hpp:
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
 
 /usr/include/c++/11/bits/sstream.tcc:
 
@@ -9831,6 +10280,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:
 
+/usr/include/boost/fusion/algorithm/query/detail/segmented_find.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h:
+
 /usr/include/c++/11/map:
 
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategies.hpp:
@@ -9840,8 +10293,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/type_traits/detail/is_function_cxx_11.hpp:
 
 /usr/include/kdl/utilities/kdl-config.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/guard_condition.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/contexts/default_context.hpp:
 
@@ -9869,15 +10320,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcpputils/rcpputils/scope_exit.hpp:
 
-/opt/ros/humble/include/rcl/rcl/publisher.h:
+/usr/include/boost/fusion/support/iterator_base.hpp:
 
-/usr/include/boost/random/uniform_01.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
+/opt/ros/humble/include/rmw/rmw/subscription_options.h:
 
-/usr/include/boost/fusion/iterator/distance.hpp:
+/usr/include/c++/11/complex:
 
-/usr/include/pcl-1.12/pcl/io/pcd_io.h:
+/usr/include/boost/type_traits/has_unary_minus.hpp:
+
+/usr/include/boost/math/special_functions/sign.hpp:
+
+/usr/include/boost/predef/architecture/alpha.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp:
 
@@ -9885,17 +10340,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/mman-shared.h:
 
-/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/sequence_bound.h:
-
-/usr/include/boost/fusion/view/single_view/single_view_iterator.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Inverse.h:
-
 /opt/ros/humble/include/rcl/rcl/timer.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__builder.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h:
 
 /opt/ros/humble/include/rmw/rmw/network_flow_endpoint_array.h:
 
@@ -9919,21 +10370,533 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/node_options.h:
 
-/usr/include/features-time64.h:
-
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h:
+
 /opt/ros/humble/include/rcl/rcl/event_callback.h:
-
-/usr/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h:
-
-/usr/include/boost/predef/compiler/clang.h:
 
 /usr/include/boost/random/detail/generator_bits.hpp:
 
 /opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
+
+/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
+
+/opt/ros/humble/include/rcl/rcl/wait.h:
+
+/usr/include/c++/11/bits/predefined_ops.h:
+
+/usr/include/boost/functional/hash.hpp:
+
+/usr/include/boost/predef/platform/cloudabi.h:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp:
+
+/opt/ros/humble/include/rmw/rmw/time.h:
+
+/usr/include/boost/functional/hash_fwd.hpp:
+
+/opt/ros/humble/include/rmw/rmw/serialized_message.h:
+
+/usr/include/CGAL/transforming_iterator.h:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/requested_deadline_missed.h:
+
+/usr/include/CGAL/Residue.h:
+
+/usr/include/boost/preprocessor/control/while.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/long-double.h:
+
+/usr/include/boost/fusion/container/vector/vector10.hpp:
+
+/opt/ros/humble/include/tf2/tf2/time.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/message_lost.h:
+
+/opt/ros/humble/include/rmw/rmw/qos_policy_kind.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h:
+
+/usr/include/boost/fusion/iterator/next.hpp:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/incompatible_qos.h:
+
+/usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
+
+/opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/parser.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/string_array.h:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/events_statuses.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_enable_topic_statistics.hpp:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/boost/predef/language/cuda.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types.h:
+
+/usr/include/eigen3/Eigen/src/Core/CwiseNullaryOp.h:
+
+/opt/ros/humble/include/rcutils/rcutils/snprintf.h:
+
+/opt/ros/humble/include/rcutils/rcutils/error_handling.h:
+
+../include/coverage_pipeline.hpp:
+
+/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/message_initialization.h:
+
+/usr/include/boost/date_time/special_defs.hpp:
+
+/opt/ros/humble/include/rcutils/rcutils/logging.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
+
+/usr/include/CGAL/Intersections_3/Line_3_Line_3.h:
+
+/opt/ros/humble/include/rmw/rmw/types.h:
+
+/usr/include/boost/range/iterator_range.hpp:
+
+/usr/include/kdl/frames.hpp:
+
+/opt/ros/humble/include/rcl/rcl/types.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Stride.h:
+
+/usr/include/boost/mpl/end.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
+
+/opt/ros/humble/include/rmw/rmw/security_options.h:
+
+/usr/include/c++/11/string:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__type_support.hpp:
+
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/moving_average.hpp:
+
+/opt/ros/humble/include/rmw/rmw/ret_types.h:
+
+/opt/ros/humble/include/rmw/rmw/macros.h:
+
+/opt/ros/humble/include/rmw/rmw/localhost.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h:
+
+/usr/include/boost/preprocessor/logical/bool.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
+
+/usr/include/c++/11/bits/istream.tcc:
+
+/usr/include/c++/11/istream:
+
+/usr/include/boost/detail/templated_streams.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/ring_buffer_implementation.hpp:
+
+/usr/include/boost/type_traits/add_lvalue_reference.hpp:
+
+/usr/include/c++/11/bits/ostream.tcc:
+
+/usr/include/c++/11/tr1/modified_bessel_func.tcc:
+
+/usr/include/c++/11/bits/basic_ios.tcc:
+
+/usr/include/CGAL/Homogeneous/VectorH2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
+
+/usr/include/boost/fusion/adapted/mpl/detail/has_key_impl.hpp:
+
+/usr/include/c++/11/math.h:
+
+/usr/include/CGAL/Circle_3.h:
+
+/usr/include/boost/type_traits/is_nothrow_move_constructible.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
+
+/opt/ros/humble/include/rmw/rmw/rmw.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Tetrahedron_3_do_intersect.h:
+
+/usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
+
+/usr/include/CGAL/MP_Float.h:
+
+/usr/include/boost/predef/detail/_cassert.h:
+
+/usr/include/wctype.h:
+
+/usr/include/boost/container/detail/std_fwd.hpp:
+
+/usr/include/c++/11/cwctype:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
+
+/usr/include/CGAL/Installation/internal/enable_third_party_libraries.h:
+
+/usr/include/boost/predef/other.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h:
+
+/usr/include/c++/11/bits/locale_facets.h:
+
+/usr/include/c++/11/bits/basic_ios.h:
+
+/usr/include/c++/11/ios:
+
+/usr/include/c++/11/ostream:
+
+/usr/include/CGAL/Fraction_traits.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/QPen:
+
+/usr/include/CGAL/Intersections_2/Circle_2_Circle_2.h:
+
+/usr/include/boost/mpl/clear.hpp:
+
+/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
+
+/opt/ros/humble/include/rcutils/rcutils/macros.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/QBrush:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/velocity_stamped.hpp:
+
+/usr/include/CGAL/value_type_traits.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:
+
+/opt/ros/humble/include/rcl/rcl/client.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__struct.hpp:
+
+/usr/include/c++/11/bits/this_thread_sleep.h:
+
+/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:
+
+/usr/include/boost/predef/os/bsd/open.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_type.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QDir:
+
+/usr/include/x86_64-linux-gnu/bits/unistd.h:
+
+/usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
+
+/usr/include/boost/predef/hardware/simd/x86_amd/versions.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__struct.hpp:
+
+/usr/include/boost/predef/architecture/arm.h:
+
+/usr/include/boost/numeric/conversion/converter_policies.hpp:
+
+/usr/include/boost/random/triangle_distribution.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/posix_opt.h:
+
+/usr/include/x86_64-linux-gnu/sys/ucontext.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
+
+/opt/ros/humble/include/rmw/rmw/message_sequence.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h:
+
+/usr/include/boost/mpl/vector/aux_/iterator.hpp:
+
+/usr/include/boost/type_traits/is_signed.hpp:
+
+/usr/include/CGAL/Homogeneous/Weighted_point_3.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/Constants.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
+
+/usr/include/boost/math/tools/promotion.hpp:
+
+/usr/include/boost/predef/architecture/pyramid.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/create_service.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
+
+/usr/include/boost/mpl/size_fwd.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+
+/usr/include/boost/preprocessor/facilities/empty.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/wchar2.h:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Sphere_3_do_intersect.h:
+
+/usr/include/boost/mpl/aux_/full_lambda.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
+
+/usr/include/c++/11/cstdlib:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qpaintdevice.h:
+
+/usr/include/c++/11/csignal:
+
+/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox:
+
+/usr/include/boost/predef/hardware/simd/ppc.h:
+
+/usr/include/CGAL/Intersections_3/internal/Ray_3_Segment_3_intersection.h:
+
+/usr/include/boost/variant/detail/has_result_type.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h:
+
+/opt/ros/humble/include/rcl/rcl/publisher.h:
+
+/usr/include/boost/random/uniform_01.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
+
+/usr/include/boost/fusion/iterator/distance.hpp:
+
+/usr/include/pcl-1.12/pcl/io/pcd_io.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h:
+
+/usr/include/c++/11/streambuf:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout:
+
+/opt/ros/humble/include/rmw/rmw/incompatible_qos_events_statuses.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h:
+
+/usr/include/c++/11/bits/cxxabi_forced.h:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Triangle_3_do_intersect.h:
+
+/usr/include/c++/11/bits/ptr_traits.h:
+
+/usr/include/boost/fusion/algorithm/transformation/insert_range.hpp:
+
+/usr/include/c++/11/bits/locale_classes.tcc:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__builder.hpp:
+
+/usr/include/c++/11/bits/stl_relops.h:
+
+/usr/include/boost/fusion/algorithm/transformation/pop_front.hpp:
+
+/usr/include/CGAL/Lazy_exact_nt.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/parameter.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/rate.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_use_intra_process.hpp:
+
+/usr/include/boost/math/special_functions/fpclassify.hpp:
+
+/usr/include/boost/predef/detail/os_detected.h:
+
+/usr/include/CGAL/Dummy_tds_2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h:
+
+/usr/include/boost/predef/language/objc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/qos_parameters.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_intersection.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/eigen3/Eigen/src/plugins/BlockMethods.h:
+
+/usr/include/c++/11/bits/std_thread.h:
+
+/usr/include/c++/11/optional:
+
+/usr/include/c++/11/future:
+
+/usr/include/boost/predef/compiler/metrowerks.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h:
+
+/usr/include/pcl-1.12/pcl/conversions.h:
+
+/usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h:
+
+/usr/include/CGAL/auto_link/auto_link.h:
+
+/usr/include/boost/fusion/algorithm/transformation/pop_back.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h:
+
+/usr/include/CGAL/Handle.h:
+
+/usr/include/boost/type_traits/has_trivial_constructor.hpp:
+
+/usr/include/boost/date_time/time.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h:
+
+/usr/include/boost/iterator/counting_iterator.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h:
+
+/usr/include/CGAL/Interval_traits.h:
+
+/usr/include/c++/11/cctype:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h:
+
+/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_descriptor.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h:
+
+/usr/include/CGAL/circulator.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h:
+
+/usr/include/boost/predef/architecture/parisc.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
+
+/usr/include/c++/11/bits/std_abs.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp:
+
+/usr/include/boost/range/reverse_iterator.hpp:
+
+/usr/include/CGAL/Handle_for.h:
+
+/usr/include/c++/11/cstring:
+
+/usr/include/c++/11/bits/atomic_futex.h:
+
+/usr/include/boost/fusion/view/joint_view/detail/next_impl.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h:
+
+/usr/include/c++/11/bits/erase_if.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h:
+
+/usr/include/boost/predef/compiler/nvcc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/message_memory_strategy.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
+
+/usr/include/CGAL/Hilbert_policy_tags.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/environments.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Sphere_3_intersection.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
+
+/usr/include/c++/11/random:
+
+/usr/include/boost/mpl/greater_equal.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h:
+
+/usr/include/eigen3/Eigen/src/StlSupport/StdVector.h:
+
+/usr/include/boost/mpl/min_max.hpp:
+
+/usr/include/boost/predef/os/irix.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h:
 
 /usr/include/boost/predef/platform/windows_runtime.h:
 
@@ -9947,85 +10910,31 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h:
 
-/usr/include/boost/preprocessor/facilities/empty.hpp:
-
-/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
-
-/usr/include/boost/iterator/zip_iterator.hpp:
-
-/usr/include/gdal/cpl_config.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/publisher.hpp:
 
 /usr/include/c++/11/bits/algorithmfwd.h:
 
-/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__type_support.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/errno.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h:
 
-/usr/include/x86_64-linux-gnu/bits/wchar2.h:
+/usr/include/asm-generic/errno.h:
 
-/usr/include/CGAL/Intersections_3/internal/Line_3_Sphere_3_do_intersect.h:
-
-/usr/include/boost/mpl/aux_/full_lambda.hpp:
-
-/opt/ros/humble/include/rmw/rmw/security_options.h:
-
-/usr/include/c++/11/string:
-
-../include/coverage_pipeline.hpp:
-
-/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/message_initialization.h:
-
-/usr/include/boost/date_time/special_defs.hpp:
-
-/opt/ros/humble/include/rcutils/rcutils/logging.h:
-
-/usr/include/boost/mpl/end.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdio2.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__struct.hpp:
-
 /usr/include/stdio.h:
 
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_timers_interface_traits.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h:
+
 /usr/include/c++/11/bits/cpp_type_traits.h:
-
-/opt/ros/humble/include/rmw/rmw/macros.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__type_support.hpp:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/moving_average.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h:
-
-/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
-
-/opt/ros/humble/include/rmw/rmw/ret_types.h:
 
 /usr/include/ctype.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_base_interface.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/Tridiagonalization.h:
-
-/usr/include/eigen3/Eigen/src/LU/arch/InverseSize4.h:
-
-/usr/include/CGAL/Intersections_2/Circle_2_Iso_rectangle_2.h:
-
-/usr/include/boost/predef/compiler/pgi.h:
-
-/usr/include/CGAL/utils_classes.h:
-
-/usr/include/CGAL/Intersections_3/Bbox_3_Line_3.h:
-
-/usr/include/c++/11/cstdint:
-
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_timers_interface.hpp:
 
@@ -10049,17 +10958,33 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsizepolicy.h:
 
-/usr/include/boost/type_index.hpp:
-
 /usr/include/c++/11/stdlib.h:
 
-/usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdalign.h:
 
-/usr/include/string.h:
+/usr/include/boost/type_traits/has_pre_increment.hpp:
+
+/usr/include/c++/11/bits/locale_facets.tcc:
+
+/usr/include/CGAL/predicates/sign_of_determinant.h:
+
+/usr/include/sched.h:
+
+/usr/include/CGAL/license/Convex_hull_2.h:
+
+/usr/include/boost/mpl/times.hpp:
+
+/usr/include/CGAL/Hilbert_sort_base.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h:
+
+/usr/include/x86_64-linux-gnu/asm/types.h:
 
 /opt/ros/humble/include/rmw/rmw/publisher_options.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlineedit.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h:
 
 /usr/include/boost/type_traits/is_union.hpp:
 
@@ -10067,13 +10992,25 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:
 
+/usr/include/c++/11/bits/stl_iterator_base_types.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/create_publisher.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixVector.h:
+
+/usr/include/boost/fusion/view/joint_view/detail/deref_data_impl.hpp:
+
+/usr/include/boost/core/no_exceptions_support.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Select.h:
+
 /usr/include/c++/11/bits/locale_classes.h:
 
 /opt/ros/humble/include/rmw/rmw/error_handling.h:
 
-/usr/include/boost/mpl/vector/aux_/O1_size.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h:
 
-/usr/include/boost/preprocessor/enum_shifted_params.hpp:
+/usr/include/boost/mpl/vector/aux_/O1_size.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h:
 
@@ -10089,10 +11026,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs_impl.h:
 
-/usr/include/boost/type_traits/extent.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h:
-
 /usr/include/boost/math/special_functions/detail/unchecked_factorial.hpp:
 
 /usr/include/c++/11/bits/localefwd.h:
@@ -10105,59 +11038,33 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h:
 
-/opt/ros/humble/include/rcutils/rcutils/types/string_array.h:
-
-/opt/ros/humble/include/rmw/rmw/events_statuses/events_statuses.h:
-
-/usr/include/c++/11/cctype:
-
-/usr/include/CGAL/Interval_traits.h:
-
-/usr/include/boost/mpl/bool_fwd.hpp:
-
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Do_intersect_2.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__traits.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/typesupport_helpers.hpp:
 
-/usr/include/pcl-1.12/pcl/filters/voxel_grid.h:
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process.hpp:
+/usr/include/boost/variant/detail/variant_io.hpp:
 
-/usr/include/boost/mpl/aux_/has_apply.hpp:
-
-/usr/include/boost/range/rend.hpp:
-
-/usr/include/boost/mpl/aux_/clear_impl.hpp:
-
-/usr/include/boost/variant/variant_fwd.hpp:
-
-/usr/include/boost/core/nvp.hpp:
-
-/usr/include/boost/mpl/insert.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h:
-
-/usr/include/boost/predef/compiler.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qpaintdevice.h:
-
-/usr/include/c++/11/cstdlib:
-
-/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
-
-/usr/include/eigen3/Eigen/src/LU/PartialPivLU.h:
-
-/usr/include/eigen3/Eigen/src/Geometry/Scaling.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
+/usr/include/boost/algorithm/string/detail/finder.hpp:
 
 /usr/include/boost/mpl/find.hpp:
+
+/usr/include/boost/type_traits/has_trivial_move_assign.hpp:
+
+/usr/include/boost/date_time/time_clock.hpp:
+
+/usr/include/string.h:
+
+/usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h:
 
 /usr/include/boost/math/special_functions/pow.hpp:
 
@@ -10165,15 +11072,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/vector.tcc:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/QFontDatabase:
+/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
-
-/usr/include/boost/range/iterator_range_io.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
-
-/usr/include/CGAL/array.h:
+/usr/include/c++/11/bits/stl_bvector.h:
 
 /opt/ros/humble/include/rcl/rcl/macros.h:
 
@@ -10183,33 +11084,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/cstddef:
 
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsettings.h:
 
-/usr/include/c++/11/bits/basic_ios.tcc:
-
-/usr/include/CGAL/Homogeneous/VectorH2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h:
-
-/usr/include/eigen3/Eigen/StdVector:
-
-/usr/include/CGAL/Intersections_3/internal/Bbox_3_Segment_3_intersection.h:
-
-/usr/include/c++/11/set:
-
-/usr/include/boost/preprocessor/identity.hpp:
-
 /usr/include/c++/11/bits/hashtable_policy.h:
-
-/usr/include/boost/iterator/minimum_category.hpp:
-
-/usr/include/boost/type_traits/is_scoped_enum.hpp:
-
-/usr/include/pcl-1.12/pcl/point_struct_traits.h:
 
 /usr/include/CGAL/Tools/chained_map.h:
 
@@ -10221,19 +11098,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/bind_fwd.hpp:
 
+/usr/include/boost/variant/bad_visit.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__type_support.hpp:
+
+/usr/include/boost/mpl/less.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
+
 /usr/include/c++/11/unordered_map:
-
-/usr/include/boost/math/special_functions/sqrt1pm1.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
-
-/usr/include/boost/fusion/algorithm/transformation/erase_key.hpp:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/c++/11/bits/locale_conv.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
@@ -10245,7 +11118,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/os/cygwin.h:
 
+/usr/include/features-time64.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer:
+
 /usr/include/c++/11/functional:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
 
@@ -10257,9 +11136,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h:
 
-/usr/include/boost/functional/hash.hpp:
+/usr/include/boost/mpl/begin_end.hpp:
 
-/usr/include/boost/predef/platform/cloudabi.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h:
 
 /usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
 
@@ -10267,37 +11146,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_plus_assign.hpp:
 
+/usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h:
+
 /usr/include/c++/11/cwchar:
 
 /usr/include/boost/mpl/vector/aux_/clear.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h:
 
-/usr/include/eigen3/Eigen/src/Core/DiagonalMatrix.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h:
-
 /usr/include/x86_64-linux-gnu/sys/types.h:
-
-/usr/include/boost/fusion/algorithm/transformation/insert_range.hpp:
-
-/usr/include/c++/11/bits/locale_classes.tcc:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
-
-/usr/include/boost/mpl/aux_/config/msvc.hpp:
-
-/usr/include/c++/11/bits/cxxabi_init_exception.h:
-
-/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp:
 
 /usr/include/c++/11/ext/aligned_buffer.h:
 
-/usr/include/c++/11/future:
-
-/usr/include/boost/predef/compiler/metrowerks.h:
-
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h:
 
 /usr/include/stdlib.h:
 
@@ -10311,15 +11174,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/create_intra_process_buffer.hpp:
 
-/usr/include/boost/fusion/support/sequence_base.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h:
-
-/usr/include/CGAL/aff_transformation_tags_impl.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h:
 
-/usr/include/boost/numeric/conversion/converter_policies.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h:
 
 /usr/include/boost/fusion/iterator/value_of.hpp:
 
@@ -10343,13 +11200,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/throw_exception.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h:
+
 /opt/ros/humble/include/rcl/rcl/event.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h:
+
 /usr/include/pcl-1.12/pcl/io/ply_io.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
-
-/usr/include/c++/11/bits/istream.tcc:
 
 /usr/include/CGAL/Dimension.h:
 
@@ -10371,75 +11228,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qprogressbar.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
+/usr/include/CGAL/Triangulation_ds_face_base_2.h:
 
-/usr/include/boost/utility/result_of.hpp:
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h:
+/usr/include/eigen3/Eigen/src/Core/util/Meta.h:
 
-/usr/include/c++/11/pstl/glue_algorithm_defs.h:
-
-/usr/include/boost/preprocessor/seq/for_each.hpp:
-
-/usr/include/c++/11/ext/string_conversions.h:
-
-/usr/include/CGAL/Point_3.h:
-
-/usr/include/boost/preprocessor/list/detail/fold_right.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:
-
-/usr/include/boost/preprocessor/seq/detail/is_empty.hpp:
-
-/usr/include/boost/random/detail/uniform_int_float.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
-
-/usr/include/c++/11/bits/std_abs.h:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp:
-
-/usr/include/boost/range/reverse_iterator.hpp:
-
-/usr/include/CGAL/Handle_for.h:
-
-/usr/include/c++/11/cstring:
-
-/usr/include/c++/11/bits/atomic_futex.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__traits.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
-
-/usr/include/CGAL/Hilbert_policy_tags.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h:
-
-/usr/include/c++/11/bits/predefined_ops.h:
-
-/opt/ros/humble/include/rcl/rcl/wait.h:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp:
-
-/opt/ros/humble/include/rmw/rmw/time.h:
-
-/usr/include/pcl-1.12/pcl/memory.h:
-
-/usr/include/CGAL/Homogeneous/PlaneH3.h:
-
-/usr/include/boost/move/detail/std_ns_end.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h:
 
 /usr/include/CGAL/Distance_3/Segment_3_Line_3.h:
 
@@ -10477,8 +11272,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h:
 
-/usr/include/c++/11/fenv.h:
-
 /usr/include/CGAL/Intersection_traits_3.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__traits.hpp:
@@ -10491,75 +11284,33 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
-/usr/include/c++/11/bits/std_thread.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply_wrap.hpp:
 
-/usr/include/c++/11/tr1/poly_laguerre.tcc:
-
-/usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
-
-/usr/include/boost/multiprecision/debug_adaptor.hpp:
-
-/usr/include/c++/11/bits/exception.h:
-
-/usr/include/CGAL/Cartesian/Iso_cuboid_3.h:
-
-/usr/include/boost/mpl/aux_/lambda_support.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
-
-/usr/include/CGAL/Installation/internal/enable_third_party_libraries.h:
-
-/usr/include/boost/predef/other.h:
-
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h:
-
-/usr/include/c++/11/bits/locale_facets.h:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__traits.hpp:
 
-/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+/opt/ros/humble/include/rmw/rmw/events_statuses/offered_deadline_missed.h:
 
-/usr/include/boost/blank.hpp:
+/usr/include/c++/11/ext/alloc_traits.h:
 
-/opt/ros/humble/include/rcpputils/rcpputils/time.hpp:
-
-/usr/include/boost/range/detail/str_types.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/boost/fusion/view/transform_view/detail/next_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/CwiseUnaryOp.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_services_interface.hpp:
-
-/usr/include/boost/mpl/list/aux_/empty.hpp:
-
-/usr/include/c++/11/bits/cxxabi_forced.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h:
 
 /usr/include/boost/numeric/conversion/detail/is_subranged.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/sched.h:
 
-/usr/include/c++/11/bits/exception_ptr.h:
-
-/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_do_intersect.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
-
-/usr/include/c++/11/bits/stl_tempbuf.h:
-
 /usr/include/gdal/ogr_srs_api.h:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h:
+
+/usr/include/CGAL/memory.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
 
 /usr/include/boost/mpl/front_fwd.hpp:
 
@@ -10569,17 +11320,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
 
+/usr/include/boost/type_traits/has_equal_to.hpp:
+
+/usr/include/eigen3/Eigen/src/StlSupport/details.h:
+
+/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_do_intersect.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
-/usr/include/x86_64-linux-gnu/bits/long-double.h:
+/usr/include/boost/mpl/insert_fwd.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__type_support.hpp:
-
-/usr/include/boost/fusion/container/vector/vector10.hpp:
-
-/opt/ros/humble/include/tf2/tf2/time.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp:
+/usr/include/boost/iterator/detail/config_undef.hpp:
 
 /usr/include/boost/rational.hpp:
 
@@ -10587,19 +11340,13 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
-/usr/include/c++/11/ios:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h:
 
-/usr/include/CGAL/Intersections_3/internal/Ray_3_Sphere_3_do_intersect.h:
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qtextcursor.h:
 
-/usr/include/c++/11/bits/stringfwd.h:
+/usr/include/CGAL/Plane_3.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/Hyperplane.h:
-
-/usr/include/CGAL/ipower.h:
-
-/usr/include/boost/preprocessor/tuple/elem.hpp:
+/opt/ros/humble/include/rcl/rcl/graph.h:
 
 /usr/include/features.h:
 
@@ -10607,39 +11354,51 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/c++/11/ext/numeric_traits.h:
 
-/usr/include/boost/variant/variant.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h:
-
-/usr/include/boost/date_time/gregorian_calendar.hpp:
-
 /usr/include/c++/11/bits/uses_allocator.h:
+
+/usr/include/c++/11/bits/stl_tempbuf.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h:
+
+/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
 
 /usr/include/CGAL/Cartesian/Ray_2.h:
 
 /usr/include/c++/11/bits/unique_lock.h:
 
+/usr/include/c++/11/memory:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h:
+
+/usr/include/eigen3/Eigen/src/Core/VectorBlock.h:
+
+/usr/include/boost/core/use_default.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
+
+/usr/include/CGAL/Intersections_3/Bbox_3_Line_3.h:
+
+/usr/include/c++/11/cstdint:
+
+/opt/ros/humble/include/rclcpp/rclcpp/generic_publisher.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainertools_impl.h:
+
+/usr/include/boost/type_traits/is_virtual_base_of.hpp:
+
+/usr/include/boost/mpl/vector/aux_/tag.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
 /usr/include/boost/math/tools/real_cast.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Iso_cuboid_3_do_intersect.h:
-
-/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h:
 
 /usr/include/boost/math/tools/toms748_solve.hpp:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Sphere_3_intersection.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h:
 
 /usr/include/boost/fusion/iterator/equal_to.hpp:
 
@@ -10659,17 +11418,45 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h:
 
+/usr/include/boost/type_traits/remove_cv_ref.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
 
 /usr/include/c++/11/debug/debug.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
+/usr/include/boost/smart_ptr/detail/lwm_std_mutex.hpp:
 
-/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
+/usr/include/c++/11/bits/stl_set.h:
+
+/usr/include/eigen3/Eigen/src/Householder/Householder.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h:
+
+/usr/include/c++/11/ext/string_conversions.h:
+
+/usr/include/CGAL/Point_3.h:
+
+/usr/include/boost/preprocessor/list/detail/fold_right.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:
+
+/usr/include/boost/preprocessor/seq/detail/is_empty.hpp:
 
 /usr/include/c++/11/initializer_list:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h:
+
+/usr/include/c++/11/pstl/glue_algorithm_defs.h:
+
+/usr/include/boost/preprocessor/seq/for_each.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Segment_3_do_intersect.h:
 
@@ -10685,39 +11472,73 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/struct_mutex.h:
 
-/usr/include/c++/11/streambuf:
+/usr/include/c++/11/array:
 
-/usr/include/c++/11/bits/stl_bvector.h:
+/usr/include/eigen3/Eigen/src/Geometry/RotationBase.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h:
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
 
-/usr/include/eigen3/Eigen/src/Core/IO.h:
+/usr/include/boost/integer/integer_mask.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList:
+
+/usr/include/boost/range/detail/implementation_help.hpp:
+
+/usr/include/boost/mpl/aux_/lambda_spec.hpp:
+
+/usr/include/boost/fusion/algorithm/iteration/detail/segmented_fold.hpp:
+
+/usr/include/c++/11/bits/stl_stack.h:
+
+/usr/include/c++/11/tr1/beta_function.tcc:
+
+/opt/ros/humble/include/tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface_traits.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qobject_impl.h:
+
+/usr/include/boost/predef/compiler/iar.h:
+
+/usr/include/boost/mpl/greater.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/signum-arch.h:
 
+/usr/include/eigen3/Eigen/src/Core/IO.h:
+
 /opt/ros/humble/include/rcl/rcl/guard_condition.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h:
 
 /usr/include/CGAL/predicates_on_points_2.h:
 
 /usr/include/boost/type_traits/function_traits.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/create_service.hpp:
+/usr/include/boost/fusion/sequence/intrinsic/end.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer_impl.h:
-
-/usr/include/boost/mpl/aux_/config/workaround.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h:
 
 /usr/include/c++/11/bits/unique_ptr.h:
 
+/usr/include/boost/fusion/iterator/mpl.hpp:
+
+/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
+
+/usr/include/c++/11/condition_variable:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__builder.hpp:
-
-/usr/include/c++/11/bits/stl_relops.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h:
 
@@ -10731,15 +11552,31 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/boost/date_time/period.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Ref.h:
+/usr/include/boost/type_traits/has_multiplies_assign.hpp:
 
-/usr/include/CGAL/Modular_traits.h:
+/usr/include/c++/11/tr1/riemann_zeta.tcc:
 
-/usr/include/boost/mpl/tag.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_common.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h:
+/usr/include/c++/11/tuple:
+
+/opt/ros/humble/include/rmw/rmw/visibility_control.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox:
 
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
+
+/opt/ros/humble/include/rcl/rcl/allocator.h:
+
+/usr/include/CGAL/Intersections_3/Bbox_3_Bbox_3.h:
+
+/usr/include/errno.h:
+
+/usr/include/boost/type_traits/has_not_equal_to.hpp:
+
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/metric_details_interface.hpp:
+
+/usr/include/c++/11/bits/alloc_traits.h:
 
 /usr/include/stdc-predef.h:
 
@@ -10753,23 +11590,59 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h:
 
-/usr/include/linux/posix_types.h:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__traits.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
+/opt/ros/humble/include/rcutils/rcutils/allocator.h:
 
-/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
+/opt/ros/humble/include/rcl/rcl/init_options.h:
 
 /usr/include/c++/11/bits/functexcept.h:
+
+/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
 
 /usr/include/c++/11/bits/basic_string.tcc:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
 
-/opt/ros/humble/include/rmw/rmw/event_callback_type.h:
+/usr/include/boost/random/shuffle_order.hpp:
 
-/opt/ros/humble/include/rcl/rcl/context.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QDate:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__struct.hpp:
+
+/usr/include/CGAL/Gmp_coercion_traits.h:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Triangle_3_do_intersect.h:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication:
+
+/usr/include/linux/posix_types.h:
+
+/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QObject:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__traits.hpp:
+
+/usr/include/pcl-1.12/pcl/filters/voxel_grid.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h:
+
+/usr/include/CGAL/Cartesian/Iso_rectangle_2.h:
+
+/usr/include/boost/move/detail/workaround.hpp:
+
+/usr/include/boost/mpl/less_equal.hpp:
+
+/usr/include/boost/predef/compiler/ibm.h:
 
 /usr/include/CGAL/Hilbert_sort_3.h:
 
@@ -10783,11 +11656,9 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /opt/ros/humble/include/tracetools/tracetools/config.h:
 
-/usr/include/eigen3/Eigen/src/Core/CwiseNullaryOp.h:
+/usr/include/boost/mpl/aux_/has_begin.hpp:
 
-/opt/ros/humble/include/rcutils/rcutils/types.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
+/usr/include/c++/11/debug/assertions.h:
 
 /usr/include/c++/11/tr1/legendre_function.tcc:
 
@@ -10801,29 +11672,43 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout:
 
-/usr/include/CGAL/Intersections_3/Bbox_3_Bbox_3.h:
+/usr/include/c++/11/bits/exception_ptr.h:
 
-/usr/include/errno.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
+/usr/include/boost/container_hash/hash.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h:
 
-/usr/include/boost/type_traits/has_not_equal_to.hpp:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__type_support.hpp:
 
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/metric_details_interface.hpp:
+/usr/include/boost/date_time/time_defs.hpp:
 
-/usr/include/c++/11/bits/alloc_traits.h:
+/usr/include/boost/fusion/view/iterator_range/detail/value_at_impl.hpp:
 
-/opt/ros/humble/include/rcl/rcl/allocator.h:
+/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
+
+/opt/ros/humble/include/rcl/rcl/time.h:
+
+/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types.h:
 
 /usr/include/c++/11/bits/move.h:
 
 /usr/include/boost/mpl/aux_/fold_impl.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/list_parameters_result.hpp:
+/usr/include/CGAL/Cartesian/Iso_cuboid_3.h:
 
-/usr/include/boost/predef/library/c/uc.h:
+/usr/include/boost/mpl/aux_/lambda_support.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
+
+/usr/include/boost/multiprecision/debug_adaptor.hpp:
+
+/usr/include/c++/11/bits/exception.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/list_parameters_result.hpp:
 
 /usr/include/CGAL/Hilbert_sort_d.h:
 
@@ -10847,6 +11732,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Triangle_3.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qkeysequence.h:
 
 /usr/include/eigen3/Eigen/src/Geometry/Transform.h:
@@ -10865,6 +11752,16 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qfont.h:
 
+/usr/include/boost/mpl/list/aux_/iterator.hpp:
+
+/usr/include/CGAL/Distance_3/Point_3_Line_3.h:
+
+/usr/include/boost/variant/detail/config.hpp:
+
+/usr/include/c++/11/bit:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
+
 /usr/include/boost/mpl/max.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors/static_executor_entities_collector.hpp:
@@ -10875,43 +11772,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/list/aux_/front.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/environments.h:
-
-/usr/include/c++/11/bits/invoke.h:
-
-/usr/include/boost/predef/architecture/z.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
-
-/usr/include/boost/predef/architecture/x86/64.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
-
-/usr/include/boost/predef/compiler/kai.h:
-
-/usr/include/eigen3/Eigen/src/Core/SolverBase.h:
-
-/usr/include/boost/type_traits/has_minus.hpp:
-
-/usr/include/c++/11/csignal:
-
 /usr/include/c++/11/ext/type_traits.h:
+
+/usr/include/x86_64-linux-gnu/asm/errno.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSpinBox:
 
-/usr/include/eigen3/Eigen/src/Eigenvalues/RealSchur.h:
-
-/usr/include/CGAL/enum.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qinputmethod.h:
 
 /usr/include/c++/11/bits/stl_function.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/event.hpp:
 
-/usr/include/boost/predef/os/bsd/open.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h:
+
+/usr/include/c++/11/bits/memoryfwd.h:
 
 /usr/include/boost/multiprecision/cpp_int/serialize.hpp:
 
@@ -10933,6 +11810,18 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/detail/lcast_precision.hpp:
 
+/usr/include/boost/fusion/container/list/detail/empty_impl.hpp:
+
+/usr/include/boost/type_traits/is_fundamental.hpp:
+
+/usr/include/boost/mpl/distance_fwd.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/subscription_base.hpp:
+
+/usr/include/boost/config/no_tr1/complex.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h:
+
 /usr/include/c++/11/bits/functional_hash.h:
 
 /usr/include/c++/11/bits/string_view.tcc:
@@ -10945,33 +11834,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
 
-/usr/include/eigen3/Eigen/Cholesky:
+/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
 
-/usr/include/boost/preprocessor/control/expr_iif.hpp:
+/usr/include/boost/range/iterator_range_io.hpp:
 
-/opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/parser.h:
+/usr/include/c++/11/bits/invoke.h:
 
-/usr/include/boost/mpl/front.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
+/usr/include/boost/predef/architecture/z.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpalette.h:
-
-/opt/ros/humble/include/rcl/rcl/client.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__struct.hpp:
-
-/usr/include/CGAL/value_type_traits.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:
-
-/usr/include/boost/variant/bad_visit.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__type_support.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
-
-/usr/include/boost/mpl/less.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp:
 
@@ -10993,31 +11864,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__type_support.hpp:
-
-/usr/include/CGAL/Intersections_3/Bbox_3_Iso_cuboid_3.h:
-
-/usr/include/CGAL/Intersections_2/Iso_rectangle_2_Line_2.h:
-
-/usr/include/unistd.h:
-
-/usr/include/CGAL/Segment_3.h:
-
-/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_long_long.hpp:
-
-/usr/include/eigen3/Eigen/src/Cholesky/LLT.h:
-
-/usr/include/boost/predef/compiler/llvm.h:
-
 /usr/include/CGAL/property_map.h:
 
 /usr/include/c++/11/bits/uniform_int_dist.h:
 
 /usr/include/boost/type_traits/is_member_function_pointer.hpp:
-
-/usr/include/c++/11/bits/basic_ios.h:
 
 /usr/include/CGAL/Convex_hull_2/ch_bykat_impl.h:
 
@@ -11035,15 +11886,81 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
 
+/usr/include/CGAL/Modular_traits.h:
+
+/usr/include/boost/mpl/tag.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h:
+
+/usr/include/eigen3/Eigen/src/Core/Ref.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h:
+
+/usr/include/boost/fusion/adapted/mpl/detail/is_sequence_impl.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/sigaction.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h:
+
+/usr/include/boost/multiprecision/traits/is_byte_container.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_result.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Block.h:
+
+/usr/include/boost/type_traits/has_left_shift.hpp:
+
+/usr/include/boost/core/swap.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_clock_interface.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
-/usr/include/CGAL/number_type_config.h:
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_services_interface.hpp:
+
+/usr/include/boost/fusion/view/transform_view/detail/next_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/CwiseUnaryOp.h:
+
+/usr/include/boost/mpl/list/aux_/empty.hpp:
+
+/usr/include/boost/integer/static_min_max.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/ReturnByValue.h:
+
+/usr/include/gdal/cpl_vsi.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
+
+/usr/include/signal.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/guard_condition.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
+
+/opt/ros/humble/include/tf2/tf2/convert.hpp:
+
+/usr/include/boost/config/stdlib/libstdcpp3.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/QFontDatabase:
+
+/usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h:
+
+/usr/include/boost/mpl/comparison.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
 
@@ -11061,31 +11978,27 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
 
-/usr/include/c++/11/bits/node_handle.h:
-
-/usr/include/c++/11/iostream:
-
-/usr/include/x86_64-linux-gnu/bits/fcntl-linux.h:
-
-/usr/include/boost/mpl/aux_/has_tag.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
+
+/usr/include/boost/type_traits/add_cv.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstatusbar.h:
+/usr/include/CGAL/Intersections_3/internal/Ray_3_Sphere_3_do_intersect.h:
 
-/usr/include/c++/11/bits/this_thread_sleep.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h:
+/usr/include/c++/11/bits/stringfwd.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__struct.hpp:
+/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractbutton.h:
-
-/usr/include/CGAL/Homogeneous/Data_accessorH2.h:
-
-/usr/include/boost/range/has_range_iterator.hpp:
 
 /usr/include/stdint.h:
 
@@ -11097,69 +12010,59 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/is_void.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Assign.h:
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
+
+/usr/include/boost/utility/detail/result_of_iterate.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h:
+
+/usr/include/c++/11/bits/specfun.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h:
 
-/usr/include/c++/11/istream:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
+/usr/include/boost/variant/detail/initializer.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
+/usr/include/c++/11/utility:
 
-/opt/ros/humble/include/tf2/tf2/convert.hpp:
+/usr/include/c++/11/bits/refwrap.h:
 
-/usr/include/boost/config/stdlib/libstdcpp3.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qimage.h:
 
-/usr/include/signal.h:
+/usr/include/boost/config/compiler/gcc.hpp:
+
+/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h:
+
+/usr/include/boost/smart_ptr/detail/sp_has_sync_intrinsics.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/set_parameters_result.hpp:
 
-/usr/include/CGAL/predicates/sign_of_determinant.h:
+/usr/include/c++/11/climits:
 
-/usr/include/sched.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
 
-/usr/include/CGAL/license/Convex_hull_2.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
 
-/usr/include/boost/mpl/times.hpp:
-
-/usr/include/CGAL/MP_Float.h:
-
-/usr/include/boost/predef/detail/_cassert.h:
-
-/usr/include/wctype.h:
-
-/usr/include/boost/container/detail/std_fwd.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Ray_3_Segment_3_intersection.h:
-
-/usr/include/boost/variant/detail/has_result_type.hpp:
-
-/usr/include/boost/fusion/container/vector/detail/value_at_impl.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qrgba64.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
-
-/usr/include/boost/numeric/conversion/sign_mixture_enum.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h:
 
 /usr/include/c++/11/bits/unordered_map.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/generic_publisher.hpp:
+/usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_do_intersect.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/message_memory_strategy.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainertools_impl.h:
+/usr/include/CGAL/GMP/Gmpzf_type.h:
 
-/usr/include/boost/type_traits/is_virtual_base_of.hpp:
-
-/usr/include/boost/mpl/vector/aux_/tag.hpp:
-
-/usr/include/c++/11/pstl/glue_numeric_defs.h:
-
-/usr/include/eigen3/Eigen/src/Core/Dot.h:
-
-/usr/include/boost/predef/os/bsd/net.h:
+/usr/include/eigen3/Eigen/src/Core/NoAlias.h:
 
 /usr/include/x86_64-linux-gnu/bits/cpu-set.h:
 
@@ -11169,41 +12072,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/time.h:
 
-/usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
-
-/usr/include/boost/predef/architecture/arm.h:
-
-/usr/include/x86_64-linux-gnu/bits/endian.h:
-
-/usr/include/c++/11/bits/stl_pair.h:
-
 /usr/include/x86_64-linux-gnu/bits/iscanonical.h:
 
 /usr/include/boost/preprocessor/array/elem.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox:
-
-/opt/ros/humble/include/rmw/rmw/visibility_control.h:
-
-/usr/include/eigen3/Eigen/src/SVD/SVDBase.h:
-
 /usr/include/boost/algorithm/string/classification.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/types/uint8_array.h:
-
-/opt/ros/humble/include/rcl/rcl/types.h:
-
-/usr/include/CGAL/Intersections_3/Line_3_Line_3.h:
-
-/opt/ros/humble/include/rmw/rmw/types.h:
-
-/usr/include/boost/range/iterator_range.hpp:
-
-/usr/include/c++/11/pstl/glue_memory_defs.h:
-
-/usr/include/boost/date_time/posix_time/ptime.hpp:
-
-/usr/include/kdl/frames.hpp:
 
 /usr/include/eigen3/Eigen/Jacobi:
 
@@ -11213,27 +12088,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qwindowdefs.h:
 
-/usr/include/boost/mpl/bool.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h:
+
+/usr/include/c++/11/cmath:
 
 /usr/include/boost/random/laplace_distribution.hpp:
 
 /usr/include/c++/11/pstl/pstl_config.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h:
 
 /usr/include/CGAL/Triangle_3.h:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/boost/mpl/list/aux_/item.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__traits.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h:
-
-/usr/include/c++/11/debug/assertions.h:
-
-/usr/include/boost/mpl/aux_/has_begin.hpp:
-
-/usr/include/x86_64-linux-gnu/asm/errno.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayout.h:
 
@@ -11243,15 +12114,33 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/math/tools/convert_from_string.hpp:
 
-/usr/include/boost/predef/language/cuda.h:
+/usr/include/CGAL/Intersections_3/Line_3_Plane_3.h:
+
+/usr/include/boost/random/poisson_distribution.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h:
+
+/usr/include/c++/11/tr1/exp_integral.tcc:
+
+/usr/include/boost/mpl/limits/vector.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox:
 
 /usr/include/CGAL/Intersections_3/Tetrahedron_3_Tetrahedron_3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h:
+
 /usr/include/boost/predef/library/c/gnu.h:
 
-/usr/include/CGAL/IO/io.h:
+/usr/include/CGAL/Intersections_2/Ray_2_Triangle_2.h:
+
+/usr/include/CGAL/type_traits.h:
+
+/usr/include/boost/predef/platform/mingw32.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h:
 
@@ -11269,19 +12158,41 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/compiler/mpw.h:
 
+/usr/include/boost/type_traits/make_signed.hpp:
+
+/usr/include/boost/mpl/advance.hpp:
+
+/usr/include/linux/close_range.h:
+
 /usr/lib/gcc/x86_64-linux-gnu/11/include/mmintrin.h:
 
 /usr/include/c++/11/list:
 
-/opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_common.hpp:
+/usr/include/CGAL/gmpxx_coercion_traits.h:
 
-/usr/include/c++/11/tuple:
+/opt/ros/humble/include/rclcpp/rclcpp/parameter_service.hpp:
 
-/opt/ros/humble/include/rcl/rcl/log_level.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h:
+/usr/include/linux/falloc.h:
 
-/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+
+/usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qicon.h:
+
+/usr/include/boost/mpl/logical.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_graph_interface.hpp:
 
@@ -11291,27 +12202,29 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/list/aux_/include_preprocessed.hpp:
 
-/usr/include/eigen3/Eigen/src/Cholesky/LDLT.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__traits.hpp:
 
-/usr/include/c++/11/new:
-
-/usr/include/eigen3/Eigen/src/misc/Image.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h:
-
-/usr/include/CGAL/aff_transformation_tags.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/service.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h:
+
+/usr/include/CGAL/mpq_class.h:
+
+/usr/include/c++/11/bits/streambuf_iterator.h:
+
+/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
+
+/usr/include/boost/iterator/zip_iterator.hpp:
+
+/usr/include/gdal/cpl_config.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h:
 
 /usr/include/c++/11/bits/stream_iterator.h:
 
@@ -11319,19 +12232,37 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/inserter.hpp:
 
-/usr/include/boost/smart_ptr/detail/sp_has_sync_intrinsics.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/qos.hpp:
 
-/usr/include/CGAL/Spatial_sort_traits_adapter_2.h:
+/usr/include/eigen3/Eigen/src/Core/Array.h:
 
-/usr/include/boost/algorithm/string/constants.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
 
-/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
+/opt/ros/humble/include/rcutils/rcutils/types/hash_map.h:
 
-/usr/include/boost/type_traits/is_signed.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h:
+
+/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher:
+
+/usr/include/c++/11/tr1/poly_laguerre.tcc:
+
+/usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
 
 /usr/include/c++/11/bits/stl_tree.h:
 
 /usr/include/c++/11/bits/stl_map.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/integer_range__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore:
 
 /usr/include/x86_64-linux-gnu/bits/time.h:
 
@@ -11345,27 +12276,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/logging.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qobject_impl.h:
-
-/opt/ros/humble/include/tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface_traits.hpp:
-
-/usr/include/boost/predef/compiler/iar.h:
-
-/usr/include/boost/mpl/greater.hpp:
-
 /usr/include/c++/11/ctime:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qicon.h:
-
-/usr/include/boost/mpl/logical.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h:
-
-/usr/include/CGAL/number_utils.h:
 
 /usr/include/c++/11/bits/parse_numbers.h:
 
@@ -11399,15 +12312,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qbrush.h:
 
-/usr/include/eigen3/Eigen/src/Core/Transpose.h:
-
-/usr/include/boost/date_time/gregorian/greg_ymd.hpp:
-
-/usr/include/CGAL/Quotient.h:
-
 /usr/include/c++/11/cerrno:
 
 /usr/include/boost/random/variate_generator.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h:
 
 /usr/include/boost/smart_ptr/detail/operator_bool.hpp:
 
@@ -11419,23 +12328,25 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpolygon.h:
 
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpen.h:
 
-/usr/include/boost/mpl/vector/aux_/back.hpp:
+/opt/ros/humble/include/rmw/rmw/network_flow_endpoint.h:
 
-/usr/include/c++/11/iosfwd:
+/usr/include/boost/mpl/arg_fwd.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton:
+/usr/include/CGAL/Bbox_3.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h:
 
 /opt/ros/humble/include/rcl/rcl/node.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtransform.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h:
-
-/usr/include/boost/variant/detail/visitation_impl.hpp:
 
 /usr/include/boost/fusion/container/vector/detail/distance_impl.hpp:
 
@@ -11451,10 +12362,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
 
-/usr/include/boost/date_time/time_clock.hpp:
-
-/usr/include/boost/type_traits/has_trivial_move_assign.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpixelformat.h:
 
 /usr/include/boost/predef/hardware/simd/arm.h:
@@ -11462,8 +12369,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcheckbox.h:
-
-/usr/include/boost/variant/recursive_wrapper_fwd.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp:
 
@@ -11477,35 +12382,37 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
 
+/usr/include/boost/mpl/plus.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h:
+
+/usr/include/boost/predef/library/std.h:
+
 /usr/include/CGAL/Intersections_2/internal/Triangle_2_Triangle_2_do_intersect_impl.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h:
 
-/opt/ros/humble/include/rmw/rmw/localhost.h:
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Coplanar_3.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h:
 
 /usr/include/boost/mpl/aux_/config/nttp.hpp:
 
 /usr/include/c++/11/exception:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qfontmetrics.h:
 
-/usr/include/eigen3/Eigen/src/Core/Visitor.h:
+/usr/include/c++/11/iostream:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
+/usr/include/x86_64-linux-gnu/bits/fcntl-linux.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__type_support.hpp:
+/usr/include/boost/mpl/aux_/has_tag.hpp:
 
-/usr/include/boost/date_time/time_defs.hpp:
+/usr/include/CGAL/Intersections_3/internal/Tetrahedron_3_Tetrahedron_3_do_intersect.h:
 
-/usr/include/x86_64-linux-gnu/bits/types.h:
-
-/usr/include/boost/fusion/view/iterator_range/detail/value_at_impl.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
-
-/opt/ros/humble/include/rcl/rcl/time.h:
-
-/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/XprHelper.h:
 
@@ -11515,7 +12422,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/ProductEvaluators.h:
+/opt/ros/humble/include/rmw/rmw/event_callback_type.h:
+
+/opt/ros/humble/include/rcl/rcl/context.h:
+
+/usr/include/CGAL/Spatial_sort_traits_adapter_2.h:
+
+/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
+
+/usr/include/boost/algorithm/string/constants.hpp:
 
 /usr/include/c++/11/unordered_set:
 
@@ -11525,37 +12440,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker:
 
-/usr/include/boost/fusion/iterator/next.hpp:
-
-/opt/ros/humble/include/rmw/rmw/events_statuses/incompatible_qos.h:
-
-/usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
-
-/usr/include/CGAL/kernel_basic.h:
-
 /opt/ros/humble/include/rcutils/rcutils/time.h:
-
-/usr/include/x86_64-linux-gnu/bits/fenv.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h:
 
-/usr/include/CGAL/Distance_3/Point_3_Segment_3.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h:
 
-/usr/include/boost/mpl/aux_/insert_impl.hpp:
+/usr/include/boost/multiprecision/detail/number_base.hpp:
+
+/usr/include/boost/operators.hpp:
+
+/usr/include/boost/predef/language.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h:
-
-/usr/include/boost/random/triangle_distribution.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/any_subscription_callback.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
-
-/usr/include/gdal/cpl_error.h:
-
-/usr/include/eigen3/Eigen/src/Core/Reshaped.h:
 
 /usr/include/CGAL/long_double.h:
 
@@ -11575,17 +12476,21 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/platform/windows_phone.h:
 
-/usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
+/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
 
-/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h:
+/usr/include/CGAL/Intersections_2/Segment_2_Segment_2.h:
 
-/usr/include/boost/date_time/locale_config.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h:
+
+/usr/include/boost/mpl/assert.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h:
 
 /usr/include/boost/mpl/back.hpp:
 
@@ -11593,13 +12498,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/concept_check.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_enable_topic_statistics.hpp:
+/usr/include/boost/fusion/iterator/advance.hpp:
 
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h:
+/usr/include/x86_64-linux-gnu/bits/confname.h:
 
-/usr/include/boost/mpl/begin_end.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h:
+
+/usr/include/boost/mpl/aux_/na_spec.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h:
+
+/usr/include/boost/mpl/aux_/template_arity.hpp:
+
+/usr/include/boost/date_time/date_iterator.hpp:
+
+/usr/include/pcl-1.12/pcl/filters/filter.h:
 
 /usr/include/CGAL/ch_bykat.h:
 
@@ -11621,20 +12536,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/punctuation/comma.hpp:
 
-/opt/ros/humble/include/rmw/rmw/network_flow_endpoint.h:
-
-/usr/include/boost/mpl/arg_fwd.hpp:
-
-/usr/include/boost/smart_ptr/detail/lwm_std_mutex.hpp:
-
-/usr/include/c++/11/bits/stl_set.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
-
-/usr/include/eigen3/Eigen/src/Householder/Householder.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
-
 /usr/include/boost/math/special_functions/atanh.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyleoption.h:
@@ -11645,25 +12546,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyle.h:
 
+/usr/include/CGAL/Kernel/Return_base_tag.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h:
+
+/usr/include/boost/mpl/integral_c_fwd.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h:
 
 /usr/include/pcl-1.12/pcl/common/copy_point.h:
 
-/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
-
-/usr/include/boost/range/size.hpp:
-
-/usr/include/c++/11/tr1/modified_bessel_func.tcc:
-
-/usr/include/boost/type_traits/add_lvalue_reference.hpp:
-
-/usr/include/c++/11/bits/ostream.tcc:
-
-/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
-
-/usr/include/boost/mpl/size_fwd.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_copy.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h:
 
 /usr/include/boost/variant/detail/forced_return.hpp:
 
@@ -11679,15 +12572,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/mutable_iterator.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/parameter_service.hpp:
-
-/usr/include/CGAL/gmpxx_coercion_traits.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea:
 
 /usr/include/boost/preprocessor/repetition/repeat_from_to.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__struct.hpp:
 
@@ -11707,13 +12598,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/logical/bitand.hpp:
 
-/usr/include/c++/11/bits/erase_if.h:
+/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
 
-/usr/include/boost/container_hash/hash.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h:
+/usr/include/CGAL/Intersections_3/internal/Bbox_3_Segment_3_intersection.h:
 
-/usr/include/eigen3/Eigen/Geometry:
+/usr/include/c++/11/set:
+
+/usr/include/eigen3/Eigen/StdVector:
+
+/usr/include/boost/preprocessor/identity.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter:
 
@@ -11731,25 +12626,43 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/os/solaris.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/QDir:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__builder.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_type.hpp:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__traits.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h:
+
+/opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
+
+/usr/include/CGAL/functional.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h:
+
+/usr/include/boost/mpl/aux_/config/has_xxx.hpp:
 
 /usr/include/boost/static_assert.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent:
 
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h:
+
+/usr/include/eigen3/Eigen/src/plugins/ReshapedMethods.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/loaned_message.hpp:
 
-/usr/include/CGAL/Intersections_2/Ray_2_Triangle_2.h:
-
-/usr/include/boost/predef/platform/mingw32.h:
-
-/usr/include/CGAL/type_traits.h:
-
-/usr/include/CGAL/Arithmetic_kernel/Arithmetic_kernel_base.h:
-
 /usr/include/boost/mpl/aux_/config/intel.hpp:
+
+/usr/include/boost/math/special_functions/log1p.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/arg.hpp:
+
+/usr/include/boost/mpl/and.hpp:
+
+/usr/include/boost/mpl/vector/aux_/pop_back.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h:
 
@@ -11769,53 +12682,163 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer:
 
-/usr/include/c++/11/optional:
+/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/sequence_bound.h:
 
-/usr/include/eigen3/Eigen/src/QR/ColPivHouseholderQR.h:
+/usr/include/c++/11/bits/node_handle.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox:
+/usr/include/boost/multiprecision/cpp_int/limits.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h:
 
-/usr/include/boost/variant/detail/std_hash.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h:
 
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
+/usr/include/boost/fusion/container/list/cons_fwd.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
+/usr/include/x86_64-linux-gnu/bits/fcntl2.h:
 
-/usr/include/boost/math/tools/promotion.hpp:
+/usr/include/x86_64-linux-gnu/bits/getopt_core.h:
 
-/usr/include/boost/predef/architecture/pyramid.h:
+/usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
 
-/usr/include/eigen3/Eigen/src/Core/IndexedView.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/logger.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut:
 
-/usr/include/boost/fusion/adapted/mpl/detail/is_sequence_impl.hpp:
+/usr/include/CGAL/Intersections_3/Iso_cuboid_3_Iso_cuboid_3.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h:
 
-/usr/include/x86_64-linux-gnu/bits/sigaction.h:
+/usr/include/CGAL/Triangulation_data_structure_2.h:
 
-/usr/include/x86_64-linux-gnu/sys/ucontext.h:
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__traits.hpp:
+/usr/include/c++/11/tr1/hypergeometric.tcc:
 
-/opt/ros/humble/include/rcutils/rcutils/allocator.h:
+/usr/include/c++/11/bits/stl_pair.h:
 
-/opt/ros/humble/include/rcl/rcl/init_options.h:
+/usr/include/x86_64-linux-gnu/bits/endian.h:
 
-/usr/include/boost/random/shuffle_order.hpp:
+/usr/include/boost/numeric/conversion/sign_mixture_enum.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/QDate:
+/usr/include/boost/fusion/container/vector/detail/value_at_impl.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/unistd.h:
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qrgba64.h:
 
-/usr/include/boost/type_traits/make_signed.hpp:
+/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
 
-/usr/include/boost/mpl/advance.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer_impl.h:
 
-/usr/include/linux/close_range.h:
+/usr/include/boost/mpl/aux_/config/workaround.hpp:
+
+/usr/include/boost/math/tools/rational.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h:
+
+/opt/ros/humble/include/rcl/rcl/log_level.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h:
+
+/usr/include/boost/predef/library/c/uc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h:
+
+/usr/include/boost/range/const_iterator.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h:
+
+/usr/include/boost/mpl/void_fwd.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
+
+/usr/include/c++/11/bits/locale_conv.h:
+
+/usr/include/boost/variant/detail/make_variant_list.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h:
+
+/usr/include/boost/core/noncopyable.hpp:
+
+/usr/include/boost/mpl/aux_/at_impl.hpp:
+
+/opt/ros/humble/include/rcpputils/rcpputils/time.hpp:
+
+/usr/include/boost/range/detail/str_types.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/floatn.h:
+
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_begin_impl.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/apply_fwd.hpp:
+
+/usr/include/boost/lexical_cast/detail/inf_nan.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h:
+
+/usr/include/c++/11/locale:
+
+/usr/include/endian.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process.hpp:
+
+/usr/include/boost/mpl/aux_/has_apply.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h:
+
+/usr/include/boost/predef/compiler.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__type_support.hpp:
+
+/usr/include/CGAL/Intersections_3/Bbox_3_Iso_cuboid_3.h:
+
+/usr/include/CGAL/Intersections_2/Iso_rectangle_2_Line_2.h:
+
+/usr/include/unistd.h:
+
+/usr/include/CGAL/Segment_3.h:
+
+/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_long_long.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstatusbar.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
+
+/usr/include/boost/predef/architecture/x86/64.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp:
+
+/usr/include/boost/math/special_functions/sqrt1pm1.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
+
+/usr/include/boost/fusion/algorithm/transformation/erase_key.hpp:
+
+/usr/include/asm-generic/errno-base.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h:
+
+/usr/include/boost/predef/compiler/visualc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h:
 
 /usr/include/c++/11/mutex:
 
@@ -11825,65 +12848,291 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/std_mutex.h:
 
-/usr/include/c++/11/ostream:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h:
 
-/usr/include/CGAL/Fraction_traits.h:
+/usr/include/boost/type_traits/detail/has_binary_operator.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/QPen:
+/usr/include/CGAL/Homogeneous/Aff_transformationH3.h:
 
-/usr/include/CGAL/Intersections_2/Circle_2_Circle_2.h:
+/usr/include/CGAL/Simple_homogeneous.h:
 
-/usr/include/boost/mpl/clear.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h:
 
-/usr/include/c++/11/cwctype:
+/usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
+/usr/include/strings.h:
 
-/usr/include/eigen3/Eigen/src/Core/ArrayWrapper.h:
+/usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h:
 
-/usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp:
+/usr/include/boost/date_time/date_clock_device.hpp:
 
-/opt/ros/humble/include/rmw/rmw/rmw.h:
+/usr/include/c++/11/bits/stl_deque.h:
 
-/usr/include/boost/fusion/algorithm/query/detail/find_if.hpp:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__type_support.hpp:
 
-/usr/include/CGAL/IO/Color.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h:
 
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Tetrahedron_3_do_intersect.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h:
 
-/usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
+/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
 
-/usr/include/boost/fusion/iterator/mpl.hpp:
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Is_degenerate_3.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h:
+/usr/include/CGAL/Cartesian/ft_constructions_2.h:
 
-/usr/include/c++/11/condition_variable:
+/usr/include/boost/range/concepts.hpp:
 
-/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
+/usr/include/c++/11/tr1/special_function_util.h:
 
-/usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp:
+/usr/include/boost/type_traits/extent.hpp:
 
-/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h:
 
-/usr/include/boost/fusion/adapted/mpl/detail/has_key_impl.hpp:
+/usr/include/c++/11/tr1/ell_integral.tcc:
 
-/usr/include/c++/11/math.h:
+/usr/include/eigen3/Eigen/src/Core/util/BlasUtil.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.hpp:
 
-/usr/include/boost/type_traits/type_with_alignment.hpp:
+/usr/include/c++/11/iosfwd:
 
-/opt/ros/humble/include/rcutils/rcutils/macros.h:
+/usr/include/boost/mpl/vector/aux_/back.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/QBrush:
+/usr/include/boost/date_time/posix_time/ptime.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/velocity_stamped.hpp:
+/usr/include/c++/11/pstl/glue_memory_defs.h:
 
-/opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
 
-/usr/include/boost/preprocessor/logical/bool.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h:
 
-/usr/include/CGAL/kernel_config.h:
+/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h:
+
+/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h:
+
+/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h:
+
+/usr/include/boost/date_time/locale_config.hpp:
+
+/usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp:
+
+/usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
+
+/usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h:
+
+/usr/include/boost/optional/detail/optional_trivially_copyable_base.hpp:
+
+/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
+
+/usr/include/boost/lexical_cast/bad_lexical_cast.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/EigenBase.h:
+
+/usr/include/boost/fusion/algorithm/iteration/detail/segmented_for_each.hpp:
+
+/usr/include/boost/fusion/adapted/boost_tuple/detail/size_impl.hpp:
+
+/usr/include/CGAL/wmult.h:
+
+/usr/include/boost/date_time/time_duration.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Diagonal.h:
+
+/usr/include/boost/concept/detail/general.hpp:
+
+/usr/include/CGAL/Simple_cartesian.h:
+
+/usr/include/CGAL/Cartesian/predicates_on_directions_2.h:
+
+/usr/include/eigen3/Eigen/src/Core/Product.h:
+
+/usr/include/boost/mpl/find_if.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/AssignEvaluator.h:
+
+/usr/include/boost/mpl/aux_/push_front_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Assign.h:
+
+/usr/include/eigen3/Eigen/src/Core/ArrayBase.h:
+
+/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h:
+
+/usr/include/boost/type_traits/is_array.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
+
+/usr/include/boost/range/size.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
+
+/usr/include/eigen3/Eigen/src/Core/PlainObjectBase.h:
+
+/usr/include/boost/fusion/algorithm/transformation/erase.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/DiagonalProduct.h:
+
+/usr/include/eigen3/Eigen/src/Core/Matrix.h:
+
+/usr/include/CGAL/Homogeneous/Iso_cuboidH3.h:
+
+/usr/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h:
+
+/usr/include/eigen3/Eigen/src/Core/CwiseUnaryView.h:
+
+/usr/include/c++/11/pstl/glue_numeric_defs.h:
+
+/usr/include/eigen3/Eigen/src/Core/Dot.h:
+
+/usr/include/boost/predef/os/bsd/net.h:
+
+/usr/include/eigen3/Eigen/src/Core/StableNorm.h:
+
+/usr/include/eigen3/Eigen/src/Core/Map.h:
+
+/usr/include/boost/utility.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/logger.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/IndexedView.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h:
+
+/usr/include/boost/mpl/iterator_tags.hpp:
+
+/usr/include/gdal/cpl_error.h:
+
+/usr/include/eigen3/Eigen/src/Core/Reshaped.h:
+
+/usr/include/boost/date_time/gregorian/greg_ymd.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Transpose.h:
+
+/usr/include/boost/next_prior.hpp:
+
+/usr/include/boost/predef/library/std/stlport.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h:
+
+/usr/include/eigen3/Eigen/src/Core/DiagonalMatrix.h:
+
+/usr/include/eigen3/Eigen/src/Core/Redux.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Visitor.h:
+
+/usr/include/CGAL/Homogeneous/Data_accessorH2.h:
+
+/usr/include/boost/range/has_range_iterator.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/CommaInitializer.h:
+
+/usr/include/eigen3/Eigen/src/Core/GeneralProduct.h:
+
+/usr/include/eigen3/Eigen/src/Core/Solve.h:
+
+/usr/include/boost/fusion/view/single_view/single_view_iterator.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Inverse.h:
+
+/usr/include/boost/predef/compiler/kai.h:
+
+/usr/include/eigen3/Eigen/src/Core/SolverBase.h:
+
+/usr/include/boost/type_traits/has_minus.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/PermutationMatrix.h:
+
+/usr/include/boost/fusion/container/list/detail/at_impl.hpp:
+
+/usr/include/CGAL/Homogeneous/predicates_on_directionsH2.h:
+
+/usr/include/eigen3/Eigen/src/Core/Transpositions.h:
+
+/usr/include/boost/variant/recursive_wrapper.hpp:
+
+/usr/include/boost/predef/os.h:
+
+/usr/include/eigen3/Eigen/src/Core/SelfAdjointView.h:
+
+/usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
+
+/usr/include/geos_c.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h:
+
+/usr/include/boost/predef/compiler/clang.h:
+
+/usr/include/boost/type_traits/has_multiplies.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_intersection.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/Parallelizer.h:
+
+/usr/include/boost/mpl/long_fwd.hpp:
+
+/usr/include/boost/preprocessor/logical/and.hpp:
+
+/usr/include/CGAL/representation_tags.h:
+
+/usr/include/boost/predef/library/std/cxx.h:
+
+/usr/include/eigen3/Eigen/src/Core/ProductEvaluators.h:
+
+/usr/include/x86_64-linux-gnu/bits/errno.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h:
+
+/usr/include/boost/date_time/gregorian_calendar.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h:
+
+/usr/include/boost/type_traits/is_copy_constructible.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointProduct.h:
+
+/usr/include/CGAL/Filtered_kernel_fwd.h:
+
+/usr/include/boost/optional/detail/optional_swap.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h:
+
+/usr/include/c++/11/bits/cxxabi_init_exception.h:
+
+/usr/include/boost/mpl/aux_/config/msvc.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/CoreIterators.h:
+
+/usr/include/eigen3/Eigen/src/Core/DenseStorage.h:
+
+/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
+
+/usr/include/eigen3/Eigen/src/Core/VectorwiseOp.h:
+
+/usr/include/CGAL/Intersections_2/Ray_2_Ray_2.h:
+
+/usr/include/CGAL/FPU.h:
+
+/usr/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Random.h:
 
 /usr/include/eigen3/Eigen/src/Core/Replicate.h:
 
@@ -11891,67 +13140,249 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/detail/auto_rec.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
+/usr/include/CGAL/Intersections_3/Plane_3_Point_3.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h:
+/usr/include/kdl/utilities/utility.h:
 
-/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
+/usr/include/eigen3/Eigen/src/Core/Reverse.h:
 
-/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.h:
+/usr/include/eigen3/Eigen/src/Core/ArrayWrapper.h:
 
-/opt/ros/humble/include/rcutils/rcutils/error_handling.h:
+/usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp:
 
-/opt/ros/humble/include/rcutils/rcutils/snprintf.h:
+/usr/include/eigen3/Eigen/src/Core/StlIterators.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h:
+/usr/include/eigen3/Eigen/src/Core/Swap.h:
 
-/opt/ros/humble/include/rcutils/rcutils/types/hash_map.h:
+/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
+/usr/include/boost/predef/library/c/zos.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3.hpp:
+/usr/include/CGAL/license/Alpha_shapes_2.h:
 
-/usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+/usr/include/eigen3/Eigen/src/Core/GlobalFunctions.h:
 
-/opt/ros/humble/include/rmw/rmw/qos_policy_kind.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QFile:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
+/usr/include/boost/move/detail/std_ns_begin.hpp:
 
-/usr/include/boost/mpl/next_prior.hpp:
+/usr/include/eigen3/Eigen/src/misc/Kernel.h:
+
+/usr/include/c++/11/new:
+
+/usr/include/eigen3/Eigen/src/misc/Image.h:
+
+/usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp:
+
+/usr/include/c++/11/bits/charconv.h:
+
+/usr/include/boost/interprocess/detail/std_fwd.hpp:
+
+/usr/include/eigen3/Eigen/src/LU/FullPivLU.h:
+
+/usr/include/eigen3/Eigen/src/LU/PartialPivLU.h:
+
+/usr/include/eigen3/Eigen/src/LU/arch/InverseSize4.h:
+
+/usr/include/CGAL/Intersections_2/Circle_2_Iso_rectangle_2.h:
+
+/usr/include/boost/predef/compiler/pgi.h:
+
+/usr/include/eigen3/Eigen/Cholesky:
+
+/usr/include/boost/preprocessor/control/expr_iif.hpp:
+
+/usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
+
+/usr/include/eigen3/Eigen/src/Cholesky/LLT.h:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_changed.h:
 
-/usr/include/boost/mpl/list/aux_/iterator.hpp:
+/usr/include/boost/mpl/next_prior.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h:
+/usr/include/boost/predef/compiler/llvm.h:
 
-/opt/ros/humble/include/rmw/rmw/events_statuses/message_lost.h:
+/usr/include/eigen3/Eigen/src/Cholesky/LDLT.h:
 
-/usr/include/c++/11/ext/alloc_traits.h:
+/usr/include/eigen3/Eigen/QR:
 
-/opt/ros/humble/include/rmw/rmw/events_statuses/offered_deadline_missed.h:
+/usr/include/eigen3/Eigen/Householder:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__struct.hpp:
+/usr/include/CGAL/boost/iterator/counting_iterator.hpp:
 
-/usr/include/boost/predef/hardware/simd/x86_amd/versions.h:
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Segment_3_do_intersect.h:
 
-/usr/include/eigen3/Eigen/src/Core/PermutationMatrix.h:
+/usr/include/CGAL/Cartesian/Aff_transformation_rep_2.h:
 
-/usr/include/CGAL/transforming_iterator.h:
+/usr/include/eigen3/Eigen/src/LU/Determinant.h:
 
-/opt/ros/humble/include/rmw/rmw/events_statuses/requested_deadline_missed.h:
+/usr/include/boost/concept/detail/has_constraints.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h:
+/usr/include/eigen3/Eigen/src/QR/HouseholderQR.h:
 
-/usr/include/boost/mpl/aux_/config/has_xxx.hpp:
+/usr/include/boost/mpl/distance.hpp:
 
-/opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
+/usr/include/CGAL/assertions_behaviour.h:
 
-/usr/include/CGAL/functional.h:
+/usr/include/eigen3/Eigen/src/QR/FullPivHouseholderQR.h:
 
-/usr/include/boost/type_traits/has_pre_increment.hpp:
+/usr/include/boost/mpl/aux_/integral_wrapper.hpp:
 
-/usr/include/c++/11/bits/locale_facets.tcc:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox:
+
+/usr/include/eigen3/Eigen/src/QR/ColPivHouseholderQR.h:
+
+/usr/include/eigen3/Eigen/SVD:
+
+/usr/include/eigen3/Eigen/src/misc/RealSvd2x2.h:
+
+/usr/include/eigen3/Eigen/src/SVD/SVDBase.h:
+
+/usr/include/CGAL/tags.h:
+
+/usr/include/boost/mpl/list/aux_/pop_front.hpp:
+
+/usr/include/eigen3/Eigen/src/SVD/BDCSVD.h:
+
+/usr/include/eigen3/Eigen/Geometry:
+
+/usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
+
+/usr/include/boost/interprocess/permissions.hpp:
+
+/usr/include/CGAL/Aff_transformation_2.h:
+
+/usr/include/boost/date_time/gregorian/greg_duration.hpp:
+
+/usr/include/boost/fusion/mpl/push_back.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/EulerAngles.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Homogeneous.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
+
+/usr/include/boost/move/detail/type_traits.hpp:
+
+/usr/include/pcl-1.12/pcl/io/low_level_io.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Rotation2D.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame:
+
+/usr/include/boost/foreach_fwd.hpp:
+
+/usr/include/c++/11/bits/deque.tcc:
+
+/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
+
+/usr/include/boost/mpl/aux_/config/gcc.hpp:
+
+/usr/include/boost/mpl/erase.hpp:
+
+/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
+
+/usr/include/boost/numeric/conversion/bounds.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Scaling.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Hyperplane.h:
+
+/usr/include/CGAL/ipower.h:
+
+/usr/include/boost/preprocessor/tuple/elem.hpp:
+
+/usr/include/boost/random/detail/uniform_int_float.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
+
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/AlignedBox.h:
+
+/usr/include/boost/mpl/arg.hpp:
+
+/usr/include/boost/mpl/aux_/clear_impl.hpp:
+
+/usr/include/boost/range/rend.hpp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/Tridiagonalization.h:
+
+/usr/include/CGAL/enum.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/RealSchur.h:
+
+/usr/include/boost/date_time/time_system_split.hpp:
+
+/usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Iso_cuboid_3_do_intersect.h:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h:
+
+/usr/include/boost/variant/apply_visitor.hpp:
+
+/usr/include/boost/mpl/vector/vector0.hpp:
+
+/usr/include/CGAL/Triangulation_2.h:
+
+/usr/include/boost/date_time/gregorian_calendar.ipp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h:
+
+/usr/include/boost/mpl/sequence_tag.hpp:
+
+/usr/include/boost/date_time/time_resolution_traits.hpp:
+
+/usr/include/boost/fusion/support/sequence_base.hpp:
+
+/usr/include/CGAL/aff_transformation_tags_impl.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h:
+
+/usr/include/boost/version.hpp:
+
+/usr/include/pcl-1.12/pcl/point_cloud.h:
+
+/opt/ros/humble/include/tracetools/tracetools/visibility_control.hpp:
+
+/usr/include/boost/range/iterator.hpp:
+
+/usr/include/pcl-1.12/pcl/PCLHeader.h:
+
+/usr/include/pcl-1.12/pcl/memory.h:
+
+/usr/include/CGAL/Homogeneous/PlaneH3.h:
+
+/usr/include/boost/move/detail/std_ns_end.hpp:
+
+/usr/include/c++/11/tr1/poly_hermite.tcc:
+
+/usr/include/pcl-1.12/pcl/type_traits.h:
+
+/usr/include/boost/math/special_functions/erf.hpp:
+
+/usr/include/boost/range/value_type.hpp:
+
+/usr/include/boost/iterator/minimum_category.hpp:
+
+/usr/include/boost/type_traits/is_scoped_enum.hpp:
+
+/usr/include/pcl-1.12/pcl/point_struct_traits.h:
+
+/usr/include/boost/mpl/not.hpp:
+
+/usr/include/boost/mpl/bool.hpp:
+
+/usr/include/boost/mpl/bool_fwd.hpp:
 
 /usr/include/boost/preprocessor/arithmetic/detail/div_base.hpp:
 
@@ -11965,17 +13396,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/math/special_functions/detail/bernoulli_details.hpp:
 
-/usr/include/c++/11/bits/stl_raw_storage_iter.h:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp:
+
+/usr/include/c++/11/bits/stl_raw_storage_iter.h:
 
 /usr/include/boost/config/detail/select_compiler_config.hpp:
 
 /usr/include/boost/detail/select_type.hpp:
-
-/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
-
-/usr/include/boost/config/compiler/gcc.hpp:
 
 /usr/include/boost/config/detail/select_stdlib_config.hpp:
 
@@ -12011,12 +13438,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/confname.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h:
-
-/usr/include/boost/mpl/aux_/na_spec.hpp:
-
 /usr/include/boost/mpl/lambda_fwd.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp:
@@ -12024,8 +13445,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/aux_/na.hpp:
 
 /usr/include/boost/mpl/aux_/na_fwd.hpp:
-
-/usr/include/mpfr.h:
 
 /usr/include/boost/math/special_functions/detail/lgamma_small.hpp:
 
@@ -12061,10 +13480,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/config/config.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/ring_buffer_implementation.hpp:
-
-/usr/include/boost/detail/templated_streams.hpp:
-
 /usr/include/boost/mpl/aux_/lambda_arity_param.hpp:
 
 /usr/include/boost/mpl/aux_/arity.hpp:
@@ -12080,10 +13495,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/comma_if.hpp:
 
 /usr/include/boost/preprocessor/punctuation/comma_if.hpp:
-
-/usr/include/CGAL/license/Triangulation_2.h:
-
-/usr/include/boost/variant/detail/enable_recursive_fwd.hpp:
 
 /usr/include/boost/math/special_functions/asinh.hpp:
 
@@ -12149,13 +13560,33 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/logical/compl.hpp:
 
+/usr/include/CGAL/Distance_3/Point_3_Weighted_point_3.h:
+
+/usr/include/c++/11/sstream:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h:
+
+/usr/include/boost/preprocessor/repetition/enum_trailing_params.hpp:
+
+/usr/include/boost/preprocessor/list/fold_right.hpp:
+
 /usr/include/pcl-1.12/pcl/filters/filter_indices.h:
+
+/usr/include/CGAL/Hilbert_sort_middle_d.h:
+
+/usr/include/geos/export.h:
+
+/usr/include/CGAL/Cartesian/Cartesian_base.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
 
 /usr/include/boost/preprocessor/list/reverse.hpp:
 
 /usr/include/CGAL/config.h:
+
+/usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp:
+
+/usr/include/boost/preprocessor/facilities/expand.hpp:
 
 /usr/include/boost/preprocessor/facilities/overload.hpp:
 
@@ -12164,8 +13595,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/tuple/detail/is_single_return.hpp:
 
 /usr/include/boost/preprocessor/variadic/elem.hpp:
-
-/usr/include/boost/type_traits/has_trivial_copy.hpp:
 
 /usr/include/boost/random/detail/generator_seed_seq.hpp:
 
@@ -12215,6 +13644,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h:
+
 /usr/include/boost/mpl/list/list0.hpp:
 
 /usr/include/boost/mpl/vector/vector20.hpp:
@@ -12228,6 +13659,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcutils/rcutils/testing/fault_injection.h:
 
 /usr/include/boost/mpl/aux_/config/typeof.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h:
 
 /usr/include/boost/mpl/void.hpp:
 
@@ -12262,10 +13695,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/range/rbegin.hpp:
 
 /usr/include/boost/mpl/joint_view.hpp:
-
-/usr/include/boost/mpl/plus.hpp:
-
-/usr/include/boost/mpl/integral_c_fwd.hpp:
 
 /usr/include/boost/mpl/aux_/largest_int.hpp:
 
@@ -12309,21 +13738,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/mman-linux.h:
 
-/usr/include/CGAL/Distance_3/Point_3_Weighted_point_3.h:
-
-/usr/include/c++/11/sstream:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h:
-
-/usr/include/boost/preprocessor/list/fold_right.hpp:
-
-/usr/include/boost/preprocessor/repetition/enum_trailing_params.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h:
-
-/usr/include/boost/mpl/has_key_fwd.hpp:
-
-/usr/include/boost/integer/common_factor_ct.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h:
 
 /usr/include/boost/mpl/aux_/config/has_apply.hpp:
 
@@ -12352,8 +13767,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/advance_fwd.hpp:
 
 /usr/include/boost/mpl/prior.hpp:
-
-/usr/include/boost/mpl/aux_/front_impl.hpp:
 
 /usr/include/boost/mpl/O1_size_fwd.hpp:
 
@@ -12423,6 +13836,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/pcl-1.12/pcl/point_types.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h:
+
 /usr/include/boost/predef/compiler/edg.h:
 
 /usr/include/boost/preprocessor/debug/error.hpp:
@@ -12443,6 +13858,14 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/seq/seq.hpp:
 
+/usr/include/boost/variant/detail/hash_variant.hpp:
+
+/usr/include/boost/preprocessor/seq/elem.hpp:
+
+/usr/include/CGAL/Needs_parens_as_product.h:
+
+/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
+
 /usr/include/boost/fusion/sequence/convert.hpp:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Sphere_3.h:
@@ -12453,21 +13876,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/os/ios.h:
 
-/usr/include/boost/math/special_functions/log1p.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/arg.hpp:
-
-/usr/include/boost/mpl/vector/aux_/pop_back.hpp:
-
-/usr/include/boost/mpl/and.hpp:
-
 /usr/include/boost/mpl/aux_/preprocessed/gcc/and.hpp:
 
 /usr/include/boost/mpl/contains.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Plane_3_intersection.h:
-
-/usr/include/CGAL/Scalar_factor_traits.h:
 
 /usr/include/boost/mpl/aux_/contains_impl.hpp:
 
@@ -12478,8 +13889,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/byteswap.h:
 
 /usr/include/boost/mpl/placeholders.hpp:
-
-/usr/include/CGAL/Real_embeddable_traits.h:
 
 /usr/include/boost/mpl/aux_/na_assert.hpp:
 
@@ -12517,15 +13926,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/has_type.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h:
+
 /usr/include/boost/mpl/aux_/config/bcc.hpp:
 
 /usr/include/boost/interprocess/errors.hpp:
-
-/usr/include/boost/mpl/aux_/template_arity.hpp:
-
-/usr/include/boost/date_time/date_iterator.hpp:
-
-/usr/include/pcl-1.12/pcl/filters/filter.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/template_arity.hpp:
 
@@ -12533,19 +13938,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/deref.hpp:
 
-/usr/include/boost/variant.hpp:
-
 /usr/include/boost/mpl/aux_/msvc_type.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/CoreEvaluators.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h:
+
+/usr/include/boost/mpl/iter_fold_if.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/or.hpp:
 
 /usr/include/asm-generic/bitsperlong.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h:
+
 /usr/include/boost/mpl/always.hpp:
 
 /usr/include/boost/predef/platform.h:
-
-/usr/include/CGAL/Object.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h:
 
@@ -12567,27 +13976,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/fusion/adapted/boost_tuple/tag_of.hpp:
 
-/usr/include/c++/11/iterator:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__builder.hpp:
+
+/usr/include/c++/11/iterator:
 
 /usr/include/boost/mpl/aux_/O1_size_impl.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qapplication.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h:
+/usr/include/CGAL/test_FPU_rounding_mode_impl.h:
 
-/usr/include/eigen3/Eigen/src/Core/CoreEvaluators.h:
+/usr/include/eigen3/Eigen/src/Core/util/ReshapedHelper.h:
 
-/usr/include/boost/mpl/iter_fold_if.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_begin_impl.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/apply_fwd.hpp:
-
-/usr/include/boost/lexical_cast/detail/inf_nan.hpp:
+/usr/include/boost/algorithm/string/predicate.hpp:
 
 /usr/include/CGAL/Has_timestamp.h:
 
@@ -12603,6 +14004,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/intrinsics.hpp:
 
+/opt/ros/humble/include/rclcpp/rclcpp/intra_process_setting.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h:
+
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h:
 
 /usr/include/boost/math/tools/complex.hpp:
@@ -12615,27 +14022,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/pcl-1.12/pcl/io/file_io.h:
 
-/usr/include/pcl-1.12/pcl/conversions.h:
-
-/usr/include/boost/mpl/aux_/lambda_spec.hpp:
-
-/usr/include/boost/range/detail/implementation_help.hpp:
-
-/usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h:
-
-/usr/include/CGAL/auto_link/auto_link.h:
-
 /usr/include/boost/predef/other/endian.h:
-
-/usr/include/eigen3/Eigen/src/SVD/BDCSVD.h:
-
-/usr/include/boost/mpl/list/aux_/pop_front.hpp:
-
-/usr/include/CGAL/tags.h:
-
-/usr/include/boost/preprocessor/facilities/expand.hpp:
-
-/usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h:
 
@@ -12717,17 +14104,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/core/addressof.hpp:
 
-/usr/include/boost/multiprecision/traits/is_restricted_conversion.hpp:
-
-/usr/include/boost/variant/detail/apply_visitor_binary.hpp:
-
 /usr/include/boost/noncopyable.hpp:
 
-/usr/include/boost/core/noncopyable.hpp:
-
-/usr/include/boost/mpl/aux_/at_impl.hpp:
-
 /usr/include/boost/range/end.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h:
 
 /usr/include/boost/detail/basic_pointerbuf.hpp:
 
@@ -12754,12 +14135,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp:
 
 /usr/include/boost/predef/compiler/gcc_xml.h:
-
-/usr/include/CGAL/Quotient_fwd.h:
-
-/usr/include/boost/type_traits/copy_cv_ref.hpp:
-
-/usr/include/boost/range/const_iterator.hpp:
 
 /usr/include/boost/mpl/aux_/config/integral.hpp:
 
@@ -12919,8 +14294,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/numeric/conversion/detail/bounds.hpp:
 
-/usr/include/boost/mpl/aux_/empty_impl.hpp:
-
 /usr/include/boost/random/mersenne_twister.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/NumTraits.h:
@@ -12938,6 +14311,18 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
 /usr/include/boost/predef/hardware/simd/x86/versions.h:
+
+/usr/include/CGAL/min_max_n.h:
+
+/usr/include/CGAL/int.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp:
+
+/usr/include/boost/mpl/aux_/config/adl.hpp:
+
+/usr/include/boost/mpl/aux_/is_msvc_eti_arg.hpp:
+
+/usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
 
 /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp:
 
@@ -13001,23 +14386,27 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/utility/binary.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h:
+
 ../src/coverage_gui.cpp:
 
 /usr/include/boost/preprocessor/control/deduce_d.hpp:
-
-/usr/include/boost/detail/reference_content.hpp:
 
 /usr/include/limits.h:
 
 /usr/include/boost/preprocessor/seq/cat.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h:
+
 /usr/include/boost/mpl/aux_/push_back_impl.hpp:
 
 /usr/include/boost/utility/identity_type.hpp:
 
+/usr/include/CGAL/number_type_basic.h:
+
 /usr/include/eigen3/Eigen/src/Core/functors/NullaryFunctors.h:
 
-/usr/include/CGAL/number_type_basic.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h:
 
 /usr/include/boost/detail/indirect_traits.hpp:
 
@@ -13043,10 +14432,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/detail/safe_bool.hpp:
 
-/usr/include/boost/detail/call_traits.hpp:
-
-/usr/include/boost/type_traits/detail/has_binary_operator.hpp:
-
 /usr/include/gdal/cpl_string.h:
 
 /usr/include/boost/type_traits/make_void.hpp:
@@ -13069,8 +14454,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/algorithm/string/finder.hpp:
 
-/usr/include/CGAL/tss.h:
-
 /usr/include/boost/interprocess/sync/file_lock.hpp:
 
 /usr/include/boost/mpl/iterator_category.hpp:
@@ -13080,14 +14463,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/interprocess/detail/config_end.hpp:
 
 /usr/include/boost/interprocess/detail/os_file_functions.hpp:
-
-/usr/include/CGAL/Cartesian/Iso_rectangle_2.h:
-
-/usr/include/boost/move/detail/workaround.hpp:
-
-/usr/include/boost/mpl/less_equal.hpp:
-
-/usr/include/boost/predef/compiler/ibm.h:
 
 /usr/include/CGAL/triangulation_assertions.h:
 
@@ -13101,13 +14476,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/fcntl.h:
 
-/usr/include/c++/11/string_view:
-
 /usr/include/c++/11/clocale:
 
-/usr/include/x86_64-linux-gnu/bits/fcntl.h:
+/usr/include/c++/11/string_view:
 
-/usr/include/CGAL/long_long.h:
+/usr/include/x86_64-linux-gnu/bits/fcntl.h:
 
 /usr/include/boost/fusion/adapted/boost_tuple/detail/is_sequence_impl.hpp:
 
@@ -13115,19 +14488,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h:
 
-/usr/include/linux/falloc.h:
-
 /usr/include/boost/math/tools/roots.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/struct_stat.h:
-
-/usr/include/boost/fusion/container/list/cons_fwd.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/fcntl2.h:
-
-/usr/include/x86_64-linux-gnu/bits/getopt_core.h:
-
-/usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
 
 /usr/include/boost/mpl/inherit_linearly.hpp:
 
@@ -13136,8 +14499,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rmw/rmw/init_options.h:
 
 /usr/include/boost/config/pragma_message.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_constructor.hpp:
 
 /usr/include/CGAL/Delaunay_triangulation_2.h:
 
@@ -13150,8 +14511,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/linux/stat.h:
 
 /usr/include/linux/types.h:
-
-/usr/include/x86_64-linux-gnu/asm/types.h:
 
 /usr/include/asm-generic/types.h:
 
@@ -13170,6 +14529,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
 
 /usr/include/CGAL/Segment_2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends:
 
 /usr/include/boost/type_traits/is_base_of.hpp:
 
@@ -13201,7 +14562,21 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/multiprecision/number.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h:
+
 /usr/include/boost/smart_ptr/bad_weak_ptr.hpp:
+
+/usr/include/c++/11/bits/random.h:
+
+/usr/include/pcl-1.12/pcl/impl/point_types.hpp:
+
+/usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp:
+
+/usr/include/CGAL/Profile_counter.h:
+
+/usr/include/boost/variant/detail/cast_storage.hpp:
+
+/usr/include/boost/smart_ptr/detail/sp_counted_base.hpp:
 
 /usr/include/boost/smart_ptr/detail/sp_has_gcc_intrinsics.hpp:
 
@@ -13245,32 +14620,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_config.hpp:
 
-/usr/include/boost/fusion/algorithm/iteration/detail/segmented_for_each.hpp:
-
-/usr/include/boost/fusion/adapted/boost_tuple/detail/size_impl.hpp:
-
-/usr/include/CGAL/wmult.h:
-
-/usr/include/eigen3/Eigen/src/Core/Diagonal.h:
-
-/usr/include/boost/date_time/time_duration.hpp:
-
-/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h:
-
-/usr/include/boost/mpl/comparison.hpp:
-
-/usr/include/c++/11/bits/charconv.h:
-
-/usr/include/boost/interprocess/detail/std_fwd.hpp:
-
-/usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp:
-
-/usr/include/boost/multiprecision/detail/number_base.hpp:
-
-/usr/include/boost/operators.hpp:
-
-/usr/include/boost/predef/language.h:
-
 /usr/include/boost/date_time/gregorian/gregorian_types.hpp:
 
 /usr/include/boost/date_time/gregorian/greg_calendar.hpp:
@@ -13289,9 +14638,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/variant/recursive_variant.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/stdlib.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
 
 /usr/include/boost/date_time/gregorian/greg_year.hpp:
 
@@ -13307,15 +14656,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/date_time/wrapping_int.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/wait_result_kind.hpp:
-
-/usr/include/boost/type_index/stl_type_index.hpp:
-
-/usr/include/boost/variant/static_visitor.hpp:
-
 /usr/include/boost/utility/compare_pointees.hpp:
 
 /usr/include/boost/date_time/date_generators.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h:
 
 /usr/include/boost/date_time/time_system_counted.hpp:
 
@@ -13323,21 +14668,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
 
-/usr/include/CGAL/Handle.h:
-
-/usr/include/boost/type_traits/has_trivial_constructor.hpp:
-
-/usr/include/boost/date_time/time.hpp:
-
-/usr/include/boost/type_traits/add_cv.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__struct.hpp:
-
 /usr/include/boost/date_time/posix_time/posix_time_duration.hpp:
 
 /usr/include/boost/interprocess/sync/detail/common_algorithms.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgets-config.h:
 
@@ -13363,10 +14698,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/algorithm/string/detail/classification.hpp:
 
-/usr/include/boost/random/linear_feedback_shift.hpp:
-
-/usr/include/boost/type_traits/alignment_of.hpp:
-
 /usr/include/pcl-1.12/pcl/PointIndices.h:
 
 /usr/include/pcl-1.12/pcl/Vertices.h:
@@ -13386,14 +14717,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/seq/enum.hpp:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/QuadWord.hpp:
-
-/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp:
-
-/usr/include/CGAL/Distance_3/Point_3_Line_3.h:
-
-/usr/include/c++/11/bit:
-
-/usr/include/boost/variant/detail/config.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/Fuzzy.h:
 
@@ -13435,10 +14758,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__builder.hpp:
 
-/usr/include/boost/iterator/detail/config_undef.hpp:
-
-/usr/include/boost/mpl/insert_fwd.hpp:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp:
@@ -13452,6 +14771,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__builder.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/gmp.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_stamped.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__struct.hpp:
 
@@ -13480,10 +14805,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/pstl/execution_defs.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__type_support.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h:
-
-/usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__struct.hpp:
 
@@ -13531,6 +14852,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/tf2/tf2/impl/convert.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__struct.hpp:
 
 /opt/ros/humble/include/tf2/tf2/transform_datatypes.hpp:
@@ -13544,26 +14867,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Distance_2/Point_2_Line_2.h:
 
 /opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp:
-
-/usr/include/c++/11/random:
-
-/usr/include/boost/mpl/greater_equal.hpp:
-
-/usr/include/boost/utility/detail/result_of_iterate.hpp:
-
-/usr/include/pcl-1.12/pcl/impl/point_types.hpp:
-
-/usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp:
-
-/usr/include/CGAL/Profile_counter.h:
-
-/usr/include/c++/11/bits/random.h:
-
-/usr/include/CGAL/Hilbert_sort_middle_d.h:
-
-/usr/include/CGAL/Cartesian/Cartesian_base.h:
-
-/usr/include/geos/export.h:
 
 /usr/include/boost/fusion/support/segmented_fold_until.hpp:
 
@@ -13615,13 +14918,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/swap.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h:
+
 /usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Point_3_intersection.h:
 
-/usr/include/boost/predef/architecture/superh.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h:
+
+/usr/include/boost/predef/architecture/superh.h:
 
 /usr/include/boost/math/tools/config.hpp:
 
@@ -13654,8 +14959,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/list/aux_/O1_size.hpp:
 
 /usr/include/boost/mpl/list/aux_/preprocessed/plain/list10.hpp:
-
-/usr/include/boost/move/adl_move_swap.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h:
 
@@ -13757,7 +15060,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h:
 
-/usr/include/gmpxx.h:
+/usr/include/boost/variant/detail/move.hpp:
+
+/usr/include/boost/predef/os/vms.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
 
@@ -13827,17 +15132,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
 
-/usr/include/boost/integer/integer_mask.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h:
-
-/usr/include/boost/predef/compiler/nvcc.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h:
-
-/usr/include/boost/math/special_functions/lanczos.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_assign.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h:
 
@@ -13851,6 +15146,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h:
+
 /usr/include/boost/mpl/reverse_fold.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h:
@@ -13858,10 +15155,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Handle_for_virtual.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
-
-/usr/include/CGAL/memory.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtgui-config.h:
 
@@ -13891,6 +15184,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h:
 
+/usr/include/boost/mpl/insert_range.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h:
+
+/usr/include/CGAL/basic.h:
+
 /usr/include/CGAL/version.h:
 
 /usr/include/boost/predef/architecture.h:
@@ -13903,27 +15202,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/language/stdcpp.h:
 
-/usr/include/CGAL/Dummy_tds_2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h:
-
-/usr/include/boost/predef/language/objc.h:
-
 /usr/include/CGAL/Distance_3/Segment_3_Plane_3.h:
 
-/usr/include/c++/11/bits/align.h:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__type_support.hpp:
+
+/usr/include/c++/11/bits/align.h:
 
 /usr/include/boost/predef/architecture/blackfin.h:
 
 /usr/include/boost/predef/architecture/m68k.h:
 
 /usr/include/boost/predef/architecture/mips.h:
-
-/usr/include/CGAL/Algebraic_structure_traits.h:
-
-/usr/include/boost/predef/architecture/parisc.h:
 
 /usr/include/boost/predef/architecture/ppc.h:
 
@@ -13955,8 +15244,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/compiler/gcc.h:
 
-/usr/include/boost/type_traits/is_assignable.hpp:
-
 /usr/include/boost/predef/detail/comp_detected.h:
 
 /usr/include/boost/predef/compiler/greenhills.h:
@@ -13977,25 +15264,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/compiler/tendra.h:
 
-/usr/include/boost/predef/compiler/visualc.h:
-
 /usr/include/boost/predef/compiler/watcom.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/node_impl.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
 
 /usr/include/boost/predef/library.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/bind.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup:
 
 /usr/include/boost/predef/library/c/cloudabi.h:
 
 /usr/include/CGAL/Distance_2/Point_2_Point_2.h:
 
 /usr/include/boost/predef/os/hpux.h:
-
-/usr/include/boost/predef/library/std.h:
 
 /usr/include/assert.h:
 
@@ -14028,8 +15313,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/predef/os/unix.h:
 
 /usr/include/boost/predef/os/windows.h:
-
-/usr/include/CGAL/Interval_nt.h:
 
 /usr/include/boost/fusion/view/joint_view/detail/begin_impl.hpp:
 
@@ -14071,13 +15354,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/hardware/simd/arm/versions.h:
 
-/usr/include/boost/predef/hardware/simd/ppc.h:
-
 /usr/include/CGAL/license.h:
 
 /usr/include/CGAL/assertions.h:
-
-/usr/include/boost/move/utility.hpp:
 
 /usr/include/CGAL/Origin.h:
 
@@ -14086,185 +15365,3 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Origin_impl.h:
 
 /usr/include/CGAL/enable_warnings.h:
-
-/usr/include/eigen3/Eigen/src/QR/FullPivHouseholderQR.h:
-
-/usr/include/CGAL/assertions_behaviour.h:
-
-/usr/include/CGAL/exceptions.h:
-
-/usr/include/CGAL/Kernel/mpl.h:
-
-/usr/include/CGAL/Coercion_traits.h:
-
-/usr/include/CGAL/boost/iterator/transform_iterator.hpp:
-
-/usr/include/CGAL/Cartesian/Sphere_3.h:
-
-/usr/include/boost/iterator/transform_iterator.hpp:
-
-/usr/include/boost/random/uniform_real_distribution.hpp:
-
-/usr/include/boost/preprocessor/iteration/iterate.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qfontdatabase.h:
-
-/usr/include/boost/preprocessor/slot/slot.hpp:
-
-/usr/include/CGAL/Rational_traits.h:
-
-/usr/include/boost/preprocessor/slot/detail/def.hpp:
-
-/usr/include/boost/preprocessor/facilities/intercept.hpp:
-
-/usr/include/CGAL/use.h:
-
-/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_stamped.hpp:
-
-/usr/include/x86_64-linux-gnu/gmp.h:
-
-/usr/include/CGAL/Algebraic_extension_traits.h:
-
-/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
-
-/usr/include/CGAL/Needs_parens_as_product.h:
-
-/usr/include/CGAL/utils.h:
-
-/usr/include/c++/11/bits/streambuf_iterator.h:
-
-/usr/include/CGAL/mpq_class.h:
-
-/usr/include/CGAL/Intersections_2/Ray_2_Ray_2.h:
-
-/usr/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h:
-
-/usr/include/CGAL/FPU.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/ReshapedHelper.h:
-
-/usr/include/boost/algorithm/string/predicate.hpp:
-
-/usr/include/CGAL/test_FPU_rounding_mode_impl.h:
-
-/usr/include/CGAL/float.h:
-
-/usr/include/boost/multiprecision/traits/extract_exponent_type.hpp:
-
-/usr/include/CGAL/double.h:
-
-/usr/include/CGAL/min_max_n.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp:
-
-/usr/include/boost/mpl/aux_/config/adl.hpp:
-
-/usr/include/boost/mpl/aux_/is_msvc_eti_arg.hpp:
-
-/usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
-
-/usr/include/CGAL/int.h:
-
-/usr/include/CGAL/gmpxx.h:
-
-/usr/include/CGAL/mpz_class.h:
-
-/usr/include/boost/preprocessor/control/while.hpp:
-
-/usr/include/CGAL/Residue.h:
-
-/usr/include/CGAL/GMPXX_arithmetic_kernel.h:
-
-/usr/include/CGAL/Get_arithmetic_kernel.h:
-
-/usr/include/CGAL/number_utils_classes.h:
-
-/usr/include/boost/container_hash/hash_fwd.hpp:
-
-/usr/include/boost/core/demangle.hpp:
-
-/usr/include/boost/preprocessor/enum.hpp:
-
-/usr/include/CGAL/kernel_assertions.h:
-
-/usr/include/boost/preprocessor/repetition/enum.hpp:
-
-/usr/include/boost/preprocessor/enum_params.hpp:
-
-/usr/include/boost/variant/detail/substitute_fwd.hpp:
-
-/usr/include/boost/variant/detail/backup_holder.hpp:
-
-/usr/include/c++/11/bits/refwrap.h:
-
-/usr/include/c++/11/utility:
-
-/usr/include/boost/variant/detail/initializer.hpp:
-
-/usr/include/boost/call_traits.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointProduct.h:
-
-/usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
-
-/usr/include/boost/type_traits/is_copy_constructible.hpp:
-
-/usr/include/CGAL/Circle_3.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
-
-/usr/include/boost/type_traits/is_nothrow_move_constructible.hpp:
-
-/usr/include/boost/type_traits/enable_if.hpp:
-
-/usr/include/boost/predef/os/vms.h:
-
-/usr/include/boost/variant/detail/move.hpp:
-
-/usr/include/boost/variant/detail/make_variant_list.hpp:
-
-/usr/include/boost/smart_ptr/detail/sp_counted_base.hpp:
-
-/usr/include/boost/variant/detail/cast_storage.hpp:
-
-/usr/include/boost/preprocessor/seq/elem.hpp:
-
-/usr/include/boost/variant/detail/hash_variant.hpp:
-
-/usr/include/boost/mpl/vector/vector0.hpp:
-
-/usr/include/boost/variant/apply_visitor.hpp:
-
-/usr/include/boost/move/traits.hpp:
-
-/usr/include/boost/type_traits/copy_cv.hpp:
-
-/opt/ros/humble/include/rmw/rmw/serialized_message.h:
-
-/usr/include/boost/functional/hash_fwd.hpp:
-
-/usr/include/boost/type_traits/has_trivial_destructor.hpp:
-
-/usr/include/boost/mpl/empty.hpp:
-
-/usr/include/CGAL/basic.h:
-
-/usr/include/boost/mpl/insert_range.hpp:
-
-/usr/include/boost/mpl/aux_/insert_range_impl.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_intersection.h:
-
-/usr/include/boost/mpl/aux_/iter_push_front.hpp:
-
-/usr/include/boost/math/tools/tuple.hpp:
-
-/usr/include/boost/type_traits/same_traits.hpp:
-
-/usr/include/boost/mpl/max_element.hpp:
-
-/usr/include/boost/type_traits/is_stateless.hpp:
-
-/usr/include/boost/mpl/sizeof.hpp:

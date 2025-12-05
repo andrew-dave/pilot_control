@@ -17,16 +17,16 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
 # Try Qt5 first (to match PCL's Qt version), fallback to Qt6
-find_package(Qt5 QUIET COMPONENTS Core Widgets)
+find_package(Qt5 QUIET COMPONENTS Core Widgets Concurrent)
 if(Qt5_FOUND)
     set(QT_VERSION 5)
-    find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
-    set(QT_LIBS Qt5::Core Qt5::Widgets)
+    find_package(Qt5 REQUIRED COMPONENTS Core Widgets Concurrent)
+    set(QT_LIBS Qt5::Core Qt5::Widgets Qt5::Concurrent)
     message(STATUS "Using Qt5: ${Qt5Core_VERSION}")
 else()
-    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets Concurrent)
     set(QT_VERSION 6)
-    set(QT_LIBS Qt6::Core Qt6::Widgets)
+    set(QT_LIBS Qt6::Core Qt6::Widgets Qt6::Concurrent)
     message(STATUS "Using Qt6: ${Qt6Core_VERSION}")
 endif()
 
@@ -38,6 +38,11 @@ find_package(Fields2Cover QUIET)
 
 # CGAL for geometry operations (alphashape, etc.)
 find_package(CGAL QUIET)
+
+# GStreamer for video streaming
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GST REQUIRED gstreamer-1.0 gstreamer-video-1.0)
+include_directories(${GST_INCLUDE_DIRS})
 
 # Include directories
 include_directories(
@@ -100,6 +105,7 @@ target_link_libraries(f2c_coverage_planner
     ${QT_LIBS}
     ${PCL_FILTERED_LIBS}
     Eigen3::Eigen
+    ${GST_LIBRARIES}
 )
 
 # Link Fields2Cover if found
@@ -160,5 +166,6 @@ message(STATUS "PCL: ${PCL_VERSION}")
 message(STATUS "Eigen3: Found")
 message(STATUS "Fields2Cover: ${Fields2Cover_FOUND}")
 message(STATUS "CGAL: ${CGAL_FOUND}")
+message(STATUS "GStreamer: ${GST_VERSION}")
 message(STATUS "QCustomPlot: ${USE_QCUSTOMPLOT}")
 message(STATUS "==========================================")

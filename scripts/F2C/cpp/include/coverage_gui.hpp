@@ -35,14 +35,26 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QTimer>
+#include <QAction>
+#include <QShortcut>
+#include <QtConcurrent>
+#include <QFutureWatcher>
+#include <QToolBox>
+#include <QButtonGroup>
+#include <QDockWidget>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <thread>
 #include <optional>
 #include <mutex>
 #include <chrono>
+
+// GStreamer for video streaming
+#include <gst/gst.h>
+#include <gst/video/videooverlay.h>
 
 #include "coverage_pipeline.hpp"
 
@@ -57,6 +69,61 @@ struct ReprojectionLine {
     Point2D traversed;     // Closest traversed point
     double error_m;        // Error in meters
     int waypoint_index;    // Index in the path
+};
+
+// =============================================================================
+// Coverage Statistics
+// =============================================================================
+
+struct CoverageStats {
+    double path_length_m = 0;       // Total path length in meters
+    double coverage_area_m2 = 0;    // Covered area in square meters
+    double polygon_area_m2 = 0;     // Field/ROI area
+    double coverage_percent = 0;    // Coverage percentage
+    int num_swaths = 0;             // Number of swaths
+    int num_turns = 0;              // Number of turns
+    int num_waypoints = 0;          // Number of waypoints
+    double estimated_time_min = 0;  // Estimated time at given speed
+    double overlap_percent = 0;     // Swath overlap percentage
+    
+    bool isValid() const { return path_length_m > 0; }
+};
+
+// =============================================================================
+// Video Stream Widget (GStreamer embedded)
+// =============================================================================
+
+class VideoStreamWidget : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit VideoStreamWidget(QWidget* parent = nullptr);
+    ~VideoStreamWidget();
+    
+    void startStream(int port);
+    void stopStream();
+    bool isPlaying() const { return playing_; }
+    int currentPort() const { return current_port_; }
+
+signals:
+    void streamError(const QString& msg);
+    void streamStarted();
+    void streamStopped();
+
+protected:
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+
+private:
+    GstElement* pipeline_ = nullptr;
+    int current_port_ = 5600;
+    bool playing_ = false;
+    bool auto_start_on_show_ = false;
+    
+    void setupPipeline(int port);
+    void destroyPipeline();
+    static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer data);
+    static gboolean busCallback(GstBus* bus, GstMessage* msg, gpointer data);
 };
 
 // =============================================================================
@@ -88,6 +155,15 @@ public:
     void clearReprojectionLines();
     int getHoveredReprojectionIndex() const { return hovered_reproj_index_; }
     
+    // Rectangle drawing mode
+    void startRectangleMode();
+    void cancelRectangleMode();
+    bool isDrawingRectangle() const { return drawing_rectangle_; }
+    
+    // Dark mode
+    void setDarkMode(bool enabled);
+    bool isDarkMode() const { return dark_mode_; }
+    
     // Clear functions
     void clearAll();
     void clearPoints();
@@ -118,13 +194,16 @@ signals:
     void obstacleSelected(const Polygon2D& obstacle);
     void selectionCancelled();
     void customWaypointRequested(const Point2D& point);
+    void rectangleCompleted(const Polygon2D& rect);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 
 private:
@@ -147,6 +226,13 @@ private:
     // Reprojection error visualization
     std::vector<ReprojectionLine> reproj_lines_;
     int hovered_reproj_index_ = -1;  // -1 = none hovered
+    
+    // Rectangle drawing mode (3-click: corner1, corner2 defines edge, corner3 defines width)
+    bool drawing_rectangle_ = false;
+    std::vector<Point2D> rect_points_;  // 0-2 points during drawing
+    
+    // Dark mode
+    bool dark_mode_ = false;
     
     // View transform
     double scale_ = 1.0;
@@ -239,6 +325,33 @@ private slots:
     // Reprojection error analysis
     void computeReprojectionError();
     void clearReprojectionError();
+    
+    // Rectangle drawing
+    void toggleRectangleMode();
+    void onRectangleCompleted(const Polygon2D& rect);
+    
+    // Dark mode
+    void toggleDarkMode();
+    void applyTheme();
+    
+    // Coverage statistics
+    void updateCoverageStats();
+    CoverageStats computeStats() const;
+    
+    // Workflow steps
+    void updateWorkflowSteps();
+    void onWorkflowStepClicked(int step);
+    
+    // Layer visibility
+    void updateLayerVisibility();
+    
+    // Video streaming
+    void setupVideoPanel();
+    void toggleVideoPanel();
+    void onCameraToggled(bool right_selected);
+    void playVideoStream();
+    void stopVideoStream();
+    void onCameraStatusReceived(const std_msgs::msg::String::SharedPtr msg);
 
 private:
     void setupUI();
@@ -257,6 +370,14 @@ private:
     QGroupBox* buildPathPlanningControls();
     QWidget* buildF2CControls();
     QWidget* buildCustomPathControls();
+    QGroupBox* buildCoverageStatsControls();
+    QWidget* buildWorkflowIndicator();
+    QWidget* buildLayerPanel();
+    QWidget* buildQuickActionsBar();
+    
+    // Async point cloud loading
+    void loadPointCloudAsync(const QString& path);
+    void onPointCloudLoaded();
     
     // Status/Progress
     void setStatus(const QString& text, int timeout_ms = 0);
@@ -424,6 +545,70 @@ private:
     QPushButton* btn_clear_reproj_ = nullptr;
     QLabel* lbl_reproj_status_ = nullptr;
     std::vector<ReprojectionLine> reproj_lines_;
+    
+    // Rectangle drawing tool
+    QPushButton* btn_rectangle_ = nullptr;
+    
+    // Dark mode
+    bool dark_mode_ = false;
+    QPushButton* btn_dark_mode_ = nullptr;
+    
+    // Coverage statistics widgets
+    QGroupBox* stats_group_ = nullptr;
+    QLabel* lbl_stats_path_length_ = nullptr;
+    QLabel* lbl_stats_area_ = nullptr;
+    QLabel* lbl_stats_coverage_ = nullptr;
+    QLabel* lbl_stats_swaths_ = nullptr;
+    QLabel* lbl_stats_turns_ = nullptr;
+    QLabel* lbl_stats_waypoints_ = nullptr;
+    QLabel* lbl_stats_time_ = nullptr;
+    QDoubleSpinBox* spin_robot_speed_ = nullptr;
+    CoverageStats current_stats_;
+    
+    // Async loading
+    QFutureWatcher<PointCloudPtr>* pcd_watcher_ = nullptr;
+    QString pending_load_path_;
+    
+    // Workflow steps indicator
+    QWidget* workflow_widget_ = nullptr;
+    std::vector<QPushButton*> workflow_btns_;
+    int current_workflow_step_ = 0;
+    
+    // Layer visibility panel
+    QCheckBox* chk_layer_points_ = nullptr;
+    QCheckBox* chk_layer_polygon_ = nullptr;
+    QCheckBox* chk_layer_roi_ = nullptr;
+    QCheckBox* chk_layer_obstacles_ = nullptr;
+    QCheckBox* chk_layer_swaths_ = nullptr;
+    QCheckBox* chk_layer_path_ = nullptr;
+    QCheckBox* chk_layer_trail_ = nullptr;
+    QCheckBox* chk_layer_robot_ = nullptr;
+    
+    // Quick actions bar
+    QWidget* quick_actions_bar_ = nullptr;
+    QPushButton* btn_quick_generate_ = nullptr;
+    QPushButton* btn_quick_publish_ = nullptr;
+    QPushButton* btn_quick_start_ = nullptr;
+    QLabel* lbl_quick_status_ = nullptr;
+    
+    // Collapsible sections (QToolBox)
+    QToolBox* toolbox_ = nullptr;
+    
+    // Video streaming panel
+    QDockWidget* video_dock_ = nullptr;
+    VideoStreamWidget* video_widget_ = nullptr;
+    QPushButton* btn_view_fov_ = nullptr;
+    QRadioButton* radio_cam_left_ = nullptr;
+    QRadioButton* radio_cam_right_ = nullptr;
+    QSpinBox* spin_video_port_ = nullptr;
+    QPushButton* btn_video_play_ = nullptr;
+    QPushButton* btn_video_stop_ = nullptr;
+    QLabel* lbl_video_status_ = nullptr;
+    
+    // ROS2 camera selection publisher
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_select_pub_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_status_sub_;
+    QString current_streaming_camera_ = "left";
 };
 
 } // namespace f2c_cpp

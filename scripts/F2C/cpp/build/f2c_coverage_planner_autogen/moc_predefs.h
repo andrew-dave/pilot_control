@@ -229,6 +229,7 @@
 #define __ORDER_PDP_ENDIAN__ 3412
 #define __DEC128_MIN_EXP__ (-6142)
 #define __INT_FAST32_TYPE__ long int
+#define QT_CONCURRENT_LIB 1
 #define __UINT_LEAST16_TYPE__ short unsigned int
 #define unix 1
 #define __DBL_HAS_DENORM__ 1
