@@ -107,6 +107,8 @@ class AccelMPC:
         Q_yaw: float,
         R_delta_v: float,
         R_delta_omega: float,
+        dv_max: float,
+        domega_max: float,
         logger=None,
         weight_increase_xe: float = 0.0,
         weight_increase_ye: float = 0.0,
@@ -137,6 +139,10 @@ class AccelMPC:
         # Separate Δ-costs for linear and angular velocity
         self.R_delta_v = float(R_delta_v)
         self.R_delta_omega = float(R_delta_omega)
+
+        # Rate limits on Δv and Δω per step (symmetric bounds)
+        self.dv_max = float(abs(dv_max))
+        self.domega_max = float(abs(domega_max))
 
         self.weight_increase_xe = float(weight_increase_xe)
         self.weight_increase_ye = float(weight_increase_ye)
@@ -243,9 +249,11 @@ class AccelMPC:
         # Constraints:
         #   - N * nx dynamics rows
         #   - N * 2 velocity bounds rows (v and ω)
+        #   - N * 2 rate bounds rows (Δv and Δω)
         n_dynamics = N * nx
         n_input_bounds = N * 2
-        n_constraints = n_dynamics + n_input_bounds
+        n_rate_bounds = N * 2
+        n_constraints = n_dynamics + n_input_bounds + n_rate_bounds
 
         row_indices: List[int] = []
         col_indices: List[int] = []
@@ -359,8 +367,9 @@ class AccelMPC:
         # Dynamics are equalities: l = u = RHS (set later in solve())
         # For now, leave at zero.
 
-        # Velocity bounds
+        # Velocity bounds (v, ω) and rate bounds (Δv, Δω)
         for k in range(N):
+            # v, ω bounds indices
             v_idx = n_dynamics + 2 * k
             omega_idx = n_dynamics + 2 * k + 1
 
@@ -369,6 +378,16 @@ class AccelMPC:
 
             self.l_constr[omega_idx] = self.omega_min
             self.u_constr[omega_idx] = self.omega_max
+
+            # Rate bounds indices
+            dv_idx = n_dynamics + n_input_bounds + 2 * k
+            domega_idx = n_dynamics + n_input_bounds + 2 * k + 1
+
+            self.l_constr[dv_idx] = -self.dv_max
+            self.u_constr[dv_idx] = self.dv_max
+
+            self.l_constr[domega_idx] = -self.domega_max
+            self.u_constr[domega_idx] = self.domega_max
 
         # ============================
         # 4) Solver setup
@@ -680,6 +699,9 @@ class MPCAccelController(Node):
         # Separate Δ-costs for linear and angular velocity
         self.declare_parameter("mpc_R_delta_v", 0.01)
         self.declare_parameter("mpc_R_delta_omega", 0.0015)
+        # Rate limits on Δv and Δω per step
+        self.declare_parameter("mpc_dv_max", 0.05)      # m/s per control step
+        self.declare_parameter("mpc_domega_max", 0.10)  # rad/s per control step
         # Optional time-varying weight scaling (same semantics as slip-aware MPC)
         self.declare_parameter("mpc_weight_increase_xe", 0.0)
         self.declare_parameter("mpc_weight_increase_ye", 0.0)
@@ -710,6 +732,8 @@ class MPCAccelController(Node):
         mpc_Q_yaw = float(self.get_parameter("mpc_Q_yaw").value)
         mpc_R_delta_v = float(self.get_parameter("mpc_R_delta_v").value)
         mpc_R_delta_omega = float(self.get_parameter("mpc_R_delta_omega").value)
+        mpc_dv_max = float(self.get_parameter("mpc_dv_max").value)
+        mpc_domega_max = float(self.get_parameter("mpc_domega_max").value)
         mpc_weight_increase_xe = float(self.get_parameter("mpc_weight_increase_xe").value)
         mpc_weight_increase_ye = float(self.get_parameter("mpc_weight_increase_ye").value)
         mpc_weight_increase_yaw = float(self.get_parameter("mpc_weight_increase_yaw").value)
@@ -775,6 +799,8 @@ class MPCAccelController(Node):
             Q_yaw=mpc_Q_yaw,
             R_delta_v=mpc_R_delta_v,
             R_delta_omega=mpc_R_delta_omega,
+            dv_max=mpc_dv_max,
+            domega_max=mpc_domega_max,
             logger=self.get_logger(),
             weight_increase_xe=mpc_weight_increase_xe,
             weight_increase_ye=mpc_weight_increase_ye,

@@ -100,6 +100,17 @@ def generate_launch_description():
         default_value="0.01",
         description="MPC cost weight for change in angular velocity (Δω)",
     )
+    # Rate limits on Δv and Δω per step
+    declare_mpc_dv_max_arg = DeclareLaunchArgument(
+        "mpc_dv_max",
+        default_value="0.05",
+        description="Maximum change in linear velocity per control step (m/s)",
+    )
+    declare_mpc_domega_max_arg = DeclareLaunchArgument(
+        "mpc_domega_max",
+        default_value="0.10",
+        description="Maximum change in angular velocity per control step (rad/s)",
+    )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
         "mpc_weight_increase_xe",
         default_value="0.0",
@@ -197,13 +208,22 @@ def generate_launch_description():
         )
 
     # Run the accel MPC controller as a plain Python process. The node itself
-    # declares parameters with sensible defaults and can also be overridden
-    # via standard ROS2 parameter mechanisms if needed.
+    # declares parameters with sensible defaults; here we also forward key
+    # launch-time parameters for tuning.
     mpc_accel_controller_proc = ExecuteProcess(
         cmd=[
             "python3",
             mpc_accel_controller_path,
             "--ros-args",
+            # MPC tuning parameters forwarded from launch
+            "-p",
+            ["mpc_R_delta_v:=", LaunchConfiguration("mpc_R_delta_v")],
+            "-p",
+            ["mpc_R_delta_omega:=", LaunchConfiguration("mpc_R_delta_omega")],
+            "-p",
+            ["mpc_dv_max:=", LaunchConfiguration("mpc_dv_max")],
+            "-p",
+            ["mpc_domega_max:=", LaunchConfiguration("mpc_domega_max")],
         ],
         output="screen",
     )
@@ -351,6 +371,8 @@ def generate_launch_description():
             declare_mpc_Q_yaw_arg,
             declare_mpc_R_delta_v_arg,
             declare_mpc_R_delta_omega_arg,
+            declare_mpc_dv_max_arg,
+            declare_mpc_domega_max_arg,
             declare_mpc_weight_increase_xe_arg,
             declare_mpc_weight_increase_ye_arg,
             declare_mpc_weight_increase_yaw_arg,
