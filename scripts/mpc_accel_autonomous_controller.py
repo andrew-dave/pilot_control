@@ -790,14 +790,8 @@ class MPCAccelController(Node):
         self.current_yaw = 0.0
         self.pose_initialized = False
 
-        # Estimated velocities (from odom)
-        self.current_vx = 0.0
-        self.current_vy = 0.0
-        self.current_vyaw = 0.0
-        self.prev_x = 0.0
-        self.prev_y = 0.0
-        self.prev_yaw = 0.0
-        self.prev_odom_time: Optional[float] = None
+        # Note: Velocity feedback is NOT used. Instead, we use commanded velocity
+        # (v_cmd, omega_cmd) as the MPC state. This avoids noisy velocity estimates.
 
         # Commanded velocities (v, ω) that we integrate Δu into
         self.v_cmd = 0.0
@@ -913,6 +907,10 @@ class MPCAccelController(Node):
     # Callbacks
     # -----------------------------
     def odometry_callback(self, msg: Odometry) -> None:
+        """
+        Process odometry for POSITION only.
+        Velocity is not needed - we use commanded velocity (v_cmd, omega_cmd) as the MPC state.
+        """
         self.current_x = float(msg.pose.pose.position.x)
         self.current_y = float(msg.pose.pose.position.y)
         qx = float(msg.pose.pose.orientation.x)
@@ -920,26 +918,6 @@ class MPCAccelController(Node):
         qz = float(msg.pose.pose.orientation.z)
         qw = float(msg.pose.pose.orientation.w)
         self.current_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
-
-        t_now = self.get_clock().now().nanoseconds / 1e9
-        if self.prev_odom_time is not None:
-            dt = t_now - self.prev_odom_time
-            if dt > 1e-6:
-                dx = self.current_x - self.prev_x
-                dy = self.current_y - self.prev_y
-                self.current_vx = dx / dt
-                self.current_vy = dy / dt
-                dyaw = self.normalize_angle(self.current_yaw - self.prev_yaw)
-                self.current_vyaw = dyaw / dt
-        else:
-            self.current_vx = 0.0
-            self.current_vy = 0.0
-            self.current_vyaw = 0.0
-
-        self.prev_x = self.current_x
-        self.prev_y = self.current_y
-        self.prev_yaw = self.current_yaw
-        self.prev_odom_time = t_now
 
         if not self.pose_initialized:
             self.pose_initialized = True
@@ -1200,9 +1178,15 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Approximate current body-frame v, ω from odom
-        v_body = self.current_vx * math.cos(self.current_yaw) + self.current_vy * math.sin(self.current_yaw)
-        omega_body = self.current_vyaw
+        # Use COMMANDED velocity as the MPC state instead of measured velocity.
+        # This assumes the low-level ODrive velocity controller tracks well (which it does).
+        # Benefits:
+        #   - No noisy velocity measurements needed
+        #   - Commanded velocity is inherently smooth (output of MPC itself)
+        #   - Position errors are still corrected via error states (xe, ye, θe)
+        # This is "open-loop on velocity, closed-loop on position" - common in cascaded control.
+        v_body = self.v_cmd
+        omega_body = self.omega_cmd
 
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
