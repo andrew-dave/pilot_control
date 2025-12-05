@@ -86,19 +86,19 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         "mpc_Q_yaw",
-        default_value="4.0",
-        description="MPC cost weight for yaw error",
+        default_value="2.0",
+        description="MPC cost weight for yaw error (lower = less aggressive heading correction)",
     )
     # Separate Δ-costs for linear and angular velocity
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         "mpc_R_delta_v",
-        default_value="0.05",
+        default_value="0.1",
         description="MPC cost weight for change in linear velocity (Δv)",
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         "mpc_R_delta_omega",
-        default_value="0.2",
-        description="MPC cost weight for change in angular velocity (Δω)",
+        default_value="0.8",
+        description="MPC cost weight for change in angular velocity (Δω) - higher = smoother turning",
     )
     # Rate limits on Δv and Δω per step
     declare_mpc_dv_max_arg = DeclareLaunchArgument(
@@ -121,18 +121,20 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_ye_arg = DeclareLaunchArgument(
         "mpc_weight_increase_ye",
-        default_value="0.1",
+        default_value="0.0",
         description=(
             "Linear weight increase factor per step for ye. "
-            "Weight at step k = base_weight * (1 + weight_increase_ye * k)."
+            "Weight at step k = base_weight * (1 + weight_increase_ye * k). "
+            "Set to 0 for constant weights (more stable)."
         ),
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         "mpc_weight_increase_yaw",
-        default_value="0.05",
+        default_value="0.0",
         description=(
             "Linear weight increase factor per step for yaw error. "
-            "Weight at step k = base_weight * (1 + weight_increase_yaw * k)."
+            "Weight at step k = base_weight * (1 + weight_increase_yaw * k). "
+            "Set to 0 for constant weights (more stable)."
         ),
     )
 
@@ -208,7 +210,7 @@ def generate_launch_description():
         )
 
     # Run the accel MPC controller as a plain Python process. The node itself
-    # declares parameters with sensible defaults; here we also forward key
+    # declares parameters with sensible defaults; here we forward all key
     # launch-time parameters for tuning.
     mpc_accel_controller_proc = ExecuteProcess(
         cmd=[
@@ -216,14 +218,20 @@ def generate_launch_description():
             mpc_accel_controller_path,
             "--ros-args",
             # MPC tuning parameters forwarded from launch
-            "-p",
-            ["mpc_R_delta_v:=", LaunchConfiguration("mpc_R_delta_v")],
-            "-p",
-            ["mpc_R_delta_omega:=", LaunchConfiguration("mpc_R_delta_omega")],
-            "-p",
-            ["mpc_dv_max:=", LaunchConfiguration("mpc_dv_max")],
-            "-p",
-            ["mpc_domega_max:=", LaunchConfiguration("mpc_domega_max")],
+            "-p", ["mpc_horizon:=", LaunchConfiguration("mpc_horizon")],
+            "-p", ["mpc_dt:=", LaunchConfiguration("mpc_dt")],
+            "-p", ["mpc_Q_xe:=", LaunchConfiguration("mpc_Q_xe")],
+            "-p", ["mpc_Q_ye:=", LaunchConfiguration("mpc_Q_ye")],
+            "-p", ["mpc_Q_yaw:=", LaunchConfiguration("mpc_Q_yaw")],
+            "-p", ["mpc_R_delta_v:=", LaunchConfiguration("mpc_R_delta_v")],
+            "-p", ["mpc_R_delta_omega:=", LaunchConfiguration("mpc_R_delta_omega")],
+            "-p", ["mpc_dv_max:=", LaunchConfiguration("mpc_dv_max")],
+            "-p", ["mpc_domega_max:=", LaunchConfiguration("mpc_domega_max")],
+            "-p", ["mpc_weight_increase_xe:=", LaunchConfiguration("mpc_weight_increase_xe")],
+            "-p", ["mpc_weight_increase_ye:=", LaunchConfiguration("mpc_weight_increase_ye")],
+            "-p", ["mpc_weight_increase_yaw:=", LaunchConfiguration("mpc_weight_increase_yaw")],
+            "-p", ["max_linear_velocity:=", LaunchConfiguration("max_linear_velocity")],
+            "-p", ["max_angular_velocity:=", LaunchConfiguration("max_angular_velocity")],
         ],
         output="screen",
     )

@@ -731,16 +731,17 @@ class MPCAccelController(Node):
         self.declare_parameter("mpc_horizon", 40)
         self.declare_parameter("mpc_dt", 0.1)
 
-        self.declare_parameter("mpc_Q_xe", 15.0)
-        self.declare_parameter("mpc_Q_ye", 20.0)
-        self.declare_parameter("mpc_Q_yaw", 5.0)
+        self.declare_parameter("mpc_Q_xe", 20.0)
+        self.declare_parameter("mpc_Q_ye", 15.0)
+        self.declare_parameter("mpc_Q_yaw", 2.0)  # Lower = less aggressive heading correction
         # Separate Δ-costs for linear and angular velocity
-        self.declare_parameter("mpc_R_delta_v", 0.01)
-        self.declare_parameter("mpc_R_delta_omega", 0.0015)
+        # Higher R values = smoother motion, less oscillation
+        self.declare_parameter("mpc_R_delta_v", 0.1)
+        self.declare_parameter("mpc_R_delta_omega", 0.8)  # High value to prevent squiggly motion
         # Rate limits on Δv and Δω per step
         self.declare_parameter("mpc_dv_max", 0.05)      # m/s per control step
-        self.declare_parameter("mpc_domega_max", 0.10)  # rad/s per control step
-        # Optional time-varying weight scaling (same semantics as slip-aware MPC)
+        self.declare_parameter("mpc_domega_max", 0.08)  # rad/s per control step
+        # Optional time-varying weight scaling (set to 0 for stability)
         self.declare_parameter("mpc_weight_increase_xe", 0.0)
         self.declare_parameter("mpc_weight_increase_ye", 0.0)
         self.declare_parameter("mpc_weight_increase_yaw", 0.0)
