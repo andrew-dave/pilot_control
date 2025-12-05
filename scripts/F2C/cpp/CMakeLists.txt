@@ -138,11 +138,14 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # Add ROS2 includes and libraries
 include_directories(${rclcpp_INCLUDE_DIRS})
 target_link_libraries(f2c_coverage_planner ${rclcpp_LIBRARIES})
-ament_target_dependencies(f2c_coverage_planner rclcpp std_msgs)
+ament_target_dependencies(f2c_coverage_planner rclcpp std_msgs nav_msgs tf2 tf2_geometry_msgs)
 
 # Install
 install(TARGETS f2c_coverage_planner

@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_f2c_cpp__PlotWidget_t {
-    QByteArrayData data[8];
-    char stringdata0[92];
+    QByteArrayData data[11];
+    char stringdata0[130];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -39,12 +39,16 @@ QT_MOC_LITERAL(3, 33, 9), // "Polygon2D"
 QT_MOC_LITERAL(4, 43, 3), // "roi"
 QT_MOC_LITERAL(5, 47, 16), // "obstacleSelected"
 QT_MOC_LITERAL(6, 64, 8), // "obstacle"
-QT_MOC_LITERAL(7, 73, 18) // "selectionCancelled"
+QT_MOC_LITERAL(7, 73, 18), // "selectionCancelled"
+QT_MOC_LITERAL(8, 92, 23), // "customWaypointRequested"
+QT_MOC_LITERAL(9, 116, 7), // "Point2D"
+QT_MOC_LITERAL(10, 124, 5) // "point"
 
     },
     "f2c_cpp::PlotWidget\0roiSelected\0\0"
     "Polygon2D\0roi\0obstacleSelected\0obstacle\0"
-    "selectionCancelled"
+    "selectionCancelled\0customWaypointRequested\0"
+    "Point2D\0point"
 };
 #undef QT_MOC_LITERAL
 
@@ -54,22 +58,24 @@ static const uint qt_meta_data_f2c_cpp__PlotWidget[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-       3,   14, // methods
+       4,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
-       3,       // signalCount
+       4,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   29,    2, 0x06 /* Public */,
-       5,    1,   32,    2, 0x06 /* Public */,
-       7,    0,   35,    2, 0x06 /* Public */,
+       1,    1,   34,    2, 0x06 /* Public */,
+       5,    1,   37,    2, 0x06 /* Public */,
+       7,    0,   40,    2, 0x06 /* Public */,
+       8,    1,   41,    2, 0x06 /* Public */,
 
  // signals: parameters
     QMetaType::Void, 0x80000000 | 3,    4,
     QMetaType::Void, 0x80000000 | 3,    6,
     QMetaType::Void,
+    QMetaType::Void, 0x80000000 | 9,   10,
 
        0        // eod
 };
@@ -83,6 +89,7 @@ void f2c_cpp::PlotWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 0: _t->roiSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
         case 1: _t->obstacleSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
         case 2: _t->selectionCancelled(); break;
+        case 3: _t->customWaypointRequested((*reinterpret_cast< const Point2D(*)>(_a[1]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -105,6 +112,13 @@ void f2c_cpp::PlotWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
             using _t = void (PlotWidget::*)();
             if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&PlotWidget::selectionCancelled)) {
                 *result = 2;
+                return;
+            }
+        }
+        {
+            using _t = void (PlotWidget::*)(const Point2D & );
+            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&PlotWidget::customWaypointRequested)) {
+                *result = 3;
                 return;
             }
         }
@@ -140,13 +154,13 @@ int f2c_cpp::PlotWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 3)
+        if (_id < 4)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 3;
+        _id -= 4;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 3)
+        if (_id < 4)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 3;
+        _id -= 4;
     }
     return _id;
 }
@@ -170,9 +184,16 @@ void f2c_cpp::PlotWidget::selectionCancelled()
 {
     QMetaObject::activate(this, &staticMetaObject, 2, nullptr);
 }
+
+// SIGNAL 3
+void f2c_cpp::PlotWidget::customWaypointRequested(const Point2D & _t1)
+{
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))) };
+    QMetaObject::activate(this, &staticMetaObject, 3, _a);
+}
 struct qt_meta_stringdata_f2c_cpp__CoverageGUI_t {
-    QByteArrayData data[35];
-    char stringdata0[522];
+    QByteArrayData data[37];
+    char stringdata0[556];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -206,16 +227,18 @@ QT_MOC_LITERAL(21, 321, 13), // "clearCoverage"
 QT_MOC_LITERAL(22, 335, 13), // "exportPathCSV"
 QT_MOC_LITERAL(23, 349, 16), // "publishWaypoints"
 QT_MOC_LITERAL(24, 366, 15), // "startNavigation"
-QT_MOC_LITERAL(25, 382, 13), // "onROISelected"
-QT_MOC_LITERAL(26, 396, 9), // "Polygon2D"
-QT_MOC_LITERAL(27, 406, 3), // "roi"
-QT_MOC_LITERAL(28, 410, 18), // "onObstacleSelected"
-QT_MOC_LITERAL(29, 429, 8), // "obstacle"
-QT_MOC_LITERAL(30, 438, 20), // "onSelectionCancelled"
-QT_MOC_LITERAL(31, 459, 18), // "updateDownsampleUI"
-QT_MOC_LITERAL(32, 478, 6), // "method"
-QT_MOC_LITERAL(33, 485, 16), // "tryReconnectROS2"
-QT_MOC_LITERAL(34, 502, 19) // "onDdsProfileChanged"
+QT_MOC_LITERAL(25, 382, 15), // "clearRobotTrail"
+QT_MOC_LITERAL(26, 398, 17), // "onPathModeChanged"
+QT_MOC_LITERAL(27, 416, 13), // "onROISelected"
+QT_MOC_LITERAL(28, 430, 9), // "Polygon2D"
+QT_MOC_LITERAL(29, 440, 3), // "roi"
+QT_MOC_LITERAL(30, 444, 18), // "onObstacleSelected"
+QT_MOC_LITERAL(31, 463, 8), // "obstacle"
+QT_MOC_LITERAL(32, 472, 20), // "onSelectionCancelled"
+QT_MOC_LITERAL(33, 493, 18), // "updateDownsampleUI"
+QT_MOC_LITERAL(34, 512, 6), // "method"
+QT_MOC_LITERAL(35, 519, 16), // "tryReconnectROS2"
+QT_MOC_LITERAL(36, 536, 19) // "onDdsProfileChanged"
 
     },
     "f2c_cpp::CoverageGUI\0loadPointCloud\0"
@@ -228,10 +251,12 @@ QT_MOC_LITERAL(34, 502, 19) // "onDdsProfileChanged"
     "finishSelection\0buildField\0generateSwaths\0"
     "generateRoute\0generatePath\0clearCoverage\0"
     "exportPathCSV\0publishWaypoints\0"
-    "startNavigation\0onROISelected\0Polygon2D\0"
-    "roi\0onObstacleSelected\0obstacle\0"
-    "onSelectionCancelled\0updateDownsampleUI\0"
-    "method\0tryReconnectROS2\0onDdsProfileChanged"
+    "startNavigation\0clearRobotTrail\0"
+    "onPathModeChanged\0onROISelected\0"
+    "Polygon2D\0roi\0onObstacleSelected\0"
+    "obstacle\0onSelectionCancelled\0"
+    "updateDownsampleUI\0method\0tryReconnectROS2\0"
+    "onDdsProfileChanged"
 };
 #undef QT_MOC_LITERAL
 
@@ -241,7 +266,7 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      28,   14, // methods
+      30,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -249,34 +274,36 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,  154,    2, 0x08 /* Private */,
-       3,    0,  155,    2, 0x08 /* Private */,
-       4,    1,  156,    2, 0x08 /* Private */,
-       6,    0,  159,    2, 0x08 /* Private */,
-       7,    0,  160,    2, 0x08 /* Private */,
-       8,    0,  161,    2, 0x08 /* Private */,
-       9,    0,  162,    2, 0x08 /* Private */,
-      10,    0,  163,    2, 0x08 /* Private */,
-      11,    0,  164,    2, 0x08 /* Private */,
-      12,    0,  165,    2, 0x08 /* Private */,
-      13,    0,  166,    2, 0x08 /* Private */,
-      14,    0,  167,    2, 0x08 /* Private */,
-      15,    0,  168,    2, 0x08 /* Private */,
-      16,    0,  169,    2, 0x08 /* Private */,
-      17,    0,  170,    2, 0x08 /* Private */,
-      18,    0,  171,    2, 0x08 /* Private */,
-      19,    0,  172,    2, 0x08 /* Private */,
-      20,    0,  173,    2, 0x08 /* Private */,
-      21,    0,  174,    2, 0x08 /* Private */,
-      22,    0,  175,    2, 0x08 /* Private */,
-      23,    0,  176,    2, 0x08 /* Private */,
-      24,    0,  177,    2, 0x08 /* Private */,
-      25,    1,  178,    2, 0x08 /* Private */,
-      28,    1,  181,    2, 0x08 /* Private */,
-      30,    0,  184,    2, 0x08 /* Private */,
-      31,    1,  185,    2, 0x08 /* Private */,
-      33,    0,  188,    2, 0x08 /* Private */,
-      34,    0,  189,    2, 0x08 /* Private */,
+       1,    0,  164,    2, 0x08 /* Private */,
+       3,    0,  165,    2, 0x08 /* Private */,
+       4,    1,  166,    2, 0x08 /* Private */,
+       6,    0,  169,    2, 0x08 /* Private */,
+       7,    0,  170,    2, 0x08 /* Private */,
+       8,    0,  171,    2, 0x08 /* Private */,
+       9,    0,  172,    2, 0x08 /* Private */,
+      10,    0,  173,    2, 0x08 /* Private */,
+      11,    0,  174,    2, 0x08 /* Private */,
+      12,    0,  175,    2, 0x08 /* Private */,
+      13,    0,  176,    2, 0x08 /* Private */,
+      14,    0,  177,    2, 0x08 /* Private */,
+      15,    0,  178,    2, 0x08 /* Private */,
+      16,    0,  179,    2, 0x08 /* Private */,
+      17,    0,  180,    2, 0x08 /* Private */,
+      18,    0,  181,    2, 0x08 /* Private */,
+      19,    0,  182,    2, 0x08 /* Private */,
+      20,    0,  183,    2, 0x08 /* Private */,
+      21,    0,  184,    2, 0x08 /* Private */,
+      22,    0,  185,    2, 0x08 /* Private */,
+      23,    0,  186,    2, 0x08 /* Private */,
+      24,    0,  187,    2, 0x08 /* Private */,
+      25,    0,  188,    2, 0x08 /* Private */,
+      26,    0,  189,    2, 0x08 /* Private */,
+      27,    1,  190,    2, 0x08 /* Private */,
+      30,    1,  193,    2, 0x08 /* Private */,
+      32,    0,  196,    2, 0x08 /* Private */,
+      33,    1,  197,    2, 0x08 /* Private */,
+      35,    0,  200,    2, 0x08 /* Private */,
+      36,    0,  201,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void,
@@ -301,10 +328,12 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 26,   27,
-    QMetaType::Void, 0x80000000 | 26,   29,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::QString,   32,
+    QMetaType::Void,
+    QMetaType::Void, 0x80000000 | 28,   29,
+    QMetaType::Void, 0x80000000 | 28,   31,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,   34,
     QMetaType::Void,
     QMetaType::Void,
 
@@ -339,12 +368,14 @@ void f2c_cpp::CoverageGUI::qt_static_metacall(QObject *_o, QMetaObject::Call _c,
         case 19: _t->exportPathCSV(); break;
         case 20: _t->publishWaypoints(); break;
         case 21: _t->startNavigation(); break;
-        case 22: _t->onROISelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
-        case 23: _t->onObstacleSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
-        case 24: _t->onSelectionCancelled(); break;
-        case 25: _t->updateDownsampleUI((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 26: _t->tryReconnectROS2(); break;
-        case 27: _t->onDdsProfileChanged(); break;
+        case 22: _t->clearRobotTrail(); break;
+        case 23: _t->onPathModeChanged(); break;
+        case 24: _t->onROISelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 25: _t->onObstacleSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 26: _t->onSelectionCancelled(); break;
+        case 27: _t->updateDownsampleUI((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 28: _t->tryReconnectROS2(); break;
+        case 29: _t->onDdsProfileChanged(); break;
         default: ;
         }
     }
@@ -379,13 +410,13 @@ int f2c_cpp::CoverageGUI::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 28)
+        if (_id < 30)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 28;
+        _id -= 30;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 28)
+        if (_id < 30)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 28;
+        _id -= 30;
     }
     return _id;
 }

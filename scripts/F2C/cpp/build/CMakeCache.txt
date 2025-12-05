@@ -817,7 +817,10 @@ ZLIB_LIBRARY_DEBUG:FILEPATH=ZLIB_LIBRARY_DEBUG-NOTFOUND
 ZLIB_LIBRARY_RELEASE:FILEPATH=/usr/lib/x86_64-linux-gnu/libz.so
 
 //Path to a library.
-_lib:FILEPATH=/opt/ros/humble/lib/librosgraph_msgs__rosidl_typesupport_fastrtps_cpp.so
+_lib:FILEPATH=/opt/ros/humble/lib/libtf2_msgs__rosidl_typesupport_fastrtps_cpp.so
+
+//The directory containing a CMake configuration file for action_msgs.
+action_msgs_DIR:PATH=/opt/ros/humble/share/action_msgs/cmake
 
 //The directory containing a CMake configuration file for ament_cmake.
 ament_cmake_DIR:PATH=/opt/ros/humble/share/ament_cmake/cmake
@@ -891,11 +894,23 @@ boost_system_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/boost_system-1.74.0
 //The directory containing a CMake configuration file for builtin_interfaces.
 builtin_interfaces_DIR:PATH=/opt/ros/humble/share/builtin_interfaces/cmake
 
+//The directory containing a CMake configuration file for class_loader.
+class_loader_DIR:PATH=/opt/ros/humble/share/class_loader/cmake
+
+//The directory containing a CMake configuration file for composition_interfaces.
+composition_interfaces_DIR:PATH=/opt/ros/humble/share/composition_interfaces/cmake
+
+//The directory containing a CMake configuration file for console_bridge.
+console_bridge_DIR:PATH=/usr/lib/x86_64-linux-gnu/console_bridge/cmake
+
 //double-conversion include directory
 double-conversion_INCLUDE_DIR:PATH=/usr/include/double-conversion
 
 //double-conversion library
 double-conversion_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libdouble-conversion.so
+
+//The directory containing a CMake configuration file for eigen3_cmake_module.
+eigen3_cmake_module_DIR:PATH=/opt/ros/humble/share/eigen3_cmake_module/cmake
 
 //Value Computed by CMake
 f2c_coverage_planner_BINARY_DIR:STATIC=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build
@@ -918,6 +933,9 @@ flann_DIR:PATH=flann_DIR-NOTFOUND
 //The directory containing a CMake configuration file for fmt.
 fmt_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/fmt
 
+//The directory containing a CMake configuration file for geometry_msgs.
+geometry_msgs_DIR:PATH=/opt/ros/humble/share/geometry_msgs/cmake
+
 //The directory containing a CMake configuration file for iceoryx_binding_c.
 iceoryx_binding_c_DIR:PATH=/opt/ros/humble/lib/x86_64-linux-gnu/cmake/iceoryx_binding_c
 
@@ -938,6 +956,21 @@ libusb_LIBRARIES:FILEPATH=/usr/lib/x86_64-linux-gnu/libusb-1.0.so
 
 //The directory containing a CMake configuration file for libyaml_vendor.
 libyaml_vendor_DIR:PATH=/opt/ros/humble/share/libyaml_vendor/cmake
+
+//The directory containing a CMake configuration file for message_filters.
+message_filters_DIR:PATH=/opt/ros/humble/share/message_filters/cmake
+
+//The directory containing a CMake configuration file for nav_msgs.
+nav_msgs_DIR:PATH=/opt/ros/humble/share/nav_msgs/cmake
+
+//The directory containing a CMake configuration file for orocos_kdl.
+orocos_kdl_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/orocos_kdl
+
+//Path to a library.
+orocos_kdl_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/liborocos-kdl.so
+
+//The directory containing a CMake configuration file for orocos_kdl_vendor.
+orocos_kdl_vendor_DIR:PATH=/opt/ros/humble/share/orocos_kdl_vendor/cmake
 
 //Path to a library.
 pkgcfg_lib_PC_EXPAT_expat:FILEPATH=/usr/lib/x86_64-linux-gnu/libexpat.so
@@ -972,6 +1005,9 @@ pkgcfg_lib_PKG_FONTCONFIG_freetype:FILEPATH=/usr/lib/x86_64-linux-gnu/libfreetyp
 //The directory containing a CMake configuration file for rcl.
 rcl_DIR:PATH=/opt/ros/humble/share/rcl/cmake
 
+//The directory containing a CMake configuration file for rcl_action.
+rcl_action_DIR:PATH=/opt/ros/humble/share/rcl_action/cmake
+
 //The directory containing a CMake configuration file for rcl_interfaces.
 rcl_interfaces_DIR:PATH=/opt/ros/humble/share/rcl_interfaces/cmake
 
@@ -986,6 +1022,12 @@ rcl_yaml_param_parser_DIR:PATH=/opt/ros/humble/share/rcl_yaml_param_parser/cmake
 
 //The directory containing a CMake configuration file for rclcpp.
 rclcpp_DIR:PATH=/opt/ros/humble/share/rclcpp/cmake
+
+//The directory containing a CMake configuration file for rclcpp_action.
+rclcpp_action_DIR:PATH=/opt/ros/humble/share/rclcpp_action/cmake
+
+//The directory containing a CMake configuration file for rclcpp_components.
+rclcpp_components_DIR:PATH=/opt/ros/humble/share/rclcpp_components/cmake
 
 //The directory containing a CMake configuration file for rcpputils.
 rcpputils_DIR:PATH=/opt/ros/humble/share/rcpputils/cmake
@@ -1065,8 +1107,23 @@ statistics_msgs_DIR:PATH=/opt/ros/humble/share/statistics_msgs/cmake
 //The directory containing a CMake configuration file for std_msgs.
 std_msgs_DIR:PATH=/opt/ros/humble/share/std_msgs/cmake
 
+//The directory containing a CMake configuration file for tf2.
+tf2_DIR:PATH=/opt/ros/humble/share/tf2/cmake
+
+//The directory containing a CMake configuration file for tf2_geometry_msgs.
+tf2_geometry_msgs_DIR:PATH=/opt/ros/humble/share/tf2_geometry_msgs/cmake
+
+//The directory containing a CMake configuration file for tf2_msgs.
+tf2_msgs_DIR:PATH=/opt/ros/humble/share/tf2_msgs/cmake
+
+//The directory containing a CMake configuration file for tf2_ros.
+tf2_ros_DIR:PATH=/opt/ros/humble/share/tf2_ros/cmake
+
 //The directory containing a CMake configuration file for tracetools.
 tracetools_DIR:PATH=/opt/ros/humble/share/tracetools/cmake
+
+//The directory containing a CMake configuration file for unique_identifier_msgs.
+unique_identifier_msgs_DIR:PATH=/opt/ros/humble/share/unique_identifier_msgs/cmake
 
 //utf8cpp include directory
 utf8cpp_INCLUDE_DIR:PATH=/usr/include/utf8cpp
@@ -1245,7 +1302,7 @@ FIND_PACKAGE_MESSAGE_DETAILS_EXPAT:INTERNAL=[/usr/lib/x86_64-linux-gnu/libexpat.
 //Details about finding Eigen
 FIND_PACKAGE_MESSAGE_DETAILS_Eigen:INTERNAL=[/usr/include/eigen3][v(3.1)]
 //Details about finding Eigen3
-FIND_PACKAGE_MESSAGE_DETAILS_Eigen3:INTERNAL=[/usr/include/eigen3][v3.4.0()]
+FIND_PACKAGE_MESSAGE_DETAILS_Eigen3:INTERNAL=[1][v3.4.0(3.1.0)]
 //Details about finding FLANN
 FIND_PACKAGE_MESSAGE_DETAILS_FLANN:INTERNAL=[/usr/lib/x86_64-linux-gnu/libflann_cpp.so][/usr/include][v()]
 //Details about finding Freetype

@@ -23,6 +23,7 @@
 #include <QProgressBar>
 #include <QStatusBar>
 #include <QScrollArea>
+#include <QListWidget>
 #include <QSplitter>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -37,7 +38,11 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <thread>
+#include <optional>
+#include <mutex>
+#include <chrono>
 
 #include "coverage_pipeline.hpp"
 
@@ -61,6 +66,13 @@ public:
     void setSwaths(const SwathList& swaths);
     void setRoute(const PathStateList& route);
     void setPath(const PathStateList& path);
+    void setRobotPose(const std::optional<PathState>& pose);
+    void setRobotTrail(const std::vector<Point2D>& trail);
+    void setRobotMarkerSize(double size_meters);
+    void setCustomPath(const std::vector<Point2D>& path,
+                       const std::vector<bool>& visited);
+    void setShowCustomPath(bool show);
+    void setCustomDrawMode(bool enabled);
     
     // Clear functions
     void clearAll();
@@ -91,6 +103,7 @@ signals:
     void roiSelected(const Polygon2D& roi);
     void obstacleSelected(const Polygon2D& obstacle);
     void selectionCancelled();
+    void customWaypointRequested(const Point2D& point);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -109,6 +122,13 @@ private:
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
+    std::optional<PathState> robot_pose_;
+    std::vector<Point2D> robot_trail_;
+    double robot_marker_size_ = 0.6;
+    std::vector<Point2D> custom_waypoints_;
+    std::vector<bool> custom_waypoint_states_;
+    bool show_custom_path_ = false;
+    bool custom_draw_mode_ = false;
     
     // View transform
     double scale_ = 1.0;
@@ -144,7 +164,7 @@ class CoverageGUI : public QMainWindow {
 
 public:
     explicit CoverageGUI(QWidget* parent = nullptr);
-    ~CoverageGUI() override = default;
+    ~CoverageGUI() override;
 
 private slots:
     // File operations
@@ -180,6 +200,8 @@ private slots:
     void exportPathCSV();
     void publishWaypoints();
     void startNavigation();
+    void clearRobotTrail();
+    void onPathModeChanged();
     
     // Callbacks
     void onROISelected(const Polygon2D& roi);
@@ -198,6 +220,7 @@ private slots:
 private:
     void setupUI();
     void setupConnections();
+    void setupRobotTrackingSubscription();
     
     // UI building helpers
     QGroupBox* buildFileControls();
@@ -207,6 +230,10 @@ private:
     QGroupBox* buildSimplifyControls();
     QGroupBox* buildCoverageControls();
     QGroupBox* buildExportControls();
+    QGroupBox* buildRobotTrackingControls();
+    QGroupBox* buildPathPlanningControls();
+    QWidget* buildF2CControls();
+    QWidget* buildCustomPathControls();
     
     // Status/Progress
     void setStatus(const QString& text, int timeout_ms = 0);
@@ -221,6 +248,16 @@ private:
     
     // Apply effective polygon (with ROI/obstacles)
     Polygon2D effectivePolygon() const;
+    void updateRobotStatusLabel(bool has_fix);
+    void scheduleFitToView();
+    void refreshCustomPathUI();
+    void onPlotCustomWaypoint(const Point2D& point);
+    void undoCustomWaypoint();
+    void clearCustomWaypoints();
+    void publishCustomPath();
+    void updateCustomWaypointStatus();
+    void setCustomModeActive(bool active);
+    bool isCustomModeActive() const;
 
 private:
     // Main widgets
@@ -231,6 +268,24 @@ private:
     // File controls
     QLabel* lbl_file_;
     QLineEdit* txt_robot_ip_;
+    QCheckBox* chk_show_robot_;
+    QPushButton* btn_clear_robot_trail_;
+    QLabel* lbl_robot_status_;
+    QLineEdit* txt_robot_topic_;
+    QDoubleSpinBox* spin_robot_marker_size_;
+    
+    // Path mode selector (F2C vs Custom)
+    QRadioButton* radio_mode_f2c_ = nullptr;
+    QRadioButton* radio_mode_custom_ = nullptr;
+    QWidget* f2c_controls_widget_ = nullptr;
+    QWidget* custom_controls_widget_ = nullptr;
+    QPushButton* btn_custom_draw_ = nullptr;
+    QPushButton* btn_custom_undo_ = nullptr;
+    QPushButton* btn_custom_clear_ = nullptr;
+    QListWidget* list_custom_points_ = nullptr;
+    QLabel* lbl_custom_status_ = nullptr;
+    QPushButton* btn_publish_waypoints_ = nullptr;
+    QPushButton* btn_start_navigation_ = nullptr;
     
     // DDS profile controls
     QRadioButton* radio_dds_rf_;
@@ -298,6 +353,7 @@ private:
     // ROS2 integration for waypoint publishing
     rclcpp::Node::SharedPtr ros_node_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr waypoint_pub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_sub_;
     std::thread ros_thread_;
     bool waypoints_published_;
     bool ros_initialized_;
@@ -321,6 +377,24 @@ private:
     
     // Helper to shutdown and reinitialize ROS2 with new DDS config
     void reinitializeROS2();
+    
+    // Robot tracking state
+    mutable std::mutex robot_pose_mutex_;
+    std::optional<PathState> robot_pose_state_;
+    std::vector<Point2D> robot_trail_;
+    size_t robot_trail_max_points_ = 5000;
+    std::chrono::steady_clock::time_point last_robot_update_;
+    QString robot_odom_topic_ = "/Odometry_tilt_corrected_diff";
+    double robot_marker_size_m_ = 0.6;
+    bool fit_view_pending_ = false;
+    bool custom_draw_enabled_ = false;
+    std::vector<Point2D> custom_waypoints_;
+    std::vector<bool> custom_waypoints_visited_;
+    double custom_waypoint_reach_tol_ = 0.10;
+    
+    // Throttle plot refresh to avoid excessive repaints from high-frequency odom
+    std::chrono::steady_clock::time_point last_plot_refresh_;
+    static constexpr int kPlotRefreshIntervalMs = 50;  // ~20 Hz max
 };
 
 } // namespace f2c_cpp

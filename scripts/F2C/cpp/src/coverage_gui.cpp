@@ -13,6 +13,7 @@
 #include <QToolTip>
 #include <QFileInfo>
 #include <QFile>
+#include <QSignalBlocker>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
@@ -25,6 +26,9 @@
 // PCL for 3D point cloud preview
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace f2c_cpp {
 
@@ -106,6 +110,41 @@ void PlotWidget::setPath(const PathStateList& path) {
     update();
 }
 
+void PlotWidget::setRobotPose(const std::optional<PathState>& pose) {
+    robot_pose_ = pose;
+    update();
+}
+
+void PlotWidget::setRobotTrail(const std::vector<Point2D>& trail) {
+    robot_trail_ = trail;
+    update();
+}
+
+void PlotWidget::setRobotMarkerSize(double size_meters) {
+    robot_marker_size_ = std::max(0.05, size_meters);
+    update();
+}
+
+void PlotWidget::setCustomPath(const std::vector<Point2D>& path,
+                               const std::vector<bool>& visited) {
+    custom_waypoints_ = path;
+    custom_waypoint_states_ = visited;
+    if (custom_waypoint_states_.size() < custom_waypoints_.size()) {
+        custom_waypoint_states_.resize(custom_waypoints_.size(), false);
+    }
+    update();
+}
+
+void PlotWidget::setShowCustomPath(bool show) {
+    show_custom_path_ = show;
+    update();
+}
+
+void PlotWidget::setCustomDrawMode(bool enabled) {
+    custom_draw_mode_ = enabled;
+}
+
+
 void PlotWidget::clearAll() {
     points_.clear();
     polygon_.clear();
@@ -114,6 +153,10 @@ void PlotWidget::clearAll() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+    robot_pose_.reset();
+    robot_trail_.clear();
+    custom_waypoints_.clear();
+    custom_waypoint_states_.clear();
     selection_points_.clear();
     selecting_ = false;
     update();
@@ -128,6 +171,7 @@ void PlotWidget::clearRoute() { route_.clear(); update(); }
 void PlotWidget::clearPath() { path_.clear(); update(); }
 
 void PlotWidget::resetView() {
+    updateDataBounds();
     fitToData();
     update();
 }
@@ -220,6 +264,15 @@ void PlotWidget::updateDataBounds() {
         updateBounds(sw.end);
     }
     for (const auto& st : path_) updateBounds(st.point);
+    if (robot_pose_.has_value()) {
+        updateBounds(robot_pose_->point);
+    }
+    for (const auto& trail_pt : robot_trail_) {
+        updateBounds(trail_pt);
+    }
+    for (const auto& wp : custom_waypoints_) {
+        updateBounds(wp);
+    }
     
     if (data_min_x_ > data_max_x_) {
         data_min_x_ = 0; data_max_x_ = 1;
@@ -374,6 +427,69 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         }
     }
     
+    // Draw custom waypoint path
+    if (show_custom_path_ && !custom_waypoints_.empty()) {
+        painter.setPen(QPen(QColor(0, 150, 136), 2, Qt::SolidLine, Qt::RoundCap));
+        for (size_t i = 1; i < custom_waypoints_.size(); ++i) {
+            painter.drawLine(worldToScreen(custom_waypoints_[i-1]),
+                             worldToScreen(custom_waypoints_[i]));
+        }
+        
+        painter.setFont(QFont("Sans Serif", 8));
+        for (size_t i = 0; i < custom_waypoints_.size(); ++i) {
+            bool visited = (i < custom_waypoint_states_.size()) && custom_waypoint_states_[i];
+            painter.setPen(QPen(Qt::black, 1));
+            painter.setBrush(visited ? QColor(76, 175, 80) : QColor(0, 188, 212));
+            QPointF pt = worldToScreen(custom_waypoints_[i]);
+            painter.drawEllipse(pt, 5, 5);
+            
+            QString label = QString("#%1 (%2, %3)")
+                .arg(i + 1)
+                .arg(custom_waypoints_[i].x, 0, 'f', 2)
+                .arg(custom_waypoints_[i].y, 0, 'f', 2);
+            painter.drawText(pt + QPointF(8, -6), label);
+        }
+    }
+    
+    // Draw robot trail (live position history)
+    if (!robot_trail_.empty()) {
+        painter.setPen(QPen(QColor(30, 144, 255, 180), 2, Qt::SolidLine, Qt::RoundCap));
+        for (size_t i = 1; i < robot_trail_.size(); ++i) {
+            painter.drawLine(worldToScreen(robot_trail_[i-1]),
+                             worldToScreen(robot_trail_[i]));
+        }
+    }
+    
+    if (robot_pose_.has_value()) {
+        const auto& pose = robot_pose_.value();
+        const double base = robot_marker_size_;
+        const double wing = base * 0.6;
+        
+        Point2D tip(
+            pose.point.x + base * std::cos(pose.heading),
+            pose.point.y + base * std::sin(pose.heading));
+        Point2D left(
+            pose.point.x + wing * std::cos(pose.heading + 2.5),
+            pose.point.y + wing * std::sin(pose.heading + 2.5));
+        Point2D right(
+            pose.point.x + wing * std::cos(pose.heading - 2.5),
+            pose.point.y + wing * std::sin(pose.heading - 2.5));
+        
+        QPolygonF tri;
+        tri << worldToScreen(tip)
+            << worldToScreen(left)
+            << worldToScreen(right);
+        
+        painter.setPen(QPen(QColor(128, 0, 128), 2));
+        painter.setBrush(QColor(255, 192, 203, 230));
+        painter.drawPolygon(tri);
+        
+        QPointF center = worldToScreen(pose.point);
+        painter.setPen(QPen(Qt::black, 1));
+        painter.setFont(QFont("Sans Serif", 8, QFont::Bold));
+        painter.drawText(center + QPointF(8, -8), "Robot");
+    }
+    
     // Draw origin marker (robot position at 0,0)
     {
         QPointF origin = worldToScreen(Point2D(0.0, 0.0));
@@ -446,6 +562,12 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
 
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
+        if (custom_draw_mode_) {
+            Point2D world = screenToWorld(event->pos());
+            emit customWaypointRequested(world);
+            return;
+        }
+        
         if (selecting_) {
             Point2D world = screenToWorld(event->pos());
             selection_points_.push_back(world);
@@ -544,6 +666,8 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     QSettings settings("PilotControl", "F2CCoveragePlanner");
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
     dds_profile_ = settings.value("dds_profile", "rf").toString();  // Default to RF
+    robot_odom_topic_ = settings.value("robot_odom_topic", robot_odom_topic_).toString();
+    robot_marker_size_m_ = settings.value("robot_marker_size_m", robot_marker_size_m_).toDouble();
     
     // Set CYCLONEDDS_URI environment variable based on saved profile
     QString dds_config = currentDdsConfigPath();
@@ -554,8 +678,10 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         std::cerr << "[F2C GUI] Warning: DDS config not found: " << dds_config.toStdString() << std::endl;
     }
     
+    fit_view_pending_ = true;
     setupUI();
     setupConnections();
+    refreshCustomPathUI();
 
     // Initialize ROS2 reconnection timer (will only run when disconnected)
     ros_reconnect_timer_ = new QTimer(this);
@@ -569,6 +695,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupRobotTrackingSubscription();
 
         // Start ROS2 spinning in background thread
         ros_thread_ = std::thread([this]() {
@@ -584,6 +711,28 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         // Start the reconnection timer
         ros_reconnect_timer_->start();
     }
+}
+
+CoverageGUI::~CoverageGUI() {
+    // Stop reconnection timer
+    if (ros_reconnect_timer_) {
+        ros_reconnect_timer_->stop();
+    }
+    
+    // Clean up ROS2 resources
+    fastlio_sub_.reset();
+    waypoint_pub_.reset();
+    
+    if (ros_node_) {
+        rclcpp::shutdown();
+    }
+    
+    // Wait for ROS thread to finish
+    if (ros_thread_.joinable()) {
+        ros_thread_.join();
+    }
+    
+    ros_node_.reset();
 }
 
 void CoverageGUI::setupUI() {
@@ -602,12 +751,14 @@ void CoverageGUI::setupUI() {
     controls_layout->setContentsMargins(12, 12, 12, 12);
     controls_layout->setSpacing(12);
     
+    // Single panel layout (no tabs)
     controls_layout->addWidget(buildFileControls());
+    controls_layout->addWidget(buildRobotTrackingControls());
     controls_layout->addWidget(buildHeightControls());
     controls_layout->addWidget(buildDownsampleControls());
     controls_layout->addWidget(buildHullControls());
     controls_layout->addWidget(buildSimplifyControls());
-    controls_layout->addWidget(buildCoverageControls());
+    controls_layout->addWidget(buildPathPlanningControls());
     controls_layout->addWidget(buildExportControls());
     controls_layout->addStretch(1);
     
@@ -621,6 +772,7 @@ void CoverageGUI::setupUI() {
     
     plot_ = new PlotWidget();
     plot_->setMinimumSize(400, 400);  // Minimum plot size
+    plot_->setRobotMarkerSize(robot_marker_size_m_);
     plot_layout->addWidget(plot_, 1);
     
     // Toolbar for plot
@@ -658,6 +810,28 @@ void CoverageGUI::setupConnections() {
     connect(plot_, &PlotWidget::roiSelected, this, &CoverageGUI::onROISelected);
     connect(plot_, &PlotWidget::obstacleSelected, this, &CoverageGUI::onObstacleSelected);
     connect(plot_, &PlotWidget::selectionCancelled, this, &CoverageGUI::onSelectionCancelled);
+    connect(plot_, &PlotWidget::customWaypointRequested, this, &CoverageGUI::onPlotCustomWaypoint);
+    
+    // Path mode switching
+    if (radio_mode_f2c_) {
+        connect(radio_mode_f2c_, &QRadioButton::toggled, this, &CoverageGUI::onPathModeChanged);
+    }
+    
+    if (btn_custom_draw_) {
+        connect(btn_custom_draw_, &QPushButton::toggled, this, [this](bool checked) {
+            custom_draw_enabled_ = checked;
+            plot_->setCustomDrawMode(checked && isCustomModeActive());
+            if (checked) {
+                setStatus("Custom draw enabled - click on the map to add waypoints");
+            }
+        });
+    }
+    if (btn_custom_undo_) {
+        connect(btn_custom_undo_, &QPushButton::clicked, this, &CoverageGUI::undoCustomWaypoint);
+    }
+    if (btn_custom_clear_) {
+        connect(btn_custom_clear_, &QPushButton::clicked, this, &CoverageGUI::clearCustomWaypoints);
+    }
     
     // Set progress callback
     setProgressCallback([this](int percent, const std::string& msg) {
@@ -751,6 +925,72 @@ QGroupBox* CoverageGUI::buildFileControls() {
     return box;
 }
 
+QGroupBox* CoverageGUI::buildRobotTrackingControls() {
+    QGroupBox* box = new QGroupBox("Robot Tracking");
+    QVBoxLayout* layout = new QVBoxLayout(box);
+    
+    QHBoxLayout* topic_layout = new QHBoxLayout();
+    topic_layout->addWidget(new QLabel("Odom topic:"));
+    txt_robot_topic_ = new QLineEdit(robot_odom_topic_);
+    txt_robot_topic_->setPlaceholderText("/Odometry_tilt_corrected_diff");
+    topic_layout->addWidget(txt_robot_topic_);
+    layout->addLayout(topic_layout);
+    
+    QHBoxLayout* size_layout = new QHBoxLayout();
+    size_layout->addWidget(new QLabel("Marker size (m):"));
+    spin_robot_marker_size_ = new QDoubleSpinBox();
+    spin_robot_marker_size_->setRange(0.05, 3.0);
+    spin_robot_marker_size_->setSingleStep(0.1);
+    spin_robot_marker_size_->setValue(robot_marker_size_m_);
+    spin_robot_marker_size_->setToolTip("Approximate base length of the robot heading triangle");
+    size_layout->addWidget(spin_robot_marker_size_);
+    layout->addLayout(size_layout);
+    
+    
+    chk_show_robot_ = new QCheckBox("Show live robot overlay");
+    chk_show_robot_->setChecked(true);
+    
+    btn_clear_robot_trail_ = new QPushButton("Clear trail");
+    btn_clear_robot_trail_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    
+    lbl_robot_status_ = new QLabel();
+    lbl_robot_status_->setStyleSheet("color: #a66f00; font-size: 10px;");
+    updateRobotStatusLabel(false);
+    
+    connect(chk_show_robot_, &QCheckBox::toggled, this, [this]() {
+        refreshPlot();
+    });
+    connect(btn_clear_robot_trail_, &QPushButton::clicked, this, &CoverageGUI::clearRobotTrail);
+    connect(txt_robot_topic_, &QLineEdit::editingFinished, this, [this]() {
+        QString trimmed = txt_robot_topic_->text().trimmed();
+        if (trimmed.isEmpty()) {
+            trimmed = "/Odometry_tilt_corrected_diff";
+            txt_robot_topic_->setText(trimmed);
+        }
+        if (trimmed == robot_odom_topic_) {
+            return;
+        }
+        robot_odom_topic_ = trimmed;
+        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        settings.setValue("robot_odom_topic", robot_odom_topic_);
+        updateRobotStatusLabel(false);
+        setupRobotTrackingSubscription();
+    });
+    connect(spin_robot_marker_size_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
+        robot_marker_size_m_ = value;
+        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        settings.setValue("robot_marker_size_m", robot_marker_size_m_);
+        plot_->setRobotMarkerSize(robot_marker_size_m_);
+        refreshPlot();
+    });
+    
+    layout->addWidget(chk_show_robot_);
+    layout->addWidget(btn_clear_robot_trail_);
+    layout->addWidget(lbl_robot_status_);
+    
+    return box;
+}
+
 QGroupBox* CoverageGUI::buildHeightControls() {
     QGroupBox* box = new QGroupBox("Height Cropping & 3D View");
     QVBoxLayout* v = new QVBoxLayout(box);
@@ -765,8 +1005,8 @@ QGroupBox* CoverageGUI::buildHeightControls() {
     h_min->addWidget(new QLabel("Z min (m):"));
     spin_z_min_ = new QDoubleSpinBox();
     spin_z_min_->setRange(-50.0, 50.0);
-    spin_z_min_->setSingleStep(0.1);
-    spin_z_min_->setValue(-0.5);  // Default: 0.5m below robot
+    spin_z_min_->setSingleStep(0.05);
+    spin_z_min_->setValue(-0.1);  // Default: 0.1m below robot
     spin_z_min_->setToolTip("Minimum Z value (negative = below robot origin)");
     h_min->addWidget(spin_z_min_);
     v->addLayout(h_min);
@@ -776,8 +1016,8 @@ QGroupBox* CoverageGUI::buildHeightControls() {
     h_max->addWidget(new QLabel("Z max (m):"));
     spin_z_max_ = new QDoubleSpinBox();
     spin_z_max_->setRange(-50.0, 50.0);
-    spin_z_max_->setSingleStep(0.1);
-    spin_z_max_->setValue(0.5);  // Default: 0.5m above robot
+    spin_z_max_->setSingleStep(0.05);
+    spin_z_max_->setValue(0.1);  // Default: 0.1m above robot
     spin_z_max_->setToolTip("Maximum Z value (positive = above robot origin)");
     h_max->addWidget(spin_z_max_);
     v->addLayout(h_max);
@@ -919,9 +1159,39 @@ QGroupBox* CoverageGUI::buildSimplifyControls() {
     return box;
 }
 
-QGroupBox* CoverageGUI::buildCoverageControls() {
-    QGroupBox* box = new QGroupBox("Fields2Cover & Coverage");
+QGroupBox* CoverageGUI::buildPathPlanningControls() {
+    QGroupBox* box = new QGroupBox("Path Planning");
     QVBoxLayout* v = new QVBoxLayout(box);
+    
+    // Mode selector
+    QHBoxLayout* mode_layout = new QHBoxLayout();
+    mode_layout->addWidget(new QLabel("Mode:"));
+    radio_mode_f2c_ = new QRadioButton("F2C Coverage");
+    radio_mode_custom_ = new QRadioButton("Custom Path");
+    radio_mode_f2c_->setChecked(true);
+    radio_mode_f2c_->setToolTip("Use Fields2Cover library for coverage path planning");
+    radio_mode_custom_->setToolTip("Draw custom waypoints on the map");
+    mode_layout->addWidget(radio_mode_f2c_);
+    mode_layout->addWidget(radio_mode_custom_);
+    mode_layout->addStretch();
+    v->addLayout(mode_layout);
+    
+    // F2C controls container
+    f2c_controls_widget_ = buildF2CControls();
+    v->addWidget(f2c_controls_widget_);
+    
+    // Custom path controls container
+    custom_controls_widget_ = buildCustomPathControls();
+    custom_controls_widget_->setVisible(false);
+    v->addWidget(custom_controls_widget_);
+    
+    return box;
+}
+
+QWidget* CoverageGUI::buildF2CControls() {
+    QWidget* widget = new QWidget();
+    QVBoxLayout* v = new QVBoxLayout(widget);
+    v->setContentsMargins(0, 0, 0, 0);
     
     // Swath width
     QHBoxLayout* h1 = new QHBoxLayout();
@@ -1071,7 +1341,44 @@ QGroupBox* CoverageGUI::buildCoverageControls() {
     connect(btn_path, &QPushButton::clicked, this, &CoverageGUI::generatePath);
     v->addWidget(btn_path);
     
-    return box;
+    return widget;
+}
+
+QWidget* CoverageGUI::buildCustomPathControls() {
+    QWidget* widget = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    
+    QLabel* instructions = new QLabel(
+        "Click 'Enable drawing' then click on the map to drop waypoints.\n"
+        "Use 'Publish Waypoints' below to send to robot.");
+    instructions->setWordWrap(true);
+    instructions->setStyleSheet("color: #666; font-size: 10px;");
+    layout->addWidget(instructions);
+    
+    btn_custom_draw_ = new QPushButton("Enable drawing");
+    btn_custom_draw_->setCheckable(true);
+    btn_custom_draw_->setStyleSheet("QPushButton:checked { background-color: #81C784; }");
+    layout->addWidget(btn_custom_draw_);
+    
+    QHBoxLayout* edit_layout = new QHBoxLayout();
+    btn_custom_undo_ = new QPushButton("Undo Last");
+    btn_custom_undo_->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
+    btn_custom_clear_ = new QPushButton("Clear All");
+    btn_custom_clear_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    edit_layout->addWidget(btn_custom_undo_);
+    edit_layout->addWidget(btn_custom_clear_);
+    layout->addLayout(edit_layout);
+    
+    list_custom_points_ = new QListWidget();
+    list_custom_points_->setMaximumHeight(150);
+    layout->addWidget(list_custom_points_);
+    
+    lbl_custom_status_ = new QLabel("No custom waypoints yet.");
+    lbl_custom_status_->setStyleSheet("color: #777; font-size: 10px;");
+    layout->addWidget(lbl_custom_status_);
+    
+    return widget;
 }
 
 QGroupBox* CoverageGUI::buildExportControls() {
@@ -1083,17 +1390,17 @@ QGroupBox* CoverageGUI::buildExportControls() {
     connect(btn_export_path, &QPushButton::clicked, this, &CoverageGUI::exportPathCSV);
     v->addWidget(btn_export_path);
 
-    // Add waypoint publishing buttons
-    QPushButton* btn_publish_waypoints = new QPushButton("📡 Publish Waypoints to Robot");
-    btn_publish_waypoints->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }");
-    connect(btn_publish_waypoints, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
-    v->addWidget(btn_publish_waypoints);
+    // Add waypoint publishing buttons (work for both F2C and Custom modes)
+    btn_publish_waypoints_ = new QPushButton("📡 Publish Waypoints to Robot");
+    btn_publish_waypoints_->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }");
+    connect(btn_publish_waypoints_, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
+    v->addWidget(btn_publish_waypoints_);
 
-    QPushButton* btn_start_navigation = new QPushButton("▶️ Start Navigation");
-    btn_start_navigation->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; }");
-    btn_start_navigation->setEnabled(false);  // Initially disabled
-    connect(btn_start_navigation, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
-    v->addWidget(btn_start_navigation);
+    btn_start_navigation_ = new QPushButton("▶️ Start Navigation");
+    btn_start_navigation_->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; }");
+    btn_start_navigation_->setEnabled(false);  // Initially disabled
+    connect(btn_start_navigation_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
+    v->addWidget(btn_start_navigation_);
 
     return box;
 }
@@ -1141,8 +1448,41 @@ void CoverageGUI::refreshPlot() {
     // Convert route PathStateList to use
     plot_->setRoute(route_);
     plot_->setPath(path_);
+    plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
+    plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty());
     
-    plot_->resetView();
+    std::optional<PathState> pose_copy;
+    std::vector<Point2D> trail_copy;
+    std::chrono::steady_clock::time_point last_update_copy{};
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        pose_copy = robot_pose_state_;
+        trail_copy = robot_trail_;
+        last_update_copy = last_robot_update_;
+    }
+    
+    bool show_robot = !chk_show_robot_ || chk_show_robot_->isChecked();
+    if (!show_robot) {
+        pose_copy.reset();
+        trail_copy.clear();
+    }
+    
+    plot_->setRobotPose(pose_copy);
+    plot_->setRobotTrail(trail_copy);
+    
+    if (fit_view_pending_) {
+        plot_->resetView();
+        fit_view_pending_ = false;
+    } else {
+        plot_->update();
+    }
+    
+    bool pose_fresh = false;
+    if (pose_copy.has_value() && last_update_copy.time_since_epoch().count() > 0) {
+        auto age = std::chrono::steady_clock::now() - last_update_copy;
+        pose_fresh = age < std::chrono::seconds(2);
+    }
+    updateRobotStatusLabel(pose_fresh);
 }
 
 Polygon2D CoverageGUI::effectivePolygon() const {
@@ -1196,6 +1536,7 @@ void CoverageGUI::loadPointCloud() {
             xy_2d_.emplace_back(pt.x, pt.y);
         }
         
+        scheduleFitToView();
         refreshPlot();
         setStatus(QString("Loaded %1 points").arg(pcd_points_->size()), 4000);
         
@@ -1204,6 +1545,14 @@ void CoverageGUI::loadPointCloud() {
     }
     
     showProgress(false);
+}
+
+void CoverageGUI::clearRobotTrail() {
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        robot_trail_.clear();
+    }
+    refreshPlot();
 }
 
 void CoverageGUI::fetchLatestMapFromRobot() {
@@ -1360,6 +1709,7 @@ void CoverageGUI::loadPointCloudFromPath(const QString& path) {
             xy_2d_.emplace_back(pt.x, pt.y);
         }
         
+        scheduleFitToView();
         refreshPlot();
         setStatus(QString("Loaded %1 points from %2").arg(pcd_points_->size()).arg(QFileInfo(path).fileName()), 4000);
         
@@ -1398,6 +1748,7 @@ void CoverageGUI::applyHeightCrop() {
         route_.clear();
         path_.clear();
         
+        scheduleFitToView();
         refreshPlot();
         setStatus(QString("Filtered to %1 points (Z: %2 to %3 m)")
                   .arg(filtered_points_->size())
@@ -1694,6 +2045,7 @@ void CoverageGUI::computeHull() {
         QString method = combo_hull_method_->currentData().toString();
         polygon_ = computeConcaveHull(xy_2d_, spin_alpha_->value(), method.toStdString());
         
+        scheduleFitToView();
         refreshPlot();
         setStatus(QString("Hull computed with %1 vertices").arg(polygon_.size()), 4000);
         
@@ -1714,6 +2066,7 @@ void CoverageGUI::simplifyPolygon() {
     
     try {
         polygon_ = f2c_cpp::simplifyPolygon(polygon_, spin_simplify_->value());
+        scheduleFitToView();
         refreshPlot();
         setStatus(QString("Simplified to %1 vertices").arg(polygon_.size()), 4000);
     } catch (const std::exception& e) {
@@ -1916,9 +2269,33 @@ void CoverageGUI::clearCoverage() {
 }
 
 void CoverageGUI::exportPathCSV() {
-    if (path_.empty()) {
-        QMessageBox::warning(this, "Warning", "Generate path first.");
-        return;
+    // Determine which path to export based on mode
+    PathStateList export_path;
+    QString mode_label;
+    
+    if (isCustomModeActive()) {
+        if (custom_waypoints_.empty()) {
+            QMessageBox::warning(this, "Warning", "No custom waypoints to export.");
+            return;
+        }
+        // Convert custom waypoints to PathStateList for export
+        export_path.reserve(custom_waypoints_.size());
+        for (const auto& pt : custom_waypoints_) {
+            PathState ps;
+            ps.point = pt;
+            ps.heading = 0;
+            ps.vx = 0;
+            ps.vy = 0;
+            export_path.push_back(ps);
+        }
+        mode_label = "custom";
+    } else {
+        if (path_.empty()) {
+            QMessageBox::warning(this, "Warning", "Generate F2C path first.");
+            return;
+        }
+        export_path = path_;
+        mode_label = "F2C";
     }
     
     QString filename = QFileDialog::getSaveFileName(this, "Save Path CSV", "", "CSV (*.csv)");
@@ -1928,57 +2305,331 @@ void CoverageGUI::exportPathCSV() {
         filename += ".csv";
     }
     
-    if (savePathToCSV(path_, filename.toStdString())) {
+    if (savePathToCSV(export_path, filename.toStdString())) {
         QMessageBox::information(this, "Export", 
-                                QString("Saved %1 points").arg(path_.size()));
+                                QString("Saved %1 %2 waypoints").arg(export_path.size()).arg(mode_label));
         setStatus("Path exported", 4000);
     } else {
         QMessageBox::critical(this, "Error", "Failed to save file");
     }
 }
 
-void CoverageGUI::publishWaypoints() {
-    if (path_.empty()) {
-        QMessageBox::warning(this, "No Path", "Generate a coverage path first before publishing waypoints.");
+void CoverageGUI::setupRobotTrackingSubscription() {
+    fastlio_sub_.reset();
+    
+    if (!ros_node_) {
+        updateRobotStatusLabel(false);
         return;
     }
+    
+    QString topic_qt = robot_odom_topic_.trimmed();
+    if (topic_qt.isEmpty()) {
+        updateRobotStatusLabel(false);
+        return;
+    }
+    
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(50)).best_effort();
+    std::string topic = topic_qt.toStdString();
+    std::cout << "[F2C GUI] Subscribing to robot odom topic: " << topic << std::endl;
+    fastlio_sub_ = ros_node_->create_subscription<nav_msgs::msg::Odometry>(
+        topic, qos,
+        [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+            tf2::Quaternion q(
+                msg->pose.pose.orientation.x,
+                msg->pose.pose.orientation.y,
+                msg->pose.pose.orientation.z,
+                msg->pose.pose.orientation.w);
+            double roll, pitch, yaw;
+            tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+            
+            PathState state;
+            state.point = {msg->pose.pose.position.x, msg->pose.pose.position.y};
+            state.heading = yaw;
+            state.vx = std::cos(yaw);
+            state.vy = std::sin(yaw);
+            
+            {
+                std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+                robot_pose_state_ = state;
+                
+                if (robot_trail_.empty() ||
+                    std::hypot(robot_trail_.back().x - state.point.x,
+                               robot_trail_.back().y - state.point.y) > 0.03) {
+                    robot_trail_.push_back(state.point);
+                    if (robot_trail_.size() > robot_trail_max_points_) {
+                        robot_trail_.erase(
+                            robot_trail_.begin(),
+                            robot_trail_.begin() + (robot_trail_.size() - robot_trail_max_points_));
+                    }
+                }
+                
+                last_robot_update_ = std::chrono::steady_clock::now();
+            }
+            
+            QMetaObject::invokeMethod(this, [this]() {
+                updateCustomWaypointStatus();
+                
+                // Throttle plot refresh to reduce CPU usage at high odom rates
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - last_plot_refresh_).count();
+                if (elapsed >= kPlotRefreshIntervalMs) {
+                    last_plot_refresh_ = now;
+                    refreshPlot();
+                }
+            }, Qt::QueuedConnection);
+        });
+    
+    updateRobotStatusLabel(false);
+}
 
+void CoverageGUI::updateRobotStatusLabel(bool has_fix) {
+    if (!lbl_robot_status_) {
+        return;
+    }
+    
+    QString topic = robot_odom_topic_.isEmpty() ? "(topic not set)" : robot_odom_topic_;
+    if (has_fix) {
+        lbl_robot_status_->setText(QString("Robot: tracking (%1)").arg(topic));
+        lbl_robot_status_->setStyleSheet("color: #2e7d32; font-size: 10px;");
+    } else {
+        lbl_robot_status_->setText(QString("Robot: waiting for %1...").arg(topic));
+        lbl_robot_status_->setStyleSheet("color: #a66f00; font-size: 10px;");
+    }
+}
+
+void CoverageGUI::scheduleFitToView() {
+    fit_view_pending_ = true;
+}
+
+void CoverageGUI::publishWaypoints() {
+    // Check ROS2 availability first
     if (!ros_initialized_) {
         QMessageBox::warning(this, "ROS2 Unavailable", 
             "ROS2 is not initialized. Cannot publish waypoints.\n\n"
             "Check your network configuration and CycloneDDS settings.");
         return;
     }
-
-    // Remove consecutive duplicates to avoid sending repeated points
-    PathStateList deduped_path = dedupePathStates(path_);
-
-    // Create waypoint array message
-    auto msg = std_msgs::msg::Float64MultiArray();
-
-    // Add waypoints in format: [x1,y1, x2,y2, ...]
-    for (const auto& state : deduped_path) {
-        msg.data.push_back(state.point.x);
-        msg.data.push_back(state.point.y);
+    if (!waypoint_pub_) {
+        QMessageBox::warning(this, "ROS2 Unavailable", "Waypoint publisher is not ready yet.");
+        return;
     }
-
+    
+    std_msgs::msg::Float64MultiArray msg;
+    size_t waypoint_count = 0;
+    
+    if (isCustomModeActive()) {
+        // Custom path mode
+        if (custom_waypoints_.size() < 2) {
+            QMessageBox::warning(this, "No Path", "Add at least two custom waypoints before publishing.");
+            return;
+        }
+        
+        msg.data.reserve(custom_waypoints_.size() * 2);
+        for (const auto& pt : custom_waypoints_) {
+            msg.data.push_back(pt.x);
+            msg.data.push_back(pt.y);
+        }
+        waypoint_count = custom_waypoints_.size();
+        
+        // Reset visited status for tracking
+        custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
+        refreshCustomPathUI();
+        
+        std::cout << "[F2C GUI] Published " << waypoint_count << " custom waypoints to /f2c_waypoints topic" << std::endl;
+    } else {
+        // F2C coverage mode
+        if (path_.empty()) {
+            QMessageBox::warning(this, "No Path", "Generate a coverage path first before publishing waypoints.");
+            return;
+        }
+        
+        // Remove consecutive duplicates to avoid sending repeated points
+        PathStateList deduped_path = dedupePathStates(path_);
+        
+        msg.data.reserve(deduped_path.size() * 2);
+        for (const auto& state : deduped_path) {
+            msg.data.push_back(state.point.x);
+            msg.data.push_back(state.point.y);
+        }
+        waypoint_count = deduped_path.size();
+        
+        std::cout << "[F2C GUI] Published " << waypoint_count << " F2C waypoints to /f2c_waypoints topic" << std::endl;
+    }
+    
     // Publish to ROS2 topic
     waypoint_pub_->publish(msg);
     waypoints_published_ = true;
-
+    
     // Update status and enable navigation button
-    setStatus(QString("✅ Published %1 waypoints to robot").arg(deduped_path.size()), 5000);
+    setStatus(QString("✅ Published %1 waypoints to robot").arg(waypoint_count), 5000);
+    
+    if (btn_start_navigation_) {
+        btn_start_navigation_->setEnabled(true);
+    }
+}
 
-    // Find and enable the start navigation button
-    for (auto* child : findChildren<QPushButton*>()) {
-        if (child->text().contains("Start Navigation")) {
-            child->setEnabled(true);
+void CoverageGUI::publishCustomPath() {
+    // Redirect to unified publish function
+    publishWaypoints();
+}
+
+void CoverageGUI::onPathModeChanged() {
+    bool custom_mode = isCustomModeActive();
+    
+    // Show/hide control panels
+    if (f2c_controls_widget_) {
+        f2c_controls_widget_->setVisible(!custom_mode);
+    }
+    if (custom_controls_widget_) {
+        custom_controls_widget_->setVisible(custom_mode);
+    }
+    
+    // Disable drawing if switching away from custom mode
+    setCustomModeActive(custom_mode);
+    refreshCustomPathUI();
+    refreshPlot();
+}
+
+bool CoverageGUI::isCustomModeActive() const {
+    return radio_mode_custom_ && radio_mode_custom_->isChecked();
+}
+
+void CoverageGUI::setCustomModeActive(bool active) {
+    if (!plot_) {
+        return;
+    }
+    
+    if (!active && custom_draw_enabled_) {
+        custom_draw_enabled_ = false;
+        if (btn_custom_draw_) {
+            QSignalBlocker blocker(btn_custom_draw_);
+            btn_custom_draw_->setChecked(false);
+        }
+    }
+    
+    plot_->setCustomDrawMode(active && custom_draw_enabled_);
+    plot_->setShowCustomPath(active && !custom_waypoints_.empty());
+}
+
+void CoverageGUI::onPlotCustomWaypoint(const Point2D& point) {
+    if (!isCustomModeActive() || !custom_draw_enabled_) {
+        return;
+    }
+    custom_waypoints_.push_back(point);
+    custom_waypoints_visited_.push_back(false);
+    refreshCustomPathUI();
+}
+
+void CoverageGUI::refreshCustomPathUI() {
+    custom_waypoints_visited_.resize(custom_waypoints_.size(), false);
+    
+    if (list_custom_points_) {
+        list_custom_points_->clear();
+        for (size_t i = 0; i < custom_waypoints_.size(); ++i) {
+            const auto& pt = custom_waypoints_[i];
+            bool visited = custom_waypoints_visited_[i];
+            QString text = QString("#%1 (%2, %3) %4")
+                .arg(i + 1)
+                .arg(pt.x, 0, 'f', 2)
+                .arg(pt.y, 0, 'f', 2)
+                .arg(visited ? "✓ reached" : "→ pending");
+            auto* item = new QListWidgetItem(text);
+            item->setForeground(visited ? QColor("#2e7d32") : QColor("#006064"));
+            list_custom_points_->addItem(item);
+        }
+    }
+    
+    size_t next_idx = custom_waypoints_.size();
+    for (size_t i = 0; i < custom_waypoints_.size(); ++i) {
+        if (!custom_waypoints_visited_[i]) {
+            next_idx = i;
             break;
         }
     }
+    
+    if (lbl_custom_status_) {
+        if (custom_waypoints_.empty()) {
+            lbl_custom_status_->setText("No custom waypoints yet.");
+        } else if (next_idx >= custom_waypoints_.size()) {
+            lbl_custom_status_->setText(QString("Waypoints: %1 (all reached)").arg(custom_waypoints_.size()));
+        } else {
+            lbl_custom_status_->setText(
+                QString("Waypoints: %1 | Next target: #%2")
+                .arg(custom_waypoints_.size())
+                .arg(next_idx + 1));
+        }
+    }
+    
+    if (btn_custom_undo_) {
+        btn_custom_undo_->setEnabled(!custom_waypoints_.empty());
+    }
+    if (btn_custom_clear_) {
+        btn_custom_clear_->setEnabled(!custom_waypoints_.empty());
+    }
+    
+    plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
+    plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty());
+}
 
-    // Log to console
-    std::cout << "[F2C GUI] Published " << path_.size() << " waypoints to /f2c_waypoints topic" << std::endl;
+void CoverageGUI::undoCustomWaypoint() {
+    if (custom_waypoints_.empty()) {
+        return;
+    }
+    custom_waypoints_.pop_back();
+    if (!custom_waypoints_visited_.empty()) {
+        custom_waypoints_visited_.resize(custom_waypoints_.size());
+    }
+    refreshCustomPathUI();
+}
+
+void CoverageGUI::clearCustomWaypoints() {
+    if (custom_waypoints_.empty()) {
+        return;
+    }
+    custom_waypoints_.clear();
+    custom_waypoints_visited_.clear();
+    refreshCustomPathUI();
+}
+
+void CoverageGUI::updateCustomWaypointStatus() {
+    if (custom_waypoints_.empty()) {
+        return;
+    }
+    
+    std::optional<PathState> pose_copy;
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        pose_copy = robot_pose_state_;
+    }
+    
+    if (!pose_copy.has_value()) {
+        return;
+    }
+    
+    bool updated = false;
+    for (size_t i = 0; i < custom_waypoints_.size(); ++i) {
+        if (i >= custom_waypoints_visited_.size()) {
+            custom_waypoints_visited_.resize(custom_waypoints_.size(), false);
+        }
+        if (custom_waypoints_visited_[i]) {
+            continue;
+        }
+        
+        const auto& target = custom_waypoints_[i];
+        double dist = std::hypot(pose_copy->point.x - target.x,
+                                 pose_copy->point.y - target.y);
+        if (dist <= custom_waypoint_reach_tol_) {
+            custom_waypoints_visited_[i] = true;
+            updated = true;
+            continue;
+        }
+        break;  // Waypoints are sequential
+    }
+    
+    if (updated) {
+        refreshCustomPathUI();
+    }
 }
 
 void CoverageGUI::startNavigation() {
@@ -2016,6 +2667,7 @@ void CoverageGUI::tryReconnectROS2() {
         ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupRobotTrackingSubscription();
 
         // Start ROS2 spinning in background thread
         ros_thread_ = std::thread([this]() {
@@ -2086,6 +2738,7 @@ void CoverageGUI::reinitializeROS2() {
     // Shutdown existing ROS2 connection if any
     if (ros_initialized_) {
         std::cout << "[F2C GUI] Shutting down ROS2 for profile switch..." << std::endl;
+        fastlio_sub_.reset();
         
         // Stop the spin thread by shutting down the node's context
         if (ros_node_) {
@@ -2121,6 +2774,7 @@ void CoverageGUI::reinitializeROS2() {
         ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupRobotTrackingSubscription();
 
         ros_thread_ = std::thread([this]() {
             rclcpp::spin(ros_node_);

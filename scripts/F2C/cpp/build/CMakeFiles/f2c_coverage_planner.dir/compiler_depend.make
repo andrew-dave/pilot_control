@@ -391,6 +391,14 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsplitter.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
@@ -416,7 +424,6 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
@@ -885,6 +892,28 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -1759,6 +1788,14 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsplitter.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
@@ -1784,7 +1821,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
@@ -2253,6 +2289,28 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -2753,6 +2811,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qbrush.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
   /usr/include/c++/11/fstream \
   /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
@@ -3116,7 +3180,111 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/bits/mman-linux.h \
   /usr/include/x86_64-linux-gnu/bits/mman-shared.h \
   /usr/include/x86_64-linux-gnu/sys/fcntl.h \
-  /usr/include/pcl-1.12/pcl/io/lzf.h
+  /usr/include/pcl-1.12/pcl/io/lzf.h \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Vector3.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Scalar.hpp \
+  /usr/include/c++/11/math.h \
+  /usr/include/c++/11/cfloat \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/MinMax.hpp \
+  /opt/ros/humble/include/tf2/tf2/visibility_control.h \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/QuadWord.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.h \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp \
+  /opt/ros/humble/include/tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/quaternion_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/transform.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/transform_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point32.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_with_covariance.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_with_covariance_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/polygon_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/velocity_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench_stamped.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__type_support.hpp \
+  /usr/include/kdl/frames.hpp \
+  /usr/include/kdl/utilities/kdl-config.h \
+  /usr/include/kdl/utilities/utility.h \
+  /usr/include/kdl/utilities/kdl-config.h \
+  /usr/include/kdl/frames.inl \
+  /opt/ros/humble/include/tf2/tf2/convert.hpp \
+  /opt/ros/humble/include/tf2/tf2/exceptions.hpp \
+  /opt/ros/humble/include/tf2/tf2/impl/convert.hpp \
+  /opt/ros/humble/include/tf2/tf2/transform_datatypes.hpp \
+  /opt/ros/humble/include/tf2/tf2/time.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Transform.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp \
+  /opt/ros/humble/include/tf2/tf2/LinearMath/Vector3.hpp \
+  /opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp \
+  /opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.hpp
 
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage_pipeline.cpp \
   /usr/include/stdc-predef.h \
@@ -6707,6 +6875,14 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsplitter.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
@@ -6731,7 +6907,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h \
-  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
@@ -6748,6 +6923,28 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
+  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -7282,8 +7479,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/vector/vector.hpp:
 
-/usr/include/boost/fusion/container/vector/vector10.hpp:
-
 /usr/include/boost/fusion/algorithm/iteration/detail/preprocessed/fold.hpp:
 
 /usr/include/boost/fusion/algorithm/iteration/fold.hpp:
@@ -7450,8 +7645,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/list/detail/next_impl.hpp:
 
-/usr/include/boost/fusion/container/list/cons_iterator.hpp:
-
 /usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/end.hpp:
@@ -7518,8 +7711,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/detail/numeric_traits.hpp:
 
-/usr/include/boost/iterator/counting_iterator.hpp:
-
 /usr/include/boost/property_map/vector_property_map.hpp:
 
 /usr/include/boost/property_map/property_map.hpp:
@@ -7539,8 +7730,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Hilbert_sort_median_2.h:
 
 /usr/include/CGAL/Hilbert_sort_2.h:
-
-/usr/include/CGAL/Hilbert_policy_tags.h:
 
 /usr/include/CGAL/hilbert_sort.h:
 
@@ -7656,8 +7845,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_dereference.hpp:
 
-/usr/include/boost/type_traits/has_complement.hpp:
-
 /usr/include/boost/type_traits/has_bit_xor.hpp:
 
 /usr/include/boost/type_traits/has_bit_or_assign.hpp:
@@ -7740,8 +7927,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/math/special_functions/zeta.hpp:
 
-/usr/include/boost/math/tools/atomic.hpp:
-
 /usr/include/boost/smart_ptr/detail/lightweight_mutex.hpp:
 
 /usr/include/boost/detail/lightweight_mutex.hpp:
@@ -7789,8 +7974,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/multiprecision/cpp_int/add.hpp:
 
 /usr/include/boost/multiprecision/cpp_int/comparison.hpp:
-
-/usr/include/boost/multiprecision/cpp_int/value_pack.hpp:
 
 /usr/include/boost/fusion/container/vector/vector_iterator.hpp:
 
@@ -7878,8 +8061,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Interval_arithmetic.h:
 
-/usr/include/CGAL/Sqrt_extension/Sqrt_extension_type.h:
-
 /usr/include/CGAL/Sqrt_extension.h:
 
 /usr/include/CGAL/Number_types/internal/Exact_type_selector.h:
@@ -7958,8 +8139,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Segment_3_Segment_3_intersection.h:
 
-/usr/include/CGAL/Intersections_3/Segment_3_Segment_3.h:
-
 /usr/include/CGAL/Intersections_3/Ray_3_Triangle_3.h:
 
 /usr/include/CGAL/Intersections_3/internal/Ray_3_Tetrahedron_3_intersection.h:
@@ -8014,8 +8193,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Plane_3_Ray_3_intersection.h:
 
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Ray_3_do_intersect.h:
-
 /usr/include/boost/fusion/support/void.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Plane_3_Point_3_do_intersect.h:
@@ -8040,8 +8217,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Tetrahedron_3_intersection.h:
 
-/usr/include/CGAL/Intersections_3/internal/Tetrahedron_3_Unbounded_3_do_intersect.h:
-
 /usr/include/CGAL/Intersections_3/internal/Line_3_Tetrahedron_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/Line_3_Tetrahedron_3.h:
@@ -8058,8 +8233,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Line_3_Ray_3.h:
 
-/usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_intersection.h:
-
 /usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/Line_3_Point_3.h:
@@ -8067,8 +8240,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/internal/Line_3_Plane_3_intersection.h:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Plane_3_do_intersect.h:
-
-/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/internal/Triangle_3_Triangle_3_do_intersect.h:
 
@@ -8137,8 +8308,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Line_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_do_intersect.h:
-
-/usr/include/CGAL/Intersection_traits_3.h:
 
 /usr/include/CGAL/intersection_3.h:
 
@@ -8240,10 +8409,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Distance_2/Point_2_Triangle_2.h:
 
-/usr/include/boost/multiprecision/cpp_int/checked.hpp:
-
-/usr/include/CGAL/Distance_2/Point_2_Line_2.h:
-
 /usr/include/CGAL/Distance_2/Point_2_Ray_2.h:
 
 /usr/include/CGAL/Kernel/Wutils.h:
@@ -8290,8 +8455,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Cartesian/solve_3.h:
 
-/usr/include/CGAL/Cartesian/Plane_3.h:
-
 /usr/include/boost/mpl/aux_/pop_front_impl.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/detail/segmented_size.hpp:
@@ -8325,8 +8488,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Cartesian/Aff_transformation_2.h:
 
 /usr/include/CGAL/Cartesian/Triangle_2.h:
-
-/usr/include/CGAL/Cartesian/predicates_on_points_2.h:
 
 /usr/include/CGAL/Convex_hull_2/ch_assertions.h:
 
@@ -8404,43 +8565,185 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/independent_bits.hpp:
 
-/usr/include/boost/mpl/lambda_fwd.hpp:
+/usr/include/boost/integer/integer_log2.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/macros.hpp:
+/usr/include/boost/random/detail/integer_log2.hpp:
 
-/usr/include/boost/mpl/push_back_fwd.hpp:
+/usr/include/boost/random/detail/large_arithmetic.hpp:
 
-/usr/include/boost/config/workaround.hpp:
+/usr/include/boost/random/linear_congruential.hpp:
 
-/usr/include/boost/detail/workaround.hpp:
+/usr/include/boost/mpl/erase_key_fwd.hpp:
 
-/usr/include/boost/iterator/iterator_categories.hpp:
+/usr/include/boost/random/detail/seed.hpp:
 
-/usr/include/boost/mpl/aux_/config/gcc.hpp:
+/usr/include/boost/random/additive_combine.hpp:
 
-/usr/include/boost/mpl/erase.hpp:
+/usr/include/boost/random.hpp:
 
-/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
+/usr/include/boost/random/traits.hpp:
 
-/usr/include/boost/numeric/conversion/bounds.hpp:
+/usr/include/boost/random/detail/signed_unsigned_tools.hpp:
 
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Point_3_do_intersect.h:
+/usr/include/CGAL/Multiscale_sort.h:
 
-/usr/include/boost/config/platform/linux.hpp:
+/usr/include/boost/random/detail/enable_warnings.hpp:
 
-/usr/include/boost/config/detail/select_platform_config.hpp:
+/usr/include/boost/random/detail/disable_warnings.hpp:
 
-/usr/include/boost/config/stdlib/libstdcpp3.hpp:
+/usr/include/boost/fusion/view/joint_view/joint_view.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
+/usr/include/boost/random/detail/config.hpp:
 
-/usr/include/c++/11/version:
+/usr/include/boost/random/uniform_int_distribution.hpp:
 
-/usr/include/boost/smart_ptr/detail/yield_k.hpp:
+/usr/include/boost/random/random_number_generator.hpp:
 
-/usr/include/boost/config/detail/select_stdlib_config.hpp:
+/usr/include/CGAL/algorithm.h:
 
-/usr/include/boost/preprocessor/arithmetic/detail/div_base.hpp:
+/usr/include/CGAL/predicates/kernel_ftC2.h:
+
+/usr/include/CGAL/Cartesian/Line_2.h:
+
+/usr/include/CGAL/Cartesian/Direction_2.h:
+
+/usr/include/CGAL/Cartesian/Vector_2.h:
+
+/usr/include/boost/utility/swap.hpp:
+
+/usr/include/boost/type_traits/remove_volatile.hpp:
+
+/usr/include/boost/tuple/tuple.hpp:
+
+/usr/include/CGAL/Cartesian/Weighted_point_2.h:
+
+/usr/include/CGAL/Cartesian/Point_2.h:
+
+/usr/include/boost/detail/container_fwd.hpp:
+
+/usr/include/boost/container_hash/extensions.hpp:
+
+/usr/include/boost/integer/static_log2.hpp:
+
+/usr/include/boost/container_hash/detail/limits.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/literals.hpp:
+
+/usr/include/boost/container_hash/detail/float_functions.hpp:
+
+/usr/include/CGAL/Kernel/hash_functions.h:
+
+/usr/include/CGAL/Kernel/global_functions_internal_3.h:
+
+/usr/include/CGAL/Kernel/global_functions_3.h:
+
+/usr/include/CGAL/Kernel/global_functions_internal_2.h:
+
+/usr/include/CGAL/Aff_transformation_3.h:
+
+/usr/include/CGAL/Sphere_3.h:
+
+/usr/include/boost/math/special_functions/polygamma.hpp:
+
+/usr/include/CGAL/intersection_2.h:
+
+/usr/include/CGAL/Iso_cuboid_3.h:
+
+/usr/include/CGAL/Tetrahedron_3.h:
+
+/usr/include/CGAL/Ray_3.h:
+
+/usr/include/CGAL/Line_3.h:
+
+/usr/include/CGAL/Direction_3.h:
+
+/usr/include/CGAL/Vector_3.h:
+
+/usr/include/boost/fusion/view/joint_view/detail/deref_impl.hpp:
+
+/usr/include/CGAL/Weighted_point_3.h:
+
+/usr/include/CGAL/Distance_3/Point_3_Ray_3.h:
+
+/usr/include/boost/mpl/divides.hpp:
+
+/usr/include/boost/math/tools/detail/rational_horner3_20.hpp:
+
+/usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
+
+/usr/include/boost/math/tools/rational.hpp:
+
+/usr/include/boost/math/special_functions/cbrt.hpp:
+
+/usr/include/CGAL/Kernel/Conic_misc.h:
+
+/usr/include/CGAL/Iso_rectangle_2.h:
+
+/usr/include/CGAL/Ray_2.h:
+
+/usr/include/CGAL/Line_2.h:
+
+/usr/include/CGAL/Direction_2.h:
+
+/usr/include/CGAL/Vector_2.h:
+
+/usr/include/CGAL/Weighted_point_2.h:
+
+/usr/include/CGAL/Kernel/Return_base_tag.h:
+
+/usr/include/boost/fusion/sequence/intrinsic_fwd.hpp:
+
+/usr/include/CGAL/user_classes.h:
+
+/usr/include/CGAL/Kernel/global_functions_2.h:
+
+/usr/include/CGAL/Kernel/global_functions.h:
+
+/usr/include/CGAL/Bbox_3.h:
+
+/usr/include/CGAL/Bbox_2.h:
+
+/usr/include/CGAL/basic_classes.h:
+
+/usr/include/CGAL/Kernel_traits_fwd.h:
+
+/usr/include/boost/any.hpp:
+
+/usr/include/boost/optional/detail/optional_reference_spec.hpp:
+
+/usr/include/boost/optional/detail/optional_aligned_storage.hpp:
+
+/usr/include/boost/container_hash/detail/hash_float.hpp:
+
+/usr/include/boost/optional/detail/optional_config.hpp:
+
+/usr/include/boost/optional/optional_fwd.hpp:
+
+/usr/include/boost/none.hpp:
+
+/usr/include/boost/type_traits/remove_extent.hpp:
+
+/usr/include/boost/type_traits/remove_bounds.hpp:
+
+/usr/include/boost/optional/bad_optional_access.hpp:
+
+/usr/include/boost/core/explicit_operator_bool.hpp:
+
+/usr/include/boost/optional/optional.hpp:
+
+/usr/include/boost/optional.hpp:
+
+/usr/include/boost/optional/detail/optional_factory_support.hpp:
+
+/usr/include/boost/variant/visitor_ptr.hpp:
+
+/usr/include/boost/variant/detail/element_index.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessor/repeat.hpp:
+
+/usr/include/boost/variant/detail/substitute.hpp:
+
+/usr/include/boost/variant/detail/enable_recursive.hpp:
 
 /usr/include/boost/mpl/assert.hpp:
 
@@ -8464,8 +8767,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/date_time/date_clock_device.hpp:
 
-/usr/include/CGAL/Kernel/Return_base_tag.h:
-
 /usr/include/boost/version.hpp:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h:
@@ -8482,6 +8783,18 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/arg.hpp:
 
+/usr/include/c++/11/bits/deque.tcc:
+
+/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
+
+/usr/include/boost/mpl/aux_/config/gcc.hpp:
+
+/usr/include/boost/mpl/erase.hpp:
+
+/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
+
+/usr/include/boost/numeric/conversion/bounds.hpp:
+
 /usr/include/eigen3/Eigen/src/Geometry/Homogeneous.h:
 
 /usr/include/pcl-1.12/pcl/io/low_level_io.h:
@@ -8493,6 +8806,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
 
 /usr/include/boost/interprocess/permissions.hpp:
+
+/usr/include/CGAL/Aff_transformation_2.h:
+
+/usr/include/boost/date_time/gregorian/greg_duration.hpp:
 
 /usr/include/eigen3/Eigen/Householder:
 
@@ -8522,19 +8839,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/GlobalFunctions.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QFile:
+
 /usr/include/boost/move/detail/std_ns_begin.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/StlIterators.h:
 
-/usr/include/CGAL/Intersections_3/Plane_3_Point_3.h:
-
-/usr/include/eigen3/Eigen/src/Core/Reverse.h:
-
-/usr/include/CGAL/Kernel/Conic_misc.h:
-
 /usr/include/eigen3/Eigen/src/Core/VectorwiseOp.h:
 
 /usr/include/eigen3/Eigen/src/Core/CoreIterators.h:
+
+/usr/include/CGAL/Filtered_kernel_fwd.h:
+
+/usr/include/boost/optional/detail/optional_swap.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
 
@@ -8550,15 +8869,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/products/Parallelizer.h:
 
+/usr/include/CGAL/representation_tags.h:
+
+/usr/include/boost/predef/library/std/cxx.h:
+
 /usr/include/eigen3/Eigen/src/Core/SelfAdjointView.h:
 
 /usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
 
 /usr/include/geos_c.h:
 
-/usr/include/eigen3/Eigen/src/Core/Solve.h:
+/usr/include/boost/variant/recursive_wrapper.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Redux.h:
+/usr/include/boost/predef/os.h:
+
+/usr/include/eigen3/Eigen/src/Core/Solve.h:
 
 /usr/include/boost/fusion/algorithm/transformation/erase.hpp:
 
@@ -8722,12 +9047,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/pair.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
-
-/usr/include/CGAL/Distance_3/Point_3_Ray_3.h:
-
-/usr/include/boost/mpl/divides.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/GenericPacketMath.h:
 
 /usr/include/boost/predef/os/haiku.h:
@@ -8758,6 +9077,30 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/asm-generic/errno.h:
 
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Ray_3_do_intersect.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
+
+/usr/include/boost/iterator/counting_iterator.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Redux.h:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Triangle_3_do_intersect.h:
+
+/usr/include/c++/11/bits/ptr_traits.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/AssignEvaluator.h:
 
 /usr/include/boost/mpl/aux_/push_front_impl.hpp:
@@ -8784,7 +9127,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h:
 
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface.hpp:
+
+/usr/include/CGAL/Conic_2.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
+
+/usr/include/boost/type_traits/has_complement.hpp:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__builder.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__struct.hpp:
 
@@ -8798,8 +9153,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp:
 
-/usr/include/boost/optional/detail/optional_reference_spec.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
 
 /usr/include/pcl-1.12/pcl/point_cloud.h:
@@ -8812,9 +9165,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_result.hpp:
 
+/opt/ros/humble/include/rcl/rcl/error_handling.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_subscription_payload.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_wait_set_mask.hpp:
 
 /usr/include/c++/11/bits/stl_numeric.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__builder.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_event_handler.hpp:
 
@@ -8826,6 +9185,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__type_support.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__builder.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
 
 /usr/include/boost/preprocessor/logical/and.hpp:
@@ -8836,17 +9197,23 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__struct.hpp:
-
-/usr/include/pcl-1.12/pcl/search/search.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/transform_stamped.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__type_support.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__traits.hpp:
 
-/usr/include/boost/multiprecision/detail/precision.hpp:
+/usr/include/CGAL/Intersections_3/Plane_3_Point_3.h:
 
-/usr/include/c++/11/pstl/execution_defs.h:
+/usr/include/eigen3/Eigen/src/Core/Reverse.h:
+
+/usr/include/kdl/utilities/utility.h:
+
+/usr/include/boost/random/detail/seed_impl.hpp:
+
+/usr/include/boost/mpl/sequence_tag_fwd.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__builder.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__builder.hpp:
 
@@ -8857,16 +9224,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/math/special_functions/detail/erf_inv.hpp:
 
 /usr/include/boost/mpl/int_fwd.hpp:
-
-/usr/include/boost/config/helper_macros.hpp:
-
-/usr/include/boost/fusion/view/single_view/detail/distance_impl.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__traits.hpp:
-
-/usr/include/CGAL/STL_Extension/internal/info_check.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__type_support.hpp:
 
@@ -8900,13 +9257,17 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_options.hpp:
 
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_waitables_interface.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_time_source_interface.hpp:
 
-/usr/include/c++/11/bits/unordered_set.h:
-
 /opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
+
+/usr/include/c++/11/bits/stl_deque.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__type_support.hpp:
 
 /usr/include/gdal/cpl_port.h:
 
@@ -8943,6 +9304,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcpputils/rcpputils/shared_library.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
+
+/usr/include/boost/math/special_functions/next.hpp:
+
+/usr/include/c++/11/bits/concept_check.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter:
 
@@ -9012,8 +9377,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/preprocessor/tuple/rem.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
-
 /usr/include/c++/11/array:
 
 /usr/include/eigen3/Eigen/src/Geometry/RotationBase.h:
@@ -9025,6 +9388,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
+
+/usr/include/boost/variant/detail/variant_io.hpp:
+
+/usr/include/boost/algorithm/string/detail/finder.hpp:
 
 /usr/include/pcl-1.12/pcl/type_traits.h:
 
@@ -9041,6 +9410,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
 
 /usr/include/c++/11/tr1/hypergeometric.tcc:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
 
 /usr/include/boost/fusion/algorithm/iteration/detail/segmented_fold.hpp:
 
@@ -9104,15 +9477,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp:
 
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__type_support.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/CwiseUnaryView.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__traits.hpp:
-
-/usr/include/CGAL/Kernel/global_functions_3.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
 
@@ -9139,6 +9508,16 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__type_support.hpp:
 
 /usr/include/c++/11/tr1/bessel_function.tcc:
+
+/usr/include/boost/fusion/view/single_view/detail/distance_impl.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__traits.hpp:
+
+/usr/include/boost/config/helper_macros.hpp:
+
+/usr/include/CGAL/STL_Extension/internal/info_check.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__builder.hpp:
 
@@ -9216,6 +9595,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/Transpositions.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
 
 /usr/include/boost/range/iterator.hpp:
@@ -9229,8 +9610,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/buffer_implementation_base.hpp:
-
-/usr/include/boost/random/detail/signed_unsigned_tools.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process_base.hpp:
 
@@ -9280,6 +9659,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/network_flow_endpoints.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__struct.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/select2.h:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp:
@@ -9291,12 +9672,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess:
 
 /usr/include/boost/mpl/vector/aux_/item.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Ray_3_intersection.h:
-
-/usr/include/boost/algorithm/string/detail/finder.hpp:
-
-/usr/include/boost/variant/detail/variant_io.hpp:
 
 /usr/include/boost/mpl/insert_range_fwd.hpp:
 
@@ -9338,8 +9713,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__traits.hpp:
 
-/usr/include/math.h:
-
 /usr/include/pcl-1.12/pcl/PCLPointField.h:
 
 /usr/include/eigen3/Eigen/src/Core/Random.h:
@@ -9347,6 +9720,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/view/transform_view/detail/value_at_impl.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h:
+
+/opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.hpp:
 
 /usr/include/c++/11/bits/locale_facets_nonio.h:
 
@@ -9386,6 +9761,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
+/usr/include/CGAL/Plane_3.h:
+
+/opt/ros/humble/include/rcl/rcl/graph.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextcursor.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/utilities.hpp:
@@ -9400,6 +9779,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcpputils/rcpputils/visibility_control.hpp:
 
+/usr/include/boost/optional/detail/optional_trivially_copyable_base.hpp:
+
+/usr/include/boost/lexical_cast/bad_lexical_cast.hpp:
+
+/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
+
 /usr/include/boost/next_prior.hpp:
 
 /usr/include/boost/predef/library/std/stlport.h:
@@ -9407,6 +9792,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/function_traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/expand_topic_or_service_name.hpp:
+
+/usr/include/CGAL/utility.h:
+
+/usr/include/boost/random/detail/operators.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton:
 
 /usr/include/eigen3/Eigen/SVD:
 
@@ -9430,14 +9821,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/limits/vector.hpp:
 
-/opt/ros/humble/include/rcl/rcl/error_handling.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_subscription_payload.hpp:
-
-/usr/include/boost/math/tools/rational.hpp:
-
-/usr/include/CGAL/Direction_3.h:
-
 /usr/include/c++/11/bits/sstream.tcc:
 
 /usr/include/CGAL/Cartesian/predicates_on_planes_3.h:
@@ -9447,12 +9830,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/mpl/limits/arity.hpp:
 
 /usr/include/boost/mpl/same_as.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
-
-/usr/include/CGAL/Intersections_3/internal/Ray_3_Sphere_3_do_intersect.h:
-
-/usr/include/c++/11/bits/stringfwd.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:
 
@@ -9464,7 +9841,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/detail/is_function_cxx_11.hpp:
 
-/usr/include/CGAL/Kernel/global_functions_2.h:
+/usr/include/kdl/utilities/kdl-config.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/guard_condition.hpp:
 
@@ -9473,6 +9850,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/bits/sigcontext.h:
 
 /usr/include/boost/mpl/vector.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/macros.hpp:
+
+/usr/include/boost/mpl/push_back_fwd.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp:
 
@@ -9514,11 +9895,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/timer.h:
 
-/usr/include/boost/predef/library/std/cxx.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp:
 
-/usr/include/CGAL/representation_tags.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__builder.hpp:
 
 /opt/ros/humble/include/rmw/rmw/network_flow_endpoint_array.h:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__type_support.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__type_support.hpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -9539,6 +9924,22 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/features-time64.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp:
+
+/opt/ros/humble/include/rcl/rcl/event_callback.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h:
+
+/usr/include/boost/predef/compiler/clang.h:
+
+/usr/include/boost/random/detail/generator_bits.hpp:
+
+/opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h:
+
+/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
+
+/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
 
 /usr/include/boost/predef/platform/windows_runtime.h:
 
@@ -9563,8 +9964,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/publisher.hpp:
 
 /usr/include/c++/11/bits/algorithmfwd.h:
-
-/usr/include/boost/type_traits/remove_volatile.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
 
@@ -9658,8 +10057,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_index.hpp:
 
-/usr/include/boost/random/detail/disable_warnings.hpp:
-
 /usr/include/c++/11/stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
@@ -9694,15 +10091,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/is_unsigned.hpp:
 
-/usr/include/linux/limits.h:
-
 /usr/include/c++/11/bits/allocator.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs_impl.h:
-
-/usr/include/boost/fusion/view/joint_view/joint_view.hpp:
-
-/usr/include/boost/random/detail/config.hpp:
 
 /usr/include/boost/type_traits/extent.hpp:
 
@@ -9724,17 +10115,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/events_statuses.h:
 
-/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
+/usr/include/c++/11/cctype:
 
-/usr/include/boost/config/compiler/gcc.hpp:
+/usr/include/CGAL/Interval_traits.h:
 
 /usr/include/boost/mpl/bool_fwd.hpp:
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Do_intersect_2.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/x86_64-linux-gnu/bits/timex.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h:
 
@@ -9760,15 +10149,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/compiler.h:
 
-/usr/include/c++/11/fenv.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpaintdevice.h:
 
 /usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/usr/include/boost/detail/select_type.hpp:
 
 /usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
 
@@ -9808,10 +10193,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
 
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Triangle_3_do_intersect.h:
-
-/usr/include/c++/11/bits/ptr_traits.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsettings.h:
 
 /usr/include/c++/11/bits/basic_ios.tcc:
@@ -9828,8 +10209,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/preprocessor/identity.hpp:
 
-/usr/include/boost/optional/detail/optional_aligned_storage.hpp:
-
 /usr/include/c++/11/bits/hashtable_policy.h:
 
 /usr/include/boost/iterator/minimum_category.hpp:
@@ -9841,12 +10220,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Tools/chained_map.h:
 
 /usr/include/c++/11/bits/hashtable.h:
-
-/usr/include/CGAL/Interval_traits.h:
-
-/usr/include/c++/11/cctype:
-
-/usr/include/boost/optional/bad_optional_access.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set.hpp:
 
@@ -9890,6 +10263,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h:
 
+/usr/include/boost/functional/hash.hpp:
+
+/usr/include/boost/predef/platform/cloudabi.h:
+
 /usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/publisher_base.hpp:
@@ -9911,6 +10288,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/algorithm/transformation/insert_range.hpp:
 
 /usr/include/c++/11/bits/locale_classes.tcc:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
 
 /usr/include/boost/mpl/aux_/config/msvc.hpp:
 
@@ -9978,6 +10357,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/istream.tcc:
 
+/usr/include/CGAL/Dimension.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/storage_policy_common.hpp:
+
 /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h:
 
 /usr/include/boost/range/difference_type.hpp:
@@ -9986,11 +10369,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/ConditionEstimator.h:
 
-/usr/include/boost/algorithm/string/predicate_facade.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/locale.h:
-
-/usr/include/boost/random/uniform_int_distribution.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:
 
@@ -10000,15 +10379,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
 
-/usr/include/boost/fusion/view/single_view/detail/end_impl.hpp:
-
-/usr/include/boost/mpl/aux_/nttp_decl.hpp:
-
-/usr/include/boost/type_traits/is_convertible.hpp:
-
-/usr/include/boost/type_traits/has_plus.hpp:
-
-/usr/include/boost/date_time/date_duration_types.hpp:
+/usr/include/boost/utility/result_of.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h:
 
@@ -10026,6 +10397,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/preprocessor/seq/detail/is_empty.hpp:
 
+/usr/include/boost/random/detail/uniform_int_float.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
 
 /usr/include/c++/11/bits/std_abs.h:
@@ -10033,6 +10408,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp:
 
 /usr/include/boost/range/reverse_iterator.hpp:
+
+/usr/include/CGAL/Handle_for.h:
+
+/usr/include/c++/11/cstring:
 
 /usr/include/c++/11/bits/atomic_futex.h:
 
@@ -10042,9 +10421,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
+
+/usr/include/CGAL/Hilbert_policy_tags.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h:
 
@@ -10074,6 +10459,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_value.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__traits.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h:
 
 /opt/ros/humble/include/rcutils/rcutils/shared_library.h:
@@ -10091,6 +10478,16 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/mpl/erase_fwd.hpp:
 
 /usr/include/c++/11/bits/stl_uninitialized.h:
+
+/usr/include/CGAL/Triangle_2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h:
+
+/usr/include/c++/11/fenv.h:
+
+/usr/include/CGAL/Intersection_traits_3.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__traits.hpp:
 
 /usr/include/c++/11/bits/streambuf.tcc:
 
@@ -10140,8 +10537,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/blank.hpp:
 
-/usr/include/boost/config/detail/posix_features.hpp:
-
 /opt/ros/humble/include/rcpputils/rcpputils/time.hpp:
 
 /usr/include/boost/range/detail/str_types.hpp:
@@ -10174,8 +10569,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/front_fwd.hpp:
 
-/usr/include/boost/math/tools/detail/rational_horner3_20.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
 
 /usr/include/CGAL/Cartesian/plane_constructions_3.h:
@@ -10188,6 +10581,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__type_support.hpp:
 
+/usr/include/boost/fusion/container/vector/vector10.hpp:
+
+/opt/ros/humble/include/tf2/tf2/time.hpp:
+
 /usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp:
 
 /usr/include/boost/rational.hpp:
@@ -10197,6 +10594,12 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
 /usr/include/c++/11/ios:
+
+/usr/include/CGAL/Intersections_3/internal/Ray_3_Sphere_3_do_intersect.h:
+
+/usr/include/c++/11/bits/stringfwd.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp:
 
 /usr/include/eigen3/Eigen/src/Geometry/Hyperplane.h:
 
@@ -10208,15 +10611,9 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/sigstack.h:
 
-/usr/include/CGAL/Kernel/global_functions.h:
-
 /usr/include/c++/11/ext/numeric_traits.h:
 
 /usr/include/boost/variant/variant.hpp:
-
-/usr/include/boost/mpl/aux_/config/workaround.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer_impl.h:
 
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h:
 
@@ -10224,29 +10621,23 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/c++/11/bits/uses_allocator.h:
 
-/opt/ros/humble/include/rcl/rcl/graph.h:
-
-/usr/include/CGAL/Plane_3.h:
-
 /usr/include/CGAL/Cartesian/Ray_2.h:
 
 /usr/include/c++/11/bits/unique_lock.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
-/usr/include/x86_64-linux-gnu/sys/select.h:
-
 /usr/include/boost/math/tools/real_cast.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Iso_cuboid_3_do_intersect.h:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h:
 
 /usr/include/boost/math/tools/toms748_solve.hpp:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
-
-/usr/include/boost/mpl/aux_/config/intel.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Plane_3_Sphere_3_intersection.h:
 
@@ -10256,7 +10647,11 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
 
-/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
+/usr/include/boost/fusion/iterator/equal_to.hpp:
+
+/usr/include/boost/optional/detail/optional_relops.hpp:
+
+/usr/include/c++/11/cstdio:
 
 /usr/include/boost/mpl/minus.hpp:
 
@@ -10275,10 +10670,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/c++/11/debug/debug.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
-
-/opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
 
 /usr/include/c++/11/initializer_list:
 
@@ -10318,11 +10709,9 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
 
-/usr/include/boost/math/special_functions/detail/bernoulli_details.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer_impl.h:
 
-/usr/include/boost/config/detail/select_compiler_config.hpp:
-
-/usr/include/c++/11/bits/stl_raw_storage_iter.h:
+/usr/include/boost/mpl/aux_/config/workaround.hpp:
 
 /usr/include/c++/11/bits/unique_ptr.h:
 
@@ -10346,6 +10735,12 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Ref.h:
 
+/usr/include/CGAL/Modular_traits.h:
+
+/usr/include/boost/mpl/tag.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h:
+
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 /usr/include/stdc-predef.h:
@@ -10353,10 +10748,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/boost/fusion/view/transform_view/detail/value_of_impl.hpp:
 
 /usr/include/boost/range/detail/misc_concept.hpp:
-
-/usr/include/boost/iterator/detail/config_def.hpp:
-
-/opt/ros/humble/include/rcl/rcl/event_callback.h:
 
 /usr/include/CGAL/Intersections_2/Line_2_Ray_2.h:
 
@@ -10370,13 +10761,23 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/DenseBase.h:
 
+/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
+
+/usr/include/c++/11/bits/functexcept.h:
+
+/usr/include/c++/11/bits/basic_string.tcc:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
+
+/opt/ros/humble/include/rmw/rmw/event_callback_type.h:
+
+/opt/ros/humble/include/rcl/rcl/context.h:
+
 /usr/include/CGAL/Hilbert_sort_3.h:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigthread.h:
-
-/usr/include/CGAL/Cartesian/Vector_2.h:
 
 /usr/include/c++/11/chrono:
 
@@ -10402,13 +10803,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout:
 
-/usr/include/boost/predef/compiler/sgi_mipspro.h:
-
-/usr/include/boost/random/detail/large_arithmetic.hpp:
-
 /usr/include/CGAL/Intersections_3/Bbox_3_Bbox_3.h:
 
 /usr/include/errno.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
 
@@ -10432,6 +10831,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/executable_list.hpp:
 
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLineEdit:
 
 /usr/include/x86_64-linux-gnu/bits/sigstksz.h:
@@ -10445,8 +10846,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/smart_ptr/detail/spinlock.hpp:
 
 /usr/include/boost/mpl/aux_/msvc_eti_base.hpp:
-
-/usr/include/CGAL/Direction_2.h:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Triangle_3.h:
 
@@ -10474,9 +10873,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/atomic:
 
-/usr/include/boost/mpl/aux_/advance_backward.hpp:
-
-/usr/include/boost/blank_fwd.hpp:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__struct.hpp:
 
 /usr/include/boost/mpl/list/aux_/front.hpp:
 
@@ -10522,6 +10919,18 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/backward/binders.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h:
+
+/usr/include/boost/fusion/mpl/pop_back.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Point_3_Segment_3_intersection.h:
+
+/usr/include/boost/predef/platform/windows_server.h:
+
+/usr/include/CGAL/Cartesian/Plane_3.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3_stamped.hpp:
+
 /usr/include/boost/fusion/support/detail/mpl_iterator_category.hpp:
 
 /usr/include/boost/detail/lcast_precision.hpp:
@@ -10558,7 +10967,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:
 
+/usr/include/boost/variant/bad_visit.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__type_support.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
+
+/usr/include/boost/mpl/less.hpp:
+
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp:
+
+/usr/include/boost/type_traits/decay.hpp:
+
+/usr/include/eigen3/Eigen/src/SVD/JacobiSVD.h:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Tetrahedron_3_intersection.h:
 
@@ -10575,6 +10996,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__type_support.hpp:
 
 /usr/include/CGAL/Intersections_3/Bbox_3_Iso_cuboid_3.h:
 
@@ -10605,10 +11028,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
 /usr/include/boost/algorithm/string/detail/predicate.hpp:
-
-/usr/include/boost/type_traits/add_volatile.hpp:
-
-/usr/include/boost/predef/library/std/vacpp.h:
 
 /usr/include/wchar.h:
 
@@ -10660,8 +11079,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/this_thread_sleep.h:
 
-/usr/include/boost/config.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__struct.hpp:
@@ -10682,8 +11099,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/is_void.hpp:
 
-/usr/include/boost/array.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/Assign.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h:
@@ -10691,6 +11106,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/istream:
 
 /opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/wint_t.h:
+
+/opt/ros/humble/include/tf2/tf2/convert.hpp:
+
+/usr/include/boost/config/stdlib/libstdcpp3.hpp:
 
 /usr/include/signal.h:
 
@@ -10774,6 +11195,18 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl/rcl/types.h:
 
+/usr/include/CGAL/Intersections_3/Line_3_Line_3.h:
+
+/opt/ros/humble/include/rmw/rmw/types.h:
+
+/usr/include/boost/range/iterator_range.hpp:
+
+/usr/include/c++/11/pstl/glue_memory_defs.h:
+
+/usr/include/boost/date_time/posix_time/ptime.hpp:
+
+/usr/include/kdl/frames.hpp:
+
 /usr/include/eigen3/Eigen/Jacobi:
 
 /usr/include/c++/11/bits/std_function.h:
@@ -10787,6 +11220,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/random/laplace_distribution.hpp:
 
 /usr/include/c++/11/pstl/pstl_config.h:
+
+/usr/include/CGAL/Triangle_3.h:
+
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/boost/mpl/list/aux_/item.hpp:
 
@@ -10807,8 +11244,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Intersections_3/Plane_3_Ray_3.h:
 
 /usr/include/boost/math/tools/convert_from_string.hpp:
-
-/usr/include/boost/type_traits/remove_bounds.hpp:
 
 /usr/include/boost/predef/language/cuda.h:
 
@@ -10864,13 +11299,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__traits.hpp:
+
 /usr/include/c++/11/new:
 
 /usr/include/eigen3/Eigen/src/misc/Image.h:
-
-/usr/include/pcl-1.12/pcl/common/io.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -10879,8 +11312,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/aff_transformation_tags.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/service.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Fuzzy.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h:
 
@@ -10891,6 +11322,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/inserter.hpp:
 
 /usr/include/boost/smart_ptr/detail/sp_has_sync_intrinsics.hpp:
+
+/usr/include/CGAL/Spatial_sort_traits_adapter_2.h:
+
+/usr/include/boost/algorithm/string/constants.hpp:
+
+/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
 
 /usr/include/boost/type_traits/is_signed.hpp:
 
@@ -10913,6 +11350,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject_impl.h:
+
+/opt/ros/humble/include/tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface_traits.hpp:
 
@@ -10949,6 +11388,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qcolor.h:
+
+/opt/ros/humble/include/tf2/tf2/visibility_control.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qrgb.h:
 
@@ -10987,6 +11430,14 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/iosfwd:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton:
+
+/opt/ros/humble/include/rcl/rcl/node.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qtransform.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h:
+
+/usr/include/boost/variant/detail/visitation_impl.hpp:
 
 /usr/include/boost/fusion/container/vector/detail/distance_impl.hpp:
 
@@ -11044,6 +11495,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__type_support.hpp:
+
 /usr/include/boost/date_time/time_defs.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
@@ -11058,6 +11511,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/util/XprHelper.h:
 
+/usr/include/c++/11/deque:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qcursor.h:
+
 /usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/ProductEvaluators.h:
@@ -11065,6 +11522,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/unordered_set:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayoutitem.h:
+
+/usr/include/c++/11/bits/unordered_set.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker:
 
 /usr/include/boost/fusion/iterator/next.hpp:
 
@@ -11118,21 +11579,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
 
-/usr/include/CGAL/Intersections_3/Line_3_Line_3.h:
+/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
 
-/opt/ros/humble/include/rmw/rmw/types.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h:
 
-/usr/include/boost/range/iterator_range.hpp:
-
-/usr/include/c++/11/pstl/glue_memory_defs.h:
-
-/usr/include/boost/date_time/posix_time/ptime.hpp:
+/usr/include/boost/date_time/locale_config.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h:
-
-/usr/include/boost/container_hash/detail/limits.hpp:
 
 /usr/include/boost/mpl/back.hpp:
 
@@ -11148,9 +11603,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/begin_end.hpp:
 
+/usr/include/CGAL/ch_bykat.h:
+
+/usr/include/boost/preprocessor/iterate.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h:
+
 /usr/include/CGAL/Homogeneous/RayH3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMessageBox:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Scalar.hpp:
 
 /usr/include/CGAL/Exact_kernel_selector.h:
 
@@ -11196,21 +11661,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/ostream.tcc:
 
-/usr/include/boost/config/user.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/create_generic_publisher.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
 
 /usr/include/boost/mpl/size_fwd.hpp:
 
 /usr/include/boost/type_traits/has_nothrow_copy.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qtransform.h:
-
-/usr/include/boost/variant/detail/visitation_impl.hpp:
 
 /usr/include/boost/variant/detail/forced_return.hpp:
 
@@ -11236,17 +11691,29 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h:
 
-/usr/include/CGAL/Multiscale_sort.h:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__struct.hpp:
 
-/usr/include/boost/random/detail/enable_warnings.hpp:
+/usr/include/pcl-1.12/pcl/search/search.h:
 
-/usr/include/x86_64-linux-gnu/bits/confname.h:
+/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_do_intersect.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget:
 
-/usr/include/boost/mpl/aux_/na_spec.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/minus.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/polygon_stamped.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h:
+
+/usr/include/boost/preprocessor/logical/bitand.hpp:
 
 /usr/include/c++/11/bits/erase_if.h:
+
+/usr/include/boost/container_hash/hash.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h:
 
 /usr/include/eigen3/Eigen/Geometry:
 
@@ -11284,19 +11751,21 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Arithmetic_kernel/Arithmetic_kernel_base.h:
 
+/usr/include/boost/mpl/aux_/config/intel.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h:
-
-/usr/include/boost/preprocessor/logical/bitand.hpp:
 
 /usr/include/c++/11/bits/nested_exception.h:
 
 /usr/include/boost/fusion/support/detail/is_mpl_sequence.hpp:
 
+/opt/ros/humble/include/tf2/tf2/LinearMath/Vector3.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__struct.hpp:
 
 /usr/include/CGAL/export/CGAL.h:
 
@@ -11311,8 +11780,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
 
 /usr/include/boost/variant/detail/std_hash.hpp:
-
-/usr/include/CGAL/Vector_2.h:
 
 /usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
 
@@ -11340,25 +11807,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl/rcl/init_options.h:
 
-/usr/include/c++/11/bits/functexcept.h:
-
-/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
-
-/usr/include/c++/11/bits/basic_string.tcc:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
-
 /usr/include/boost/random/shuffle_order.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QDate:
-
-/usr/include/CGAL/ch_bykat.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h:
-
-/usr/include/boost/preprocessor/iterate.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/unistd.h:
 
@@ -11420,11 +11871,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/math.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
+
+/usr/include/boost/type_traits/type_with_alignment.hpp:
+
 /opt/ros/humble/include/rcutils/rcutils/macros.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QBrush:
 
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/velocity_stamped.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h:
 
@@ -11442,6 +11897,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h:
 
+/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.h:
+
 /opt/ros/humble/include/rcutils/rcutils/error_handling.h:
 
 /opt/ros/humble/include/rcutils/rcutils/snprintf.h:
@@ -11450,7 +11909,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcutils/rcutils/types/hash_map.h:
 
-/usr/include/CGAL/Ray_3.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
 
@@ -11472,6 +11933,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/offered_deadline_missed.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__struct.hpp:
+
 /usr/include/boost/predef/hardware/simd/x86_amd/versions.h:
 
 /usr/include/eigen3/Eigen/src/Core/PermutationMatrix.h:
@@ -11482,13 +11945,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h:
 
-/usr/include/CGAL/Ray_2.h:
-
 /usr/include/boost/mpl/aux_/config/has_xxx.hpp:
 
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
-
-/usr/include/boost/preprocessor/seq/enum.hpp:
 
 /usr/include/CGAL/functional.h:
 
@@ -11496,29 +11955,73 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/locale_facets.tcc:
 
-/usr/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h:
+/usr/include/boost/preprocessor/arithmetic/detail/div_base.hpp:
 
-/usr/include/boost/predef/compiler/clang.h:
+/usr/include/boost/config.hpp:
 
-/usr/include/boost/random/detail/generator_bits.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/create_generic_publisher.hpp:
 
-/opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h:
+/usr/include/boost/config/user.hpp:
 
-/usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
+/usr/include/boost/iterator/detail/config_def.hpp:
+
+/usr/include/boost/math/special_functions/detail/bernoulli_details.hpp:
+
+/usr/include/c++/11/bits/stl_raw_storage_iter.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp:
+
+/usr/include/boost/config/detail/select_compiler_config.hpp:
+
+/usr/include/boost/detail/select_type.hpp:
+
+/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
+
+/usr/include/boost/config/compiler/gcc.hpp:
+
+/usr/include/boost/config/detail/select_stdlib_config.hpp:
+
+/usr/include/c++/11/version:
+
+/usr/include/boost/smart_ptr/detail/yield_k.hpp:
+
+/usr/include/boost/config/detail/select_platform_config.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Point_3_do_intersect.h:
+
+/usr/include/boost/config/platform/linux.hpp:
+
+/usr/include/boost/config/detail/posix_features.hpp:
+
+/usr/include/boost/detail/workaround.hpp:
+
+/usr/include/boost/iterator/iterator_categories.hpp:
+
+/usr/include/boost/config/workaround.hpp:
+
+/usr/include/boost/fusion/view/single_view/detail/end_impl.hpp:
+
+/usr/include/boost/mpl/aux_/nttp_decl.hpp:
+
+/usr/include/boost/type_traits/is_convertible.hpp:
+
+/usr/include/boost/type_traits/has_plus.hpp:
+
+/usr/include/boost/date_time/date_duration_types.hpp:
 
 /usr/include/boost/tuple/detail/tuple_basic.hpp:
 
-/opt/ros/humble/include/rcl/rcl/context.h:
+/usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
 
-/usr/include/CGAL/Spatial_sort_traits_adapter_2.h:
+/usr/include/x86_64-linux-gnu/bits/confname.h:
 
-/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h:
 
-/usr/include/boost/algorithm/string/constants.hpp:
+/usr/include/boost/mpl/aux_/na_spec.hpp:
 
-/opt/ros/humble/include/rmw/rmw/event_callback_type.h:
+/usr/include/boost/mpl/lambda_fwd.hpp:
 
-/opt/ros/humble/include/rcl/rcl/node.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp:
 
 /usr/include/boost/mpl/aux_/na.hpp:
 
@@ -11553,8 +12056,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/type_traits:
 
 /usr/include/boost/predef/hardware/simd/ppc/versions.h:
-
-/usr/include/boost/any.hpp:
 
 /usr/include/boost/mpl/int.hpp:
 
@@ -11596,12 +12097,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/repeat.hpp:
 
-/usr/include/boost/lexical_cast/bad_lexical_cast.hpp:
-
-/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
-
-/usr/include/boost/optional/detail/optional_trivially_copyable_base.hpp:
-
 /usr/include/boost/preprocessor/tuple/eat.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Point_3_do_intersect.h:
@@ -11610,9 +12105,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Distance_2/Segment_2_Segment_2.h:
 
-/opt/ros/humble/include/rmw/rmw/impl/cpp/demangle.hpp:
-
 /usr/include/CGAL/Circle_2.h:
+
+/opt/ros/humble/include/rmw/rmw/impl/cpp/demangle.hpp:
 
 /usr/include/boost/preprocessor/array/size.hpp:
 
@@ -11658,6 +12153,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/pcl-1.12/pcl/filters/filter_indices.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
+
 /usr/include/boost/preprocessor/list/reverse.hpp:
 
 /usr/include/CGAL/config.h:
@@ -11702,10 +12199,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h:
 
-/usr/include/c++/11/cstring:
-
-/usr/include/CGAL/Handle_for.h:
-
 /usr/include/boost/mpl/aux_/config/arrays.hpp:
 
 /usr/include/boost/mpl/aux_/config/gpu.hpp:
@@ -11721,6 +12214,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/stringize.hpp:
 
 /usr/include/boost/cstdint.hpp:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp:
 
 /usr/include/boost/mpl/list/list0.hpp:
 
@@ -11770,8 +12265,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/joint_view.hpp:
 
-/usr/include/CGAL/Bbox_3.h:
-
 /usr/include/boost/mpl/plus.hpp:
 
 /usr/include/boost/mpl/integral_c_fwd.hpp:
@@ -11792,6 +12285,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/is_sequence.hpp:
 
+/usr/include/boost/variant/get.hpp:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp:
+
+/usr/include/boost/mpl/apply_wrap.hpp:
+
 /usr/include/boost/mpl/has_xxx.hpp:
 
 /usr/include/eigen3/Eigen/Core:
@@ -11806,15 +12305,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/array/data.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings:
-
 /opt/ros/humble/include/rcutils/rcutils/types/char_array.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings:
 
 /usr/include/x86_64-linux-gnu/bits/mman-linux.h:
 
 /usr/include/CGAL/Distance_3/Point_3_Weighted_point_3.h:
 
 /usr/include/c++/11/sstream:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h:
 
 /usr/include/boost/preprocessor/list/fold_right.hpp:
 
@@ -11849,8 +12350,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/eval_if.hpp:
 
 /usr/include/boost/type.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/minus.hpp:
 
 /usr/include/boost/mpl/advance_fwd.hpp:
 
@@ -11956,8 +12455,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/os/ios.h:
 
-/usr/include/CGAL/Cartesian/Direction_2.h:
-
 /usr/include/boost/math/special_functions/log1p.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/arg.hpp:
@@ -11975,8 +12472,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Scalar_factor_traits.h:
 
 /usr/include/boost/mpl/aux_/contains_impl.hpp:
-
-/usr/include/boost/mpl/aux_/begin_end_impl.hpp:
 
 /usr/include/boost/mpl/apply.hpp:
 
@@ -12016,6 +12511,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/quote.hpp:
 
+/usr/include/CGAL/Intersections_3/Segment_3_Segment_3.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__traits.hpp:
+
 /usr/include/boost/mpl/aux_/template_arity_fwd.hpp:
 
 /usr/include/boost/mpl/aux_/has_type.hpp:
@@ -12038,11 +12537,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/variant.hpp:
 
-/usr/include/CGAL/Kernel/global_functions_internal_3.h:
-
 /usr/include/boost/mpl/aux_/msvc_type.hpp:
-
-/usr/include/CGAL/Cartesian/Point_2.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/or.hpp:
 
@@ -12076,6 +12571,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/iterator:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__builder.hpp:
+
 /usr/include/boost/mpl/aux_/O1_size_impl.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qapplication.h:
@@ -12098,11 +12595,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qguiapplication.h:
 
-/usr/include/boost/random/traits.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyle:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo:
+
+/usr/include/boost/type_traits/intrinsics.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h:
 
@@ -12142,9 +12643,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/version_number.h:
 
+/usr/include/boost/fusion/container/list/cons_iterator.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/MapBase.h:
 
 /usr/include/boost/predef/make.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__type_support.hpp:
 
 /usr/include/boost/predef/detail/test.h:
 
@@ -12274,8 +12781,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/iterator/iterator_adaptor.hpp:
 
-/usr/include/boost/type_traits/intrinsics.hpp:
-
 /usr/include/boost/type_traits/detail/config.hpp:
 
 /usr/include/boost/move/utility_core.hpp:
@@ -12289,10 +12794,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/type_traits/add_rvalue_reference.hpp:
 
 /usr/include/boost/type_traits/is_destructible.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h:
-
-/usr/include/boost/type_traits/add_cv.hpp:
 
 /usr/include/CGAL/Filtered_kernel.h:
 
@@ -12325,6 +12826,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/config/detail/suffix.hpp:
 
 /usr/include/boost/iterator/iterator_facade.hpp:
+
+/usr/include/boost/algorithm/string/predicate_facade.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow:
 
@@ -12398,8 +12903,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/numeric/conversion/udt_builtin_mixture_enum.hpp:
 
-/usr/include/boost/optional/optional_fwd.hpp:
-
 /usr/include/c++/11/ratio:
 
 /usr/include/boost/mpl/multiplies.hpp:
@@ -12430,6 +12933,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
@@ -12457,10 +12962,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/core/enable_if.hpp:
 
 /usr/include/boost/concept/assert.hpp:
-
-/usr/include/c++/11/bits/concept_check.h:
-
-/usr/include/boost/math/special_functions/next.hpp:
 
 /usr/include/boost/concept/detail/backward_compatibility.hpp:
 
@@ -12491,6 +12992,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/aux_/iter_apply.hpp:
 
 /usr/include/boost/type_traits/make_unsigned.hpp:
+
+/usr/include/boost/random/detail/const_mod.hpp:
+
+/opt/ros/humble/include/tracetools/tracetools/tracetools.h:
+
+/usr/include/boost/range/detail/has_member_size.hpp:
 
 /usr/include/boost/utility/base_from_member.hpp:
 
@@ -12559,6 +13066,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/algorithm/string/find.hpp:
 
 /usr/include/boost/algorithm/string/compare.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point32.hpp:
 
 /usr/include/boost/algorithm/string/finder.hpp:
 
@@ -12654,8 +13163,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/asm/posix_types.h:
 
-/usr/include/boost/random/random_number_generator.hpp:
-
 /usr/include/boost/random/discard_block.hpp:
 
 /usr/include/asm-generic/posix_types.h:
@@ -12664,9 +13171,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
 
-/usr/include/boost/assert/source_location.hpp:
+/usr/include/CGAL/Segment_2.h:
 
-/usr/include/dirent.h:
+/usr/include/boost/type_traits/is_base_of.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
 
@@ -12720,17 +13227,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/smart_ptr/detail/sp_thread_pause.hpp:
 
-/usr/include/boost/mpl/integral_c_tag.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/arch/Default/Half.h:
+
+/usr/include/boost/mpl/integral_c_tag.hpp:
 
 /usr/include/boost/math/constants/calculate_constants.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_base_interface_traits.hpp:
 
 /usr/include/boost/smart_ptr/detail/local_counted_base.hpp:
-
-/usr/include/boost/date_time/locale_config.hpp:
 
 /usr/include/boost/date_time/c_time.hpp:
 
@@ -12739,8 +13244,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/none_t.hpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_system.hpp:
-
-/usr/include/boost/variant/detail/substitute.hpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_config.hpp:
 
@@ -12753,6 +13256,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/eigen3/Eigen/src/Core/Diagonal.h:
 
 /usr/include/boost/date_time/time_duration.hpp:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h:
 
 /usr/include/boost/mpl/comparison.hpp:
 
@@ -12784,11 +13289,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/is_polymorphic.hpp:
 
+/usr/include/boost/variant/recursive_variant.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib.h:
-
-/usr/include/boost/variant/recursive_variant.hpp:
 
 /usr/include/boost/date_time/gregorian/greg_year.hpp:
 
@@ -12800,6 +13305,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/arithmetic/dec.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_with_covariance.hpp:
+
 /usr/include/boost/date_time/wrapping_int.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_result_kind.hpp:
@@ -12808,19 +13315,27 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/variant/static_visitor.hpp:
 
+/usr/include/boost/utility/compare_pointees.hpp:
+
+/usr/include/boost/date_time/date_generators.hpp:
+
 /usr/include/boost/date_time/time_system_counted.hpp:
 
 /usr/include/boost/type_traits/copy_reference.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
 
-/usr/include/CGAL/Kernel/hash_functions.h:
-
 /usr/include/CGAL/Handle.h:
 
 /usr/include/boost/type_traits/has_trivial_constructor.hpp:
 
 /usr/include/boost/date_time/time.hpp:
+
+/usr/include/boost/type_traits/add_cv.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__struct.hpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_duration.hpp:
 
@@ -12834,8 +13349,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/interprocess/sync/detail/locks.hpp:
 
-/usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
-
 /usr/include/boost/predef/os/amigaos.h:
 
 /usr/include/pcl-1.12/pcl/io/impl/pcd_io.hpp:
@@ -12845,10 +13358,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/algorithm/string/trim.hpp:
 
 /usr/include/boost/predef/architecture/sparc.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h:
-
-/usr/include/boost/container_hash/hash.hpp:
 
 /usr/include/boost/algorithm/string/detail/trim.hpp:
 
@@ -12871,6 +13380,174 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/mman-map-flags-generic.h:
 
 /usr/include/x86_64-linux-gnu/sys/fcntl.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/float.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/MinMax.hpp:
+
+/usr/include/boost/preprocessor/seq/enum.hpp:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/QuadWord.hpp:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp:
+
+/usr/include/CGAL/Distance_3/Point_3_Line_3.h:
+
+/usr/include/c++/11/bit:
+
+/usr/include/boost/variant/detail/config.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Fuzzy.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp:
+
+/usr/include/boost/type_traits/add_volatile.hpp:
+
+/usr/include/boost/predef/library/std/vacpp.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Tetrahedron_3_Unbounded_3_do_intersect.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/quaternion_stamped.hpp:
+
+/usr/include/x86_64-linux-gnu/sys/select.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__builder.hpp:
+
+/usr/include/boost/mpl/aux_/begin_end_impl.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/transform.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__struct.hpp:
+
+/usr/include/boost/blank_fwd.hpp:
+
+/usr/include/boost/mpl/aux_/advance_backward.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__builder.hpp:
+
+/usr/include/boost/array.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__builder.hpp:
+
+/usr/include/boost/iterator/detail/config_undef.hpp:
+
+/usr/include/boost/mpl/insert_fwd.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__builder.hpp:
+
+/usr/include/boost/assert/source_location.hpp:
+
+/usr/include/dirent.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__type_support.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/value_pack.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__builder.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_squared_radius_3.h:
+
+/usr/include/boost/predef/architecture/convex.h:
+
+/usr/include/linux/limits.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_with_covariance_stamped.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__builder.hpp:
+
+/usr/include/boost/multiprecision/detail/precision.hpp:
+
+/usr/include/c++/11/pstl/execution_defs.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h:
+
+/usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__struct.hpp:
+
+/usr/include/pcl-1.12/pcl/common/io.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__builder.hpp:
+
+/usr/include/math.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__type_support.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__type_support.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_intersection.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench.hpp:
+
+/usr/include/boost/predef/compiler/sgi_mipspro.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench_stamped.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/timex.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__traits.hpp:
+
+/usr/include/boost/math/tools/atomic.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__type_support.hpp:
+
+/usr/include/kdl/frames.inl:
+
+/usr/include/boost/mpl/negate.hpp:
+
+/usr/include/CGAL/Cartesian/predicates_on_points_2.h:
+
+/opt/ros/humble/include/tf2/tf2/exceptions.hpp:
+
+/opt/ros/humble/include/tf2/tf2/impl/convert.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__struct.hpp:
+
+/opt/ros/humble/include/tf2/tf2/transform_datatypes.hpp:
+
+/usr/include/CGAL/Sqrt_extension/Sqrt_extension_type.h:
+
+/opt/ros/humble/include/tf2/tf2/LinearMath/Transform.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/checked.hpp:
+
+/usr/include/CGAL/Distance_2/Point_2_Line_2.h:
+
+/opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp:
 
 /usr/include/c++/11/random:
 
@@ -12918,13 +13595,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/lexical_cast.hpp:
 
+/usr/include/boost/predef/compiler/ekopath.h:
+
+/usr/include/boost/lexical_cast/try_lexical_convert.hpp:
+
 /usr/include/boost/type_traits/type_identity.hpp:
 
 /usr/include/boost/lexical_cast/detail/is_character.hpp:
-
-/usr/include/CGAL/Bbox_2.h:
-
-/usr/include/CGAL/Line_3.h:
 
 /opt/ros/humble/include/rcl/rcl/arguments.h:
 
@@ -12933,6 +13610,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Distance_3/Segment_3_Ray_3.h:
 
 /usr/include/boost/type_traits/has_right_shift.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp:
 
 /usr/include/eigen3/Eigen/src/Geometry/Quaternion.h:
 
@@ -12951,12 +13630,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/math/tools/config.hpp:
 
 /usr/include/boost/predef/architecture/x86/32.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/float.h:
-
-/usr/include/eigen3/Eigen/src/SVD/JacobiSVD.h:
-
-/usr/include/boost/type_traits/decay.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
 
@@ -12988,8 +13661,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/move/adl_move_swap.hpp:
 
-/usr/include/boost/none.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/list.hpp:
@@ -13000,9 +13671,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/long.hpp:
 
-/usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__builder.hpp:
 
-/usr/include/boost/mpl/negate.hpp:
+/usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp:
 
 /usr/include/boost/mpl/aux_/advance_forward.hpp:
 
@@ -13054,12 +13725,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/integer_fwd.hpp:
 
-/usr/include/CGAL/utility.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton:
-
-/usr/include/boost/random/detail/operators.hpp:
-
 /usr/include/CGAL/is_convertible.h:
 
 /usr/include/boost/mpl/inherit.hpp:
@@ -13110,6 +13775,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
+
+/usr/include/gdal/ogr_geometry.h:
+
+/usr/include/boost/math/constants/constants.hpp:
+
 /usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp:
 
 /usr/include/CGAL/IO/io_tags.h:
@@ -13140,21 +13811,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h:
 
-/usr/include/boost/multiprecision/cpp_int/literals.hpp:
-
-/usr/include/boost/container_hash/detail/float_functions.hpp:
-
 /usr/include/boost/predef/compiler/intel.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
-
-/usr/include/boost/mpl/less.hpp:
-
-/usr/include/boost/variant/bad_visit.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h:
 
@@ -13202,7 +13863,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
 
+/usr/include/CGAL/memory.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtgui-config.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h:
 
@@ -13219,14 +13886,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Homogeneous/DirectionH2.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
-
-/usr/include/gdal/ogr_geometry.h:
-
-/usr/include/boost/math/constants/constants.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
-
-/usr/include/boost/random.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp:
 
@@ -13258,15 +13917,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/align.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__type_support.hpp:
+
 /usr/include/boost/predef/architecture/blackfin.h:
 
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_squared_radius_3.h:
-
-/usr/include/boost/predef/architecture/convex.h:
-
 /usr/include/boost/predef/architecture/m68k.h:
-
-/usr/include/CGAL/basic_classes.h:
 
 /usr/include/boost/predef/architecture/mips.h:
 
@@ -13301,12 +13956,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__type_support.hpp:
 
 /usr/include/boost/predef/compiler/digitalmars.h:
-
-/usr/include/boost/lexical_cast/try_lexical_convert.hpp:
-
-/usr/include/boost/predef/compiler/ekopath.h:
-
-/usr/include/boost/mpl/aux_/preprocessor/repeat.hpp:
 
 /usr/include/boost/predef/compiler/gcc.h:
 
@@ -13364,6 +14013,14 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/library/std/modena.h:
 
+/usr/include/boost/fusion/mpl/size.hpp:
+
+/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
+
+/usr/include/boost/predef/library/std/roguewave.h:
+
 /usr/include/boost/predef/library/std/sgi.h:
 
 /usr/include/boost/predef/os/beos.h:
@@ -13388,12 +14045,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/platform/windows_desktop.h:
 
-/usr/include/boost/fusion/mpl/pop_back.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Segment_3_intersection.h:
-
-/usr/include/boost/predef/platform/windows_server.h:
-
 /usr/include/boost/type_traits/is_lvalue_reference.hpp:
 
 /usr/include/boost/predef/platform/windows_store.h:
@@ -13410,8 +14061,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/hardware.h:
 
-/usr/include/boost/detail/container_fwd.hpp:
-
 /usr/include/boost/predef/hardware/simd.h:
 
 /usr/include/CGAL/Intersections_3/Bbox_3_Plane_3.h:
@@ -13420,9 +14069,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Cartesian/Line_3.h:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h:
-
 /usr/include/boost/mpl/equal.hpp:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h:
 
 /usr/include/boost/predef/hardware/simd/arm/versions.h:
 
@@ -13439,10 +14088,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Distance_2/Triangle_2_Triangle_2.h:
 
 /usr/include/CGAL/Origin_impl.h:
-
-/usr/include/boost/predef/platform/cloudabi.h:
-
-/usr/include/boost/functional/hash.hpp:
 
 /usr/include/CGAL/enable_warnings.h:
 
@@ -13462,8 +14107,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/iterator/transform_iterator.hpp:
 
-/usr/include/boost/utility/result_of.hpp:
-
 /usr/include/boost/random/uniform_real_distribution.hpp:
 
 /usr/include/boost/preprocessor/iteration/iterate.hpp:
@@ -13478,15 +14121,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/facilities/intercept.hpp:
 
-/usr/include/boost/variant/detail/enable_recursive.hpp:
-
 /usr/include/CGAL/use.h:
 
+/opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_stamped.hpp:
+
 /usr/include/x86_64-linux-gnu/gmp.h:
-
-/usr/include/boost/fusion/sequence/intrinsic_fwd.hpp:
-
-/usr/include/CGAL/user_classes.h:
 
 /usr/include/CGAL/Algebraic_extension_traits.h:
 
@@ -13520,21 +14161,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/min_max_n.h:
 
-/usr/include/boost/mpl/aux_/config/adl.hpp:
-
 /usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp:
+
+/usr/include/boost/mpl/aux_/config/adl.hpp:
 
 /usr/include/boost/mpl/aux_/is_msvc_eti_arg.hpp:
 
 /usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
 
 /usr/include/CGAL/int.h:
-
-/usr/include/boost/mpl/tag.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h:
-
-/usr/include/CGAL/Modular_traits.h:
 
 /usr/include/CGAL/gmpxx.h:
 
@@ -13553,12 +14188,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/container_hash/hash_fwd.hpp:
 
 /usr/include/boost/core/demangle.hpp:
-
-/usr/include/CGAL/Distance_3/Point_3_Line_3.h:
-
-/usr/include/c++/11/bit:
-
-/usr/include/boost/variant/detail/config.hpp:
 
 /usr/include/boost/preprocessor/enum.hpp:
 
@@ -13585,6 +14214,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
 
 /usr/include/boost/type_traits/is_copy_constructible.hpp:
+
+/usr/include/CGAL/Circle_3.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
+
+/usr/include/boost/type_traits/is_nothrow_move_constructible.hpp:
 
 /usr/include/boost/type_traits/enable_if.hpp:
 
@@ -13614,15 +14249,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/functional/hash_fwd.hpp:
 
-/usr/include/boost/integer/integer_log2.hpp:
-
 /usr/include/boost/type_traits/has_trivial_destructor.hpp:
-
-/usr/include/boost/type_traits/type_with_alignment.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h:
-
-/usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
 
 /usr/include/boost/mpl/empty.hpp:
 
@@ -13631,10 +14258,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/insert_range.hpp:
 
 /usr/include/boost/mpl/aux_/insert_range_impl.hpp:
-
-/usr/include/boost/iterator/detail/config_undef.hpp:
-
-/usr/include/boost/mpl/insert_fwd.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_intersection.h:
 
@@ -13649,173 +14272,3 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/type_traits/is_stateless.hpp:
 
 /usr/include/boost/mpl/sizeof.hpp:
-
-/usr/include/boost/predef/os.h:
-
-/usr/include/boost/variant/recursive_wrapper.hpp:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp:
-
-/usr/include/boost/mpl/apply_wrap.hpp:
-
-/usr/include/boost/variant/get.hpp:
-
-/usr/include/boost/variant/detail/element_index.hpp:
-
-/usr/include/boost/optional/detail/optional_factory_support.hpp:
-
-/usr/include/boost/variant/visitor_ptr.hpp:
-
-/usr/include/boost/optional.hpp:
-
-/usr/include/boost/optional/optional.hpp:
-
-/usr/include/boost/core/explicit_operator_bool.hpp:
-
-/usr/include/boost/type_traits/remove_extent.hpp:
-
-/usr/include/boost/date_time/date_generators.hpp:
-
-/usr/include/boost/utility/compare_pointees.hpp:
-
-/usr/include/boost/container_hash/detail/hash_float.hpp:
-
-/usr/include/boost/optional/detail/optional_config.hpp:
-
-/usr/include/boost/fusion/iterator/equal_to.hpp:
-
-/usr/include/c++/11/cstdio:
-
-/usr/include/boost/optional/detail/optional_relops.hpp:
-
-/usr/include/CGAL/Filtered_kernel_fwd.h:
-
-/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h:
-
-/usr/include/boost/optional/detail/optional_swap.hpp:
-
-/usr/include/CGAL/Kernel_traits_fwd.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/storage_policy_common.hpp:
-
-/usr/include/CGAL/Dimension.h:
-
-/usr/include/CGAL/Weighted_point_2.h:
-
-/usr/include/CGAL/Line_2.h:
-
-/usr/include/boost/type_traits/is_base_of.hpp:
-
-/usr/include/CGAL/Segment_2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h:
-
-/usr/include/CGAL/Triangle_2.h:
-
-/usr/include/CGAL/Iso_rectangle_2.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
-
-/usr/include/CGAL/Conic_2.h:
-
-/usr/include/CGAL/Kernel/global_functions_internal_2.h:
-
-/usr/include/boost/math/special_functions/cbrt.hpp:
-
-/usr/include/boost/fusion/mpl/size.hpp:
-
-/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
-
-/usr/include/boost/predef/library/std/roguewave.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
-
-/usr/include/boost/date_time/gregorian/greg_duration.hpp:
-
-/usr/include/CGAL/Aff_transformation_2.h:
-
-/usr/include/boost/fusion/view/joint_view/detail/deref_impl.hpp:
-
-/usr/include/CGAL/Weighted_point_3.h:
-
-/usr/include/CGAL/Vector_3.h:
-
-/usr/include/x86_64-linux-gnu/bits/timesize.h:
-
-/usr/include/CGAL/Triangle_3.h:
-
-/usr/include/CGAL/Tetrahedron_3.h:
-
-/usr/include/boost/math/special_functions/polygamma.hpp:
-
-/usr/include/CGAL/intersection_2.h:
-
-/usr/include/CGAL/Iso_cuboid_3.h:
-
-/usr/include/CGAL/Sphere_3.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
-
-/usr/include/boost/type_traits/is_nothrow_move_constructible.hpp:
-
-/usr/include/CGAL/Circle_3.h:
-
-/usr/include/CGAL/Aff_transformation_3.h:
-
-/usr/include/boost/integer/static_log2.hpp:
-
-/usr/include/boost/container_hash/extensions.hpp:
-
-/usr/include/boost/tuple/tuple.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qcursor.h:
-
-/usr/include/c++/11/deque:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__type_support.hpp:
-
-/usr/include/c++/11/bits/stl_deque.h:
-
-/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
-
-/usr/include/c++/11/bits/deque.tcc:
-
-/usr/include/CGAL/Cartesian/Weighted_point_2.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
-
-/usr/include/CGAL/memory.h:
-
-/usr/include/boost/utility/swap.hpp:
-
-/usr/include/CGAL/Cartesian/Line_2.h:
-
-/usr/include/CGAL/predicates/kernel_ftC2.h:
-
-/usr/include/CGAL/algorithm.h:
-
-/usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
-
-/usr/include/boost/random/detail/uniform_int_float.hpp:
-
-/usr/include/boost/random/additive_combine.hpp:
-
-/usr/include/boost/mpl/erase_key_fwd.hpp:
-
-/usr/include/boost/random/detail/seed.hpp:
-
-/usr/include/boost/random/linear_congruential.hpp:
-
-/opt/ros/humble/include/tracetools/tracetools/tracetools.h:
-
-/usr/include/boost/range/detail/has_member_size.hpp:
-
-/usr/include/boost/random/detail/const_mod.hpp:
-
-/usr/include/boost/random/detail/integer_log2.hpp:
-
-/usr/include/boost/mpl/sequence_tag_fwd.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__builder.hpp:
-
-/usr/include/boost/random/detail/seed_impl.hpp:
