@@ -49,6 +49,17 @@
 namespace f2c_cpp {
 
 // =============================================================================
+// Reprojection Error Line (waypoint vs traversed)
+// =============================================================================
+
+struct ReprojectionLine {
+    Point2D waypoint;      // The target waypoint
+    Point2D traversed;     // Closest traversed point
+    double error_m;        // Error in meters
+    int waypoint_index;    // Index in the path
+};
+
+// =============================================================================
 // Custom Plot Widget
 // =============================================================================
 
@@ -73,6 +84,9 @@ public:
                        const std::vector<bool>& visited);
     void setShowCustomPath(bool show);
     void setCustomDrawMode(bool enabled);
+    void setReprojectionLines(const std::vector<ReprojectionLine>& lines);
+    void clearReprojectionLines();
+    int getHoveredReprojectionIndex() const { return hovered_reproj_index_; }
     
     // Clear functions
     void clearAll();
@@ -130,6 +144,10 @@ private:
     bool show_custom_path_ = false;
     bool custom_draw_mode_ = false;
     
+    // Reprojection error visualization
+    std::vector<ReprojectionLine> reproj_lines_;
+    int hovered_reproj_index_ = -1;  // -1 = none hovered
+    
     // View transform
     double scale_ = 1.0;
     double offset_x_ = 0.0;
@@ -153,6 +171,7 @@ private:
     Point2D screenToWorld(const QPointF& p) const;
     void updateDataBounds();
     void fitToData();
+    double distanceToLineSegment(const QPointF& mouse, const QPointF& p1, const QPointF& p2) const;
 };
 
 // =============================================================================
@@ -216,6 +235,10 @@ private slots:
     
     // DDS profile switching
     void onDdsProfileChanged();
+    
+    // Reprojection error analysis
+    void computeReprojectionError();
+    void clearReprojectionError();
 
 private:
     void setupUI();
@@ -395,6 +418,12 @@ private:
     // Throttle plot refresh to avoid excessive repaints from high-frequency odom
     std::chrono::steady_clock::time_point last_plot_refresh_;
     static constexpr int kPlotRefreshIntervalMs = 50;  // ~20 Hz max
+    
+    // Reprojection error analysis
+    QPushButton* btn_compute_reproj_ = nullptr;
+    QPushButton* btn_clear_reproj_ = nullptr;
+    QLabel* lbl_reproj_status_ = nullptr;
+    std::vector<ReprojectionLine> reproj_lines_;
 };
 
 } // namespace f2c_cpp

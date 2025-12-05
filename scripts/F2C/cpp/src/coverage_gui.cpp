@@ -13,6 +13,7 @@
 #include <QToolTip>
 #include <QFileInfo>
 #include <QFile>
+#include <QFrame>
 #include <QSignalBlocker>
 #include <cmath>
 #include <algorithm>
@@ -144,6 +145,37 @@ void PlotWidget::setCustomDrawMode(bool enabled) {
     custom_draw_mode_ = enabled;
 }
 
+void PlotWidget::setReprojectionLines(const std::vector<ReprojectionLine>& lines) {
+    reproj_lines_ = lines;
+    hovered_reproj_index_ = -1;
+    update();
+}
+
+void PlotWidget::clearReprojectionLines() {
+    reproj_lines_.clear();
+    hovered_reproj_index_ = -1;
+    update();
+}
+
+double PlotWidget::distanceToLineSegment(const QPointF& mouse, const QPointF& p1, const QPointF& p2) const {
+    double dx = p2.x() - p1.x();
+    double dy = p2.y() - p1.y();
+    double len_sq = dx * dx + dy * dy;
+    
+    if (len_sq < 1e-10) {
+        // Degenerate line (points are the same)
+        return std::hypot(mouse.x() - p1.x(), mouse.y() - p1.y());
+    }
+    
+    // Project mouse onto line, clamped to segment
+    double t = std::max(0.0, std::min(1.0, 
+        ((mouse.x() - p1.x()) * dx + (mouse.y() - p1.y()) * dy) / len_sq));
+    
+    double proj_x = p1.x() + t * dx;
+    double proj_y = p1.y() + t * dy;
+    
+    return std::hypot(mouse.x() - proj_x, mouse.y() - proj_y);
+}
 
 void PlotWidget::clearAll() {
     points_.clear();
@@ -157,6 +189,8 @@ void PlotWidget::clearAll() {
     robot_trail_.clear();
     custom_waypoints_.clear();
     custom_waypoint_states_.clear();
+    reproj_lines_.clear();
+    hovered_reproj_index_ = -1;
     selection_points_.clear();
     selecting_ = false;
     update();
@@ -522,6 +556,45 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         }
     }
     
+    // Draw reprojection error lines
+    if (!reproj_lines_.empty()) {
+        for (size_t i = 0; i < reproj_lines_.size(); ++i) {
+            const auto& line = reproj_lines_[i];
+            QPointF wp_screen = worldToScreen(line.waypoint);
+            QPointF tr_screen = worldToScreen(line.traversed);
+            
+            bool is_hovered = (static_cast<int>(i) == hovered_reproj_index_);
+            
+            // Draw line: red normally, green when hovered
+            QPen pen(is_hovered ? QColor(0, 200, 0) : QColor(220, 50, 50));
+            pen.setWidth(is_hovered ? 3 : 2);
+            painter.setPen(pen);
+            painter.drawLine(wp_screen, tr_screen);
+            
+            // Draw small circles at endpoints
+            painter.setBrush(is_hovered ? QColor(0, 200, 0) : QColor(220, 50, 50));
+            painter.drawEllipse(wp_screen, 4, 4);
+            painter.drawEllipse(tr_screen, 4, 4);
+            
+            // If hovered, also show error text near the line
+            if (is_hovered) {
+                double error_cm = line.error_m * 100.0;
+                QPointF mid((wp_screen.x() + tr_screen.x()) / 2,
+                           (wp_screen.y() + tr_screen.y()) / 2);
+                painter.setPen(Qt::white);
+                painter.setFont(QFont("Arial", 10, QFont::Bold));
+                
+                // Draw background for readability
+                QString text = QString("%1 cm").arg(error_cm, 0, 'f', 1);
+                QRectF textRect = painter.fontMetrics().boundingRect(text);
+                textRect.moveCenter(mid);
+                textRect.adjust(-3, -2, 3, 2);
+                painter.fillRect(textRect, QColor(0, 0, 0, 180));
+                painter.drawText(textRect, Qt::AlignCenter, text);
+            }
+        }
+    }
+    
     // Draw selection in progress
     if (selecting_ && !selection_points_.empty()) {
         painter.setPen(QPen(Qt::magenta, 1.5));
@@ -598,6 +671,50 @@ void PlotWidget::mouseMoveEvent(QMouseEvent* event) {
         update();
     } else if (selecting_) {
         update();  // Redraw preview line
+    }
+    
+    // Check hover on reprojection lines
+    if (!reproj_lines_.empty()) {
+        int old_hovered = hovered_reproj_index_;
+        hovered_reproj_index_ = -1;
+        
+        const double hover_threshold = 8.0;  // pixels
+        double min_dist = hover_threshold;
+        
+        for (size_t i = 0; i < reproj_lines_.size(); ++i) {
+            QPointF wp_screen = worldToScreen(reproj_lines_[i].waypoint);
+            QPointF tr_screen = worldToScreen(reproj_lines_[i].traversed);
+            double dist = distanceToLineSegment(event->pos(), wp_screen, tr_screen);
+            
+            if (dist < min_dist) {
+                min_dist = dist;
+                hovered_reproj_index_ = static_cast<int>(i);
+            }
+        }
+        
+        if (hovered_reproj_index_ != old_hovered) {
+            update();
+            
+            // Show reprojection tooltip if hovering a line
+            if (hovered_reproj_index_ >= 0) {
+                const auto& line = reproj_lines_[hovered_reproj_index_];
+                double error_cm = line.error_m * 100.0;
+                QString tip = QString("WP %1: %2 cm error")
+                    .arg(line.waypoint_index + 1)
+                    .arg(error_cm, 0, 'f', 1);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                QToolTip::showText(event->globalPosition().toPoint(), tip, this);
+#else
+                QToolTip::showText(event->globalPos(), tip, this);
+#endif
+                return;  // Don't show coordinate tooltip
+            }
+        }
+        
+        // If still hovering a reprojection line, keep showing its tooltip
+        if (hovered_reproj_index_ >= 0) {
+            return;
+        }
     }
     
     // Show coordinates in tooltip
@@ -1401,6 +1518,30 @@ QGroupBox* CoverageGUI::buildExportControls() {
     btn_start_navigation_->setEnabled(false);  // Initially disabled
     connect(btn_start_navigation_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
     v->addWidget(btn_start_navigation_);
+
+    // Reprojection error analysis section
+    QFrame* sep = new QFrame();
+    sep->setFrameShape(QFrame::HLine);
+    sep->setFrameShadow(QFrame::Sunken);
+    v->addWidget(sep);
+    
+    QLabel* reproj_title = new QLabel("Path Accuracy Analysis");
+    reproj_title->setStyleSheet("font-weight: bold; margin-top: 5px;");
+    v->addWidget(reproj_title);
+    
+    btn_compute_reproj_ = new QPushButton("📊 Compute Reprojection Error");
+    btn_compute_reproj_->setToolTip("Compare robot trail to planned path (within 1m)");
+    connect(btn_compute_reproj_, &QPushButton::clicked, this, &CoverageGUI::computeReprojectionError);
+    v->addWidget(btn_compute_reproj_);
+    
+    btn_clear_reproj_ = new QPushButton("Clear Reprojection");
+    btn_clear_reproj_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    connect(btn_clear_reproj_, &QPushButton::clicked, this, &CoverageGUI::clearReprojectionError);
+    v->addWidget(btn_clear_reproj_);
+    
+    lbl_reproj_status_ = new QLabel("No reprojection computed");
+    lbl_reproj_status_->setStyleSheet("color: #666; font-size: 10px;");
+    v->addWidget(lbl_reproj_status_);
 
     return box;
 }
@@ -2651,6 +2792,113 @@ void CoverageGUI::startNavigation() {
 
     setStatus("🚀 Navigation started!", 3000);
     std::cout << "[F2C GUI] Sent navigation start signal" << std::endl;
+}
+
+void CoverageGUI::computeReprojectionError() {
+    // Determine which waypoints to use based on current mode
+    std::vector<Point2D> waypoints;
+    if (isCustomModeActive()) {
+        waypoints = custom_waypoints_;
+    } else {
+        // Use F2C path waypoints
+        for (const auto& state : path_) {
+            waypoints.push_back(state.point);
+        }
+    }
+    
+    if (waypoints.empty()) {
+        QMessageBox::warning(this, "No Path", 
+            "No waypoints available. Generate or draw a path first.");
+        return;
+    }
+    
+    // Get current robot trail
+    std::vector<Point2D> trail;
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        trail = robot_trail_;
+    }
+    
+    if (trail.size() < 2) {
+        QMessageBox::warning(this, "No Trail", 
+            "Robot trail is empty. Move the robot first.");
+        return;
+    }
+    
+    // Parameters - 1m threshold
+    const double max_association_dist = 1.0;
+    
+    reproj_lines_.clear();
+    
+    for (size_t wp_idx = 0; wp_idx < waypoints.size(); ++wp_idx) {
+        const Point2D& wp = waypoints[wp_idx];
+        
+        // Find closest trail point within threshold
+        double min_dist = std::numeric_limits<double>::max();
+        Point2D closest_trail;
+        bool found = false;
+        
+        for (const auto& tp : trail) {
+            double dist = std::hypot(tp.x - wp.x, tp.y - wp.y);
+            if (dist < min_dist && dist <= max_association_dist) {
+                min_dist = dist;
+                closest_trail = tp;
+                found = true;
+            }
+        }
+        
+        if (found) {
+            ReprojectionLine line;
+            line.waypoint = wp;
+            line.traversed = closest_trail;
+            line.error_m = min_dist;
+            line.waypoint_index = static_cast<int>(wp_idx);
+            reproj_lines_.push_back(line);
+        }
+    }
+    
+    if (reproj_lines_.empty()) {
+        QMessageBox::information(this, "No Match", 
+            "No trail points found within 1m of any waypoint.\n"
+            "Make sure the robot has traversed near the path.");
+        return;
+    }
+    
+    // Compute statistics
+    double total_error = 0;
+    double max_error = 0;
+    for (const auto& line : reproj_lines_) {
+        total_error += line.error_m;
+        max_error = std::max(max_error, line.error_m);
+    }
+    double avg_error = total_error / reproj_lines_.size();
+    
+    // Update plot
+    plot_->setReprojectionLines(reproj_lines_);
+    
+    // Update status
+    QString status = QString("Reprojection: %1 points, avg=%2 cm, max=%3 cm")
+        .arg(reproj_lines_.size())
+        .arg(avg_error * 100, 0, 'f', 1)
+        .arg(max_error * 100, 0, 'f', 1);
+    if (lbl_reproj_status_) {
+        lbl_reproj_status_->setText(status);
+        lbl_reproj_status_->setStyleSheet("color: #1565c0; font-size: 10px;");
+    }
+    setStatus(status, 5000);
+    
+    std::cout << "[F2C GUI] Reprojection error computed: " << reproj_lines_.size() 
+              << " points, avg=" << (avg_error * 100) << " cm, max=" << (max_error * 100) << " cm" << std::endl;
+}
+
+void CoverageGUI::clearReprojectionError() {
+    reproj_lines_.clear();
+    plot_->clearReprojectionLines();
+    if (lbl_reproj_status_) {
+        lbl_reproj_status_->setText("No reprojection computed");
+        lbl_reproj_status_->setStyleSheet("color: #666; font-size: 10px;");
+    }
+    setStatus("Reprojection error cleared", 3000);
 }
 
 void CoverageGUI::tryReconnectROS2() {
