@@ -727,6 +727,8 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -1158,6 +1160,11 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
@@ -1180,6 +1187,234 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /usr/include/gstreamer-1.0/gst/gst.h \
+  /usr/include/glib-2.0/glib.h \
+  /usr/include/glib-2.0/glib/galloca.h \
+  /usr/include/glib-2.0/glib/gtypes.h \
+  /usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
+  /usr/include/glib-2.0/glib/gversionmacros.h \
+  /usr/include/glib-2.0/glib/garray.h \
+  /usr/include/glib-2.0/glib/gasyncqueue.h \
+  /usr/include/glib-2.0/glib/gthread.h \
+  /usr/include/glib-2.0/glib/gatomic.h \
+  /usr/include/glib-2.0/glib/glib-typeof.h \
+  /usr/include/glib-2.0/glib/gerror.h \
+  /usr/include/glib-2.0/glib/gquark.h \
+  /usr/include/glib-2.0/glib/gutils.h \
+  /usr/include/glib-2.0/glib/gbacktrace.h \
+  /usr/include/glib-2.0/glib/gbase64.h \
+  /usr/include/glib-2.0/glib/gbitlock.h \
+  /usr/include/glib-2.0/glib/gbookmarkfile.h \
+  /usr/include/glib-2.0/glib/gdatetime.h \
+  /usr/include/glib-2.0/glib/gtimezone.h \
+  /usr/include/glib-2.0/glib/gbytes.h \
+  /usr/include/glib-2.0/glib/gcharset.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/gconvert.h \
+  /usr/include/glib-2.0/glib/gdataset.h \
+  /usr/include/glib-2.0/glib/gdate.h \
+  /usr/include/glib-2.0/glib/gdir.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/glib-2.0/glib/genviron.h \
+  /usr/include/glib-2.0/glib/gfileutils.h \
+  /usr/include/glib-2.0/glib/ggettext.h \
+  /usr/include/glib-2.0/glib/ghash.h \
+  /usr/include/glib-2.0/glib/glist.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gnode.h \
+  /usr/include/glib-2.0/glib/ghmac.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/ghook.h \
+  /usr/include/glib-2.0/glib/ghostutils.h \
+  /usr/include/glib-2.0/glib/giochannel.h \
+  /usr/include/glib-2.0/glib/gmain.h \
+  /usr/include/glib-2.0/glib/gpoll.h \
+  /usr/include/glib-2.0/glib/gslist.h \
+  /usr/include/glib-2.0/glib/gstring.h \
+  /usr/include/glib-2.0/glib/gunicode.h \
+  /usr/include/glib-2.0/glib/gkeyfile.h \
+  /usr/include/glib-2.0/glib/gmappedfile.h \
+  /usr/include/glib-2.0/glib/gmarkup.h \
+  /usr/include/glib-2.0/glib/gmessages.h \
+  /usr/include/glib-2.0/glib/gvariant.h \
+  /usr/include/glib-2.0/glib/gvarianttype.h \
+  /usr/include/glib-2.0/glib/goption.h \
+  /usr/include/glib-2.0/glib/gpattern.h \
+  /usr/include/glib-2.0/glib/gprimes.h \
+  /usr/include/glib-2.0/glib/gqsort.h \
+  /usr/include/glib-2.0/glib/gqueue.h \
+  /usr/include/glib-2.0/glib/grand.h \
+  /usr/include/glib-2.0/glib/grcbox.h \
+  /usr/include/glib-2.0/glib/grefcount.h \
+  /usr/include/glib-2.0/glib/grefstring.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/include/glib-2.0/glib/gregex.h \
+  /usr/include/glib-2.0/glib/gscanner.h \
+  /usr/include/glib-2.0/glib/gsequence.h \
+  /usr/include/glib-2.0/glib/gshell.h \
+  /usr/include/glib-2.0/glib/gslice.h \
+  /usr/include/glib-2.0/glib/gspawn.h \
+  /usr/include/glib-2.0/glib/gstrfuncs.h \
+  /usr/include/glib-2.0/glib/gstringchunk.h \
+  /usr/include/glib-2.0/glib/gstrvbuilder.h \
+  /usr/include/glib-2.0/glib/gtestutils.h \
+  /usr/include/glib-2.0/glib/gthreadpool.h \
+  /usr/include/glib-2.0/glib/gtimer.h \
+  /usr/include/glib-2.0/glib/gtrashstack.h \
+  /usr/include/glib-2.0/glib/gtree.h \
+  /usr/include/glib-2.0/glib/guri.h \
+  /usr/include/glib-2.0/glib/guuid.h \
+  /usr/include/glib-2.0/glib/gversion.h \
+  /usr/include/glib-2.0/glib/deprecated/gallocator.h \
+  /usr/include/glib-2.0/glib/deprecated/gcache.h \
+  /usr/include/glib-2.0/glib/deprecated/gcompletion.h \
+  /usr/include/glib-2.0/glib/deprecated/gmain.h \
+  /usr/include/glib-2.0/glib/deprecated/grel.h \
+  /usr/include/glib-2.0/glib/deprecated/gthread.h \
+  /usr/include/glib-2.0/glib/glib-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/glib-compat.h \
+  /usr/include/gstreamer-1.0/gst/gstenumtypes.h \
+  /usr/include/glib-2.0/glib-object.h \
+  /usr/include/glib-2.0/gobject/gbinding.h \
+  /usr/include/glib-2.0/gobject/gobject.h \
+  /usr/include/glib-2.0/gobject/gtype.h \
+  /usr/include/glib-2.0/gobject/gvalue.h \
+  /usr/include/glib-2.0/gobject/gparam.h \
+  /usr/include/glib-2.0/gobject/gclosure.h \
+  /usr/include/glib-2.0/gobject/gsignal.h \
+  /usr/include/glib-2.0/gobject/gmarshal.h \
+  /usr/include/glib-2.0/gobject/gboxed.h \
+  /usr/include/glib-2.0/gobject/glib-types.h \
+  /usr/include/glib-2.0/gobject/gbindinggroup.h \
+  /usr/include/glib-2.0/gobject/genums.h \
+  /usr/include/glib-2.0/gobject/glib-enumtypes.h \
+  /usr/include/glib-2.0/gobject/gparamspecs.h \
+  /usr/include/glib-2.0/gobject/gsignalgroup.h \
+  /usr/include/glib-2.0/gobject/gsourceclosure.h \
+  /usr/include/glib-2.0/gobject/gtypemodule.h \
+  /usr/include/glib-2.0/gobject/gtypeplugin.h \
+  /usr/include/glib-2.0/gobject/gvaluearray.h \
+  /usr/include/glib-2.0/gobject/gvaluetypes.h \
+  /usr/include/glib-2.0/gobject/gobject-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/gstconfig.h \
+  /usr/include/gstreamer-1.0/gst/gstversion.h \
+  /usr/include/gstreamer-1.0/gst/gstatomicqueue.h \
+  /usr/include/gstreamer-1.0/gst/gstbin.h \
+  /usr/include/gstreamer-1.0/gst/gstelement.h \
+  /usr/include/gstreamer-1.0/gst/gstobject.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolbinding.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolsource.h \
+  /usr/include/gstreamer-1.0/gst/gstclock.h \
+  /usr/include/gstreamer-1.0/gst/gstpad.h \
+  /usr/include/gstreamer-1.0/gst/gstbuffer.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstallocator.h \
+  /usr/include/gstreamer-1.0/gst/gstmemory.h \
+  /usr/include/gstreamer-1.0/gst/gstcaps.h \
+  /usr/include/gstreamer-1.0/gst/gststructure.h \
+  /usr/include/gstreamer-1.0/gst/gstdatetime.h \
+  /usr/include/gstreamer-1.0/gst/gstcapsfeatures.h \
+  /usr/include/gstreamer-1.0/gst/gstmeta.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferlist.h \
+  /usr/include/gstreamer-1.0/gst/gstpadtemplate.h \
+  /usr/include/gstreamer-1.0/gst/gstevent.h \
+  /usr/include/gstreamer-1.0/gst/gstformat.h \
+  /usr/include/gstreamer-1.0/gst/gstiterator.h \
+  /usr/include/gstreamer-1.0/gst/gsttaglist.h \
+  /usr/include/gstreamer-1.0/gst/gstsample.h \
+  /usr/include/gstreamer-1.0/gst/gstsegment.h \
+  /usr/include/gstreamer-1.0/gst/gstmessage.h \
+  /usr/include/gstreamer-1.0/gst/gstquery.h \
+  /usr/include/gstreamer-1.0/gst/gsttoc.h \
+  /usr/include/gstreamer-1.0/gst/gstcontext.h \
+  /usr/include/gstreamer-1.0/gst/gstdevice.h \
+  /usr/include/gstreamer-1.0/gst/gststreams.h \
+  /usr/include/gstreamer-1.0/gst/gststreamcollection.h \
+  /usr/include/gstreamer-1.0/gst/gsttask.h \
+  /usr/include/gstreamer-1.0/gst/gsttaskpool.h \
+  /usr/include/gstreamer-1.0/gst/gstbus.h \
+  /usr/include/gstreamer-1.0/gst/gstelementfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstplugin.h \
+  /usr/include/gstreamer-1.0/gst/gstmacros.h \
+  /usr/include/gstreamer-1.0/gst/gstpluginfeature.h \
+  /usr/include/gstreamer-1.0/gst/gsturi.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferpool.h \
+  /usr/include/gstreamer-1.0/gst/gstchildproxy.h \
+  /usr/include/gstreamer-1.0/gst/gstdebugutils.h \
+  /usr/include/gstreamer-1.0/gst/gstdevicemonitor.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceprovider.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceproviderfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstdynamictypefactory.h \
+  /usr/include/gstreamer-1.0/gst/gstelementmetadata.h \
+  /usr/include/gstreamer-1.0/gst/gsterror.h \
+  /usr/include/gstreamer-1.0/gst/gstghostpad.h \
+  /usr/include/gstreamer-1.0/gst/gstinfo.h \
+  /usr/include/gstreamer-1.0/gst/gstparamspecs.h \
+  /usr/include/gstreamer-1.0/gst/gstvalue.h \
+  /usr/include/gstreamer-1.0/gst/gstpipeline.h \
+  /usr/include/gstreamer-1.0/gst/gstpoll.h \
+  /usr/include/gstreamer-1.0/gst/gstpreset.h \
+  /usr/include/gstreamer-1.0/gst/gstprotection.h \
+  /usr/include/gstreamer-1.0/gst/gstregistry.h \
+  /usr/include/gstreamer-1.0/gst/gstpromise.h \
+  /usr/include/gstreamer-1.0/gst/gstsystemclock.h \
+  /usr/include/gstreamer-1.0/gst/gsttagsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttocsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttracer.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerfactory.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerrecord.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefind.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefindfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstutils.h \
+  /usr/include/gstreamer-1.0/gst/gstparse.h \
+  /usr/include/gstreamer-1.0/gst/gstcompat.h \
+  /usr/include/gstreamer-1.0/gst/video/videooverlay.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideosink.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasesink.h \
+  /usr/include/gstreamer-1.0/gst/base/base-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-info.h \
+  /usr/include/gstreamer-1.0/gst/video/video-format.h \
+  /usr/include/gstreamer-1.0/gst/video/video-enumtypes.h \
+  /usr/include/gstreamer-1.0/gst/video/video-tile.h \
+  /usr/include/gstreamer-1.0/gst/video/video-chroma.h \
+  /usr/include/gstreamer-1.0/gst/video/video-color.h \
+  /usr/include/gstreamer-1.0/gst/video/video.h \
+  /usr/include/gstreamer-1.0/gst/video/video-dither.h \
+  /usr/include/gstreamer-1.0/gst/video/video-frame.h \
+  /usr/include/gstreamer-1.0/gst/video/video-converter.h \
+  /usr/include/gstreamer-1.0/gst/video/video-scaler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-resampler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-multiview.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalance.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h \
+  /usr/include/gstreamer-1.0/gst/base/gstaggregator.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h \
+  /usr/include/gstreamer-1.0/gst/base/gstadapter.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoutils.h \
+  /usr/include/gstreamer-1.0/gst/video/video-hdr.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideofilter.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasetransform.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideometa.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideopool.h \
+  /usr/include/gstreamer-1.0/gst/video/navigation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-anc.h \
+  /usr/include/gstreamer-1.0/gst/video/video-blend.h \
+  /usr/include/gstreamer-1.0/gst/video/videodirection.h \
+  /usr/include/gstreamer-1.0/gst/video/video-event.h \
+  /usr/include/gstreamer-1.0/gst/video/videoorientation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -2390,6 +2625,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -2821,6 +3058,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
@@ -2843,6 +3085,234 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /usr/include/gstreamer-1.0/gst/gst.h \
+  /usr/include/glib-2.0/glib.h \
+  /usr/include/glib-2.0/glib/galloca.h \
+  /usr/include/glib-2.0/glib/gtypes.h \
+  /usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
+  /usr/include/glib-2.0/glib/gversionmacros.h \
+  /usr/include/glib-2.0/glib/garray.h \
+  /usr/include/glib-2.0/glib/gasyncqueue.h \
+  /usr/include/glib-2.0/glib/gthread.h \
+  /usr/include/glib-2.0/glib/gatomic.h \
+  /usr/include/glib-2.0/glib/glib-typeof.h \
+  /usr/include/glib-2.0/glib/gerror.h \
+  /usr/include/glib-2.0/glib/gquark.h \
+  /usr/include/glib-2.0/glib/gutils.h \
+  /usr/include/glib-2.0/glib/gbacktrace.h \
+  /usr/include/glib-2.0/glib/gbase64.h \
+  /usr/include/glib-2.0/glib/gbitlock.h \
+  /usr/include/glib-2.0/glib/gbookmarkfile.h \
+  /usr/include/glib-2.0/glib/gdatetime.h \
+  /usr/include/glib-2.0/glib/gtimezone.h \
+  /usr/include/glib-2.0/glib/gbytes.h \
+  /usr/include/glib-2.0/glib/gcharset.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/gconvert.h \
+  /usr/include/glib-2.0/glib/gdataset.h \
+  /usr/include/glib-2.0/glib/gdate.h \
+  /usr/include/glib-2.0/glib/gdir.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/glib-2.0/glib/genviron.h \
+  /usr/include/glib-2.0/glib/gfileutils.h \
+  /usr/include/glib-2.0/glib/ggettext.h \
+  /usr/include/glib-2.0/glib/ghash.h \
+  /usr/include/glib-2.0/glib/glist.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gnode.h \
+  /usr/include/glib-2.0/glib/ghmac.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/ghook.h \
+  /usr/include/glib-2.0/glib/ghostutils.h \
+  /usr/include/glib-2.0/glib/giochannel.h \
+  /usr/include/glib-2.0/glib/gmain.h \
+  /usr/include/glib-2.0/glib/gpoll.h \
+  /usr/include/glib-2.0/glib/gslist.h \
+  /usr/include/glib-2.0/glib/gstring.h \
+  /usr/include/glib-2.0/glib/gunicode.h \
+  /usr/include/glib-2.0/glib/gkeyfile.h \
+  /usr/include/glib-2.0/glib/gmappedfile.h \
+  /usr/include/glib-2.0/glib/gmarkup.h \
+  /usr/include/glib-2.0/glib/gmessages.h \
+  /usr/include/glib-2.0/glib/gvariant.h \
+  /usr/include/glib-2.0/glib/gvarianttype.h \
+  /usr/include/glib-2.0/glib/goption.h \
+  /usr/include/glib-2.0/glib/gpattern.h \
+  /usr/include/glib-2.0/glib/gprimes.h \
+  /usr/include/glib-2.0/glib/gqsort.h \
+  /usr/include/glib-2.0/glib/gqueue.h \
+  /usr/include/glib-2.0/glib/grand.h \
+  /usr/include/glib-2.0/glib/grcbox.h \
+  /usr/include/glib-2.0/glib/grefcount.h \
+  /usr/include/glib-2.0/glib/grefstring.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/include/glib-2.0/glib/gregex.h \
+  /usr/include/glib-2.0/glib/gscanner.h \
+  /usr/include/glib-2.0/glib/gsequence.h \
+  /usr/include/glib-2.0/glib/gshell.h \
+  /usr/include/glib-2.0/glib/gslice.h \
+  /usr/include/glib-2.0/glib/gspawn.h \
+  /usr/include/glib-2.0/glib/gstrfuncs.h \
+  /usr/include/glib-2.0/glib/gstringchunk.h \
+  /usr/include/glib-2.0/glib/gstrvbuilder.h \
+  /usr/include/glib-2.0/glib/gtestutils.h \
+  /usr/include/glib-2.0/glib/gthreadpool.h \
+  /usr/include/glib-2.0/glib/gtimer.h \
+  /usr/include/glib-2.0/glib/gtrashstack.h \
+  /usr/include/glib-2.0/glib/gtree.h \
+  /usr/include/glib-2.0/glib/guri.h \
+  /usr/include/glib-2.0/glib/guuid.h \
+  /usr/include/glib-2.0/glib/gversion.h \
+  /usr/include/glib-2.0/glib/deprecated/gallocator.h \
+  /usr/include/glib-2.0/glib/deprecated/gcache.h \
+  /usr/include/glib-2.0/glib/deprecated/gcompletion.h \
+  /usr/include/glib-2.0/glib/deprecated/gmain.h \
+  /usr/include/glib-2.0/glib/deprecated/grel.h \
+  /usr/include/glib-2.0/glib/deprecated/gthread.h \
+  /usr/include/glib-2.0/glib/glib-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/glib-compat.h \
+  /usr/include/gstreamer-1.0/gst/gstenumtypes.h \
+  /usr/include/glib-2.0/glib-object.h \
+  /usr/include/glib-2.0/gobject/gbinding.h \
+  /usr/include/glib-2.0/gobject/gobject.h \
+  /usr/include/glib-2.0/gobject/gtype.h \
+  /usr/include/glib-2.0/gobject/gvalue.h \
+  /usr/include/glib-2.0/gobject/gparam.h \
+  /usr/include/glib-2.0/gobject/gclosure.h \
+  /usr/include/glib-2.0/gobject/gsignal.h \
+  /usr/include/glib-2.0/gobject/gmarshal.h \
+  /usr/include/glib-2.0/gobject/gboxed.h \
+  /usr/include/glib-2.0/gobject/glib-types.h \
+  /usr/include/glib-2.0/gobject/gbindinggroup.h \
+  /usr/include/glib-2.0/gobject/genums.h \
+  /usr/include/glib-2.0/gobject/glib-enumtypes.h \
+  /usr/include/glib-2.0/gobject/gparamspecs.h \
+  /usr/include/glib-2.0/gobject/gsignalgroup.h \
+  /usr/include/glib-2.0/gobject/gsourceclosure.h \
+  /usr/include/glib-2.0/gobject/gtypemodule.h \
+  /usr/include/glib-2.0/gobject/gtypeplugin.h \
+  /usr/include/glib-2.0/gobject/gvaluearray.h \
+  /usr/include/glib-2.0/gobject/gvaluetypes.h \
+  /usr/include/glib-2.0/gobject/gobject-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/gstconfig.h \
+  /usr/include/gstreamer-1.0/gst/gstversion.h \
+  /usr/include/gstreamer-1.0/gst/gstatomicqueue.h \
+  /usr/include/gstreamer-1.0/gst/gstbin.h \
+  /usr/include/gstreamer-1.0/gst/gstelement.h \
+  /usr/include/gstreamer-1.0/gst/gstobject.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolbinding.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolsource.h \
+  /usr/include/gstreamer-1.0/gst/gstclock.h \
+  /usr/include/gstreamer-1.0/gst/gstpad.h \
+  /usr/include/gstreamer-1.0/gst/gstbuffer.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstallocator.h \
+  /usr/include/gstreamer-1.0/gst/gstmemory.h \
+  /usr/include/gstreamer-1.0/gst/gstcaps.h \
+  /usr/include/gstreamer-1.0/gst/gststructure.h \
+  /usr/include/gstreamer-1.0/gst/gstdatetime.h \
+  /usr/include/gstreamer-1.0/gst/gstcapsfeatures.h \
+  /usr/include/gstreamer-1.0/gst/gstmeta.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferlist.h \
+  /usr/include/gstreamer-1.0/gst/gstpadtemplate.h \
+  /usr/include/gstreamer-1.0/gst/gstevent.h \
+  /usr/include/gstreamer-1.0/gst/gstformat.h \
+  /usr/include/gstreamer-1.0/gst/gstiterator.h \
+  /usr/include/gstreamer-1.0/gst/gsttaglist.h \
+  /usr/include/gstreamer-1.0/gst/gstsample.h \
+  /usr/include/gstreamer-1.0/gst/gstsegment.h \
+  /usr/include/gstreamer-1.0/gst/gstmessage.h \
+  /usr/include/gstreamer-1.0/gst/gstquery.h \
+  /usr/include/gstreamer-1.0/gst/gsttoc.h \
+  /usr/include/gstreamer-1.0/gst/gstcontext.h \
+  /usr/include/gstreamer-1.0/gst/gstdevice.h \
+  /usr/include/gstreamer-1.0/gst/gststreams.h \
+  /usr/include/gstreamer-1.0/gst/gststreamcollection.h \
+  /usr/include/gstreamer-1.0/gst/gsttask.h \
+  /usr/include/gstreamer-1.0/gst/gsttaskpool.h \
+  /usr/include/gstreamer-1.0/gst/gstbus.h \
+  /usr/include/gstreamer-1.0/gst/gstelementfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstplugin.h \
+  /usr/include/gstreamer-1.0/gst/gstmacros.h \
+  /usr/include/gstreamer-1.0/gst/gstpluginfeature.h \
+  /usr/include/gstreamer-1.0/gst/gsturi.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferpool.h \
+  /usr/include/gstreamer-1.0/gst/gstchildproxy.h \
+  /usr/include/gstreamer-1.0/gst/gstdebugutils.h \
+  /usr/include/gstreamer-1.0/gst/gstdevicemonitor.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceprovider.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceproviderfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstdynamictypefactory.h \
+  /usr/include/gstreamer-1.0/gst/gstelementmetadata.h \
+  /usr/include/gstreamer-1.0/gst/gsterror.h \
+  /usr/include/gstreamer-1.0/gst/gstghostpad.h \
+  /usr/include/gstreamer-1.0/gst/gstinfo.h \
+  /usr/include/gstreamer-1.0/gst/gstparamspecs.h \
+  /usr/include/gstreamer-1.0/gst/gstvalue.h \
+  /usr/include/gstreamer-1.0/gst/gstpipeline.h \
+  /usr/include/gstreamer-1.0/gst/gstpoll.h \
+  /usr/include/gstreamer-1.0/gst/gstpreset.h \
+  /usr/include/gstreamer-1.0/gst/gstprotection.h \
+  /usr/include/gstreamer-1.0/gst/gstregistry.h \
+  /usr/include/gstreamer-1.0/gst/gstpromise.h \
+  /usr/include/gstreamer-1.0/gst/gstsystemclock.h \
+  /usr/include/gstreamer-1.0/gst/gsttagsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttocsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttracer.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerfactory.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerrecord.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefind.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefindfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstutils.h \
+  /usr/include/gstreamer-1.0/gst/gstparse.h \
+  /usr/include/gstreamer-1.0/gst/gstcompat.h \
+  /usr/include/gstreamer-1.0/gst/video/videooverlay.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideosink.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasesink.h \
+  /usr/include/gstreamer-1.0/gst/base/base-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-info.h \
+  /usr/include/gstreamer-1.0/gst/video/video-format.h \
+  /usr/include/gstreamer-1.0/gst/video/video-enumtypes.h \
+  /usr/include/gstreamer-1.0/gst/video/video-tile.h \
+  /usr/include/gstreamer-1.0/gst/video/video-chroma.h \
+  /usr/include/gstreamer-1.0/gst/video/video-color.h \
+  /usr/include/gstreamer-1.0/gst/video/video.h \
+  /usr/include/gstreamer-1.0/gst/video/video-dither.h \
+  /usr/include/gstreamer-1.0/gst/video/video-frame.h \
+  /usr/include/gstreamer-1.0/gst/video/video-converter.h \
+  /usr/include/gstreamer-1.0/gst/video/video-scaler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-resampler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-multiview.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalance.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h \
+  /usr/include/gstreamer-1.0/gst/base/gstaggregator.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h \
+  /usr/include/gstreamer-1.0/gst/base/gstadapter.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoutils.h \
+  /usr/include/gstreamer-1.0/gst/video/video-hdr.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideofilter.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasetransform.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideometa.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideopool.h \
+  /usr/include/gstreamer-1.0/gst/video/navigation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-anc.h \
+  /usr/include/gstreamer-1.0/gst/video/video-blend.h \
+  /usr/include/gstreamer-1.0/gst/video/videodirection.h \
+  /usr/include/gstreamer-1.0/gst/video/video-event.h \
+  /usr/include/gstreamer-1.0/gst/video/videoorientation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -3609,9 +4079,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/bits/statx-generic.h \
   /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h \
   /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h \
-  /usr/include/dirent.h \
-  /usr/include/x86_64-linux-gnu/bits/dirent.h \
-  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
   /usr/include/boost/interprocess/detail/os_thread_functions.hpp \
   /usr/include/boost/interprocess/streams/bufferstream.hpp \
   /usr/include/boost/interprocess/detail/posix_time_types_wrk.hpp \
@@ -3718,7 +4185,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/tf2/tf2/LinearMath/Scalar.hpp \
   /usr/include/c++/11/math.h \
   /usr/include/c++/11/cfloat \
-  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
   /opt/ros/humble/include/tf2/tf2/LinearMath/MinMax.hpp \
   /opt/ros/humble/include/tf2/tf2/visibility_control.h \
   /opt/ros/humble/include/tf2/tf2/LinearMath/QuadWord.hpp \
@@ -7708,6 +8174,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -7718,6 +8186,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
@@ -7740,6 +8213,234 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp \
   /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /usr/include/gstreamer-1.0/gst/gst.h \
+  /usr/include/glib-2.0/glib.h \
+  /usr/include/glib-2.0/glib/galloca.h \
+  /usr/include/glib-2.0/glib/gtypes.h \
+  /usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
+  /usr/include/glib-2.0/glib/gversionmacros.h \
+  /usr/include/glib-2.0/glib/garray.h \
+  /usr/include/glib-2.0/glib/gasyncqueue.h \
+  /usr/include/glib-2.0/glib/gthread.h \
+  /usr/include/glib-2.0/glib/gatomic.h \
+  /usr/include/glib-2.0/glib/glib-typeof.h \
+  /usr/include/glib-2.0/glib/gerror.h \
+  /usr/include/glib-2.0/glib/gquark.h \
+  /usr/include/glib-2.0/glib/gutils.h \
+  /usr/include/glib-2.0/glib/gbacktrace.h \
+  /usr/include/glib-2.0/glib/gbase64.h \
+  /usr/include/glib-2.0/glib/gbitlock.h \
+  /usr/include/glib-2.0/glib/gbookmarkfile.h \
+  /usr/include/glib-2.0/glib/gdatetime.h \
+  /usr/include/glib-2.0/glib/gtimezone.h \
+  /usr/include/glib-2.0/glib/gbytes.h \
+  /usr/include/glib-2.0/glib/gcharset.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/gconvert.h \
+  /usr/include/glib-2.0/glib/gdataset.h \
+  /usr/include/glib-2.0/glib/gdate.h \
+  /usr/include/glib-2.0/glib/gdir.h \
+  /usr/include/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent.h \
+  /usr/include/x86_64-linux-gnu/bits/dirent_ext.h \
+  /usr/include/glib-2.0/glib/genviron.h \
+  /usr/include/glib-2.0/glib/gfileutils.h \
+  /usr/include/glib-2.0/glib/ggettext.h \
+  /usr/include/glib-2.0/glib/ghash.h \
+  /usr/include/glib-2.0/glib/glist.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gnode.h \
+  /usr/include/glib-2.0/glib/ghmac.h \
+  /usr/include/glib-2.0/glib/gchecksum.h \
+  /usr/include/glib-2.0/glib/ghook.h \
+  /usr/include/glib-2.0/glib/ghostutils.h \
+  /usr/include/glib-2.0/glib/giochannel.h \
+  /usr/include/glib-2.0/glib/gmain.h \
+  /usr/include/glib-2.0/glib/gpoll.h \
+  /usr/include/glib-2.0/glib/gslist.h \
+  /usr/include/glib-2.0/glib/gstring.h \
+  /usr/include/glib-2.0/glib/gunicode.h \
+  /usr/include/glib-2.0/glib/gkeyfile.h \
+  /usr/include/glib-2.0/glib/gmappedfile.h \
+  /usr/include/glib-2.0/glib/gmarkup.h \
+  /usr/include/glib-2.0/glib/gmessages.h \
+  /usr/include/glib-2.0/glib/gvariant.h \
+  /usr/include/glib-2.0/glib/gvarianttype.h \
+  /usr/include/glib-2.0/glib/goption.h \
+  /usr/include/glib-2.0/glib/gpattern.h \
+  /usr/include/glib-2.0/glib/gprimes.h \
+  /usr/include/glib-2.0/glib/gqsort.h \
+  /usr/include/glib-2.0/glib/gqueue.h \
+  /usr/include/glib-2.0/glib/grand.h \
+  /usr/include/glib-2.0/glib/grcbox.h \
+  /usr/include/glib-2.0/glib/grefcount.h \
+  /usr/include/glib-2.0/glib/grefstring.h \
+  /usr/include/glib-2.0/glib/gmem.h \
+  /usr/include/glib-2.0/glib/gmacros.h \
+  /usr/include/glib-2.0/glib/gregex.h \
+  /usr/include/glib-2.0/glib/gscanner.h \
+  /usr/include/glib-2.0/glib/gsequence.h \
+  /usr/include/glib-2.0/glib/gshell.h \
+  /usr/include/glib-2.0/glib/gslice.h \
+  /usr/include/glib-2.0/glib/gspawn.h \
+  /usr/include/glib-2.0/glib/gstrfuncs.h \
+  /usr/include/glib-2.0/glib/gstringchunk.h \
+  /usr/include/glib-2.0/glib/gstrvbuilder.h \
+  /usr/include/glib-2.0/glib/gtestutils.h \
+  /usr/include/glib-2.0/glib/gthreadpool.h \
+  /usr/include/glib-2.0/glib/gtimer.h \
+  /usr/include/glib-2.0/glib/gtrashstack.h \
+  /usr/include/glib-2.0/glib/gtree.h \
+  /usr/include/glib-2.0/glib/guri.h \
+  /usr/include/glib-2.0/glib/guuid.h \
+  /usr/include/glib-2.0/glib/gversion.h \
+  /usr/include/glib-2.0/glib/deprecated/gallocator.h \
+  /usr/include/glib-2.0/glib/deprecated/gcache.h \
+  /usr/include/glib-2.0/glib/deprecated/gcompletion.h \
+  /usr/include/glib-2.0/glib/deprecated/gmain.h \
+  /usr/include/glib-2.0/glib/deprecated/grel.h \
+  /usr/include/glib-2.0/glib/deprecated/gthread.h \
+  /usr/include/glib-2.0/glib/glib-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/glib-compat.h \
+  /usr/include/gstreamer-1.0/gst/gstenumtypes.h \
+  /usr/include/glib-2.0/glib-object.h \
+  /usr/include/glib-2.0/gobject/gbinding.h \
+  /usr/include/glib-2.0/gobject/gobject.h \
+  /usr/include/glib-2.0/gobject/gtype.h \
+  /usr/include/glib-2.0/gobject/gvalue.h \
+  /usr/include/glib-2.0/gobject/gparam.h \
+  /usr/include/glib-2.0/gobject/gclosure.h \
+  /usr/include/glib-2.0/gobject/gsignal.h \
+  /usr/include/glib-2.0/gobject/gmarshal.h \
+  /usr/include/glib-2.0/gobject/gboxed.h \
+  /usr/include/glib-2.0/gobject/glib-types.h \
+  /usr/include/glib-2.0/gobject/gbindinggroup.h \
+  /usr/include/glib-2.0/gobject/genums.h \
+  /usr/include/glib-2.0/gobject/glib-enumtypes.h \
+  /usr/include/glib-2.0/gobject/gparamspecs.h \
+  /usr/include/glib-2.0/gobject/gsignalgroup.h \
+  /usr/include/glib-2.0/gobject/gsourceclosure.h \
+  /usr/include/glib-2.0/gobject/gtypemodule.h \
+  /usr/include/glib-2.0/gobject/gtypeplugin.h \
+  /usr/include/glib-2.0/gobject/gvaluearray.h \
+  /usr/include/glib-2.0/gobject/gvaluetypes.h \
+  /usr/include/glib-2.0/gobject/gobject-autocleanups.h \
+  /usr/include/gstreamer-1.0/gst/gstconfig.h \
+  /usr/include/gstreamer-1.0/gst/gstversion.h \
+  /usr/include/gstreamer-1.0/gst/gstatomicqueue.h \
+  /usr/include/gstreamer-1.0/gst/gstbin.h \
+  /usr/include/gstreamer-1.0/gst/gstelement.h \
+  /usr/include/gstreamer-1.0/gst/gstobject.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolbinding.h \
+  /usr/include/gstreamer-1.0/gst/gstcontrolsource.h \
+  /usr/include/gstreamer-1.0/gst/gstclock.h \
+  /usr/include/gstreamer-1.0/gst/gstpad.h \
+  /usr/include/gstreamer-1.0/gst/gstbuffer.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstallocator.h \
+  /usr/include/gstreamer-1.0/gst/gstmemory.h \
+  /usr/include/gstreamer-1.0/gst/gstcaps.h \
+  /usr/include/gstreamer-1.0/gst/gststructure.h \
+  /usr/include/gstreamer-1.0/gst/gstdatetime.h \
+  /usr/include/gstreamer-1.0/gst/gstcapsfeatures.h \
+  /usr/include/gstreamer-1.0/gst/gstmeta.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferlist.h \
+  /usr/include/gstreamer-1.0/gst/gstpadtemplate.h \
+  /usr/include/gstreamer-1.0/gst/gstevent.h \
+  /usr/include/gstreamer-1.0/gst/gstformat.h \
+  /usr/include/gstreamer-1.0/gst/gstiterator.h \
+  /usr/include/gstreamer-1.0/gst/gsttaglist.h \
+  /usr/include/gstreamer-1.0/gst/gstsample.h \
+  /usr/include/gstreamer-1.0/gst/gstsegment.h \
+  /usr/include/gstreamer-1.0/gst/gstmessage.h \
+  /usr/include/gstreamer-1.0/gst/gstquery.h \
+  /usr/include/gstreamer-1.0/gst/gsttoc.h \
+  /usr/include/gstreamer-1.0/gst/gstcontext.h \
+  /usr/include/gstreamer-1.0/gst/gstdevice.h \
+  /usr/include/gstreamer-1.0/gst/gststreams.h \
+  /usr/include/gstreamer-1.0/gst/gststreamcollection.h \
+  /usr/include/gstreamer-1.0/gst/gsttask.h \
+  /usr/include/gstreamer-1.0/gst/gsttaskpool.h \
+  /usr/include/gstreamer-1.0/gst/gstbus.h \
+  /usr/include/gstreamer-1.0/gst/gstelementfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstplugin.h \
+  /usr/include/gstreamer-1.0/gst/gstmacros.h \
+  /usr/include/gstreamer-1.0/gst/gstpluginfeature.h \
+  /usr/include/gstreamer-1.0/gst/gsturi.h \
+  /usr/include/gstreamer-1.0/gst/gstminiobject.h \
+  /usr/include/gstreamer-1.0/gst/gstbufferpool.h \
+  /usr/include/gstreamer-1.0/gst/gstchildproxy.h \
+  /usr/include/gstreamer-1.0/gst/gstdebugutils.h \
+  /usr/include/gstreamer-1.0/gst/gstdevicemonitor.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceprovider.h \
+  /usr/include/gstreamer-1.0/gst/gstdeviceproviderfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstdynamictypefactory.h \
+  /usr/include/gstreamer-1.0/gst/gstelementmetadata.h \
+  /usr/include/gstreamer-1.0/gst/gsterror.h \
+  /usr/include/gstreamer-1.0/gst/gstghostpad.h \
+  /usr/include/gstreamer-1.0/gst/gstinfo.h \
+  /usr/include/gstreamer-1.0/gst/gstparamspecs.h \
+  /usr/include/gstreamer-1.0/gst/gstvalue.h \
+  /usr/include/gstreamer-1.0/gst/gstpipeline.h \
+  /usr/include/gstreamer-1.0/gst/gstpoll.h \
+  /usr/include/gstreamer-1.0/gst/gstpreset.h \
+  /usr/include/gstreamer-1.0/gst/gstprotection.h \
+  /usr/include/gstreamer-1.0/gst/gstregistry.h \
+  /usr/include/gstreamer-1.0/gst/gstpromise.h \
+  /usr/include/gstreamer-1.0/gst/gstsystemclock.h \
+  /usr/include/gstreamer-1.0/gst/gsttagsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttocsetter.h \
+  /usr/include/gstreamer-1.0/gst/gsttracer.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerfactory.h \
+  /usr/include/gstreamer-1.0/gst/gsttracerrecord.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefind.h \
+  /usr/include/gstreamer-1.0/gst/gsttypefindfactory.h \
+  /usr/include/gstreamer-1.0/gst/gstutils.h \
+  /usr/include/gstreamer-1.0/gst/gstparse.h \
+  /usr/include/gstreamer-1.0/gst/gstcompat.h \
+  /usr/include/gstreamer-1.0/gst/video/videooverlay.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideosink.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasesink.h \
+  /usr/include/gstreamer-1.0/gst/base/base-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-prelude.h \
+  /usr/include/gstreamer-1.0/gst/video/video-info.h \
+  /usr/include/gstreamer-1.0/gst/video/video-format.h \
+  /usr/include/gstreamer-1.0/gst/video/video-enumtypes.h \
+  /usr/include/gstreamer-1.0/gst/video/video-tile.h \
+  /usr/include/gstreamer-1.0/gst/video/video-chroma.h \
+  /usr/include/gstreamer-1.0/gst/video/video-color.h \
+  /usr/include/gstreamer-1.0/gst/video/video.h \
+  /usr/include/gstreamer-1.0/gst/video/video-dither.h \
+  /usr/include/gstreamer-1.0/gst/video/video-frame.h \
+  /usr/include/gstreamer-1.0/gst/video/video-converter.h \
+  /usr/include/gstreamer-1.0/gst/video/video-scaler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-resampler.h \
+  /usr/include/gstreamer-1.0/gst/video/video-multiview.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h \
+  /usr/include/gstreamer-1.0/gst/video/colorbalance.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h \
+  /usr/include/gstreamer-1.0/gst/base/gstaggregator.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h \
+  /usr/include/gstreamer-1.0/gst/base/gstadapter.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoutils.h \
+  /usr/include/gstreamer-1.0/gst/video/video-hdr.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideofilter.h \
+  /usr/include/gstreamer-1.0/gst/base/gstbasetransform.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideometa.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h \
+  /usr/include/gstreamer-1.0/gst/video/gstvideopool.h \
+  /usr/include/gstreamer-1.0/gst/video/navigation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-anc.h \
+  /usr/include/gstreamer-1.0/gst/video/video-blend.h \
+  /usr/include/gstreamer-1.0/gst/video/videodirection.h \
+  /usr/include/gstreamer-1.0/gst/video/video-event.h \
+  /usr/include/gstreamer-1.0/gst/video/videoorientation.h \
+  /usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h \
   ../include/coverage_pipeline.hpp \
   /usr/include/eigen3/Eigen/Dense \
   /usr/include/eigen3/Eigen/Core \
@@ -8266,8 +8967,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/vector/detail/deref_impl.hpp:
 
-/usr/include/boost/fusion/container/vector/detail/at_impl.hpp:
-
 /usr/include/boost/fusion/support/detail/index_sequence.hpp:
 
 /usr/include/boost/fusion/container/vector/vector.hpp:
@@ -8286,13 +8985,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/pop_back.hpp:
 
-/usr/include/boost/fusion/mpl/insert_range.hpp:
-
 /usr/include/boost/fusion/algorithm/transformation/insert.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/has_key.hpp:
-
-/usr/include/boost/fusion/mpl/front.hpp:
 
 /usr/include/boost/fusion/algorithm/query/find_fwd.hpp:
 
@@ -8303,10 +8998,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/mpl/erase_key.hpp:
 
 /usr/include/boost/mpl/aux_/erase_impl.hpp:
-
-/usr/include/boost/fusion/mpl/erase.hpp:
-
-/usr/include/boost/fusion/mpl/empty.hpp:
 
 /usr/include/boost/fusion/container/deque/deque_fwd.hpp:
 
@@ -8450,8 +9141,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/support/is_segmented.hpp:
 
-/usr/include/boost/fusion/support/is_sequence.hpp:
-
 /usr/include/boost/fusion/iterator/deref.hpp:
 
 /usr/include/boost/fusion/adapted/boost_tuple/detail/convert_impl.hpp:
@@ -8502,8 +9191,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Hilbert_sort_middle_3.h:
 
-/usr/include/CGAL/Hilbert_sort_median_3.h:
-
 /usr/include/CGAL/Hilbert_sort_middle_2.h:
 
 /usr/include/CGAL/Hilbert_sort_median_2.h:
@@ -8531,8 +9218,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/mpl/pop_front.hpp:
 
 /usr/include/CGAL/iterator.h:
-
-/usr/include/CGAL/Unique_hash_map.h:
 
 /usr/include/CGAL/Triangulation_utils_2.h:
 
@@ -8566,8 +9251,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/negation.hpp:
 
-/usr/include/boost/type_traits/is_object.hpp:
-
 /usr/include/boost/type_traits/is_nothrow_swappable.hpp:
 
 /usr/include/boost/type_traits/is_member_object_pointer.hpp:
@@ -8598,11 +9281,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_logical_not.hpp:
 
-/usr/include/boost/type_traits/has_logical_and.hpp:
-
 /usr/include/boost/type_traits/has_less_equal.hpp:
-
-/usr/include/boost/type_traits/has_less.hpp:
 
 /usr/include/boost/type_traits/has_left_shift_assign.hpp:
 
@@ -8724,8 +9403,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/math/bindings/detail/big_lanczos.hpp:
 
-/usr/include/boost/multiprecision/detail/big_lanczos.hpp:
-
 /usr/include/boost/multiprecision/cpp_int/import_export.hpp:
 
 /usr/include/boost/multiprecision/cpp_int/misc.hpp:
@@ -8776,8 +9453,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/multiprecision/detail/generic_interconvert.hpp:
 
-/usr/include/boost/multiprecision/detail/digits.hpp:
-
 /usr/include/boost/multiprecision/traits/is_variable_precision.hpp:
 
 /usr/include/boost/type_traits/is_complex.hpp:
@@ -8791,8 +9466,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Sqrt_extension/Eigen_NumTraits.h:
 
 /usr/include/CGAL/Sqrt_extension/Wang_traits.h:
-
-/usr/include/CGAL/function_objects.h:
 
 /usr/include/boost/fusion/adapted/mpl/detail/at_impl.hpp:
 
@@ -8864,8 +9537,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Homogeneous/Homogeneous_base.h:
 
-/usr/include/CGAL/Kernel/Type_mapper.h:
-
 /usr/include/CGAL/NT_converter.h:
 
 /usr/include/CGAL/Cartesian_converter_fwd.h:
@@ -8931,10 +9602,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/view/single_view/detail/value_at_impl.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Triangle_3_do_intersect.h:
-
-/usr/include/boost/multiprecision/gmp.hpp:
-
-/usr/include/CGAL/Intersections_3/Point_3_Triangle_3.h:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Tetrahedron_3_do_intersect.h:
 
@@ -9068,8 +9735,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Line_3_intersection.h:
 
-/usr/include/CGAL/Intersections_3/internal/Bbox_3_Line_3_do_intersect.h:
-
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_do_intersect.h:
 
 /usr/include/CGAL/intersection_3.h:
@@ -9118,8 +9783,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_2/Bbox_2_Ray_2.h:
 
-/usr/include/CGAL/Intersections_2/Bbox_2_Point_2.h:
-
 /usr/include/CGAL/Intersections_2/Bbox_2_Line_2.h:
 
 /usr/include/CGAL/Intersection_traits.h:
@@ -9141,8 +9804,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/algorithm/clamp.hpp:
 
 /usr/include/CGAL/Distance_3/Segment_3_Segment_3.h:
-
-/usr/include/CGAL/Distance_3/Point_3_Tetrahedron_3.h:
 
 /usr/include/CGAL/Distance_3/Point_3_Plane_3.h:
 
@@ -9194,10 +9855,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Cartesian/Aff_transformation_rep_3.h:
 
-/usr/include/boost/fusion/view/single_view/detail/advance_impl.hpp:
-
-/usr/include/CGAL/Cartesian/Aff_transformation_3.h:
-
 /usr/include/CGAL/Cartesian/Circle_3.h:
 
 /usr/include/CGAL/Cartesian/predicates_on_points_3.h:
@@ -9209,8 +9866,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Cartesian/Segment_3.h:
 
 /usr/include/CGAL/Cartesian/Ray_3.h:
-
-/usr/include/CGAL/Kernel/solve.h:
 
 /usr/include/CGAL/Cartesian/solve_3.h:
 
@@ -9268,8 +9923,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/normal_distribution.hpp:
 
-/usr/include/boost/random/lognormal_distribution.hpp:
-
 /usr/include/boost/random/hyperexponential_distribution.hpp:
 
 /usr/include/boost/multiprecision/detail/integer_ops.hpp:
@@ -9278,17 +9931,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/fisher_f_distribution.hpp:
 
-/usr/include/boost/random/extreme_value_distribution.hpp:
-
 /usr/include/boost/io_fwd.hpp:
 
 /usr/include/boost/type_traits/detail/has_prefix_operator.hpp:
 
 /usr/include/boost/io/ios_state.hpp:
-
-/usr/include/CGAL/boost_mp.h:
-
-/usr/include/boost/random/detail/vector_io.hpp:
 
 /usr/include/boost/random/chi_squared_distribution.hpp:
 
@@ -9340,8 +9987,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random.hpp:
 
-/usr/include/boost/random/traits.hpp:
-
 /usr/include/boost/random/detail/signed_unsigned_tools.hpp:
 
 /usr/include/CGAL/Multiscale_sort.h:
@@ -9390,11 +10035,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/container_hash/detail/float_functions.hpp:
 
-/usr/include/CGAL/Kernel/hash_functions.h:
-
 /usr/include/CGAL/Kernel/global_functions_internal_3.h:
-
-/usr/include/CGAL/Kernel/global_functions_3.h:
 
 /usr/include/CGAL/Kernel/global_functions_internal_2.h:
 
@@ -9472,8 +10113,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/optional/optional_fwd.hpp:
 
-/usr/include/boost/none.hpp:
-
 /usr/include/boost/type_traits/remove_extent.hpp:
 
 /usr/include/boost/type_traits/remove_bounds.hpp:
@@ -9489,8 +10128,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/optional/detail/optional_factory_support.hpp:
 
 /usr/include/boost/variant/visitor_ptr.hpp:
-
-/usr/include/boost/variant/detail/element_index.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessor/repeat.hpp:
 
@@ -9572,8 +10209,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/copy_cv.hpp:
 
-/usr/include/boost/type_traits/copy_cv_ref.hpp:
-
 /usr/include/boost/move/utility.hpp:
 
 /usr/include/boost/variant/static_visitor.hpp:
@@ -9619,8 +10254,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/variant/variant.hpp:
 
 /usr/include/boost/variant.hpp:
-
-/usr/include/CGAL/Object.h:
 
 /usr/include/CGAL/aff_transformation_tags.h:
 
@@ -9736,61 +10369,429 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/exceptions.h:
 
-/usr/include/boost/predef/library/c/vms.h:
+/usr/include/CGAL/enable_warnings.h:
 
-/usr/include/eigen3/Eigen/src/Core/util/IndexedViewHelper.h:
+/usr/include/boost/fusion/iterator/segmented_iterator.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/functors/StlFunctors.h:
+/usr/include/CGAL/disable_warnings.h:
 
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixVector.h:
+/usr/include/CGAL/Distance_2/Triangle_2_Triangle_2.h:
 
-/usr/include/eigen3/Eigen/src/Core/functors/UnaryFunctors.h:
+/usr/include/CGAL/Origin_impl.h:
 
-/usr/include/boost/mpl/list/aux_/size.hpp:
+/usr/include/CGAL/Origin.h:
 
-/usr/include/eigen3/Eigen/src/Core/functors/BinaryFunctors.h:
+/usr/include/CGAL/Kernel/Same_uncertainty.h:
 
-/usr/include/CGAL/Intersections_3/Plane_3_Tetrahedron_3.h:
+/usr/include/CGAL/Uncertain.h:
 
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h:
+/usr/include/CGAL/assertions.h:
 
-/usr/include/boost/date_time/gregorian/greg_date.hpp:
+/usr/include/CGAL/license.h:
 
-/usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h:
+/usr/include/boost/type_traits/has_modulus_assign.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/PacketMath.h:
+/usr/include/CGAL/license/lgpl.h:
 
-/usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h:
+/usr/include/boost/predef/version.h:
 
-/usr/include/eigen3/Eigen/src/Core/arch/Default/Settings.h:
+/usr/include/boost/predef/hardware/simd/ppc.h:
 
-/usr/include/c++/11/numeric:
+/usr/include/boost/predef/hardware/simd/arm.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h:
+/usr/include/CGAL/Intersections_3/Bbox_3_Plane_3.h:
 
-/usr/include/boost/mpl/pair.hpp:
+/usr/include/boost/predef/hardware/simd/x86_amd.h:
 
-/usr/include/eigen3/Eigen/src/Core/GenericPacketMath.h:
+/usr/include/boost/predef/hardware/simd/x86.h:
+
+/usr/include/boost/predef/hardware/simd.h:
+
+/usr/include/boost/predef/hardware.h:
+
+/usr/include/boost/fusion/mpl/pop_back.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Point_3_Segment_3_intersection.h:
+
+/usr/include/boost/predef/platform/windows_server.h:
+
+/usr/include/CGAL/Homogeneous/ConicHPA2.h:
+
+/usr/include/boost/predef/platform/windows_phone.h:
+
+/usr/include/CGAL/Intersections_2/Ray_2_Triangle_2.h:
+
+/usr/include/CGAL/type_traits.h:
+
+/usr/include/boost/predef/platform/mingw32.h:
+
+/usr/include/boost/fusion/view/joint_view/detail/begin_impl.hpp:
+
+/usr/include/boost/predef/platform/mingw.h:
+
+/usr/include/boost/functional/hash.hpp:
+
+/usr/include/boost/predef/platform/cloudabi.h:
+
+/usr/include/boost/predef/platform.h:
+
+/usr/include/boost/predef/os/windows.h:
+
+/usr/include/boost/variant/detail/move.hpp:
+
+/usr/include/boost/predef/os/vms.h:
+
+/usr/include/boost/predef/os/unix.h:
+
+/usr/include/boost/predef/os/qnxnto.h:
+
+/usr/include/boost/fusion/view/iterator_range.hpp:
+
+/usr/include/boost/concept_archetype.hpp:
+
+/usr/include/boost/predef/os/os400.h:
+
+/usr/include/boost/predef/detail/os_detected.h:
+
+/usr/include/boost/predef/os/linux.h:
+
+/usr/include/boost/predef/os/irix.h:
+
+/usr/include/CGAL/Distance_2/Point_2_Point_2.h:
+
+/usr/include/boost/predef/os/hpux.h:
 
 /usr/include/boost/predef/os/haiku.h:
 
-/usr/include/eigen3/Eigen/src/Core/util/Memory.h:
+/usr/include/boost/predef/os/cygwin.h:
 
-/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_intersection.h:
+/usr/include/boost/predef/os/beos.h:
 
-/usr/include/eigen3/Eigen/src/Core/util/StaticAssert.h:
+/usr/include/boost/predef/os/amigaos.h:
 
-/usr/include/CGAL/Sqrt_extension/Algebraic_extension_traits.h:
+/usr/include/boost/variant/recursive_wrapper.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h:
+/usr/include/boost/predef/os.h:
 
-/usr/include/eigen3/Eigen/src/Core/util/Macros.h:
+/usr/include/boost/predef/library/std/stlport.h:
 
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp:
+/usr/include/boost/predef/library/std/stdcpp3.h:
 
-/usr/include/eigen3/Eigen/Dense:
+/usr/include/boost/predef/library/std/sgi.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h:
+/usr/include/boost/fusion/mpl/size.hpp:
+
+/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
+
+/usr/include/boost/predef/library/std/roguewave.h:
+
+/usr/include/boost/predef/library/std/msl.h:
+
+/usr/include/boost/predef/library/std/libcomo.h:
+
+/usr/include/boost/predef/library/std/dinkumware.h:
+
+/usr/include/CGAL/representation_tags.h:
+
+/usr/include/boost/predef/library/std/cxx.h:
+
+/usr/include/boost/predef/detail/_exception.h:
+
+/usr/include/boost/predef/library/std.h:
+
+/usr/include/boost/predef/library/c/vms.h:
+
+/usr/include/boost/predef/library/c.h:
+
+/usr/include/boost/predef/compiler/watcom.h:
+
+/usr/include/boost/predef/compiler/tendra.h:
+
+/usr/include/boost/predef/compiler/sunpro.h:
+
+/usr/include/boost/predef/compiler/nvcc.h:
+
+/usr/include/boost/predef/compiler/mpw.h:
+
+/usr/include/boost/predef/compiler/microtec.h:
+
+/usr/include/boost/predef/compiler/metrowerks.h:
+
+/usr/include/CGAL/Intersections_3/Point_3_Segment_3.h:
+
+/usr/include/boost/predef/compiler/metaware.h:
+
+/usr/include/boost/predef/compiler/llvm.h:
+
+/usr/include/boost/predef/compiler/hp_acc.h:
+
+/usr/include/boost/predef/compiler/greenhills.h:
+
+/usr/include/boost/predef/detail/comp_detected.h:
+
+/usr/include/boost/predef/compiler/gcc.h:
+
+/usr/include/boost/predef/compiler/gcc_xml.h:
+
+/usr/include/boost/type_traits/conjunction.hpp:
+
+/usr/include/boost/random/uniform_int.hpp:
+
+/usr/include/boost/predef/compiler/dignus.h:
+
+/usr/include/boost/predef/compiler/diab.h:
+
+/usr/include/boost/predef/compiler/compaq.h:
+
+/usr/include/boost/predef/compiler/clang.h:
+
+/usr/include/boost/predef/compiler/borland.h:
+
+/usr/include/boost/predef/compiler.h:
+
+/usr/include/boost/predef/architecture/z.h:
+
+/usr/include/boost/predef/architecture/sys370.h:
+
+/usr/include/boost/predef/architecture/sparc.h:
+
+/usr/include/boost/random/discrete_distribution.hpp:
+
+/usr/include/boost/predef/architecture/rs6k.h:
+
+/usr/include/boost/predef/architecture/pyramid.h:
+
+/usr/include/boost/predef/architecture/ptx.h:
+
+/usr/include/boost/predef/architecture/ppc.h:
+
+/usr/include/boost/predef/architecture/parisc.h:
+
+/usr/include/boost/predef/architecture/mips.h:
+
+/usr/include/boost/predef/architecture/m68k.h:
+
+/usr/include/boost/predef/architecture/ia64.h:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_squared_radius_3.h:
+
+/usr/include/boost/predef/architecture/convex.h:
+
+/usr/include/boost/predef/architecture/arm.h:
+
+/usr/include/boost/predef/architecture/alpha.h:
+
+/usr/include/boost/predef/architecture.h:
+
+/usr/include/boost/predef/language/cuda.h:
+
+/usr/include/boost/predef/language/stdc.h:
+
+/usr/include/boost/predef/language.h:
+
+/usr/include/boost/predef.h:
+
+/usr/include/CGAL/functional.h:
+
+/usr/include/CGAL/export/CGAL.h:
+
+/usr/include/CGAL/Installation/internal/enable_third_party_libraries.h:
+
+/usr/include/CGAL/version_macros.h:
+
+/usr/include/CGAL/auto_link/auto_link.h:
+
+/usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h:
+
+/usr/include/CGAL/Homogeneous/DirectionH2.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
+
+/usr/include/CGAL/squared_distance_3.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/spiral_order.h:
+
+/usr/include/boost/predef/architecture/riscv.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/brute_force.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/swath_generator_base.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h:
+
+/usr/include/CGAL/memory.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
+
+/usr/include/CGAL/Handle_for_virtual.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
+
+/usr/include/CGAL/STL_Extension/internal/info_check.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/rp_objective.h:
+
+/usr/include/boost/fusion/view/iterator_range/detail/size_impl.hpp:
+
+/usr/include/CGAL/Homogeneous/VectorH3.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/swath_length.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
+
+/usr/include/boost/type_traits/copy_reference.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
+
+/usr/include/boost/random/seed_seq.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swaths.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Strip.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cell.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h:
+
+/usr/include/CGAL/Distance_2/Segment_2_Ray_2.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiPoint.h:
+
+/usr/include/CGAL/Hilbert_sort_middle_d.h:
+
+/usr/include/CGAL/Cartesian/Cartesian_base.h:
+
+/usr/include/geos/export.h:
+
+/usr/include/geos_c.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp:
+
+/usr/include/boost/math/policies/error_handling.hpp:
+
+/usr/include/boost/type_traits/is_destructible.hpp:
+
+/usr/include/boost/type_traits/is_constructible.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_y_2.h:
+
+/usr/include/CGAL/Intersections_3/Plane_3_Ray_3.h:
+
+/usr/include/boost/math/tools/convert_from_string.hpp:
+
+/usr/include/boost/math/tools/precision.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp:
+
+/usr/include/CGAL/IO/io_tags.h:
+
+/usr/include/boost/math/tools/cxx03_warn.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
+
+/usr/include/gdal/ogr_srs_api.h:
+
+/usr/include/gdal/ogr_spatialref.h:
+
+/usr/include/gdal/ogr_core.h:
+
+/usr/include/gdal/cpl_progress.h:
+
+/usr/include/gdal/cpl_vsi.h:
+
+/usr/include/gdal/cpl_config_extras.h:
+
+/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
+
+/usr/include/boost/iterator/zip_iterator.hpp:
+
+/usr/include/gdal/cpl_config.h:
+
+/usr/include/glib-2.0/glib/ghook.h:
+
+/usr/include/glib-2.0/glib/gnode.h:
+
+/usr/include/glib-2.0/glib/glist.h:
+
+/usr/include/boost/mpl/list/aux_/push_back.hpp:
+
+/usr/include/glib-2.0/glib/gdate.h:
+
+/usr/include/CGAL/Intersections_3/internal/Bbox_3_Line_3_do_intersect.h:
+
+/usr/include/glib-2.0/glib/gchecksum.h:
+
+/usr/include/CGAL/Intersections_2/Segment_2_Segment_2.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h:
+
+/usr/include/boost/mpl/assert.hpp:
+
+/usr/include/glib-2.0/glib/gbitlock.h:
+
+/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_do_intersect.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
+
+/usr/include/CGAL/Intersections_3/Bbox_3_Bbox_3.h:
+
+/usr/include/errno.h:
+
+/usr/include/glib-2.0/glib/gerror.h:
+
+/usr/include/glib-2.0/glib/gversionmacros.h:
+
+/usr/include/CGAL/Kernel/hash_functions.h:
+
+/usr/include/glib-2.0/glib/gversion.h:
+
+/usr/include/CGAL/config.h:
+
+/usr/include/gstreamer-1.0/gst/gsttracerrecord.h:
+
+/usr/include/glib-2.0/glib/gtypes.h:
+
+/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/quote.hpp:
 
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -9800,15 +10801,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
 
+/usr/include/glib-2.0/glib/galloca.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
 
+/usr/include/boost/type_traits/copy_cv_ref.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp:
+
+/usr/include/CGAL/Has_timestamp.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qguiapplication.h:
+
 /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/functors/TernaryFunctors.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp:
 
@@ -9820,11 +10825,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h:
 
+/usr/include/boost/mpl/bool.hpp:
+
 /usr/include/boost/type_traits/has_complement.hpp:
 
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__builder.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__struct.hpp:
 
@@ -9832,13 +10841,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__struct.hpp:
 
-/usr/include/boost/predef/architecture/sys370.h:
-
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
+
+/usr/include/gstreamer-1.0/gst/gsttocsetter.h:
 
 /usr/include/boost/type_index/stl_type_index.hpp:
 
@@ -9880,17 +10889,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__traits.hpp:
 
-/usr/include/boost/random/detail/seed_impl.hpp:
-
-/usr/include/boost/mpl/sequence_tag_fwd.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__builder.hpp:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__builder.hpp:
 
 /usr/include/eigen3/Eigen/src/SVD/UpperBidiagonalization.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/executors/static_single_threaded_executor.hpp:
+/usr/include/boost/fusion/mpl/erase.hpp:
+
+/usr/include/glib-2.0/glib/garray.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-chroma.h:
 
 /usr/include/boost/math/special_functions/detail/erf_inv.hpp:
 
@@ -9900,15 +10907,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qlogging.h:
 
-/usr/include/boost/predef/architecture/ia64.h:
-
 /usr/include/boost/mpl/remove.hpp:
 
 /usr/include/c++/11/thread:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_client.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp:
 
 /usr/include/CGAL/Intersections_3/Bbox_3_Ray_3.h:
 
@@ -9966,6 +10969,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/dynamic_storage.hpp:
 
+/usr/include/glib-2.0/glib/gdatetime.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__struct.hpp:
 
 /usr/include/boost/math/special_functions/next.hpp:
@@ -9975,6 +10980,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter:
 
 /usr/include/c++/11/bits/char_traits.h:
+
+/usr/include/CGAL/Distance_3/Point_3_Tetrahedron_3.h:
+
+/usr/include/glib-2.0/glib/gdataset.h:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
 
@@ -10026,21 +11035,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/preprocessor/tuple/rem.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__struct.hpp:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__traits.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
 
 /usr/include/boost/lexical_cast/detail/converter_lexical.hpp:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverVector.h:
-
 /usr/include/boost/fusion/container/list/detail/reverse_cons.hpp:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__struct.hpp:
+
+/usr/include/CGAL/version.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp:
+
+/usr/include/linux/stddef.h:
 
 /usr/include/CGAL/Homogeneous/SphereH3.h:
 
@@ -10068,25 +11077,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/config/helper_macros.hpp:
 
-/usr/include/CGAL/STL_Extension/internal/info_check.h:
+/usr/include/glib-2.0/glib/gfileutils.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
+/usr/include/glib-2.0/gobject/gparam.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__builder.hpp:
 
-/usr/include/boost/predef/version.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/qos_overriding_options.hpp:
-
 /usr/include/boost/type_traits/remove_reference.hpp:
-
-/usr/include/CGAL/Homogeneous_converter.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
-
-/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
-
-/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_payload.hpp:
 
@@ -10098,11 +11095,17 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp:
 
-/usr/include/boost/fusion/iterator/segmented_iterator.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
 
-/usr/include/CGAL/disable_warnings.h:
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/timer.hpp:
+
+/usr/include/boost/fusion/algorithm/iteration/for_each_fwd.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/snake_order.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/subscription_content_filter_options.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
 
@@ -10112,13 +11115,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/clock.hpp:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/buffer_implementation_base.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process_base.hpp:
 
-/usr/include/CGAL/Uncertain.h:
+/usr/include/glib-2.0/glib/genviron.h:
 
 /usr/include/c++/11/shared_mutex:
 
@@ -10136,17 +11137,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_deleter.hpp:
 
+/usr/include/boost/predef/other.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__type_support.hpp:
+
 /usr/include/boost/preprocessor/control/detail/while.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp:
-
-/usr/include/boost/fusion/view/transform_view/detail/end_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/MKL_support.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
-
-/usr/include/boost/core/ref.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
@@ -10170,8 +11167,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess:
 
-/usr/include/boost/mpl/vector/aux_/item.hpp:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h:
 
 /usr/include/CGAL/Cartesian/Circle_2.h:
@@ -10186,6 +11181,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/service_type_support.hpp:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideoaffinetransformationmeta.h:
+
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/service_type_support_decl.hpp:
 
 /usr/include/boost/smart_ptr/detail/local_sp_deleter.hpp:
@@ -10197,6 +11194,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl/rcl/logging_rosout.h:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstsegment.h:
 
 /usr/include/boost/type_traits/is_compound.hpp:
 
@@ -10234,8 +11233,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/is_complete.hpp:
 
-/usr/include/boost/math/policies/error_handling.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/utilities.hpp:
@@ -10243,8 +11240,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcutils/rcutils/logging_macros.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_base_interface.hpp:
-
-/usr/include/gdal/cpl_config_extras.h:
 
 /usr/include/CGAL/Cartesian/point_constructions_2.h:
 
@@ -10262,13 +11257,17 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/codecvt.h:
 
+/usr/include/CGAL/function_objects.h:
+
+/usr/include/gstreamer-1.0/gst/video/videoorientation.h:
+
 /usr/include/CGAL/Intersections_3/internal/Ray_3_Ray_3_intersection.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
 
-/usr/include/c++/11/bits/sstream.tcc:
+/usr/include/gstreamer-1.0/gst/gstquery.h:
 
 /usr/include/CGAL/Cartesian/predicates_on_planes_3.h:
 
@@ -10286,6 +11285,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/map:
 
+/usr/include/CGAL/Handle_hash_function.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h:
+
+/usr/include/boost/smart_ptr/detail/sp_disable_deprecated.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategies.hpp:
 
 /usr/include/boost/random/binomial_distribution.hpp:
@@ -10295,6 +11300,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/kdl/utilities/kdl-config.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/contexts/default_context.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h:
+
+/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__builder.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/sigcontext.h:
 
@@ -10324,15 +11335,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h:
 
-/opt/ros/humble/include/rmw/rmw/subscription_options.h:
-
 /usr/include/c++/11/complex:
 
 /usr/include/boost/type_traits/has_unary_minus.hpp:
 
 /usr/include/boost/math/special_functions/sign.hpp:
-
-/usr/include/boost/predef/architecture/alpha.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp:
 
@@ -10342,13 +11349,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/timer.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__builder.hpp:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h:
-
 /opt/ros/humble/include/rmw/rmw/network_flow_endpoint_array.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__traits.hpp:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__type_support.hpp:
 
@@ -10390,9 +11395,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/predefined_ops.h:
 
-/usr/include/boost/functional/hash.hpp:
+/usr/include/boost/random/student_t_distribution.hpp:
 
-/usr/include/boost/predef/platform/cloudabi.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/SwathsByCells.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/set_parameters.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstprotection.h:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp:
 
@@ -10402,9 +11411,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rmw/rmw/serialized_message.h:
 
-/usr/include/CGAL/transforming_iterator.h:
+/usr/include/gdal/cpl_json.h:
 
-/opt/ros/humble/include/rmw/rmw/events_statuses/requested_deadline_missed.h:
+/usr/include/gstreamer-1.0/gst/gstutils.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h:
 
 /usr/include/CGAL/Residue.h:
 
@@ -10413,6 +11424,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
+
+/usr/include/boost/predef/platform/ios.h:
+
+/usr/include/libintl.h:
 
 /usr/include/boost/fusion/container/vector/vector10.hpp:
 
@@ -10442,7 +11457,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
-/usr/include/boost/predef/language/cuda.h:
+/usr/include/boost/predef/platform/mingw64.h:
+
+/usr/include/gstreamer-1.0/gst/gstghostpad.h:
 
 /opt/ros/humble/include/rcutils/rcutils/types.h:
 
@@ -10450,17 +11467,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcutils/rcutils/snprintf.h:
 
-/opt/ros/humble/include/rcutils/rcutils/error_handling.h:
+/usr/include/gstreamer-1.0/gst/video/video-info.h:
 
-../include/coverage_pipeline.hpp:
+/opt/ros/humble/include/rcutils/rcutils/error_handling.h:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/message_initialization.h:
 
 /usr/include/boost/date_time/special_defs.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/logging.h:
-
-/usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
 
 /usr/include/CGAL/Intersections_3/Line_3_Line_3.h:
 
@@ -10472,9 +11487,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/types.h:
 
+/usr/include/gstreamer-1.0/gst/gstpreset.h:
+
+/usr/include/boost/multiprecision/gmp.hpp:
+
+/usr/include/CGAL/Intersections_3/Point_3_Triangle_3.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideosink.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/Stride.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-scaler.h:
 
 /usr/include/boost/mpl/end.hpp:
 
@@ -10484,15 +11509,25 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/string:
 
+/opt/ros/humble/include/rclcpp/rclcpp/qos_overriding_options.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp:
+
+/usr/include/boost/fusion/iterator/key_of.hpp:
+
+/usr/include/pcl-1.12/pcl/io/file_io.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__type_support.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/moving_average.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h:
+
+/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
+
 /opt/ros/humble/include/rmw/rmw/ret_types.h:
 
 /opt/ros/humble/include/rmw/rmw/macros.h:
-
-/opt/ros/humble/include/rmw/rmw/localhost.h:
 
 /opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h:
 
@@ -10500,19 +11535,11 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
-
-/usr/include/c++/11/bits/istream.tcc:
-
 /usr/include/c++/11/istream:
 
 /usr/include/boost/detail/templated_streams.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/ring_buffer_implementation.hpp:
-
-/usr/include/boost/type_traits/add_lvalue_reference.hpp:
-
-/usr/include/c++/11/bits/ostream.tcc:
 
 /usr/include/c++/11/tr1/modified_bessel_func.tcc:
 
@@ -10552,17 +11579,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
-
-/usr/include/CGAL/Installation/internal/enable_third_party_libraries.h:
-
-/usr/include/boost/predef/other.h:
-
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h:
-
-/usr/include/c++/11/bits/locale_facets.h:
 
 /usr/include/c++/11/bits/basic_ios.h:
 
@@ -10610,6 +11627,18 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
 
+/usr/include/CGAL/export/helpers.h:
+
+/usr/include/c++/11/limits:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
+
+/usr/include/boost/fusion/view/transform_view/detail/end_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/MKL_support.h:
+
+/usr/include/boost/core/ref.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_type.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QDir:
@@ -10622,7 +11651,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__struct.hpp:
 
-/usr/include/boost/predef/architecture/arm.h:
+/usr/include/gstreamer-1.0/gst/gstcontrolsource.h:
 
 /usr/include/boost/numeric/conversion/converter_policies.hpp:
 
@@ -10638,6 +11667,8 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h:
 
+/usr/include/glib-2.0/glib/gasyncqueue.h:
+
 /usr/include/boost/mpl/vector/aux_/iterator.hpp:
 
 /usr/include/boost/type_traits/is_signed.hpp:
@@ -10646,15 +11677,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/util/Constants.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
-
 /usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
 
 /usr/include/boost/math/tools/promotion.hpp:
-
-/usr/include/boost/predef/architecture/pyramid.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -10670,13 +11695,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/wchar2.h:
 
-/usr/include/CGAL/Intersections_3/internal/Line_3_Sphere_3_do_intersect.h:
-
-/usr/include/boost/mpl/aux_/full_lambda.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpaintdevice.h:
 
@@ -10686,15 +11705,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox:
 
-/usr/include/boost/predef/hardware/simd/ppc.h:
-
-/usr/include/CGAL/Intersections_3/internal/Ray_3_Segment_3_intersection.h:
-
-/usr/include/boost/variant/detail/has_result_type.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideofilter.h:
+
+/usr/include/boost/predef/compiler/edg.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h:
 
 /opt/ros/humble/include/rcl/rcl/publisher.h:
 
@@ -10714,17 +11731,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout:
-
-/opt/ros/humble/include/rmw/rmw/incompatible_qos_events_statuses.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h:
+/usr/include/glib-2.0/glib/ghostutils.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h:
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h:
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
@@ -10754,14 +11767,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/math/special_functions/fpclassify.hpp:
 
-/usr/include/boost/predef/detail/os_detected.h:
-
-/usr/include/CGAL/Dummy_tds_2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h:
-
-/usr/include/boost/predef/language/objc.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/qos_parameters.hpp:
@@ -10774,19 +11779,33 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/std_thread.h:
 
+/usr/include/gstreamer-1.0/gst/gstversion.h:
+
 /usr/include/c++/11/optional:
 
 /usr/include/c++/11/future:
 
-/usr/include/boost/predef/compiler/metrowerks.h:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__struct.hpp:
+
+/usr/include/glib-2.0/glib/gconvert.h:
+
+/usr/include/c++/11/tr1/hypergeometric.tcc:
+
+/usr/include/boost/predef/compiler/ibm.h:
+
+/usr/include/boost/mpl/less_equal.hpp:
+
+/usr/include/glib-2.0/glib/gregex.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h:
 
 /usr/include/pcl-1.12/pcl/conversions.h:
 
-/usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h:
+/usr/include/boost/predef/library/c/zos.h:
 
-/usr/include/CGAL/auto_link/auto_link.h:
+/usr/include/eigen3/Eigen/src/Core/Swap.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
 
 /usr/include/boost/fusion/algorithm/transformation/pop_back.hpp:
 
@@ -10795,6 +11814,12 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h:
+
+/usr/include/boost/predef/platform/windows_system.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/create_timer.hpp:
+
+/usr/include/pcl-1.12/pcl/common/impl/io.hpp:
 
 /usr/include/CGAL/Handle.h:
 
@@ -10808,13 +11833,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h:
-
 /usr/include/CGAL/Interval_traits.h:
 
 /usr/include/c++/11/cctype:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h:
+
+/usr/include/glib-2.0/glib/gatomic.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h:
 
@@ -10824,13 +11849,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_descriptor.hpp:
 
+/usr/include/CGAL/Kernel/global_functions_3.h:
+
+/usr/include/glib-2.0/glib/gstrfuncs.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h:
 
 /usr/include/CGAL/circulator.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h:
-
-/usr/include/boost/predef/architecture/parisc.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
 
@@ -10854,27 +11881,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h:
 
-/usr/include/boost/predef/compiler/nvcc.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/message_memory_strategy.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__traits.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
-
-/usr/include/CGAL/Hilbert_policy_tags.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/environments.h:
 
@@ -10894,9 +11903,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/min_max.hpp:
 
-/usr/include/boost/predef/os/irix.h:
+/usr/include/CGAL/Simple_cartesian.h:
+
+/usr/include/boost/concept/detail/general.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h:
+
+/usr/include/gstreamer-1.0/gst/gstdatetime.h:
 
 /usr/include/boost/predef/platform/windows_runtime.h:
 
@@ -10906,13 +11919,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/ios_base.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
+
+/usr/include/c++/11/bits/basic_string.tcc:
 
 /opt/ros/humble/include/rclcpp/rclcpp/publisher.hpp:
 
 /usr/include/c++/11/bits/algorithmfwd.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h:
+
+/usr/include/eigen3/Eigen/Dense:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__type_support.hpp:
 
@@ -10930,9 +11949,15 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h:
 
-/usr/include/c++/11/bits/cpp_type_traits.h:
+/usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h:
 
-/usr/include/ctype.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h:
+
+/usr/include/glib-2.0/gobject/gboxed.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/TernaryFunctors.h:
+
+/usr/include/c++/11/bits/cpp_type_traits.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_base_interface.hpp:
 
@@ -10942,13 +11967,9 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/add_const.hpp:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Strip.h:
-
 /usr/include/CGAL/Distance_3/Ray_3_Line_3.h:
 
 /usr/include/boost/mpl/aux_/msvc_never_true.hpp:
-
-/usr/include/boost/predef/library/c.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic_cxx11.h:
 
@@ -10958,13 +11979,21 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsizepolicy.h:
 
-/usr/include/c++/11/stdlib.h:
-
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdalign.h:
 
 /usr/include/boost/type_traits/has_pre_increment.hpp:
 
 /usr/include/c++/11/bits/locale_facets.tcc:
+
+/usr/include/boost/type_traits/has_logical_and.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstdynamictypefactory.h:
+
+/usr/include/boost/predef/hardware/simd/x86/versions.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
 /usr/include/CGAL/predicates/sign_of_determinant.h:
 
@@ -10990,8 +12019,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h:
 
-/usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:
-
 /usr/include/c++/11/bits/stl_iterator_base_types.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_publisher.hpp:
@@ -11007,6 +12034,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/c++/11/bits/locale_classes.h:
 
 /opt/ros/humble/include/rmw/rmw/error_handling.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h:
 
@@ -11031,10 +12062,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/c++/11/bits/localefwd.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/time.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
-
-/usr/include/boost/predef/detail/_exception.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h:
 
@@ -11062,15 +12089,33 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
 
+/usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h:
+
+/usr/include/eigen3/Eigen/Cholesky:
+
+/usr/include/boost/preprocessor/control/expr_iif.hpp:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
+
+/usr/include/CGAL/Homogeneous_converter.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
+
+/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h:
+
+/usr/include/glib-2.0/glib/gutils.h:
 
 /usr/include/boost/math/special_functions/pow.hpp:
 
 /usr/include/boost/random/lagged_fibonacci.hpp:
 
 /usr/include/c++/11/bits/vector.tcc:
+
+/usr/include/glib-2.0/glib/gbacktrace.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
 
@@ -11110,14 +12155,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
-/usr/include/boost/type_traits/conjunction.hpp:
-
-/usr/include/boost/random/uniform_int.hpp:
-
-/usr/include/boost/predef/compiler/dignus.h:
-
-/usr/include/boost/predef/os/cygwin.h:
-
 /usr/include/features-time64.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer:
@@ -11125,6 +12162,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/c++/11/functional:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swath.h:
+
+/usr/include/boost/preprocessor/arithmetic/mod.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
 
@@ -11152,8 +12193,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/mpl/vector/aux_/clear.hpp:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h:
-
 /usr/include/x86_64-linux-gnu/sys/types.h:
 
 /usr/include/c++/11/ext/aligned_buffer.h:
@@ -11173,6 +12212,10 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/c++/11/bits/quoted_string.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/create_intra_process_buffer.hpp:
+
+/usr/include/boost/mpl/vector/aux_/at.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h:
 
@@ -11198,7 +12241,13 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
+/usr/include/CGAL/Object.h:
+
+/usr/include/glib-2.0/glib/deprecated/gcache.h:
+
 /usr/include/boost/throw_exception.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/IndexedViewHelper.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h:
 
@@ -11212,13 +12261,17 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/storage_policy_common.hpp:
 
-/opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h:
-
 /usr/include/boost/range/difference_type.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h:
 
 /usr/include/eigen3/Eigen/src/Core/ConditionEstimator.h:
+
+/usr/include/boost/type_traits/add_lvalue_reference.hpp:
+
+/usr/include/c++/11/bits/ostream.tcc:
+
+/usr/include/glib-2.0/glib/ggettext.h:
 
 /usr/include/x86_64-linux-gnu/bits/locale.h:
 
@@ -11227,6 +12280,14 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtguiglobal.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qprogressbar.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h:
+
+/usr/include/c++/11/bits/atomic_lockfree_defines.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget:
+
+/usr/include/glib-2.0/glib/gcharset.h:
 
 /usr/include/CGAL/Triangulation_ds_face_base_2.h:
 
@@ -11248,7 +12309,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_value.hpp:
 
+/usr/include/CGAL/Distance_3/Segment_3_Plane_3.h:
+
+/usr/include/boost/predef/architecture/blackfin.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__type_support.hpp:
+
+/usr/include/c++/11/bits/align.h:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__traits.hpp:
+
+/usr/include/boost/type_traits/is_default_constructible.hpp:
+
+/usr/include/c++/11/typeinfo:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h:
 
@@ -11257,12 +12330,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qregion.h:
 
 /usr/include/boost/date_time/gregorian/greg_month.hpp:
-
-/usr/include/boost/random/student_t_distribution.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/set_parameters.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/SwathsByCells.h:
 
 /usr/include/boost/mpl/erase_fwd.hpp:
 
@@ -11278,13 +12345,17 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/streambuf.tcc:
 
-/usr/include/boost/mpl/O1_size.hpp:
-
 /opt/ros/humble/include/rmw/rmw/names_and_types.h:
 
 /usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
+/usr/include/boost/predef/platform/windows_desktop.h:
+
+/usr/include/boost/mpl/contains_fwd.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h:
+
+/usr/include/gstreamer-1.0/gst/gsttracerfactory.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply_wrap.hpp:
 
@@ -11300,17 +12371,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/sched.h:
 
-/usr/include/gdal/ogr_srs_api.h:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h:
-
-/usr/include/CGAL/memory.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
 
 /usr/include/boost/mpl/front_fwd.hpp:
 
@@ -11324,10 +12385,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/StlSupport/details.h:
 
-/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_do_intersect.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
 /usr/include/boost/mpl/insert_fwd.hpp:
@@ -11337,8 +12394,6 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/rational.hpp:
 
 f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h:
 
@@ -11355,12 +12410,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/c++/11/ext/numeric_traits.h:
 
 /usr/include/c++/11/bits/uses_allocator.h:
-
-/usr/include/c++/11/bits/stl_tempbuf.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h:
-
-/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
 
 /usr/include/CGAL/Cartesian/Ray_2.h:
 
@@ -11406,21 +12455,9 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/c++/11/cstdio:
 
-/usr/include/boost/mpl/minus.hpp:
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__traits.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/QFont:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
-
-/usr/include/CGAL/Handle_hash_function.h:
-
-/usr/include/boost/smart_ptr/detail/sp_disable_deprecated.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h:
-
-/usr/include/boost/type_traits/remove_cv_ref.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h:
+/usr/include/glib-2.0/gobject/gvaluetypes.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
 
@@ -11428,13 +12465,11 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h:
 
-/usr/include/boost/smart_ptr/detail/lwm_std_mutex.hpp:
+/usr/include/boost/predef/language/stdcpp.h:
 
-/usr/include/c++/11/bits/stl_set.h:
+/usr/include/boost/mpl/push_front_fwd.hpp:
 
-/usr/include/eigen3/Eigen/src/Householder/Householder.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
+/usr/include/x86_64-linux-gnu/bits/time64.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h:
 
@@ -11461,10 +12496,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/CGAL/Intersections_3/internal/Line_3_Segment_3_do_intersect.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
-
-/usr/include/boost/type_traits/has_modulus_assign.hpp:
-
-/usr/include/CGAL/license/lgpl.h:
 
 /usr/include/c++/11/ext/atomicity.h:
 
@@ -11508,12 +12539,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/boost/mpl/greater.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
-
-/usr/include/eigen3/Eigen/src/Core/IO.h:
-
-/opt/ros/humble/include/rcl/rcl/guard_condition.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h:
 
 /usr/include/CGAL/predicates_on_points_2.h:
@@ -11523,6 +12548,12 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/boost/fusion/sequence/intrinsic/end.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h:
+
+/usr/include/glib-2.0/glib/gtrashstack.h:
+
+/usr/include/glib-2.0/gobject/gvaluearray.h:
 
 /usr/include/c++/11/bits/unique_ptr.h:
 
@@ -11544,6 +12575,12 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/pthread.h:
 
+/usr/include/boost/fusion/view/single_view/detail/advance_impl.hpp:
+
+/usr/include/CGAL/Cartesian/Aff_transformation_3.h:
+
+/usr/include/glib-2.0/glib/gstringchunk.h:
+
 /usr/include/boost/fusion/iterator/detail/adapt_deref_traits.hpp:
 
 /usr/include/CGAL/Time_stamper.h:
@@ -11551,6 +12588,16 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/boost/random/gamma_distribution.hpp:
 
 /usr/include/boost/date_time/period.hpp:
+
+/usr/include/glib-2.0/glib/ghash.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/logger.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/IndexedView.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h:
+
+/usr/include/boost/mpl/iterator_tags.hpp:
 
 /usr/include/boost/type_traits/has_multiplies_assign.hpp:
 
@@ -11564,13 +12611,13 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox:
 
+/usr/include/boost/predef/hardware/simd/ppc/versions.h:
+
+/usr/include/c++/11/type_traits:
+
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 /opt/ros/humble/include/rcl/rcl/allocator.h:
-
-/usr/include/CGAL/Intersections_3/Bbox_3_Bbox_3.h:
-
-/usr/include/errno.h:
 
 /usr/include/boost/type_traits/has_not_equal_to.hpp:
 
@@ -11590,21 +12637,27 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h:
+
+/usr/include/linux/posix_types.h:
+
+/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
+
+/usr/include/glib-2.0/glib/gbytes.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__traits.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/allocator.h:
 
+/usr/include/glib-2.0/glib/gspawn.h:
+
 /opt/ros/humble/include/rcl/rcl/init_options.h:
 
 /usr/include/c++/11/bits/functexcept.h:
 
 /usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
-
-/usr/include/c++/11/bits/basic_string.tcc:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
 
 /usr/include/boost/random/shuffle_order.hpp:
 
@@ -11620,12 +12673,6 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication:
 
-/usr/include/linux/posix_types.h:
-
-/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h:
@@ -11640,13 +12687,11 @@ f2c_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/boost/move/detail/workaround.hpp:
 
-/usr/include/boost/mpl/less_equal.hpp:
-
-/usr/include/boost/predef/compiler/ibm.h:
-
 /usr/include/CGAL/Hilbert_sort_3.h:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
+/usr/include/gstreamer-1.0/gst/gstmeta.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigthread.h:
 
@@ -11682,6 +12727,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__type_support.hpp:
 
+/usr/include/boost/predef/os/solaris.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:
+
 /usr/include/boost/date_time/time_defs.hpp:
 
 /usr/include/boost/fusion/view/iterator_range/detail/value_at_impl.hpp:
@@ -11696,6 +12745,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/move.h:
 
+/usr/include/boost/mpl/insert_range.hpp:
+
+/usr/include/CGAL/basic.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h:
+
 /usr/include/boost/mpl/aux_/fold_impl.hpp:
 
 /usr/include/CGAL/Cartesian/Iso_cuboid_3.h:
@@ -11708,6 +12763,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/exception.h:
 
+/usr/include/gstreamer-1.0/gst/gstdevice.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/list_parameters_result.hpp:
 
 /usr/include/CGAL/Hilbert_sort_d.h:
@@ -11717,6 +12774,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLineEdit:
+
+/usr/include/glib-2.0/glib/gpoll.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigstksz.h:
 
@@ -11732,19 +12791,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Triangle_3.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qkeysequence.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h:
 
 /usr/include/eigen3/Eigen/src/Geometry/Transform.h:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_period.hpp:
 
+/usr/include/gstreamer-1.0/gst/gstpluginfeature.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
-
-/usr/include/c++/11/bits/stl_construct.h:
 
 /usr/include/boost/mpl/aux_/find_if_pred.hpp:
 
@@ -11760,8 +12819,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bit:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
-
 /usr/include/boost/mpl/max.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors/static_executor_entities_collector.hpp:
@@ -11770,9 +12827,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__struct.hpp:
 
-/usr/include/boost/mpl/list/aux_/front.hpp:
-
 /usr/include/c++/11/ext/type_traits.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/float.h:
 
 /usr/include/x86_64-linux-gnu/asm/errno.h:
 
@@ -11796,12 +12853,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h:
 
-/usr/include/boost/fusion/mpl/pop_back.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Segment_3_intersection.h:
-
-/usr/include/boost/predef/platform/windows_server.h:
-
 /usr/include/CGAL/Cartesian/Plane_3.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3_stamped.hpp:
@@ -11809,6 +12860,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/fusion/support/detail/mpl_iterator_category.hpp:
 
 /usr/include/boost/detail/lcast_precision.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/parser.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/parameter_map.hpp:
 
 /usr/include/boost/fusion/container/list/detail/empty_impl.hpp:
 
@@ -11840,8 +12895,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/invoke.h:
 
-/usr/include/boost/predef/architecture/z.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpalette.h:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp:
@@ -11864,6 +12917,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h:
 
+/usr/include/boost/predef/platform/windows_uwp.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
+
 /usr/include/CGAL/property_map.h:
 
 /usr/include/c++/11/bits/uniform_int_dist.h:
@@ -11882,8 +12939,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/stdexcept:
 
-/usr/include/gdal/cpl_progress.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
 
 /usr/include/CGAL/Modular_traits.h:
@@ -11893,6 +12948,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h:
 
 /usr/include/eigen3/Eigen/src/Core/Ref.h:
+
+/usr/include/gstreamer-1.0/gst/gstbuffer.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h:
 
@@ -11926,11 +12983,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/list/aux_/empty.hpp:
 
+/usr/include/boost/math/special_functions/trunc.hpp:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__struct.hpp:
+
 /usr/include/boost/integer/static_min_max.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/ReturnByValue.h:
-
-/usr/include/gdal/cpl_vsi.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
 
@@ -11952,6 +13011,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h:
 
+/usr/include/glib-2.0/glib/gtimer.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QFontDatabase:
 
 /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
@@ -11961,10 +13022,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h:
 
 /usr/include/boost/mpl/comparison.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/quote.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/set_parameters_atomically.hpp:
 
@@ -12006,6 +13063,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
 
+/usr/include/glib-2.0/glib/ghmac.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextoption.h:
 
 /usr/include/boost/type_traits/is_void.hpp:
@@ -12042,19 +13101,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/smart_ptr/detail/sp_has_sync_intrinsics.hpp:
 
+/usr/include/CGAL/Segment_2.h:
+
+/usr/include/boost/type_traits/is_base_of.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/set_parameters_result.hpp:
 
-/usr/include/c++/11/climits:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h:
 
 /usr/include/c++/11/bits/unordered_map.h:
+
+/usr/include/ctype.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h:
 
 /usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_do_intersect.h:
 
@@ -12094,11 +13157,21 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/cmath:
 
+/usr/include/CGAL/boost_mp.h:
+
+/usr/include/boost/random/detail/vector_io.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstminiobject.h:
+
 /usr/include/boost/random/laplace_distribution.hpp:
 
 /usr/include/c++/11/pstl/pstl_config.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h:
+
+/usr/include/x86_64-linux-gnu/bits/dirent.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
 
 /usr/include/CGAL/Triangle_3.h:
 
@@ -12107,12 +13180,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/list/aux_/item.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayout.h:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_y_2.h:
-
-/usr/include/CGAL/Intersections_3/Plane_3_Ray_3.h:
-
-/usr/include/boost/math/tools/convert_from_string.hpp:
 
 /usr/include/CGAL/Intersections_3/Line_3_Plane_3.h:
 
@@ -12136,12 +13203,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/library/c/gnu.h:
 
-/usr/include/CGAL/Intersections_2/Ray_2_Triangle_2.h:
-
-/usr/include/CGAL/type_traits.h:
-
-/usr/include/boost/predef/platform/mingw32.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h:
 
 /usr/include/boost/mpl/push_front.hpp:
@@ -12156,15 +13217,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp:
 
-/usr/include/boost/predef/compiler/mpw.h:
+/usr/include/c++/11/numeric:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/Settings.h:
 
 /usr/include/boost/type_traits/make_signed.hpp:
 
 /usr/include/boost/mpl/advance.hpp:
 
 /usr/include/linux/close_range.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/mmintrin.h:
 
 /usr/include/c++/11/list:
 
@@ -12174,13 +13235,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction:
 
-/usr/include/linux/falloc.h:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/vector3.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+
+/usr/include/boost/predef/compiler/comeau.h:
+
+/usr/include/c++/11/bits/list.tcc:
 
 /usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
 
@@ -12218,12 +13281,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
 
-/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
-
-/usr/include/boost/iterator/zip_iterator.hpp:
-
-/usr/include/gdal/cpl_config.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h:
 
 /usr/include/c++/11/bits/stream_iterator.h:
@@ -12236,8 +13293,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Array.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
-
 /opt/ros/humble/include/rcutils/rcutils/types/hash_map.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h:
@@ -12245,6 +13300,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-dither.h:
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
@@ -12262,6 +13319,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/integer_range__struct.hpp:
 
+/usr/include/gstreamer-1.0/gst/video/video-converter.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore:
 
 /usr/include/x86_64-linux-gnu/bits/time.h:
@@ -12276,6 +13335,22 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/logging.hpp:
 
+/usr/include/CGAL/Intersections_2/Circle_2_Iso_rectangle_2.h:
+
+/usr/include/boost/predef/compiler/pgi.h:
+
+/usr/include/glib-2.0/gobject/gparamspecs.h:
+
+/opt/ros/humble/include/rmw/rmw/incompatible_qos_events_statuses.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout:
+
+/usr/include/c++/11/bits/locale_facets.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h:
+
+/usr/include/boost/date_time/gregorian/greg_date.hpp:
+
 /usr/include/c++/11/ctime:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h:
@@ -12287,8 +13362,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/type_traits/is_final.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h:
-
-/usr/include/eigen3/Eigen/src/QR/CompleteOrthogonalDecomposition.h:
 
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
@@ -12306,13 +13379,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qrgb.h:
 
-/usr/include/boost/date_time/gregorian/greg_duration_types.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/ss_flags.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qbrush.h:
-
-/usr/include/c++/11/cerrno:
 
 /usr/include/boost/random/variate_generator.hpp:
 
@@ -12334,10 +13403,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpen.h:
 
-/opt/ros/humble/include/rmw/rmw/network_flow_endpoint.h:
-
-/usr/include/boost/mpl/arg_fwd.hpp:
-
 /usr/include/CGAL/Bbox_3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h:
@@ -12347,6 +13412,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtransform.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/static_single_threaded_executor.hpp:
+
+/usr/include/glib-2.0/glib/gstring.h:
 
 /usr/include/boost/fusion/container/vector/detail/distance_impl.hpp:
 
@@ -12362,9 +13431,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qpixelformat.h:
+/usr/include/glib-2.0/glib/gthreadpool.h:
 
-/usr/include/boost/predef/hardware/simd/arm.h:
+/usr/include/boost/variant/detail/element_index.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-event.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
 
@@ -12374,27 +13445,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpixmap.h:
 
-/usr/include/boost/mpl/limits/list.hpp:
-
-/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/arch/Default/TypeCasting.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
-
 /usr/include/boost/mpl/plus.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h:
 
-/usr/include/boost/predef/library/std.h:
-
 /usr/include/CGAL/Intersections_2/internal/Triangle_2_Triangle_2_do_intersect_impl.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Coplanar_3.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h:
 
 /usr/include/boost/mpl/aux_/config/nttp.hpp:
 
@@ -12413,8 +13470,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/CGAL/Intersections_3/internal/Tetrahedron_3_Tetrahedron_3_do_intersect.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/XprHelper.h:
 
 /usr/include/c++/11/deque:
 
@@ -12436,10 +13491,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayoutitem.h:
 
-/usr/include/c++/11/bits/unordered_set.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker:
-
 /opt/ros/humble/include/rcutils/rcutils/time.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h:
@@ -12450,13 +13501,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/operators.hpp:
 
-/usr/include/boost/predef/language.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h:
+
+/usr/include/glib-2.0/glib/gslist.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/any_subscription_callback.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
+
+/usr/include/CGAL/Intersections_2/Bbox_2_Point_2.h:
+
+/usr/include/gstreamer-1.0/gst/gstchildproxy.h:
 
 /usr/include/CGAL/long_double.h:
 
@@ -12469,26 +13524,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/foreach.hpp:
 
 /usr/include/boost/lexical_cast/detail/widest_char.hpp:
-
-/usr/include/boost/type_traits/is_constructible.hpp:
-
-/usr/include/CGAL/Homogeneous/ConicHPA2.h:
-
-/usr/include/boost/predef/platform/windows_phone.h:
-
-/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h:
-
-/usr/include/CGAL/Intersections_2/Segment_2_Segment_2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h:
-
-/usr/include/boost/mpl/assert.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h:
 
@@ -12530,6 +13565,16 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/Scalar.hpp:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/QFont:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
+
+/usr/include/boost/mpl/minus.hpp:
+
 /usr/include/CGAL/Exact_kernel_selector.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox:
@@ -12539,10 +13584,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/math/special_functions/atanh.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyleoption.h:
-
-/usr/include/c++/11/bits/atomic_lockfree_defines.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyle.h:
 
@@ -12574,19 +13615,27 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea:
 
+/usr/include/CGAL/Dummy_tds_2.h:
+
+/usr/include/boost/predef/language/objc.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/Constants.h:
+
 /usr/include/boost/preprocessor/repetition/repeat_from_to.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h:
 
+/usr/include/gstreamer-1.0/gst/gstpadtemplate.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__struct.hpp:
 
 /usr/include/pcl-1.12/pcl/search/search.h:
-
-/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_do_intersect.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h:
 
@@ -12604,6 +13653,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Segment_3_intersection.h:
 
+/usr/include/glib-2.0/glib/grand.h:
+
 /usr/include/c++/11/set:
 
 /usr/include/eigen3/Eigen/StdVector:
@@ -12615,16 +13666,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/fusion/sequence/intrinsic/empty.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocess.h:
-
-/usr/include/boost/preprocessor/arithmetic/mod.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swath.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:
-
-/usr/include/boost/predef/os/solaris.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__builder.hpp:
 
@@ -12638,11 +13679,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
 
-/usr/include/CGAL/functional.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h:
 
+/usr/include/gstreamer-1.0/gst/gsttracer.h:
+
+/usr/include/boost/predef/library/std/_prefix.h:
+
+/usr/include/assert.h:
+
 /usr/include/boost/mpl/aux_/config/has_xxx.hpp:
+
+/usr/include/boost/type_traits/has_right_shift_assign.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
+
+/usr/include/boost/smart_ptr/shared_ptr.hpp:
+
+/usr/include/c++/11/bits/allocated_ptr.h:
 
 /usr/include/boost/static_assert.hpp:
 
@@ -12676,9 +13729,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__struct.hpp:
+/usr/include/glib-2.0/glib/grcbox.h:
 
-/usr/include/CGAL/export/CGAL.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer:
 
@@ -12692,27 +13745,47 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h:
 
-/usr/include/boost/fusion/container/list/cons_fwd.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/fcntl2.h:
-
 /usr/include/x86_64-linux-gnu/bits/getopt_core.h:
 
 /usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
+
+/usr/include/boost/fusion/container/list/cons_fwd.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/fcntl2.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut:
 
+/usr/include/boost/predef/library.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_impl.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
+
 /usr/include/CGAL/Intersections_3/Iso_cuboid_3_Iso_cuboid_3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h:
 
+/usr/include/boost/mpl/O1_size.hpp:
+
+/usr/include/glib-2.0/glib/gmem.h:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h:
+
+/usr/include/boost/variant/apply_visitor.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h:
+
+/usr/include/boost/mpl/vector/vector0.hpp:
+
+/usr/include/CGAL/Triangulation_2.h:
+
+/usr/include/boost/date_time/gregorian_calendar.ipp:
+
 /usr/include/CGAL/Triangulation_data_structure_2.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent:
-
-/usr/include/c++/11/tr1/hypergeometric.tcc:
 
 /usr/include/c++/11/bits/stl_pair.h:
 
@@ -12740,6 +13813,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h:
+
+/usr/include/boost/mpl/pair.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h:
 
 /opt/ros/humble/include/rcl/rcl/log_level.h:
@@ -12751,6 +13828,20 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h:
 
 /usr/include/boost/range/const_iterator.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h:
+
+/usr/include/CGAL/Hilbert_policy_tags.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h:
 
@@ -12774,8 +13865,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcpputils/rcpputils/time.hpp:
 
-/usr/include/boost/range/detail/str_types.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
 /usr/include/boost/fusion/sequence/intrinsic/detail/segmented_begin_impl.hpp:
@@ -12788,9 +13877,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/locale:
 
-/usr/include/endian.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h:
+
+/usr/include/endian.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h:
 
@@ -12799,8 +13888,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/aux_/has_apply.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h:
-
-/usr/include/boost/predef/compiler.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
 
@@ -12826,17 +13913,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp:
 
-/usr/include/boost/math/special_functions/sqrt1pm1.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
-
 /usr/include/boost/fusion/algorithm/transformation/erase_key.hpp:
 
 /usr/include/asm-generic/errno-base.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h:
-
-/usr/include/boost/predef/compiler/visualc.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h:
 
@@ -12851,6 +13932,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h:
 
 /usr/include/boost/type_traits/detail/has_binary_operator.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Coplanar_3.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h:
 
 /usr/include/CGAL/Homogeneous/Aff_transformationH3.h:
 
@@ -12898,11 +13983,23 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/vector/aux_/back.hpp:
 
+/usr/include/glib-2.0/glib/gdir.h:
+
+/usr/include/boost/multiprecision/detail/precision.hpp:
+
+/usr/include/c++/11/pstl/execution_defs.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__type_support.hpp:
+
 /usr/include/boost/date_time/posix_time/ptime.hpp:
 
 /usr/include/c++/11/pstl/glue_memory_defs.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
+/usr/include/boost/fusion/mpl/begin.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h:
+
+/usr/include/boost/type_traits/is_base_and_derived.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h:
 
@@ -12910,21 +14007,661 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/fp-logb.h:
 
+/usr/include/gstreamer-1.0/gst/video/gstvideodecoder.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h:
+/usr/include/boost/predef/compiler/digitalmars.h:
 
-/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h:
 
 /usr/include/boost/date_time/locale_config.hpp:
+
+/usr/include/glib-2.0/glib/giochannel.h:
+
+/usr/include/glib-2.0/glib/gunicode.h:
+
+/usr/include/glib-2.0/glib/gkeyfile.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/random.h:
+
+/usr/include/glib-2.0/glib/gmappedfile.h:
+
+/usr/include/boost/mpl/int.hpp:
+
+/usr/include/boost/predef/compiler/intel.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h:
+
+/usr/include/glib-2.0/glib/gmarkup.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/TriangularSolverVector.h:
+
+/usr/include/glib-2.0/glib/gmessages.h:
+
+/usr/include/glib-2.0/glib/goption.h:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Sphere_3_do_intersect.h:
+
+/usr/include/boost/mpl/aux_/full_lambda.hpp:
+
+/usr/include/glib-2.0/glib/gpattern.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/StlFunctors.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixVector.h:
+
+/usr/include/boost/fusion/container/vector/detail/at_impl.hpp:
+
+/usr/include/glib-2.0/glib/gprimes.h:
+
+/usr/include/c++/11/bits/stl_construct.h:
+
+/usr/include/glib-2.0/glib/gqsort.h:
+
+/usr/include/boost/mpl/list/aux_/front.hpp:
+
+/usr/include/glib-2.0/glib/gqueue.h:
+
+/usr/include/glib-2.0/glib/grefcount.h:
+
+/usr/include/boost/range/detail/str_types.hpp:
+
+/usr/include/glib-2.0/glib/grefstring.h:
+
+/usr/include/gstreamer-1.0/gst/gsttagsetter.h:
+
+/usr/include/glib-2.0/glib/gsequence.h:
+
+/usr/include/c++/11/bits/sstream.tcc:
+
+/usr/include/glib-2.0/glib/gshell.h:
+
+/usr/include/boost/mpl/list/aux_/begin_end.hpp:
+
+/usr/include/boost/interprocess/streams/bufferstream.hpp:
+
+/usr/include/glib-2.0/glib/gslice.h:
+
+/usr/include/boost/random/extreme_value_distribution.hpp:
+
+/usr/include/glib-2.0/glib/gstrvbuilder.h:
+
+/usr/include/glib-2.0/glib/gtestutils.h:
+
+/usr/include/glib-2.0/glib/gtree.h:
+
+/usr/include/eigen3/Eigen/src/Core/DenseStorage.h:
+
+/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
+
+/usr/include/glib-2.0/glib/guri.h:
+
+/usr/include/glib-2.0/glib/guuid.h:
+
+/usr/include/glib-2.0/glib/deprecated/gallocator.h:
+
+/usr/include/glib-2.0/glib/deprecated/gcompletion.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
+
+/usr/include/boost/interprocess/permissions.hpp:
+
+/usr/include/CGAL/Aff_transformation_2.h:
+
+/usr/include/boost/date_time/gregorian/greg_duration.hpp:
+
+/usr/include/glib-2.0/glib/deprecated/gmain.h:
+
+/usr/include/glib-2.0/glib/deprecated/grel.h:
+
+/usr/include/CGAL/Unique_hash_map.h:
+
+/usr/include/glib-2.0/glib/deprecated/gthread.h:
+
+/usr/include/CGAL/transforming_iterator.h:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/requested_deadline_missed.h:
+
+/usr/include/glib-2.0/glib/glib-autocleanups.h:
+
+/usr/include/c++/11/bits/unordered_set.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker:
+
+/usr/include/gstreamer-1.0/gst/gstenumtypes.h:
+
+/usr/include/glib-2.0/glib-object.h:
+
+/usr/include/glib-2.0/gobject/gbinding.h:
+
+/usr/include/CGAL/assertions_impl.h:
+
+/usr/include/boost/math/policies/policy.hpp:
+
+/usr/include/boost/predef/compiler/visualc.h:
+
+/usr/include/glib-2.0/gobject/gobject.h:
+
+/usr/include/boost/type_traits/is_object.hpp:
+
+/usr/include/glib-2.0/gobject/gtype.h:
+
+/usr/include/boost/iterator/minimum_category.hpp:
+
+/usr/include/boost/type_traits/is_scoped_enum.hpp:
+
+/usr/include/pcl-1.12/pcl/point_struct_traits.h:
+
+/usr/include/glib-2.0/gobject/gvalue.h:
+
+/usr/include/boost/mpl/protect.hpp:
+
+/usr/include/glib-2.0/gobject/gclosure.h:
+
+/usr/include/boost/numeric/conversion/detail/meta.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget:
+
+/usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
+
+/usr/include/glib-2.0/gobject/gsignal.h:
+
+/usr/include/CGAL/Intersections_3/Plane_3_Tetrahedron_3.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h:
+
+/usr/include/glib-2.0/gobject/gmarshal.h:
+
+/usr/include/glib-2.0/gobject/gtypeplugin.h:
+
+/usr/include/glib-2.0/gobject/glib-types.h:
+
+/usr/include/boost/fusion/adapted/boost_tuple/detail/is_sequence_impl.hpp:
+
+/usr/include/CGAL/Intersections_2/Point_2_Segment_2.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h:
+
+/opt/ros/humble/include/rmw/rmw/localhost.h:
+
+/usr/include/glib-2.0/gobject/gbindinggroup.h:
+
+/usr/include/glib-2.0/gobject/genums.h:
+
+/usr/include/boost/type_traits/type_identity.hpp:
+
+/usr/include/CGAL/Hilbert_sort_median_3.h:
+
+/usr/include/glib-2.0/gobject/glib-enumtypes.h:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_do_intersect.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget:
+
+/usr/include/glib-2.0/gobject/gsignalgroup.h:
+
+/usr/include/boost/mpl/vector/aux_/item.hpp:
+
+/usr/include/glib-2.0/gobject/gsourceclosure.h:
+
+/usr/include/boost/type_traits/has_less.hpp:
+
+/usr/include/glib-2.0/gobject/gtypemodule.h:
+
+/usr/include/glib-2.0/gobject/gobject-autocleanups.h:
+
+/usr/include/boost/fusion/mpl/front.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstconfig.h:
+
+/usr/include/eigen3/Eigen/src/QR/CompleteOrthogonalDecomposition.h:
+
+/usr/include/gstreamer-1.0/gst/gstatomicqueue.h:
+
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h:
+
+/usr/include/gstreamer-1.0/gst/gstbin.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__builder.hpp:
+
+/usr/include/boost/multiprecision/detail/digits.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstelement.h:
+
+/usr/include/boost/mpl/iterator_category.hpp:
+
+/usr/include/boost/interprocess/detail/config_begin.hpp:
+
+/usr/include/c++/11/cstdlib:
+
+/usr/include/gstreamer-1.0/gst/gstcontrolbinding.h:
+
+/usr/include/boost/fusion/mpl/empty.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstclock.h:
+
+/usr/include/gstreamer-1.0/gst/gstpad.h:
+
+/usr/include/boost/mpl/limits/list.hpp:
+
+/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-enumtypes.h:
+
+/usr/include/boost/random/lognormal_distribution.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstallocator.h:
+
+/usr/include/boost/fusion/mpl/insert_range.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstmemory.h:
+
+/usr/include/linux/falloc.h:
+
+/usr/include/gstreamer-1.0/gst/gstcaps.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__traits.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstplugin.h:
+
+/usr/include/gstreamer-1.0/gst/gststructure.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstadapter.h:
+
+/usr/include/boost/variant/detail/cast_storage.hpp:
+
+/usr/include/boost/smart_ptr/detail/sp_counted_base.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstcapsfeatures.h:
+
+/usr/include/CGAL/Kernel/solve.h:
+
+/usr/include/gstreamer-1.0/gst/gstbufferlist.h:
+
+/usr/include/gstreamer-1.0/gst/gstevent.h:
+
+/usr/include/CGAL/Intersections_3/Bbox_3_Sphere_3.h:
+
+/usr/include/alloca.h:
+
+/usr/include/boost/type_traits/is_arithmetic.hpp:
+
+/usr/include/c++/11/fstream:
+
+/usr/include/boost/iterator/advance.hpp:
+
+/usr/include/CGAL/Intersections_2/Circle_2_Line_2.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface_traits.hpp:
+
+/usr/include/boost/mpl/integral_c.hpp:
+
+/usr/include/boost/algorithm/string/find.hpp:
+
+/usr/include/boost/none.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstiterator.h:
+
+/usr/include/gstreamer-1.0/gst/gsttaglist.h:
+
+/usr/include/gstreamer-1.0/gst/gstmessage.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Homogeneous.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
+
+/usr/include/boost/move/detail/type_traits.hpp:
+
+/usr/include/pcl-1.12/pcl/io/low_level_io.h:
+
+/opt/ros/humble/include/rmw/rmw/subscription_options.h:
+
+/usr/include/gstreamer-1.0/gst/gsttoc.h:
+
+/usr/include/glib-2.0/glib/gvarianttype.h:
+
+/usr/include/c++/11/cerrno:
+
+/usr/include/gstreamer-1.0/gst/gstcontext.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
+
+/usr/include/boost/math/special_functions/detail/round_fwd.hpp:
+
+/usr/include/gstreamer-1.0/gst/gststreams.h:
+
+/usr/include/gstreamer-1.0/gst/gstdebugutils.h:
+
+/usr/include/boost/preprocessor/detail/is_binary.hpp:
+
+/usr/include/boost/ref.hpp:
+
+/usr/include/gstreamer-1.0/gst/gststreamcollection.h:
+
+/usr/include/CGAL/Intersections_3/internal/Ray_3_Triangle_3_do_intersect.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__struct.hpp:
+
+/usr/include/boost/range/range_fwd.hpp:
+
+/usr/include/gstreamer-1.0/gst/gsttask.h:
+
+/usr/include/gstreamer-1.0/gst/gstbus.h:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Sphere_3_do_intersect.h:
+
+/usr/include/CGAL/Point_2.h:
+
+/usr/include/pcl-1.12/pcl/pcl_macros.h:
+
+/opt/ros/humble/include/rmw/rmw/network_flow_endpoint.h:
+
+/usr/include/boost/mpl/arg_fwd.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstelementfactory.h:
+
+/usr/include/CGAL/Needs_parens_as_product.h:
+
+/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
+
+/usr/include/boost/core/enable_if.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Ray_3_Segment_3_intersection.h:
+
+/usr/include/boost/variant/detail/has_result_type.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h:
+
+/usr/include/gstreamer-1.0/gst/gsturi.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
+
+/usr/include/gstreamer-1.0/gst/gstbufferpool.h:
+
+/usr/include/gstreamer-1.0/gst/gstpoll.h:
+
+/usr/include/boost/preprocessor/list/fold_left.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstdeviceproviderfactory.h:
+
+/usr/include/gstreamer-1.0/gst/gstelementmetadata.h:
+
+/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
+
+/usr/include/gstreamer-1.0/gst/gsterror.h:
+
+/usr/include/boost/mpl/lambda_fwd.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h:
+
+/usr/include/gstreamer-1.0/gst/gstregistry.h:
+
+/opt/ros/humble/include/tf2/tf2/transform_datatypes.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp:
+
+/usr/include/CGAL/Kernel/Type_mapper.h:
+
+/usr/include/gstreamer-1.0/gst/gstparamspecs.h:
+
+/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Iso_cuboid_3_do_intersect.h:
+
+/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h:
+
+/usr/include/gstreamer-1.0/gst/gstpipeline.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstpromise.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__type_support.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp:
+
+/usr/include/gstreamer-1.0/gst/gsttypefindfactory.h:
+
+/usr/include/boost/date_time/gregorian/greg_duration_types.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstparse.h:
+
+/usr/include/boost/mpl/aux_/joint_iter.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstcompat.h:
+
+/opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstbasesink.h:
+
+/usr/include/gstreamer-1.0/gst/base/base-prelude.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-prelude.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/transformation.h:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10.hpp:
+
+/usr/include/boost/mpl/aux_/config/lambda.hpp:
+
+/usr/include/boost/multiprecision/detail/big_lanczos.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-format.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-tile.h:
+
+/usr/include/gstreamer-1.0/gst/video/video.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-frame.h:
+
+/usr/include/boost/mpl/deref.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-resampler.h:
+
+/usr/include/boost/type_traits/remove_cv_ref.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-multiview.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h:
+
+/usr/include/boost/predef/version_number.h:
+
+/usr/include/boost/fusion/container/list/cons_iterator.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp:
+
+/usr/include/boost/random/traits.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/colorbalancechannel.h:
+
+/usr/include/gstreamer-1.0/gst/video/colorbalance.h:
+
+/usr/include/CGAL/Intersections_2/Ray_2_Ray_2.h:
+
+/usr/include/CGAL/FPU.h:
+
+/usr/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstaggregator.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideoutils.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-hdr.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qpixelformat.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h:
+
+/usr/include/gstreamer-1.0/gst/base/gstbasetransform.h:
+
+/usr/include/gdal/gdal_version.h:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideometa.h:
+
+/usr/include/boost/fusion/support/is_sequence.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/gstvideopool.h:
+
+/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
+
+/usr/include/glib-2.0/glib/gquark.h:
+
+/usr/include/boost/range/size.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/navigation.h:
+
+/usr/include/boost/iterator/detail/enable_if.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-anc.h:
+
+/usr/include/boost/type_traits/has_modulus.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Angle_3.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdio.h:
+
+/usr/include/boost/mpl/aux_/config/compiler.hpp:
+
+/usr/include/c++/11/bits/stl_tempbuf.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-blend.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h:
+
+/usr/include/c++/11/stdlib.h:
+
+/usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h:
+
+/usr/include/CGAL/intersections.h:
+
+/usr/include/boost/math/special_functions/detail/fp_traits.hpp:
+
+../include/coverage_pipeline.hpp:
+
+/usr/include/boost/math/special_functions/sqrt1pm1.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/videodirection.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/Macros.h:
+
+/usr/include/CGAL/Sqrt_extension/Algebraic_extension_traits.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/mmintrin.h:
+
+/usr/include/CGAL/Cartesian/Line_3.h:
+
+/usr/include/boost/mpl/equal.hpp:
+
+/usr/include/boost/predef/hardware/simd/arm/versions.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h:
+
+/usr/include/boost/predef/library/c/cloudabi.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/bind.hpp:
+
+/usr/include/c++/11/bits/istream.tcc:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
+
+/usr/include/boost/smart_ptr/detail/lwm_std_mutex.hpp:
+
+/usr/include/c++/11/bits/stl_set.h:
+
+/usr/include/eigen3/Eigen/src/Householder/Householder.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
+
+/usr/include/c++/11/climits:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Line_3_intersection.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/StaticAssert.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/XprHelper.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/Memory.h:
+
+/usr/include/eigen3/Eigen/src/Core/GenericPacketMath.h:
+
+/usr/include/boost/random/detail/seed_impl.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__builder.hpp:
+
+/usr/include/boost/mpl/sequence_tag_fwd.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/TypeCasting.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/PacketMath.h:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/BinaryFunctors.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/UnaryFunctors.h:
+
+/usr/include/boost/mpl/list/aux_/size.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
+
+/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
+
+/opt/ros/humble/include/rcl/rcl/guard_condition.h:
+
+/usr/include/eigen3/Eigen/src/Core/IO.h:
+
+/usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:
 
 /usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp:
 
 /usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h:
+
+/usr/include/eigen3/Eigen/src/Core/MatrixBase.h:
 
 /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h:
 
@@ -12946,10 +14683,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Diagonal.h:
 
-/usr/include/boost/concept/detail/general.hpp:
-
-/usr/include/CGAL/Simple_cartesian.h:
-
 /usr/include/CGAL/Cartesian/predicates_on_directions_2.h:
 
 /usr/include/eigen3/Eigen/src/Core/Product.h:
@@ -12962,15 +14695,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Assign.h:
 
+/usr/include/gstreamer-1.0/gst/gstmacros.h:
+
 /usr/include/eigen3/Eigen/src/Core/ArrayBase.h:
 
 /usr/include/eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h:
 
 /usr/include/boost/type_traits/is_array.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
-
-/usr/include/boost/range/size.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
 
@@ -13002,14 +14733,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/utility.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/logger.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/IndexedView.h:
-
-/usr/include/eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h:
-
-/usr/include/boost/mpl/iterator_tags.hpp:
-
 /usr/include/gdal/cpl_error.h:
 
 /usr/include/eigen3/Eigen/src/Core/Reshaped.h:
@@ -13020,13 +14743,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/next_prior.hpp:
 
-/usr/include/boost/predef/library/std/stlport.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h:
 
 /usr/include/eigen3/Eigen/src/Core/DiagonalMatrix.h:
 
 /usr/include/eigen3/Eigen/src/Core/Redux.h:
+
+/usr/include/gstreamer-1.0/gst/gstvalue.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
 
@@ -13060,19 +14783,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Transpositions.h:
 
-/usr/include/boost/variant/recursive_wrapper.hpp:
-
-/usr/include/boost/predef/os.h:
-
 /usr/include/eigen3/Eigen/src/Core/SelfAdjointView.h:
+
+/usr/include/glib-2.0/glib/gbase64.h:
 
 /usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
 
-/usr/include/geos_c.h:
-
 /usr/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h:
-
-/usr/include/boost/predef/compiler/clang.h:
 
 /usr/include/boost/type_traits/has_multiplies.hpp:
 
@@ -13084,10 +14801,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/logical/and.hpp:
 
-/usr/include/CGAL/representation_tags.h:
-
-/usr/include/boost/predef/library/std/cxx.h:
-
 /usr/include/eigen3/Eigen/src/Core/ProductEvaluators.h:
 
 /usr/include/x86_64-linux-gnu/bits/errno.h:
@@ -13097,8 +14810,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h:
 
 /usr/include/boost/date_time/gregorian_calendar.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h:
 
 /usr/include/boost/type_traits/is_copy_constructible.hpp:
 
@@ -13118,21 +14829,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/CoreIterators.h:
 
-/usr/include/eigen3/Eigen/src/Core/DenseStorage.h:
-
-/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
-
 /usr/include/eigen3/Eigen/src/Core/VectorwiseOp.h:
 
-/usr/include/CGAL/Intersections_2/Ray_2_Ray_2.h:
-
-/usr/include/CGAL/FPU.h:
-
-/usr/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/Random.h:
+
+/usr/include/glib-2.0/glib/gbookmarkfile.h:
 
 /usr/include/eigen3/Eigen/src/Core/Replicate.h:
 
@@ -13148,15 +14849,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/ArrayWrapper.h:
 
+/usr/include/gstreamer-1.0/gst/gstsample.h:
+
 /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/StlIterators.h:
-
-/usr/include/eigen3/Eigen/src/Core/Swap.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
-
-/usr/include/boost/predef/library/c/zos.h:
 
 /usr/include/CGAL/license/Alpha_shapes_2.h:
 
@@ -13184,23 +14881,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/LU/arch/InverseSize4.h:
 
-/usr/include/CGAL/Intersections_2/Circle_2_Iso_rectangle_2.h:
-
-/usr/include/boost/predef/compiler/pgi.h:
-
-/usr/include/eigen3/Eigen/Cholesky:
-
-/usr/include/boost/preprocessor/control/expr_iif.hpp:
-
 /usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
+
+/usr/include/gstreamer-1.0/gst/gst.h:
 
 /usr/include/eigen3/Eigen/src/Cholesky/LLT.h:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_changed.h:
 
 /usr/include/boost/mpl/next_prior.hpp:
-
-/usr/include/boost/predef/compiler/llvm.h:
 
 /usr/include/eigen3/Eigen/src/Cholesky/LDLT.h:
 
@@ -13217,6 +14906,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/eigen3/Eigen/src/LU/Determinant.h:
 
 /usr/include/boost/concept/detail/has_constraints.hpp:
+
+/usr/include/glib-2.0/glib/gmacros.h:
 
 /usr/include/eigen3/Eigen/src/QR/HouseholderQR.h:
 
@@ -13246,31 +14937,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/Geometry:
 
-/usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
-
-/usr/include/boost/interprocess/permissions.hpp:
-
-/usr/include/CGAL/Aff_transformation_2.h:
-
-/usr/include/boost/date_time/gregorian/greg_duration.hpp:
-
 /usr/include/boost/fusion/mpl/push_back.hpp:
 
 /usr/include/eigen3/Eigen/src/Geometry/EulerAngles.h:
-
-/usr/include/eigen3/Eigen/src/Geometry/Homogeneous.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
-
-/usr/include/boost/move/detail/type_traits.hpp:
-
-/usr/include/pcl-1.12/pcl/io/low_level_io.h:
 
 /usr/include/eigen3/Eigen/src/Geometry/Rotation2D.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame:
 
 /usr/include/boost/foreach_fwd.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessor/def_params_tail.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/AngleAxis.h:
 
 /usr/include/c++/11/bits/deque.tcc:
 
@@ -13296,6 +14975,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/random/detail/uniform_int_float.hpp:
 
+/usr/include/gstreamer-1.0/gst/glib-compat.h:
+
 /usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp:
@@ -13319,22 +15000,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
-
-/usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Iso_cuboid_3_do_intersect.h:
-
-/opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__type_support.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h:
-
-/usr/include/boost/variant/apply_visitor.hpp:
-
-/usr/include/boost/mpl/vector/vector0.hpp:
-
-/usr/include/CGAL/Triangulation_2.h:
-
-/usr/include/boost/date_time/gregorian_calendar.ipp:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h:
 
@@ -13372,15 +15037,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/value_type.hpp:
 
-/usr/include/boost/iterator/minimum_category.hpp:
-
-/usr/include/boost/type_traits/is_scoped_enum.hpp:
-
-/usr/include/pcl-1.12/pcl/point_struct_traits.h:
-
 /usr/include/boost/mpl/not.hpp:
-
-/usr/include/boost/mpl/bool.hpp:
 
 /usr/include/boost/mpl/bool_fwd.hpp:
 
@@ -13424,6 +15081,12 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/config/workaround.hpp:
 
+/usr/include/boost/math/constants/calculate_constants.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/arch/Default/Half.h:
+
+/usr/include/boost/mpl/integral_c_tag.hpp:
+
 /usr/include/boost/fusion/view/single_view/detail/end_impl.hpp:
 
 /usr/include/boost/mpl/aux_/nttp_decl.hpp:
@@ -13438,10 +15101,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
 
-/usr/include/boost/mpl/lambda_fwd.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp:
-
 /usr/include/boost/mpl/aux_/na.hpp:
 
 /usr/include/boost/mpl/aux_/na_fwd.hpp:
@@ -13450,31 +15109,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/config/ctps.hpp:
 
-/usr/include/c++/11/limits:
-
-/usr/include/CGAL/export/helpers.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/transformation.h:
-
-/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10.hpp:
-
-/usr/include/boost/mpl/aux_/config/lambda.hpp:
-
 /usr/include/CGAL/Intersections_2/Line_2_Segment_2.h:
 
 /usr/include/boost/mpl/aux_/config/ttp.hpp:
-
-/usr/include/boost/fusion/view/iterator_range.hpp:
-
-/usr/include/boost/concept_archetype.hpp:
-
-/usr/include/boost/predef/os/os400.h:
-
-/usr/include/c++/11/type_traits:
-
-/usr/include/boost/predef/hardware/simd/ppc/versions.h:
-
-/usr/include/boost/mpl/int.hpp:
 
 /usr/include/boost/preprocessor/cat.hpp:
 
@@ -13485,6 +15122,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/aux_/arity.hpp:
 
 /usr/include/boost/variant/detail/apply_visitor_unary.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-color.h:
 
 /usr/include/boost/mpl/aux_/preprocessor/params.hpp:
 
@@ -13532,10 +15171,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/arithmetic/inc.hpp:
 
-/usr/include/eigen3/Eigen/src/Geometry/AngleAxis.h:
-
-/usr/include/boost/mpl/aux_/preprocessor/def_params_tail.hpp:
-
 /usr/include/boost/preprocessor/facilities/identity.hpp:
 
 /usr/include/CGAL/Homogeneous/PointH3.h:
@@ -13545,8 +15180,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/empty.hpp:
 
 /usr/include/boost/preprocessor/arithmetic/add.hpp:
-
-/usr/include/boost/preprocessor/list/fold_left.hpp:
 
 /usr/include/boost/preprocessor/list/detail/fold_left.hpp:
 
@@ -13572,17 +15205,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/pcl-1.12/pcl/filters/filter_indices.h:
 
-/usr/include/CGAL/Hilbert_sort_middle_d.h:
-
-/usr/include/geos/export.h:
-
-/usr/include/CGAL/Cartesian/Cartesian_base.h:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
 
 /usr/include/boost/preprocessor/list/reverse.hpp:
-
-/usr/include/CGAL/config.h:
 
 /usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp:
 
@@ -13591,6 +15216,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/preprocessor/facilities/overload.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executor_options.hpp:
+
+/usr/include/gstreamer-1.0/gst/gstformat.h:
 
 /usr/include/boost/preprocessor/tuple/detail/is_single_return.hpp:
 
@@ -13620,12 +15247,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/math/special_functions/math_fwd.hpp:
 
-/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__builder.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h:
-
 /usr/include/boost/mpl/aux_/config/arrays.hpp:
 
 /usr/include/boost/mpl/aux_/config/gpu.hpp:
@@ -13646,15 +15267,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h:
 
+/usr/include/gstreamer-1.0/gst/gsttaskpool.h:
+
 /usr/include/boost/mpl/list/list0.hpp:
 
 /usr/include/boost/mpl/vector/vector20.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
-
-/usr/include/boost/mpl/vector/aux_/at.hpp:
-
-/usr/include/linux/stddef.h:
 
 /opt/ros/humble/include/rcutils/rcutils/testing/fault_injection.h:
 
@@ -13692,6 +15309,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/random/uniform_real.hpp:
 
+/usr/include/glib-2.0/glib/glib-typeof.h:
+
 /usr/include/boost/range/rbegin.hpp:
 
 /usr/include/boost/mpl/joint_view.hpp:
@@ -13726,10 +15345,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/config/msvc_typename.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h:
-
-/usr/include/gdal/cpl_json.h:
-
 /usr/include/boost/preprocessor/array/data.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/types/char_array.h:
@@ -13750,19 +15365,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/include_preprocessed.hpp:
 
-/usr/include/boost/type_traits/has_modulus.hpp:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Angle_3.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
-
-/usr/include/boost/mpl/aux_/config/compiler.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/TriangularMatrix.h:
 
 /usr/include/boost/mpl/eval_if.hpp:
 
 /usr/include/boost/type.hpp:
+
+/usr/include/boost/predef/compiler/palm.h:
+
+/usr/include/x86_64-linux-gnu/bits/stat.h:
 
 /usr/include/boost/mpl/advance_fwd.hpp:
 
@@ -13794,8 +15405,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/interprocess/detail/workaround.hpp:
 
-/usr/include/boost/predef/library/std/stdcpp3.h:
-
 /usr/include/boost/mpl/vector/aux_/begin_end.hpp:
 
 /usr/include/boost/preprocessor/seq/size.hpp:
@@ -13805,12 +15414,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/pcl-1.12/pcl/exceptions.h:
 
 /usr/include/boost/current_function.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Sphere_3_do_intersect.h:
-
-/usr/include/CGAL/Point_2.h:
-
-/usr/include/pcl-1.12/pcl/pcl_macros.h:
 
 /usr/include/pcl-1.12/pcl/pcl_config.h:
 
@@ -13836,9 +15439,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/pcl-1.12/pcl/point_types.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h:
-
-/usr/include/boost/predef/compiler/edg.h:
+/usr/include/glib-2.0/glib/gscanner.h:
 
 /usr/include/boost/preprocessor/debug/error.hpp:
 
@@ -13861,10 +15462,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/variant/detail/hash_variant.hpp:
 
 /usr/include/boost/preprocessor/seq/elem.hpp:
-
-/usr/include/CGAL/Needs_parens_as_product.h:
-
-/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
 
 /usr/include/boost/fusion/sequence/convert.hpp:
 
@@ -13906,15 +15503,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/as_literal.hpp:
 
-/usr/include/CGAL/squared_distance_3.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h:
-
 /usr/include/boost/fusion/iterator/value_of_data.hpp:
 
 /usr/include/boost/mpl/aux_/config/bind.hpp:
-
-/usr/include/boost/mpl/protect.hpp:
 
 /usr/include/boost/mpl/quote.hpp:
 
@@ -13936,8 +15527,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply.hpp:
 
-/usr/include/boost/mpl/deref.hpp:
-
 /usr/include/boost/mpl/aux_/msvc_type.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/CoreEvaluators.h:
@@ -13954,8 +15543,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/always.hpp:
 
-/usr/include/boost/predef/platform.h:
-
 /usr/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h:
 
 /usr/include/boost/mpl/aux_/preprocessor/default_params.hpp:
@@ -13967,12 +15554,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_if_impl.hpp:
-
-/usr/include/boost/fusion/mpl/begin.hpp:
-
-/usr/include/boost/type_traits/is_base_and_derived.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h:
 
 /usr/include/boost/fusion/adapted/boost_tuple/tag_of.hpp:
 
@@ -13990,15 +15571,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/algorithm/string/predicate.hpp:
 
-/usr/include/CGAL/Has_timestamp.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qguiapplication.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyle:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo:
 
@@ -14018,23 +15591,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/is_floating_point.hpp:
 
-/usr/include/boost/fusion/iterator/key_of.hpp:
-
-/usr/include/pcl-1.12/pcl/io/file_io.h:
-
 /usr/include/boost/predef/other/endian.h:
-
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h:
-
-/usr/include/boost/predef/version_number.h:
-
-/usr/include/boost/fusion/container/list/cons_iterator.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/MapBase.h:
 
 /usr/include/boost/predef/make.h:
+
+/usr/include/gstreamer-1.0/gst/gstobject.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__type_support.hpp:
 
@@ -14056,6 +15619,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/predef/os/bsd/bsdi.h:
 
+/usr/include/gstreamer-1.0/gst/gstsystemclock.h:
+
 /usr/include/boost/iterator/interoperable.hpp:
 
 /usr/include/boost/predef/os/bsd/dragonfly.h:
@@ -14070,35 +15635,37 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/remove_const.hpp:
 
+/usr/include/boost/predef/library/std/modena.h:
+
+/usr/include/boost/predef/platform/android.h:
+
 /opt/ros/humble/include/rmw/rmw/event.h:
 
-/usr/include/pcl-1.12/pcl/PCLImage.h:
+/usr/include/glib-2.0/glib/gvariant.h:
 
-/usr/include/CGAL/Kernel/Same_uncertainty.h:
+/usr/include/pcl-1.12/pcl/PCLImage.h:
 
 /usr/include/boost/fusion/view/transform_view/detail/deref_impl.hpp:
 
 /usr/include/boost/mpl/remove_if.hpp:
 
-/usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h:
 
-/usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h:
+
+/usr/include/boost/mpl/reverse_fold.hpp:
+
+/usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
 
 /usr/include/boost/mpl/aux_/inserter_algorithm.hpp:
 
 /usr/include/boost/utility/addressof.hpp:
-
-/usr/include/boost/predef/library/std/msl.h:
 
 /usr/include/boost/mpl/back_inserter.hpp:
 
 /usr/include/boost/mpl/front_inserter.hpp:
 
 /usr/include/boost/mpl/aux_/unwrap.hpp:
-
-/usr/include/boost/preprocessor/detail/is_binary.hpp:
-
-/usr/include/boost/ref.hpp:
 
 /usr/include/eigen3/Eigen/src/Householder/HouseholderSequence.h:
 
@@ -14108,6 +15675,10 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/end.hpp:
 
+/usr/include/boost/utility/declval.hpp:
+
+/usr/include/boost/range/config.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h:
 
 /usr/include/boost/detail/basic_pointerbuf.hpp:
@@ -14115,12 +15686,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/date_time/compiler_config.hpp:
 
 /usr/include/boost/range/detail/sfinae.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Ray_3_Triangle_3_do_intersect.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__struct.hpp:
-
-/usr/include/boost/range/range_fwd.hpp:
 
 /usr/include/boost/range/detail/extract_optional_type.hpp:
 
@@ -14134,8 +15699,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp:
 
-/usr/include/boost/predef/compiler/gcc_xml.h:
-
 /usr/include/boost/mpl/aux_/config/integral.hpp:
 
 /usr/include/boost/type_traits/is_const.hpp:
@@ -14143,10 +15706,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/numeric/conversion/detail/converter.hpp:
 
 /usr/include/boost/range/begin.hpp:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
-
-/usr/include/boost/predef/platform/windows_uwp.h:
 
 /usr/include/CGAL/Distance_2/Ray_2_Line_2.h:
 
@@ -14166,11 +15725,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/add_rvalue_reference.hpp:
 
-/usr/include/boost/type_traits/is_destructible.hpp:
-
 /usr/include/CGAL/Filtered_kernel.h:
 
 /usr/include/boost/type_traits/is_reference.hpp:
+
+/usr/include/boost/predef/platform/windows_store.h:
+
+/usr/include/boost/type_traits/is_lvalue_reference.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_subscription.hpp:
 
@@ -14178,13 +15739,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/is_function.hpp:
 
+/usr/include/gstreamer-1.0/gst/gsttypefind.h:
+
 /usr/include/boost/smart_ptr/detail/sp_thread_sleep.hpp:
-
-/usr/include/CGAL/Intersections_3/Bbox_3_Sphere_3.h:
-
-/usr/include/alloca.h:
-
-/usr/include/boost/type_traits/is_arithmetic.hpp:
 
 /usr/include/boost/mpl/aux_/config/forwarding.hpp:
 
@@ -14202,6 +15759,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/algorithm/string/predicate_facade.hpp:
 
+/usr/include/gstreamer-1.0/gst/gstdeviceprovider.h:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow:
@@ -14211,8 +15770,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_initialization.hpp:
 
 /usr/include/boost/type_traits/is_pointer.hpp:
-
-/usr/include/boost/predef/hardware/simd/x86.h:
 
 /opt/ros/humble/include/rcl/rcl/subscription.h:
 
@@ -14230,13 +15787,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/remove_pointer.hpp:
 
-/usr/include/boost/iterator/detail/enable_if.hpp:
-
 /usr/include/CGAL/Intersections_3/internal/Sphere_3_Triangle_3_do_intersect.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/client.hpp:
 
 /usr/include/boost/type_traits/is_pod.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qtgui-config.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp:
 
 /usr/include/boost/type_traits/is_scalar.hpp:
 
@@ -14256,8 +15817,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/numeric/conversion/detail/conversion_traits.hpp:
 
-/usr/include/boost/numeric/conversion/detail/meta.hpp:
-
 /usr/include/boost/mpl/equal_to.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrix.h:
@@ -14269,6 +15828,14 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/numeric/conversion/detail/int_float_mixture.hpp:
 
 /usr/include/boost/limits.hpp:
+
+/usr/include/CGAL/Profile_counter.h:
+
+/usr/include/c++/11/bits/random.h:
+
+/usr/include/pcl-1.12/pcl/impl/point_types.hpp:
+
+/usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
 
@@ -14296,21 +15863,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/random/mersenne_twister.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/NumTraits.h:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__type_support.hpp:
 
 /usr/include/c++/11/bits/stl_multimap.h:
 
+/usr/include/eigen3/Eigen/src/Core/NumTraits.h:
+
 /usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
-
-/usr/include/boost/predef/hardware/simd/x86/versions.h:
 
 /usr/include/CGAL/min_max_n.h:
 
@@ -14340,10 +15901,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/utility/enable_if.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
-
-/usr/include/boost/core/enable_if.hpp:
-
 /usr/include/boost/concept/assert.hpp:
 
 /usr/include/boost/concept/detail/backward_compatibility.hpp:
@@ -14360,6 +15917,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/concept/usage.hpp:
 
+/usr/include/gstreamer-1.0/gst/gstdevicemonitor.h:
+
 /usr/include/boost/concept/detail/concept_def.hpp:
 
 /usr/include/boost/preprocessor/seq/for_each_i.hpp:
@@ -14367,8 +15926,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/concept/detail/concept_undef.hpp:
 
 /usr/include/boost/iterator/iterator_concepts.hpp:
-
-/usr/include/boost/predef/compiler/borland.h:
 
 /usr/include/boost/fusion/container/vector/detail/advance_impl.hpp:
 
@@ -14404,9 +15961,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/number_type_basic.h:
 
-/usr/include/eigen3/Eigen/src/Core/functors/NullaryFunctors.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h:
+
+/usr/include/eigen3/Eigen/src/Core/functors/NullaryFunctors.h:
 
 /usr/include/boost/detail/indirect_traits.hpp:
 
@@ -14436,18 +15993,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/type_traits/make_void.hpp:
 
-/usr/include/c++/11/fstream:
-
-/usr/include/boost/iterator/advance.hpp:
-
-/usr/include/CGAL/Intersections_2/Circle_2_Line_2.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface_traits.hpp:
-
-/usr/include/boost/mpl/integral_c.hpp:
-
-/usr/include/boost/algorithm/string/find.hpp:
-
 /usr/include/boost/algorithm/string/compare.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point32.hpp:
@@ -14455,10 +16000,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/algorithm/string/finder.hpp:
 
 /usr/include/boost/interprocess/sync/file_lock.hpp:
-
-/usr/include/boost/mpl/iterator_category.hpp:
-
-/usr/include/boost/interprocess/detail/config_begin.hpp:
 
 /usr/include/boost/interprocess/detail/config_end.hpp:
 
@@ -14481,12 +16022,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/string_view:
 
 /usr/include/x86_64-linux-gnu/bits/fcntl.h:
-
-/usr/include/boost/fusion/adapted/boost_tuple/detail/is_sequence_impl.hpp:
-
-/usr/include/CGAL/Intersections_2/Point_2_Segment_2.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h:
 
 /usr/include/boost/math/tools/roots.hpp:
 
@@ -14514,6 +16049,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/asm-generic/types.h:
 
+/usr/include/glib-2.0/glib.h:
+
 /usr/include/asm-generic/int-ll64.h:
 
 /usr/include/x86_64-linux-gnu/asm/bitsperlong.h:
@@ -14528,23 +16065,7 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h:
 
-/usr/include/CGAL/Segment_2.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends:
-
-/usr/include/boost/type_traits/is_base_of.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
-
-/usr/include/x86_64-linux-gnu/bits/dirent.h:
-
-/usr/include/boost/mpl/list/aux_/push_back.hpp:
-
 /usr/include/boost/interprocess/detail/os_thread_functions.hpp:
-
-/usr/include/boost/mpl/list/aux_/begin_end.hpp:
-
-/usr/include/boost/interprocess/streams/bufferstream.hpp:
 
 /opt/ros/humble/include/rmw/rmw/domain_id.h:
 
@@ -14552,37 +16073,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/shared_ptr.hpp:
 
-/usr/include/boost/type_traits/has_right_shift_assign.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
-
-/usr/include/c++/11/bits/allocated_ptr.h:
-
-/usr/include/boost/smart_ptr/shared_ptr.hpp:
-
 /usr/include/boost/multiprecision/number.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h:
 
 /usr/include/boost/smart_ptr/bad_weak_ptr.hpp:
 
-/usr/include/c++/11/bits/random.h:
-
-/usr/include/pcl-1.12/pcl/impl/point_types.hpp:
-
-/usr/include/boost/numeric/conversion/int_float_mixture_enum.hpp:
-
-/usr/include/CGAL/Profile_counter.h:
-
-/usr/include/boost/variant/detail/cast_storage.hpp:
-
-/usr/include/boost/smart_ptr/detail/sp_counted_base.hpp:
-
 /usr/include/boost/smart_ptr/detail/sp_has_gcc_intrinsics.hpp:
-
-/usr/include/boost/random/seed_seq.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h:
 
 /usr/include/boost/smart_ptr/detail/sp_counted_impl.hpp:
 
@@ -14600,19 +16097,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/smart_ptr/detail/sp_thread_pause.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/arch/Default/Half.h:
-
-/usr/include/boost/mpl/integral_c_tag.hpp:
-
-/usr/include/boost/math/constants/calculate_constants.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_base_interface_traits.hpp:
 
 /usr/include/boost/smart_ptr/detail/local_counted_base.hpp:
 
 /usr/include/boost/date_time/c_time.hpp:
-
-/usr/include/boost/predef.h:
 
 /usr/include/boost/none_t.hpp:
 
@@ -14658,15 +16147,15 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/utility/compare_pointees.hpp:
 
+/usr/include/gstreamer-1.0/gst/gstinfo.h:
+
 /usr/include/boost/date_time/date_generators.hpp:
+
+/usr/include/glib-2.0/glib/gthread.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h:
 
 /usr/include/boost/date_time/time_system_counted.hpp:
-
-/usr/include/boost/type_traits/copy_reference.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
 
 /usr/include/boost/date_time/posix_time/posix_time_duration.hpp:
 
@@ -14682,15 +16171,17 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/interprocess/sync/detail/locks.hpp:
 
-/usr/include/boost/predef/os/amigaos.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/turning_base.h:
+
+/usr/include/c++/11/bits/enable_special_members.h:
+
+/usr/include/boost/move/core.hpp:
 
 /usr/include/pcl-1.12/pcl/io/impl/pcd_io.hpp:
 
 /usr/include/boost/multiprecision/traits/is_backend.hpp:
 
 /usr/include/boost/algorithm/string/trim.hpp:
-
-/usr/include/boost/predef/architecture/sparc.h:
 
 /usr/include/boost/algorithm/string/detail/trim.hpp:
 
@@ -14710,8 +16201,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/sys/fcntl.h:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/float.h:
-
 /opt/ros/humble/include/tf2/tf2/LinearMath/MinMax.hpp:
 
 /usr/include/boost/preprocessor/seq/enum.hpp:
@@ -14722,11 +16211,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__traits.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp:
+/usr/include/boost/predef/library/std/vacpp.h:
 
 /usr/include/boost/type_traits/add_volatile.hpp:
-
-/usr/include/boost/predef/library/std/vacpp.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -14760,9 +16247,13 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__traits.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__builder.hpp:
+/usr/include/boost/math/constants/constants.hpp:
+
+/usr/include/gdal/ogr_geometry.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp:
 
 /usr/include/boost/assert/source_location.hpp:
 
@@ -14773,6 +16264,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/gmp.h:
+
+/usr/include/gstreamer-1.0/gst/video/videooverlay.h:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.hpp:
 
@@ -14788,11 +16281,9 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/multiprecision/cpp_int/value_pack.hpp:
 
+/usr/include/glib-2.0/glib/gtimezone.h:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__builder.hpp:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_squared_radius_3.h:
-
-/usr/include/boost/predef/architecture/convex.h:
 
 /usr/include/linux/limits.h:
 
@@ -14800,17 +16291,11 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__builder.hpp:
 
-/usr/include/boost/multiprecision/detail/precision.hpp:
-
-/usr/include/c++/11/pstl/execution_defs.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance_stamped__type_support.hpp:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__struct.hpp:
 
-/usr/include/pcl-1.12/pcl/common/io.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h:
+
+/usr/include/pcl-1.12/pcl/common/io.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__builder.hpp:
 
@@ -14820,23 +16305,21 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__type_support.hpp:
 
+/usr/include/boost/predef/compiler/sgi_mipspro.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench_stamped.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__traits.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__type_support.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_intersection.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench.hpp:
 
-/usr/include/boost/predef/compiler/sgi_mipspro.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__traits.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench_stamped.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/timex.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__struct.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__traits.hpp:
 
 /usr/include/boost/math/tools/atomic.hpp:
 
@@ -14852,12 +16335,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/tf2/tf2/impl/convert.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__struct.hpp:
-
-/opt/ros/humble/include/tf2/tf2/transform_datatypes.hpp:
-
 /usr/include/CGAL/Sqrt_extension/Sqrt_extension_type.h:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/Transform.hpp:
@@ -14871,6 +16348,8 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/fusion/support/segmented_fold_until.hpp:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Plane_3_Plane_3.h:
+
+/usr/include/glib-2.0/glib/gmain.h:
 
 /usr/include/boost/preprocessor/repetition/enum_params.hpp:
 
@@ -14898,8 +16377,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/lexical_cast/try_lexical_convert.hpp:
 
-/usr/include/boost/type_traits/type_identity.hpp:
-
 /usr/include/boost/lexical_cast/detail/is_character.hpp:
 
 /opt/ros/humble/include/rcl/rcl/arguments.h:
@@ -14924,29 +16401,19 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Point_3_intersection.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h:
-
 /usr/include/boost/predef/architecture/superh.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h:
 
 /usr/include/boost/math/tools/config.hpp:
 
 /usr/include/boost/predef/architecture/x86/32.h:
-
-/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
-
-/usr/include/boost/math/special_functions/detail/round_fwd.hpp:
-
-/usr/include/CGAL/assertions_impl.h:
-
-/usr/include/boost/math/policies/policy.hpp:
 
 /usr/include/CGAL/Intersections_2/Circle_2_Triangle_2.h:
 
 /usr/include/boost/mpl/list.hpp:
 
 /usr/include/boost/mpl/list/list20.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cell.h:
 
 /usr/include/boost/mpl/list/aux_/push_front.hpp:
 
@@ -14988,6 +16455,14 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/size_impl.hpp:
 
+/usr/include/boost/predef/architecture/sys390.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph.h:
+
+/usr/include/boost/mpl/iter_fold.hpp:
+
 /usr/include/boost/preprocessor/seq/transform.hpp:
 
 /usr/include/boost/mpl/aux_/iter_fold_impl.hpp:
@@ -15004,12 +16479,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp:
 
-/usr/include/boost/predef/language/stdc.h:
-
-/usr/include/CGAL/intersections.h:
-
-/usr/include/boost/math/special_functions/detail/fp_traits.hpp:
-
 /usr/include/CGAL/Alpha_shape_2.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/quadmath.h:
@@ -15017,10 +16486,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
 
 /usr/include/boost/integer.hpp:
-
-/usr/include/c++/11/bits/list.tcc:
-
-/usr/include/boost/predef/compiler/comeau.h:
 
 /usr/include/boost/integer_fwd.hpp:
 
@@ -15036,8 +16501,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/inherit.hpp:
 
-/usr/include/boost/mpl/aux_/joint_iter.hpp:
-
 /usr/include/boost/fusion/sequence/comparison/detail/equal_to.hpp:
 
 /usr/include/boost/mpl/transform.hpp:
@@ -15045,12 +16508,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/lexical_cast/detail/converter_numeric.hpp:
 
 /usr/include/boost/mpl/pair_view.hpp:
-
-/usr/include/c++/11/bits/enable_special_members.h:
-
-/usr/include/boost/move/core.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/turning_base.h:
 
 /usr/include/c++/11/iomanip:
 
@@ -15060,308 +16517,6 @@ f2c_coverage_planner_autogen/mocs_compilation.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h:
 
-/usr/include/boost/variant/detail/move.hpp:
-
-/usr/include/boost/predef/os/vms.h:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
 
 /usr/include/gdal/cpl_conv.h:
-
-/usr/include/gdal/ogr_core.h:
-
-/usr/include/gdal/gdal_version.h:
-
-/usr/include/gdal/ogr_spatialref.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
-
-/usr/include/gdal/ogr_geometry.h:
-
-/usr/include/boost/math/constants/constants.hpp:
-
-/usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp:
-
-/usr/include/CGAL/IO/io_tags.h:
-
-/usr/include/boost/math/tools/cxx03_warn.hpp:
-
-/usr/include/boost/math/tools/precision.hpp:
-
-/usr/include/c++/11/typeinfo:
-
-/usr/include/boost/type_traits/is_default_constructible.hpp:
-
-/usr/include/boost/range/config.hpp:
-
-/usr/include/boost/utility/declval.hpp:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__struct.hpp:
-
-/usr/include/boost/math/special_functions/trunc.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiPoint.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries.h:
-
-/usr/include/CGAL/Distance_2/Segment_2_Ray_2.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h:
-
-/usr/include/boost/predef/compiler/intel.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swaths.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/random.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/parameter_map.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/parser.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h:
-
-/usr/include/boost/fusion/view/iterator_range/detail/size_impl.hpp:
-
-/usr/include/CGAL/Homogeneous/VectorH3.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/swath_length.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/rp_objective.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h:
-
-/usr/include/boost/mpl/reverse_fold.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h:
-
-/usr/include/CGAL/Handle_for_virtual.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qtgui-config.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/swath_generator_base.h:
-
-/usr/include/boost/fusion/algorithm/iteration/for_each_fwd.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription_content_filter_options.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/snake_order.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/spiral_order.h:
-
-/usr/include/CGAL/Homogeneous/DirectionH2.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h:
-
-/usr/include/eigen3/Eigen/src/Core/MatrixBase.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h:
-
-/usr/include/boost/mpl/insert_range.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h:
-
-/usr/include/CGAL/basic.h:
-
-/usr/include/CGAL/version.h:
-
-/usr/include/boost/predef/architecture.h:
-
-/usr/include/CGAL/version_macros.h:
-
-/usr/include/boost/mpl/push_front_fwd.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/time64.h:
-
-/usr/include/boost/predef/language/stdcpp.h:
-
-/usr/include/CGAL/Distance_3/Segment_3_Plane_3.h:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__type_support.hpp:
-
-/usr/include/c++/11/bits/align.h:
-
-/usr/include/boost/predef/architecture/blackfin.h:
-
-/usr/include/boost/predef/architecture/m68k.h:
-
-/usr/include/boost/predef/architecture/mips.h:
-
-/usr/include/boost/predef/architecture/ppc.h:
-
-/usr/include/boost/predef/architecture/ptx.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/brute_force.h:
-
-/usr/include/boost/predef/architecture/riscv.h:
-
-/usr/include/boost/random/discrete_distribution.hpp:
-
-/usr/include/boost/predef/architecture/rs6k.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves.h:
-
-/usr/include/boost/mpl/iter_fold.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph.h:
-
-/usr/include/boost/predef/architecture/sys390.h:
-
-/usr/include/boost/predef/compiler/compaq.h:
-
-/usr/include/boost/predef/compiler/diab.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__type_support.hpp:
-
-/usr/include/boost/predef/compiler/digitalmars.h:
-
-/usr/include/boost/predef/compiler/gcc.h:
-
-/usr/include/boost/predef/detail/comp_detected.h:
-
-/usr/include/boost/predef/compiler/greenhills.h:
-
-/usr/include/x86_64-linux-gnu/bits/stat.h:
-
-/usr/include/boost/predef/compiler/palm.h:
-
-/usr/include/boost/predef/compiler/hp_acc.h:
-
-/usr/include/CGAL/Intersections_3/Point_3_Segment_3.h:
-
-/usr/include/boost/predef/compiler/metaware.h:
-
-/usr/include/boost/predef/compiler/microtec.h:
-
-/usr/include/boost/predef/compiler/sunpro.h:
-
-/usr/include/boost/predef/compiler/tendra.h:
-
-/usr/include/boost/predef/compiler/watcom.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_impl.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
-
-/usr/include/boost/predef/library.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/bind.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup:
-
-/usr/include/boost/predef/library/c/cloudabi.h:
-
-/usr/include/CGAL/Distance_2/Point_2_Point_2.h:
-
-/usr/include/boost/predef/os/hpux.h:
-
-/usr/include/assert.h:
-
-/usr/include/boost/predef/library/std/_prefix.h:
-
-/usr/include/boost/predef/library/std/dinkumware.h:
-
-/usr/include/boost/predef/library/std/libcomo.h:
-
-/usr/include/boost/predef/platform/android.h:
-
-/usr/include/boost/predef/library/std/modena.h:
-
-/usr/include/boost/fusion/mpl/size.hpp:
-
-/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
-
-/usr/include/boost/predef/library/std/roguewave.h:
-
-/usr/include/boost/predef/library/std/sgi.h:
-
-/usr/include/boost/predef/os/beos.h:
-
-/usr/include/boost/predef/os/linux.h:
-
-/usr/include/boost/predef/os/qnxnto.h:
-
-/usr/include/boost/predef/os/unix.h:
-
-/usr/include/boost/predef/os/windows.h:
-
-/usr/include/boost/fusion/view/joint_view/detail/begin_impl.hpp:
-
-/usr/include/boost/predef/platform/mingw.h:
-
-/usr/include/boost/predef/platform/mingw64.h:
-
-/usr/include/boost/mpl/contains_fwd.hpp:
-
-/usr/include/boost/predef/platform/windows_desktop.h:
-
-/usr/include/boost/type_traits/is_lvalue_reference.hpp:
-
-/usr/include/boost/predef/platform/windows_store.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/create_timer.hpp:
-
-/usr/include/pcl-1.12/pcl/common/impl/io.hpp:
-
-/usr/include/boost/predef/platform/windows_system.h:
-
-/usr/include/libintl.h:
-
-/usr/include/boost/predef/platform/ios.h:
-
-/usr/include/boost/predef/hardware.h:
-
-/usr/include/boost/predef/hardware/simd.h:
-
-/usr/include/CGAL/Intersections_3/Bbox_3_Plane_3.h:
-
-/usr/include/boost/predef/hardware/simd/x86_amd.h:
-
-/usr/include/CGAL/Cartesian/Line_3.h:
-
-/usr/include/boost/mpl/equal.hpp:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h:
-
-/usr/include/boost/predef/hardware/simd/arm/versions.h:
-
-/usr/include/CGAL/license.h:
-
-/usr/include/CGAL/assertions.h:
-
-/usr/include/CGAL/Origin.h:
-
-/usr/include/CGAL/Distance_2/Triangle_2_Triangle_2.h:
-
-/usr/include/CGAL/Origin_impl.h:
-
-/usr/include/CGAL/enable_warnings.h:

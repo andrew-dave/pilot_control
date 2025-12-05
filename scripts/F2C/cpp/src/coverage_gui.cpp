@@ -1299,13 +1299,17 @@ void CoverageGUI::setupUI() {
     
     main_layout->addWidget(plot_container, 1);
     
-    // RIGHT: Layer visibility panel
-    QWidget* layer_panel = buildLayerPanel();
-    main_layout->addWidget(layer_panel);
-    
     setCentralWidget(central);
     
-    // Setup video panel (dockable)
+    // RIGHT: Layer visibility panel (as dock widget for stacking)
+    QDockWidget* layer_dock = new QDockWidget("👁 Layers", this);
+    layer_dock->setObjectName("layerDock");
+    layer_dock->setAllowedAreas(Qt::RightDockWidgetArea);
+    layer_dock->setFeatures(QDockWidget::DockWidgetMovable);  // Not closable
+    layer_dock->setWidget(buildLayerPanel());
+    addDockWidget(Qt::RightDockWidgetArea, layer_dock);
+    
+    // Setup video panel (dockable, will be stacked below layers)
     setupVideoPanel();
     
     // Status bar
@@ -1420,6 +1424,17 @@ void CoverageGUI::setupVideoPanel() {
     
     video_dock_->setWidget(dock_content);
     addDockWidget(Qt::RightDockWidgetArea, video_dock_);
+    
+    // Stack video dock below the layers panel (vertically)
+    // Find the layer panel dock widget and stack video below it
+    QList<QDockWidget*> docks = findChildren<QDockWidget*>();
+    for (QDockWidget* dock : docks) {
+        if (dock->objectName() == "layerDock" && dock != video_dock_) {
+            splitDockWidget(dock, video_dock_, Qt::Vertical);
+            break;
+        }
+    }
+    
     video_dock_->hide();  // Hidden by default
     
     // Connections for video panel (btn_view_fov_ created in setupUI)
@@ -2314,7 +2329,7 @@ void CoverageGUI::onWorkflowStepClicked(int step) {
 // =============================================================================
 
 QWidget* CoverageGUI::buildLayerPanel() {
-    QGroupBox* box = new QGroupBox("👁 Layers");
+    QWidget* box = new QWidget();
     box->setFixedWidth(150);
     box->setObjectName("layerPanel");
     
