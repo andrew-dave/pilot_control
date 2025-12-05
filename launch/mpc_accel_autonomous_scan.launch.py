@@ -92,7 +92,7 @@ def generate_launch_description():
     # Separate Δ-costs for linear and angular velocity
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         "mpc_R_delta_v",
-        default_value="0.1",
+        default_value="0.005",
         description="MPC cost weight for change in linear velocity (Δv)",
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
