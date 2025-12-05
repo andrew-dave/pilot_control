@@ -114,11 +114,15 @@ protected:
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;
 
+private slots:
+    void pollBus();
+
 private:
     GstElement* pipeline_ = nullptr;
     int current_port_ = 5600;
     bool playing_ = false;
     bool auto_start_on_show_ = false;
+    QTimer* bus_poll_timer_ = nullptr;
     
     void setupPipeline(int port);
     void destroyPipeline();

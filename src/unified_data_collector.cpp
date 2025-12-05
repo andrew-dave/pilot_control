@@ -585,10 +585,8 @@ private:
     camera_switching_.store(true);
     camera_switch_start_ = std::chrono::steady_clock::now();
     
-    // Stop current pipeline
-    if (pipeline_) {
-      gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
-    }
+    // Fully stop the existing GStreamer pipeline and main loop
+    stopStreamingLoop();
     
     // Update which camera to stream
     streaming_right_camera_.store(want_right);
@@ -606,6 +604,46 @@ private:
     camera_switching_.store(false);
     
     publishCameraStatus();
+  }
+  
+  void stopStreamingLoop() {
+    // Stop the pipeline first
+    if (pipeline_) {
+      gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
+    }
+    
+    // Quit the main loop
+    if (loop_) {
+      g_main_loop_quit(loop_);
+    }
+    
+    // Wait for loop thread to finish
+    if (loop_thread_.joinable()) {
+      loop_thread_.join();
+    }
+    
+    // Clean up GLib resources
+    if (bus_watch_id_) {
+      // Already removed in the thread, just reset
+      bus_watch_id_ = 0;
+    }
+    if (loop_) {
+      g_main_loop_unref(loop_);
+      loop_ = nullptr;
+    }
+    if (context_) {
+      g_main_context_unref(context_);
+      context_ = nullptr;
+    }
+    if (bus_) {
+      gst_object_unref(bus_);
+      bus_ = nullptr;
+    }
+    
+    // Reset pipeline
+    pipeline_.reset();
+    left_appsink_ = nullptr;
+    right_appsink_ = nullptr;
   }
   
   void publishCameraStatus() {
@@ -767,22 +805,7 @@ private:
   }
   
   void stopGStreamer() {
-    if (pipeline_) gst_element_set_state(pipeline_.get(), GST_STATE_NULL);
-    if (loop_) {
-      g_main_loop_quit(loop_);
-      if (loop_thread_.joinable()) loop_thread_.join();
-      g_main_loop_unref(loop_);
-      loop_ = nullptr;
-    }
-    if (context_) {
-      g_main_context_unref(context_);
-      context_ = nullptr;
-    }
-    if (bus_) {
-      gst_object_unref(bus_);
-      bus_ = nullptr;
-    }
-    pipeline_.reset();
+    stopStreamingLoop();
   }
 
   void buildStreamingPipeline() {

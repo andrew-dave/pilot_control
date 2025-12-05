@@ -97,8 +97,14 @@ void VideoStreamWidget::setupPipeline(int port) {
     // Set up bus sync handler to embed video in widget
     GstBus* bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
     gst_bus_set_sync_handler(bus, busSyncHandler, this, nullptr);
-    gst_bus_add_watch(bus, busCallback, this);
     gst_object_unref(bus);
+    
+    // Start timer to poll bus messages (Qt-friendly approach instead of GLib main loop)
+    if (!bus_poll_timer_) {
+        bus_poll_timer_ = new QTimer(this);
+        connect(bus_poll_timer_, &QTimer::timeout, this, &VideoStreamWidget::pollBus);
+    }
+    bus_poll_timer_->start(100);  // Poll every 100ms
     
     current_port_ = port;
     std::cout << "[VideoStream] Pipeline created for port " << port << std::endl;
@@ -123,45 +129,61 @@ GstBusSyncReply VideoStreamWidget::busSyncHandler(GstBus* bus, GstMessage* msg, 
     return GST_BUS_PASS;
 }
 
+void VideoStreamWidget::pollBus() {
+    if (!pipeline_) return;
+    
+    GstBus* bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline_));
+    if (!bus) return;
+    
+    GstMessage* msg;
+    while ((msg = gst_bus_pop(bus)) != nullptr) {
+        switch (GST_MESSAGE_TYPE(msg)) {
+            case GST_MESSAGE_ERROR: {
+                GError* err = nullptr;
+                gchar* debug = nullptr;
+                gst_message_parse_error(msg, &err, &debug);
+                QString errMsg = QString("Stream error: %1").arg(err ? err->message : "unknown");
+                std::cerr << "[VideoStream] Error: " << errMsg.toStdString() << std::endl;
+                if (debug) std::cerr << "[VideoStream] Debug: " << debug << std::endl;
+                if (err) g_error_free(err);
+                if (debug) g_free(debug);
+                emit streamError(errMsg);
+                break;
+            }
+            case GST_MESSAGE_EOS:
+                std::cout << "[VideoStream] End of stream" << std::endl;
+                playing_ = false;
+                emit streamStopped();
+                break;
+            case GST_MESSAGE_STATE_CHANGED:
+                if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline_)) {
+                    GstState old_state, new_state, pending_state;
+                    gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+                    std::cout << "[VideoStream] State: " << gst_element_state_get_name(old_state) 
+                              << " -> " << gst_element_state_get_name(new_state) << std::endl;
+                    if (new_state == GST_STATE_PLAYING && !playing_) {
+                        playing_ = true;
+                        emit streamStarted();
+                    } else if (new_state == GST_STATE_NULL && playing_) {
+                        playing_ = false;
+                        emit streamStopped();
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        gst_message_unref(msg);
+    }
+    
+    gst_object_unref(bus);
+}
+
+// Remove the old callback - no longer used
 gboolean VideoStreamWidget::busCallback(GstBus* bus, GstMessage* msg, gpointer data) {
     Q_UNUSED(bus);
-    VideoStreamWidget* self = static_cast<VideoStreamWidget*>(data);
-    
-    switch (GST_MESSAGE_TYPE(msg)) {
-        case GST_MESSAGE_ERROR: {
-            GError* err = nullptr;
-            gchar* debug = nullptr;
-            gst_message_parse_error(msg, &err, &debug);
-            QString errMsg = QString("Stream error: %1").arg(err ? err->message : "unknown");
-            if (err) g_error_free(err);
-            if (debug) g_free(debug);
-            
-            QMetaObject::invokeMethod(self, [self, errMsg]() {
-                emit self->streamError(errMsg);
-            }, Qt::QueuedConnection);
-            break;
-        }
-        case GST_MESSAGE_EOS:
-            QMetaObject::invokeMethod(self, [self]() {
-                self->playing_ = false;
-                emit self->streamStopped();
-            }, Qt::QueuedConnection);
-            break;
-        case GST_MESSAGE_STATE_CHANGED:
-            if (GST_MESSAGE_SRC(msg) == GST_OBJECT(self->pipeline_)) {
-                GstState old_state, new_state, pending_state;
-                gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
-                if (new_state == GST_STATE_PLAYING) {
-                    QMetaObject::invokeMethod(self, [self]() {
-                        self->playing_ = true;
-                        emit self->streamStarted();
-                    }, Qt::QueuedConnection);
-                }
-            }
-            break;
-        default:
-            break;
-    }
+    Q_UNUSED(msg);
+    Q_UNUSED(data);
     return TRUE;
 }
 
@@ -188,6 +210,11 @@ void VideoStreamWidget::stopStream() {
 }
 
 void VideoStreamWidget::destroyPipeline() {
+    // Stop the bus polling timer
+    if (bus_poll_timer_) {
+        bus_poll_timer_->stop();
+    }
+    
     if (pipeline_) {
         gst_element_set_state(pipeline_, GST_STATE_NULL);
         gst_object_unref(pipeline_);
@@ -1501,6 +1528,15 @@ void CoverageGUI::stopVideoStream() {
 
 void CoverageGUI::onCameraToggled(bool right_selected) {
     QString camera = right_selected ? "right" : "left";
+    
+    // Lazily create publisher if not yet available
+    if (ros_initialized_ && ros_node_ && !camera_select_pub_) {
+        camera_select_pub_ = ros_node_->create_publisher<std_msgs::msg::String>(
+            "/stream_camera_select", 10);
+        camera_status_sub_ = ros_node_->create_subscription<std_msgs::msg::String>(
+            "/stream_camera_status", 10,
+            std::bind(&CoverageGUI::onCameraStatusReceived, this, std::placeholders::_1));
+    }
     
     // Publish camera selection to robot
     if (ros_initialized_ && camera_select_pub_) {
