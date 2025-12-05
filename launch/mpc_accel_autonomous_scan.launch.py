@@ -86,18 +86,18 @@ def generate_launch_description():
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         "mpc_Q_yaw",
-        default_value="8.0",
+        default_value="3.0",
         description="MPC cost weight for yaw error",
     )
     # Separate Δ-costs for linear and angular velocity
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         "mpc_R_delta_v",
-        default_value="0.001",
+        default_value="0.1",
         description="MPC cost weight for change in linear velocity (Δv)",
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         "mpc_R_delta_omega",
-        default_value="0.001",
+        default_value="0.5",
         description="MPC cost weight for change in angular velocity (Δω)",
     )
     # Rate limits on Δv and Δω per step
@@ -108,7 +108,7 @@ def generate_launch_description():
     )
     declare_mpc_domega_max_arg = DeclareLaunchArgument(
         "mpc_domega_max",
-        default_value="0.10",
+        default_value="0.05",
         description="Maximum change in angular velocity per control step (rad/s)",
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
@@ -129,7 +129,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         "mpc_weight_increase_yaw",
-        default_value="0.2",
+        default_value="0.02",
         description=(
             "Linear weight increase factor per step for yaw error. "
             "Weight at step k = base_weight * (1 + weight_increase_yaw * k)."
