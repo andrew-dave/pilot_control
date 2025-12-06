@@ -42,6 +42,7 @@
 #include <QToolBox>
 #include <QButtonGroup>
 #include <QDockWidget>
+#include <QNetworkInterface>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -613,6 +614,17 @@ private:
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_select_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_status_sub_;
     QString current_streaming_camera_ = "left";
+    
+    // ROS2 stream target configuration
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stream_target_pub_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_status_sub_;
+    QString current_stream_target_;
+    bool stream_target_confirmed_ = false;
+    
+    // Auto-detect local IP for streaming
+    QString detectLocalIP() const;
+    void publishStreamTarget();
+    void onStreamStatusReceived(const std_msgs::msg::String::SharedPtr msg);
 };
 
 } // namespace f2c_cpp

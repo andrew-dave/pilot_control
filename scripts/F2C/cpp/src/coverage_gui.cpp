@@ -1415,7 +1415,7 @@ void CoverageGUI::setupVideoPanel() {
     cam_selector->addStretch();
     dock_layout->addLayout(cam_selector);
     
-    // Port configuration
+    // Port configuration and stream setup
     QHBoxLayout* port_layout = new QHBoxLayout();
     port_layout->addWidget(new QLabel("Port:"));
     spin_video_port_ = new QSpinBox();
@@ -1423,8 +1423,14 @@ void CoverageGUI::setupVideoPanel() {
     spin_video_port_->setValue(5600);
     spin_video_port_->setToolTip("UDP port for video stream");
     port_layout->addWidget(spin_video_port_);
+    
+    QPushButton* btn_configure = new QPushButton("📡 Configure");
+    btn_configure->setToolTip("Send your IP to the robot to configure stream target");
+    port_layout->addWidget(btn_configure);
     port_layout->addStretch();
     dock_layout->addLayout(port_layout);
+    
+    connect(btn_configure, &QPushButton::clicked, this, &CoverageGUI::publishStreamTarget);
     
     // Video widget
     video_widget_ = new VideoStreamWidget();
@@ -1508,6 +1514,11 @@ void CoverageGUI::toggleVideoPanel() {
     if (video_dock_) {
         bool show = btn_view_fov_->isChecked();
         video_dock_->setVisible(show);
+        
+        // When showing the panel, auto-configure stream target
+        if (show && !stream_target_confirmed_) {
+            publishStreamTarget();
+        }
     }
 }
 
@@ -1577,6 +1588,108 @@ void CoverageGUI::onCameraStatusReceived(const std_msgs::msg::String::SharedPtr 
         radio_cam_right_->setChecked(is_right);
         
         setStatus(QString("Streaming: %1 camera").arg(camera));
+    }, Qt::QueuedConnection);
+}
+
+QString CoverageGUI::detectLocalIP() const {
+    // Get all network interfaces and find the best IP for streaming
+    // Prefer: 192.168.168.x (RF) > 10.x.x.x (WiFi) > others
+    
+    QString rf_ip, wifi_ip, other_ip;
+    
+    for (const QNetworkInterface& iface : QNetworkInterface::allInterfaces()) {
+        // Skip loopback and down interfaces
+        if (iface.flags() & QNetworkInterface::IsLoopBack) continue;
+        if (!(iface.flags() & QNetworkInterface::IsUp)) continue;
+        if (!(iface.flags() & QNetworkInterface::IsRunning)) continue;
+        
+        for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+            if (entry.ip().protocol() != QAbstractSocket::IPv4Protocol) continue;
+            
+            QString ip = entry.ip().toString();
+            
+            // Categorize by network
+            if (ip.startsWith("192.168.168.")) {
+                rf_ip = ip;  // RF network (Microhard)
+            } else if (ip.startsWith("10.")) {
+                wifi_ip = ip;  // WiFi network
+            } else if (!ip.startsWith("127.")) {
+                other_ip = ip;  // Other valid IP
+            }
+        }
+    }
+    
+    // Return in priority order
+    if (!rf_ip.isEmpty()) {
+        std::cout << "[Stream] Detected RF IP: " << rf_ip.toStdString() << std::endl;
+        return rf_ip;
+    }
+    if (!wifi_ip.isEmpty()) {
+        std::cout << "[Stream] Detected WiFi IP: " << wifi_ip.toStdString() << std::endl;
+        return wifi_ip;
+    }
+    if (!other_ip.isEmpty()) {
+        std::cout << "[Stream] Detected other IP: " << other_ip.toStdString() << std::endl;
+        return other_ip;
+    }
+    
+    std::cerr << "[Stream] Warning: No suitable IP found for streaming" << std::endl;
+    return QString();
+}
+
+void CoverageGUI::publishStreamTarget() {
+    QString local_ip = detectLocalIP();
+    
+    if (local_ip.isEmpty()) {
+        setStatus("Cannot detect local IP for streaming");
+        return;
+    }
+    
+    // Lazily create publisher if needed
+    if (ros_initialized_ && ros_node_ && !stream_target_pub_) {
+        stream_target_pub_ = ros_node_->create_publisher<std_msgs::msg::String>(
+            "/stream_target_ip", 10);
+        stream_status_sub_ = ros_node_->create_subscription<std_msgs::msg::String>(
+            "/stream_status", 10,
+            std::bind(&CoverageGUI::onStreamStatusReceived, this, std::placeholders::_1));
+    }
+    
+    if (stream_target_pub_) {
+        auto msg = std_msgs::msg::String();
+        msg.data = local_ip.toStdString();
+        stream_target_pub_->publish(msg);
+        
+        current_stream_target_ = local_ip;
+        stream_target_confirmed_ = false;
+        setStatus(QString("Requesting stream to: %1").arg(local_ip));
+        
+        std::cout << "[Stream] Published stream target: " << local_ip.toStdString() << std::endl;
+    } else {
+        setStatus("ROS2 not available - cannot configure stream target");
+    }
+}
+
+void CoverageGUI::onStreamStatusReceived(const std_msgs::msg::String::SharedPtr msg) {
+    QString status = QString::fromStdString(msg->data);
+    // Format: "ip:port:camera"
+    QStringList parts = status.split(":");
+    
+    QMetaObject::invokeMethod(this, [this, status, parts]() {
+        if (parts.size() >= 3) {
+            QString ip = parts[0];
+            QString port = parts[1];
+            QString camera = parts[2];
+            
+            current_stream_target_ = ip + ":" + port;
+            stream_target_confirmed_ = true;
+            
+            if (lbl_video_status_) {
+                lbl_video_status_->setText(QString("Target: %1:%2 (%3)").arg(ip, port, camera));
+                lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
+            }
+            
+            setStatus(QString("Stream configured: %1:%2 (%3 camera)").arg(ip, port, camera));
+        }
     }, Qt::QueuedConnection);
 }
 

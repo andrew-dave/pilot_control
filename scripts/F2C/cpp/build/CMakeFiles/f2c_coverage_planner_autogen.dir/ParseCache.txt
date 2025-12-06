@@ -1595,6 +1595,12 @@
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtGui/qwindowdefs.h
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/qabstractsocket.h
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetwork-config.h
+ mdp:/usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetworkglobal.h
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup
  mdp:/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox

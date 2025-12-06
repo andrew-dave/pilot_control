@@ -401,6 +401,18 @@ public:
     // Camera status publisher (publishes current streaming camera)
     camera_status_pub_ = this->create_publisher<std_msgs::msg::String>("/stream_camera_status", 10);
     RCLCPP_INFO(this->get_logger(), "Camera selection topic: /stream_camera_select (\"left\" or \"right\")");
+    
+    // Stream target IP subscriber (for dynamic stream destination)
+    stream_target_sub_ = this->create_subscription<std_msgs::msg::String>(
+        "/stream_target_ip", 10,
+        std::bind(&UnifiedDataCollector::onStreamTargetReceived, this, std::placeholders::_1));
+    
+    // Stream status publisher (publishes full stream configuration)
+    stream_status_pub_ = this->create_publisher<std_msgs::msg::String>("/stream_status", 10);
+    RCLCPP_INFO(this->get_logger(), "Stream target topic: /stream_target_ip (publish laptop IP to configure)");
+    
+    // Publish initial stream status
+    publishStreamStatus();
 
     // ROS wiring
     auto qos = rclcpp::SensorDataQoS().keep_last(100);
@@ -650,6 +662,64 @@ private:
     auto msg = std_msgs::msg::String();
     msg.data = streaming_right_camera_.load() ? "right" : "left";
     camera_status_pub_->publish(msg);
+  }
+  
+  // ---------- Stream target configuration ----------
+  void onStreamTargetReceived(const std_msgs::msg::String::SharedPtr msg) {
+    std::string new_host = msg->data;
+    
+    // Trim whitespace
+    new_host.erase(0, new_host.find_first_not_of(" \t\n\r"));
+    new_host.erase(new_host.find_last_not_of(" \t\n\r") + 1);
+    
+    if (new_host.empty()) {
+      RCLCPP_WARN(this->get_logger(), "Received empty stream target IP, ignoring");
+      return;
+    }
+    
+    // Check if IP changed
+    if (new_host == cfg_.stream_host) {
+      RCLCPP_INFO(this->get_logger(), "Stream target unchanged: %s", new_host.c_str());
+      publishStreamStatus();
+      return;
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Updating stream target: %s -> %s", 
+                cfg_.stream_host.c_str(), new_host.c_str());
+    
+    // Update config
+    std::string old_host = cfg_.stream_host;
+    cfg_.stream_host = new_host;
+    
+    // Set switching flag and timestamp
+    camera_switching_.store(true);
+    camera_switch_start_ = std::chrono::steady_clock::now();
+    
+    // Rebuild pipeline with new target
+    try {
+      stopStreamingLoop();
+      buildStreamingPipeline();
+      startStreamingLoop();
+      RCLCPP_INFO(this->get_logger(), "Successfully updated stream target to: %s:%d", 
+                  cfg_.stream_host.c_str(), cfg_.stream_port);
+    } catch (const std::exception& e) {
+      RCLCPP_ERROR(this->get_logger(), "Failed to update stream target: %s", e.what());
+      // Revert to old host on failure
+      cfg_.stream_host = old_host;
+    }
+    
+    camera_switching_.store(false);
+    publishStreamStatus();
+  }
+  
+  void publishStreamStatus() {
+    auto msg = std_msgs::msg::String();
+    std::ostringstream oss;
+    oss << cfg_.stream_host << ":" << cfg_.stream_port << ":" 
+        << (streaming_right_camera_.load() ? "right" : "left");
+    msg.data = oss.str();
+    stream_status_pub_->publish(msg);
+    RCLCPP_DEBUG(this->get_logger(), "Stream status: %s", msg.data.c_str());
   }
 
   // ---------- Recording control ----------
@@ -1076,6 +1146,8 @@ private:
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_srv_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_select_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_target_sub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stream_status_pub_;
 
   // Thermal Camera
   seekcamera_manager_t* mgr_ = nullptr;

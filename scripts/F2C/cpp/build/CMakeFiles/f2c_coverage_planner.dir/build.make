@@ -141,6 +141,7 @@ f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/build.make
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Concurrent.so.5.15.3
+f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Network.so.5.15.3
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_io.so
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_filters.so
 f2c_coverage_planner: /home/avenblake/pilot_ws/install/fields2cover/lib/libFields2Cover.so
