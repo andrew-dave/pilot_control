@@ -69,6 +69,227 @@ except ImportError:  # pragma: no cover - runtime check
     warnings.warn("scipy not available. Install with: pip install scipy")
 
 
+class WheelRampCompensator:
+    """
+    Compensates for actuator ramp dynamics at the wheel level.
+    
+    When using VEL_RAMP mode on ODrive, the velocity doesn't change instantly.
+    This class computes an effective wheel velocity command such that the
+    total wheel displacement over the MPC timestep matches what the MPC expects.
+    
+    Key features:
+    - Tracks actual wheel velocity at end of each cycle (not just commanded)
+    - Handles all ramp directions: speed up, slow down, sign changes
+    - Accounts for pure transport delay (CAN latency, etc.)
+    - Works independently for left and right wheels
+    
+    Math:
+        With ramp rate R, starting from ω_prev, commanding ω_target:
+        - Ramp time: t_r = |ω_target - ω_prev| / R
+        - Displacement with ramp: θ = ω_prev*Ts + Δω*Ts - Δω²/(2R)  [if t_r < Ts]
+        - We solve for ω_eff such that displacement equals ω_target * Ts
+    """
+    
+    def __init__(
+        self,
+        ramp_rate: float = 20.0,      # Velocity ramp rate (turn/s² or consistent units)
+        delay_time: float = 0.01,        # Pure transport delay (seconds)
+        cycle_time: float = 0.1,        # MPC cycle time Ts (seconds)
+        logger=None,
+    ):
+        """
+        Initialize the wheel ramp compensator.
+        
+        Args:
+            ramp_rate: ODrive vel_ramp_rate (turn/s² if wheel velocities are in turn/s)
+            delay_time: Pure transport delay - time between command sent and 
+                       actuator starting to respond (seconds)
+            cycle_time: MPC control cycle period Ts (seconds)
+            logger: Optional ROS logger for debug output
+        """
+        self.ramp_rate = float(ramp_rate)
+        self.delay_time = float(delay_time)
+        self.cycle_time = float(cycle_time)
+        self.logger = logger
+        
+        # Track the actual velocity at end of previous cycle for each wheel
+        # This is what the wheel velocity will be at the START of next cycle
+        self._left_vel_at_cycle_end: float = 0.0
+        self._right_vel_at_cycle_end: float = 0.0
+        
+        # Track what we commanded last cycle (for debugging/logging)
+        self._left_cmd_prev: float = 0.0
+        self._right_cmd_prev: float = 0.0
+        
+    def reset(self) -> None:
+        """Reset internal state (call when stopping or reinitializing)."""
+        self._left_vel_at_cycle_end = 0.0
+        self._right_vel_at_cycle_end = 0.0
+        self._left_cmd_prev = 0.0
+        self._right_cmd_prev = 0.0
+        
+    def set_parameters(
+        self,
+        ramp_rate: Optional[float] = None,
+        delay_time: Optional[float] = None,
+        cycle_time: Optional[float] = None,
+    ) -> None:
+        """Update parameters at runtime."""
+        if ramp_rate is not None:
+            self.ramp_rate = float(ramp_rate)
+        if delay_time is not None:
+            self.delay_time = float(delay_time)
+        if cycle_time is not None:
+            self.cycle_time = float(cycle_time)
+    
+    def _compute_compensated_velocity(
+        self,
+        omega_prev: float,
+        omega_target: float,
+    ) -> Tuple[float, float]:
+        """
+        Compute compensated wheel velocity for a single wheel.
+        
+        Given:
+        - omega_prev: Wheel velocity at START of this cycle (= end of previous cycle)
+        - omega_target: Desired wheel velocity (what MPC wants to achieve)
+        
+        Returns:
+        - omega_eff: Velocity to COMMAND to the wheel
+        - omega_end: Predicted velocity at END of this cycle (for tracking)
+        
+        The goal is that total wheel displacement over Ts equals:
+            θ_desired = omega_target * Ts
+        
+        With VEL_RAMP mode, the actual displacement depends on the ramp profile.
+        We solve for omega_eff such that the ramped displacement matches θ_desired.
+        """
+        R = self.ramp_rate
+        Ts = self.cycle_time
+        tau_d = self.delay_time
+        
+        # Effective time available for ramping (accounting for delay)
+        Ts_eff = max(Ts - tau_d, 1e-6)
+        
+        # Change requested by MPC
+        delta_target = omega_target - omega_prev
+        
+        # Handle near-zero change (avoid numerical issues)
+        if abs(delta_target) < 1e-9:
+            return omega_target, omega_target
+        
+        # Maximum change that can be fully compensated within Ts_eff
+        # This comes from the constraint that discriminant >= 0
+        max_compensatable_delta = R * Ts_eff / 2.0
+        
+        # Direction of velocity change
+        sign_delta = 1.0 if delta_target > 0 else -1.0
+        abs_delta_target = abs(delta_target)
+        
+        if abs_delta_target <= max_compensatable_delta:
+            # --- CASE 1: Can fully compensate ---
+            # Solve: Δω_eff * Ts_eff - Δω_eff² / (2R) = Δω_target * Ts_eff
+            # Quadratic: Δω_eff² - 2*R*Ts_eff*Δω_eff + 2*R*Ts_eff*|Δω_target| = 0
+            # Solution: Δω_eff = R*Ts_eff - sqrt((R*Ts_eff)² - 2*R*Ts_eff*|Δω_target|)
+            
+            discriminant = (R * Ts_eff) ** 2 - 2.0 * R * Ts_eff * abs_delta_target
+            
+            # Numerical protection
+            if discriminant < 0:
+                discriminant = 0.0
+                
+            delta_eff = R * Ts_eff - math.sqrt(discriminant)
+            delta_eff *= sign_delta  # Apply direction
+            
+            omega_eff = omega_prev + delta_eff
+            
+            # Ramp time to reach omega_eff
+            t_ramp = abs(delta_eff) / R if R > 1e-9 else 0.0
+            
+            if t_ramp <= Ts_eff:
+                # Ramp completes within cycle - end velocity equals commanded
+                omega_end = omega_eff
+            else:
+                # Shouldn't happen in this branch, but handle gracefully
+                omega_end = omega_prev + sign_delta * R * Ts_eff
+                
+        else:
+            # --- CASE 2: Cannot fully compensate ---
+            # The requested change is too large to achieve in one cycle.
+            # Command the maximum possible ramp; MPC will correct on next iteration.
+            
+            # Maximum velocity change achievable in Ts_eff
+            delta_max = R * Ts_eff * sign_delta
+            omega_eff = omega_prev + delta_max
+            
+            # The wheel will ramp for the full Ts_eff
+            omega_end = omega_eff
+            
+            if self.logger:
+                self.logger.debug(
+                    f"Ramp compensation saturated: requested Δω={delta_target:.4f}, "
+                    f"max={max_compensatable_delta:.4f}, commanding Δω={delta_max:.4f}"
+                )
+        
+        return omega_eff, omega_end
+    
+    def compensate(
+        self,
+        left_target: float,
+        right_target: float,
+    ) -> Tuple[float, float]:
+        """
+        Compute ramp-compensated velocities for both wheels.
+        
+        Args:
+            left_target: Desired left wheel velocity (from MPC → differential drive conversion)
+            right_target: Desired right wheel velocity (from MPC → differential drive conversion)
+            
+        Returns:
+            (left_eff, right_eff): Compensated velocities to command to wheels
+            
+        Note: Call this once per MPC cycle. It updates internal state tracking.
+        """
+        # Compute compensated velocities using previous cycle's end velocity as starting point
+        left_eff, left_end = self._compute_compensated_velocity(
+            self._left_vel_at_cycle_end, left_target
+        )
+        right_eff, right_end = self._compute_compensated_velocity(
+            self._right_vel_at_cycle_end, right_target
+        )
+        
+        # Update state for next cycle
+        self._left_vel_at_cycle_end = left_end
+        self._right_vel_at_cycle_end = right_end
+        self._left_cmd_prev = left_eff
+        self._right_cmd_prev = right_eff
+        
+        return left_eff, right_eff
+    
+    def get_current_wheel_velocities(self) -> Tuple[float, float]:
+        """
+        Get the tracked wheel velocities at end of previous cycle.
+        
+        Returns:
+            (left_vel, right_vel): Estimated actual wheel velocities
+        """
+        return self._left_vel_at_cycle_end, self._right_vel_at_cycle_end
+    
+    def set_current_wheel_velocities(self, left_vel: float, right_vel: float) -> None:
+        """
+        Manually set the current wheel velocities.
+        
+        Use this to sync with actual encoder feedback if available,
+        or to initialize from a known state.
+        
+        Args:
+            left_vel: Current left wheel velocity
+            right_vel: Current right wheel velocity
+        """
+        self._left_vel_at_cycle_end = float(left_vel)
+        self._right_vel_at_cycle_end = float(right_vel)
+
+
 class AccelMPC:
     """
     LTV MPC with augmented state and delta-input control.
@@ -774,6 +995,14 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
+        # Wheel ramp compensation parameters
+        # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
+        # delay_time: Pure transport delay (CAN latency + processing) in seconds
+        # Set ramp_compensation_enabled=True and input_mode to VEL_RAMP for best results
+        self.declare_parameter("ramp_compensation_enabled", True)
+        self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (from ODrive config)
+        self.declare_parameter("wheel_delay_time", 0.01)  # seconds (~10ms typical CAN delay)
+
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
         self.wheel_base = float(self.get_parameter("wheel_base").value)
@@ -831,6 +1060,13 @@ class MPCAccelController(Node):
         self.target_reached_threshold = float(
             self.get_parameter("target_reached_threshold").value
         )
+
+        # Wheel ramp compensation
+        self.ramp_compensation_enabled = bool(
+            self.get_parameter("ramp_compensation_enabled").value
+        )
+        self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
+        self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
 
         # State
         self.current_x = 0.0
@@ -897,6 +1133,25 @@ class MPCAccelController(Node):
             weight_increase_yaw=mpc_weight_increase_yaw,
             solver_debug_enabled=self.solver_debug_enabled,
         )
+
+        # Wheel ramp compensator (for VEL_RAMP mode actuator dynamics)
+        self.wheel_compensator = WheelRampCompensator(
+            ramp_rate=self.wheel_ramp_rate,
+            delay_time=self.wheel_delay_time,
+            cycle_time=self.mpc_dt,
+            logger=self.get_logger() if self.solver_debug_enabled else None,
+        )
+
+        if self.ramp_compensation_enabled:
+            self.get_logger().info(
+                f"✓ Wheel ramp compensation ENABLED: "
+                f"ramp_rate={self.wheel_ramp_rate:.1f} turn/s², "
+                f"delay={self.wheel_delay_time*1000:.1f} ms"
+            )
+        else:
+            self.get_logger().info(
+                "Wheel ramp compensation DISABLED (using direct velocity commands)"
+            )
 
         # Subscribers
         self.create_subscription(
@@ -1598,36 +1853,57 @@ class MPCAccelController(Node):
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
 
-        # Integrate Δu into command velocities
+        # Integrate Δu into command velocities (MPC's internal state)
         dv = float(du0[0])
         domega = float(du0[1])
         self.v_cmd = np.clip(self.v_cmd + dv, -self.max_linear_vel, self.max_linear_vel)
         self.omega_cmd = np.clip(self.omega_cmd + domega, -self.max_angular_vel, self.max_angular_vel)
 
-        # Convert (v_cmd, ω_cmd) to wheel angular velocities (rad/s)
+        # Convert MPC's (v_cmd, ω_cmd) to TARGET wheel velocities (rad/s)
+        # These are what the MPC wants the wheels to achieve
         # v = (r/2)(ωL + ωR), ω = (r/L)(ωR - ωL)
-        v = self.v_cmd +dv; # lag compensation
-        w = self.omega_cmd +domega; # lag compensation
-
+        # Solving for ωL, ωR:
+        #   ωL = v/r - ω*L/(2r)
+        #   ωR = v/r + ω*L/(2r)
         if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
-            omega_L = 0.0
-            omega_R = 0.0
+            omega_L_target = 0.0
+            omega_R_target = 0.0
         else:
-            omega_L = (v / self.wheel_radius) - (w * self.wheel_base / (2.0 * self.wheel_radius))
-            omega_R = (v / self.wheel_radius) + (w * self.wheel_base / (2.0 * self.wheel_radius))
+            omega_L_target = (self.v_cmd / self.wheel_radius) - (self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius))
+            omega_R_target = (self.v_cmd / self.wheel_radius) + (self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius))
 
-        # Convert to motor rev/s
-        left_rps = omega_L / (2.0 * math.pi * self.gear_ratio)
-        right_rps = omega_R / (2.0 * math.pi * self.gear_ratio)
+        # Convert target wheel angular velocities (rad/s) to motor rev/s
+        # This is the unit that ODrive expects and that the compensator works in
+        left_rps_target = omega_L_target / (2.0 * math.pi * self.gear_ratio)
+        right_rps_target = omega_R_target / (2.0 * math.pi * self.gear_ratio)
 
-        self.publish_wheel_velocities(left_rps, right_rps)
+        # Apply wheel-level ramp compensation if enabled
+        if self.ramp_compensation_enabled:
+            # Compensate for ramp dynamics at each wheel independently
+            # This computes effective velocities to command such that actual
+            # wheel displacement matches what MPC expects over the cycle time
+            left_rps_eff, right_rps_eff = self.wheel_compensator.compensate(
+                left_rps_target, right_rps_target
+            )
+        else:
+            # Direct command (legacy behavior)
+            left_rps_eff = left_rps_target
+            right_rps_eff = right_rps_target
+
+        self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
+
+        # For diagnostics: compute effective v and ω from compensated wheel velocities
+        omega_L_eff = left_rps_eff * 2.0 * math.pi * self.gear_ratio
+        omega_R_eff = right_rps_eff * 2.0 * math.pi * self.gear_ratio
+        v_eff = self.wheel_radius * (omega_L_eff + omega_R_eff) / 2.0
+        w_eff = self.wheel_radius * (omega_R_eff - omega_L_eff) / self.wheel_base if abs(self.wheel_base) > 1e-6 else 0.0
 
         # Publish diagnostics
         try:
-            # Command Twist
+            # Command Twist (shows effective/compensated velocities sent to wheels)
             twist = Twist()
-            twist.linear.x = float(v)
-            twist.angular.z = float(w)
+            twist.linear.x = float(v_eff)
+            twist.angular.z = float(w_eff)
             self.cmd_pub.publish(twist)
 
             # Delta command [Δv, Δω]
@@ -1667,16 +1943,20 @@ class MPCAccelController(Node):
         left_cmd = -left_rps if self.invert_left else left_rps
         right_cmd = -right_rps if self.invert_right else right_rps
 
+        # Use VEL_RAMP (2) when compensation is enabled, PASSTHROUGH (1) otherwise
+        # The ramp compensation math assumes VEL_RAMP mode on ODrive
+        input_mode = 2 if self.ramp_compensation_enabled else 1
+
         left_msg = ControlMessage()
         left_msg.control_mode = 2  # VELOCITY_CONTROL
-        left_msg.input_mode = 1   # PASSTHROUGH
+        left_msg.input_mode = input_mode
         left_msg.input_vel = float(left_cmd)
         left_msg.input_torque = 0.0
         left_msg.input_pos = 0.0
 
         right_msg = ControlMessage()
         right_msg.control_mode = 2
-        right_msg.input_mode = 1
+        right_msg.input_mode = input_mode
         right_msg.input_vel = float(right_cmd)
         right_msg.input_torque = 0.0
         right_msg.input_pos = 0.0
@@ -1685,7 +1965,13 @@ class MPCAccelController(Node):
         self.right_pub.publish(right_msg)
 
     def send_zero_velocity(self) -> None:
+        """Send zero velocity and reset compensator state."""
         self.publish_wheel_velocities(0.0, 0.0)
+        # Reset compensator to zero state (wheels are stopped)
+        self.wheel_compensator.reset()
+        # Also reset MPC's internal velocity state
+        self.v_cmd = 0.0
+        self.omega_cmd = 0.0
 
     # -----------------------------
     # Motor arming / soft shutdown
