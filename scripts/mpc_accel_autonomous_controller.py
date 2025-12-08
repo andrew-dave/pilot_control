@@ -37,7 +37,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, String, Bool
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
@@ -49,6 +49,7 @@ from typing import List, Tuple, Optional
 import time
 import os
 import signal
+import csv
 
 # Optional dependencies for MPC
 try:
@@ -113,6 +114,7 @@ class AccelMPC:
         weight_increase_xe: float = 0.0,
         weight_increase_ye: float = 0.0,
         weight_increase_yaw: float = 0.0,
+        solver_debug_enabled: bool = False,
     ) -> None:
         self.N = int(N)
         self.Ts = float(Ts)
@@ -165,6 +167,9 @@ class AccelMPC:
 
         # Debug result storage
         self._last_result = None
+
+        # Solver debug / verbosity
+        self.solver_debug_enabled = bool(solver_debug_enabled)
 
         # Flag
         self.initialized = False
@@ -420,7 +425,7 @@ class AccelMPC:
             A=self.A_constr,
             l=self.l_constr,
             u=self.u_constr,
-            verbose=False,
+            verbose=self.solver_debug_enabled,
             warm_start=True,
             polish=True,
         )
@@ -745,10 +750,27 @@ class MPCAccelController(Node):
         self.declare_parameter("mpc_weight_increase_xe", 0.0)
         self.declare_parameter("mpc_weight_increase_ye", 0.0)
         self.declare_parameter("mpc_weight_increase_yaw", 0.0)
+        # Compatibility parameters with MPCAutonomousController (even if unused)
+        self.declare_parameter("slip_history_length", 100)
+        self.declare_parameter("slip_estimation_window", 1.0)
+        self.declare_parameter("lookahead_distance", 0.5)
+        self.declare_parameter("waypoints_csv_path", "")
 
+        # Autonomy / behavior flags
+        self.declare_parameter("mpc_autonomy_enabled_default", False)
+        self.declare_parameter("enable_yaw_gating", False)
+
+        # Topic parameters
         self.declare_parameter("odometry_topic", "/Odometry_tilt_corrected_diff")
         self.declare_parameter("left_control_topic", "/left/control_message")
         self.declare_parameter("right_control_topic", "/right/control_message")
+        # Encoder topics are unused here but declared for launch compatibility
+        self.declare_parameter("left_encoder_topic", "/left/controller_status")
+        self.declare_parameter("right_encoder_topic", "/right/controller_status")
+
+        # Solver debug flag (wired into AccelMPC)
+        self.declare_parameter("solver_debug_enabled", False)
+
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
@@ -777,9 +799,35 @@ class MPCAccelController(Node):
         mpc_weight_increase_ye = float(self.get_parameter("mpc_weight_increase_ye").value)
         mpc_weight_increase_yaw = float(self.get_parameter("mpc_weight_increase_yaw").value)
 
+        # Misc / compatibility params (some unused but kept for drop-in replacement)
+        self.slip_history_length = int(self.get_parameter("slip_history_length").value)
+        self.slip_estimation_window = float(
+            self.get_parameter("slip_estimation_window").value
+        )
+        self.lookahead_distance = float(self.get_parameter("lookahead_distance").value)
+        self.waypoints_csv_path = str(self.get_parameter("waypoints_csv_path").value)
+
+        # Autonomy flags
+        self.autonomy_enabled: bool = bool(
+            self.get_parameter("mpc_autonomy_enabled_default").value
+        )
+        self.enable_yaw_gating: bool = bool(
+            self.get_parameter("enable_yaw_gating").value
+        )
+
+        # Topic names
         odom_topic = str(self.get_parameter("odometry_topic").value)
         left_ctrl_topic = str(self.get_parameter("left_control_topic").value)
         right_ctrl_topic = str(self.get_parameter("right_control_topic").value)
+        # encoder topics retrieved but unused (for compatibility)
+        self.left_encoder_topic = str(self.get_parameter("left_encoder_topic").value)
+        self.right_encoder_topic = str(self.get_parameter("right_encoder_topic").value)
+
+        # Solver debug
+        self.solver_debug_enabled: bool = bool(
+            self.get_parameter("solver_debug_enabled").value
+        )
+
         self.target_reached_threshold = float(
             self.get_parameter("target_reached_threshold").value
         )
@@ -808,6 +856,15 @@ class MPCAccelController(Node):
         self.path_start_y = 0.0
         self.path_start_yaw = 0.0
         self.path_initialized = False
+
+        # Waypoint sequence state (CSV / F2C waypoints)
+        self.waypoints: List[Tuple[float, float]] = []
+        self.current_waypoint_index: int = 0
+        self.waypoint_navigation_active: bool = False
+        self.previous_waypoint: Optional[Tuple[float, float]] = None
+
+        # Pending waypoints received from F2C GUI (until "Start Navigation" pressed)
+        self.pending_waypoints: List[Tuple[float, float]] = []
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -838,6 +895,7 @@ class MPCAccelController(Node):
             weight_increase_xe=mpc_weight_increase_xe,
             weight_increase_ye=mpc_weight_increase_ye,
             weight_increase_yaw=mpc_weight_increase_yaw,
+            solver_debug_enabled=self.solver_debug_enabled,
         )
 
         # Subscribers
@@ -852,6 +910,31 @@ class MPCAccelController(Node):
             Float64MultiArray,
             "/set_target_pose",
             self.set_target_callback,
+            10,
+        )
+
+        # Subscribe to waypoint CSV trigger (topic name matches MPCAutonomousController)
+        self.waypoint_nav_sub = self.create_subscription(
+            String,
+            "/start_waypoint_navigation",
+            self.start_waypoint_navigation_callback,
+            10,
+        )
+
+        # Subscriber for direct waypoint arrays from F2C GUI
+        # Format: [x1, y1, x2, y2, ...] (pairs of x,y) or [0.0] as "start" signal
+        self.f2c_waypoint_array_sub = self.create_subscription(
+            Float64MultiArray,
+            "/f2c_waypoints",
+            self.f2c_waypoint_array_callback,
+            10,
+        )
+
+        # Autonomy enable / disable (same topic as MPCAutonomousController)
+        self.autonomy_enable_sub = self.create_subscription(
+            Bool,
+            "/mpc_autonomy_enable",
+            self.autonomy_enable_callback,
             10,
         )
 
@@ -896,6 +979,13 @@ class MPCAccelController(Node):
             self._soft_shutdown_service,
         )
 
+        # Alias soft-shutdown service name for drop-in replacement with MPCAutonomousController
+        self.soft_shutdown_alias_srv = self.create_service(
+            Trigger,
+            "/mpc_autonomous_controller/soft_shutdown",
+            self._soft_shutdown_service,
+        )
+
         # Control loop timer
         period = 1.0 / self.control_freq if self.control_freq > 0.0 else 0.1
         self.control_timer = self.create_timer(period, self.control_loop)
@@ -937,6 +1027,10 @@ class MPCAccelController(Node):
         if not self.pose_initialized:
             self.get_logger().warning("Cannot set target: odometry not initialized")
             return
+
+        # Manual target pose clears any active waypoint navigation
+        self.waypoint_navigation_active = False
+        self.pending_waypoints = []
 
         self.target_x = float(data[0])
         self.target_y = float(data[1])
@@ -1083,10 +1177,296 @@ class MPCAccelController(Node):
         return np.array([xe, ye, yaw_err], dtype=float)
 
     # -----------------------------
+    # Waypoint helpers (CSV + F2C)
+    # -----------------------------
+
+    def _load_waypoints_from_csv(self, csv_file_path: str) -> List[Tuple[float, float]]:
+        """
+        Load a list of (x, y) waypoints from a CSV file.
+        CSV format: x,y per row (header row is allowed and skipped).
+        """
+        waypoints: List[Tuple[float, float]] = []
+        try:
+            with open(csv_file_path, "r", newline="") as csvfile:
+                reader = csv.reader(csvfile)
+                for row_num, row in enumerate(reader):
+                    if not row:
+                        continue
+                    try:
+                        x = float(row[0].strip())
+                        y = float(row[1].strip())
+                        waypoints.append((x, y))
+                    except (ValueError, IndexError):
+                        if row_num == 0 and any(
+                            keyword in " ".join(row).lower()
+                            for keyword in ["x", "y", "waypoint", "point"]
+                        ):
+                            # Likely a header row
+                            continue
+                        else:
+                            self.get_logger().warn(
+                                f"Skipping invalid row {row_num + 1} in waypoint CSV: {row}"
+                            )
+                            continue
+        except Exception as e:
+            self.get_logger().error(
+                f'Error parsing waypoint CSV file "{csv_file_path}": {e}'
+            )
+            return []
+
+        if waypoints:
+            self.get_logger().info(
+                f'Parsed {len(waypoints)} waypoints from "{csv_file_path}"'
+            )
+        return waypoints
+
+    def _set_next_waypoint_target(self) -> None:
+        """
+        Set the next waypoint in the sequence as the current MPC target.
+
+        Behavior:
+        - target_x, target_y: current waypoint coordinates.
+        - target_yaw: heading from previous waypoint to current waypoint
+          (or current yaw for the very first waypoint).
+        - Path start is set to the robot's current pose so we generate a
+          straight-line path segment from the current position to the waypoint.
+        """
+        if not self.waypoint_navigation_active:
+            return
+        if self.current_waypoint_index >= len(self.waypoints):
+            # No more waypoints
+            self.has_target = False
+            return
+
+        wp_x, wp_y = self.waypoints[self.current_waypoint_index]
+        self.target_x = float(wp_x)
+        self.target_y = float(wp_y)
+
+        # Compute target yaw based on previous waypoint if available
+        if self.previous_waypoint is not None:
+            dx = self.target_x - self.previous_waypoint[0]
+            dy = self.target_y - self.previous_waypoint[1]
+            self.target_yaw = math.atan2(dy, dx)
+        else:
+            # First waypoint: use current yaw as target yaw
+            self.target_yaw = self.current_yaw
+
+        # Initialize path start at current pose for straight-line control
+        self.path_start_x = self.current_x
+        self.path_start_y = self.current_y
+        self.path_start_yaw = self.current_yaw
+        self.path_initialized = True
+
+        self.has_target = True
+        self.target_reached = False
+
+        self.get_logger().info(
+            f"🎯 New waypoint target {self.current_waypoint_index + 1}/"
+            f"{len(self.waypoints)}: x={self.target_x:.2f}, y={self.target_y:.2f}, "
+            f"yaw_target={math.degrees(self.target_yaw):.1f}°"
+        )
+
+    def start_waypoint_navigation_callback(self, msg: String) -> None:
+        """
+        Topic callback to start waypoint navigation with CSV file.
+        Receives std_msgs/String message containing CSV file path.
+        """
+        try:
+            csv_file_path = msg.data.strip()
+            if not csv_file_path:
+                self.get_logger().error(
+                    "Received empty CSV file path for waypoint navigation"
+                )
+                return
+
+            if not os.path.exists(csv_file_path):
+                self.get_logger().error(f"CSV file not found: {csv_file_path}")
+                return
+
+            # Parse waypoints from CSV
+            waypoints = self._load_waypoints_from_csv(csv_file_path)
+            if len(waypoints) < 1:
+                self.get_logger().error(
+                    f"No valid waypoints found in CSV: {csv_file_path}"
+                )
+                return
+
+            # Ensure odometry is initialized before starting navigation
+            if not self.pose_initialized:
+                self.get_logger().error(
+                    "Odometry not initialized yet - cannot start waypoint navigation"
+                )
+                return
+
+            # Initialize waypoint navigation
+            self.waypoints = waypoints
+            self.current_waypoint_index = 0
+            self.waypoint_navigation_active = True
+
+            # For first waypoint, use current position as previous waypoint so
+            # the target yaw is along the line from current pose to first waypoint
+            self.previous_waypoint = (self.current_x, self.current_y)
+
+            # Start navigation to first waypoint immediately
+            self._set_next_waypoint_target()
+
+            self.get_logger().info(
+                f"✓ Waypoint navigation started: {len(waypoints)} waypoints "
+                f'loaded from "{csv_file_path}"'
+            )
+        except Exception as e:
+            self.get_logger().error(f"Error starting waypoint navigation: {e}")
+
+    def f2c_waypoint_array_callback(self, msg: Float64MultiArray) -> None:
+        """
+        Callback for waypoint arrays from F2C GUI.
+        Format: [x1, y1, x2, y2, ...] (pairs of x,y coordinates)
+
+        Behavior:
+          - When receiving waypoint list: Store in pending_waypoints (don't start yet)
+          - When receiving [0.0] signal: Start navigation with pending waypoints
+        """
+        try:
+            data = list(msg.data)
+            if len(data) == 0:
+                self.get_logger().warn("Received empty /f2c_waypoints message")
+                return
+
+            # [0.0] is the "Start Navigation" signal from F2C GUI
+            if len(data) == 1 and data[0] == 0.0:
+                self.get_logger().info("Received /f2c_waypoints start signal [0.0]")
+                self._start_pending_navigation()
+                return
+
+            if len(data) % 2 != 0:
+                self.get_logger().error(
+                    f"/f2c_waypoints length {len(data)} not divisible by 2; "
+                    f"expected [x1,y1, x2,y2, ...]"
+                )
+                return
+
+            num_waypoints = len(data) // 2
+            waypoints_xy: List[Tuple[float, float]] = []
+            for i in range(0, len(data), 2):
+                x, y = data[i], data[i + 1]
+                waypoints_xy.append((float(x), float(y)))
+
+            if not waypoints_xy:
+                self.get_logger().error("Parsed zero waypoints from /f2c_waypoints")
+                return
+
+            # Store waypoints as pending (don't start navigation yet)
+            self.pending_waypoints = waypoints_xy
+
+            self.get_logger().info("")
+            self.get_logger().info(
+                "╔═══════════════════════════════════════════════════════╗"
+            )
+            self.get_logger().info(
+                f"║  📡 RECEIVED {num_waypoints} WAYPOINTS FROM F2C GUI"
+            )
+            self.get_logger().info(
+                '║  ⏳ Waiting for "Start Navigation" button...         ║'
+            )
+            self.get_logger().info(
+                "║  (Or press X to enable MPC, then click Start)        ║"
+            )
+            self.get_logger().info(
+                "╚═══════════════════════════════════════════════════════╝"
+            )
+            self.get_logger().info("")
+
+            # Log first few waypoints for verification
+            for idx, (x, y) in enumerate(waypoints_xy[:5]):
+                self.get_logger().info(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}")
+            if num_waypoints > 5:
+                self.get_logger().info(
+                    f"  ... and {num_waypoints - 5} more waypoints"
+                )
+
+        except Exception as e:
+            self.get_logger().error(f"Error handling /f2c_waypoints: {e}")
+
+    def _start_pending_navigation(self) -> None:
+        """
+        Start navigation with previously received pending waypoints.
+        Called when "Start Navigation" button is pressed in F2C GUI (sends [0.0] signal).
+        """
+        if not self.pending_waypoints:
+            self.get_logger().warn(
+                "⚠️  No pending waypoints to navigate - publish waypoints first!"
+            )
+            return
+
+        if not self.pose_initialized:
+            self.get_logger().error(
+                "❌ Odometry not initialized yet - cannot start navigation"
+            )
+            return
+
+        # Transfer pending waypoints to active navigation
+        self.waypoints = self.pending_waypoints.copy()
+        self.pending_waypoints = []  # Clear pending
+        self.current_waypoint_index = 0
+        self.waypoint_navigation_active = True
+        self.previous_waypoint = (self.current_x, self.current_y)
+
+        # Start navigation to first waypoint
+        self._set_next_waypoint_target()
+
+        self.get_logger().info("")
+        self.get_logger().info(
+            "╔═══════════════════════════════════════════════════════╗"
+        )
+        self.get_logger().info(
+            f"║  🚀 NAVIGATION STARTED: {len(self.waypoints)} waypoints"
+        )
+        if self.autonomy_enabled:
+            self.get_logger().info(
+                "║  ✅ MPC autonomy is ENABLED - robot will move         ║"
+            )
+        else:
+            self.get_logger().info(
+                "║  ⚠️  MPC autonomy DISABLED - press X to enable!       ║"
+            )
+        self.get_logger().info(
+            "╚═══════════════════════════════════════════════════════╝"
+        )
+        self.get_logger().info("")
+
+    def autonomy_enable_callback(self, msg: Bool) -> None:
+        """
+        Enable or disable MPC autonomy.
+        When disabled, the controller will not publish ODrive commands even if
+        targets or waypoints are available (teleop can control the robot).
+        """
+        self.autonomy_enabled = bool(msg.data)
+        state = "ENABLED" if self.autonomy_enabled else "DISABLED"
+        self.get_logger().info(f"MPC autonomy {state} via /mpc_autonomy_enable")
+
+    # -----------------------------
     # Control loop
     # -----------------------------
     def control_loop(self) -> None:
-        if not self.pose_initialized or not self.has_target:
+        # When autonomy is disabled, remain completely silent (teleop controls motors)
+        if not self.autonomy_enabled:
+            return
+
+        if not self.pose_initialized:
+            self.send_zero_velocity()
+            return
+
+        # If using CSV/F2C waypoint navigation and we don't currently have a target,
+        # set the next waypoint as the current target (once pose is initialized).
+        if self.waypoint_navigation_active and not self.has_target:
+            if self.current_waypoint_index < len(self.waypoints):
+                self._set_next_waypoint_target()
+            else:
+                # No more waypoints → stop
+                self.send_zero_velocity()
+                return
+
+        if not self.has_target:
             self.send_zero_velocity()
             return
 
@@ -1113,19 +1493,43 @@ class MPCAccelController(Node):
         else:
             dx_to_target = self.target_x - self.current_x
             dy_to_target = self.target_y - self.current_y
-            distance_along_line_remaining = math.sqrt(dx_to_target ** 2 + dy_to_target ** 2)
+            distance_along_line_remaining = math.sqrt(
+                dx_to_target ** 2 + dy_to_target ** 2
+            )
 
         if distance_along_line_remaining <= self.target_reached_threshold:
-            # Final target reached
-            self.has_target = False
+            # Target reached along current line segment
             self.target_reached = True
-            self.send_zero_velocity()
-            self.get_logger().info(
-                f"✅ MPC accel target reached along line: "
-                f"{distance_along_line_remaining:.3f} m "
-                f"(threshold: {self.target_reached_threshold:.3f} m)"
-            )
-            return
+
+            # If we are following a waypoint sequence and more waypoints remain,
+            # advance to the next waypoint (one per control step).
+            if (
+                self.waypoint_navigation_active
+                and self.current_waypoint_index < len(self.waypoints) - 1
+            ):
+                self.get_logger().info(
+                    f"✅ Waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)} "
+                    f"reached at x={self.current_x:.3f}m, y={self.current_y:.3f}m"
+                )
+                # Update previous waypoint and advance index
+                self.previous_waypoint = (self.target_x, self.target_y)
+                self.current_waypoint_index += 1
+                # Clear current target; next loop will call _set_next_waypoint_target()
+                self.has_target = False
+                # Optionally send a brief stop at the waypoint
+                self.send_zero_velocity()
+                return
+            else:
+                # Final target reached (single target or last waypoint)
+                self.has_target = False
+                self.waypoint_navigation_active = False
+                self.send_zero_velocity()
+                self.get_logger().info(
+                    f"✅ MPC accel target reached along line: "
+                    f"{distance_along_line_remaining:.3f} m "
+                    f"(threshold: {self.target_reached_threshold:.3f} m)"
+                )
+                return
 
         # Build reference trajectory
         ref_traj = self.generate_reference_trajectory()
@@ -1251,20 +1655,6 @@ class MPCAccelController(Node):
                 self.ref_traj_pub.publish(ref_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
-
-        # If close enough to target, stop
-        dist_to_target = math.sqrt(
-            (self.target_x - self.current_x) ** 2
-            + (self.target_y - self.current_y) ** 2
-        )
-        if dist_to_target < 0.02:
-            self.get_logger().info(
-                f"✅ MPC accel target reached: dist={dist_to_target:.3f} m"
-            )
-            self.has_target = False
-            self.v_cmd = 0.0
-            self.omega_cmd = 0.0
-            self.send_zero_velocity()
 
         # Optional log for debugging
         if solve_ms is not None:
