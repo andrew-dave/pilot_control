@@ -76,12 +76,12 @@ def generate_launch_description():
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
         "mpc_Q_xe",
-        default_value="16.67", #was 16.67``
+        default_value="16.67", #266.0
         description="MPC cost weight for position error x",
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
         "mpc_Q_ye",
-        default_value="16.67",#was 16.67
+        default_value="16.67", #120.0
         description="MPC cost weight for position error y (higher for lateral correction)",
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
@@ -92,7 +92,7 @@ def generate_launch_description():
     # Separate Δ-costs for linear and angular velocity
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         "mpc_R_delta_v",
-        default_value="0.06675", #was 2.67
+        default_value="0.6675", #was 2.67
         description="MPC cost weight for change in linear velocity (Δv)",
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
