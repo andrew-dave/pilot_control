@@ -161,8 +161,17 @@ class WheelRampCompensator:
         The goal is that total wheel displacement over Ts equals:
             θ_desired = omega_target * Ts
         
-        With VEL_RAMP mode, the actual displacement depends on the ramp profile.
-        We solve for omega_eff such that the ramped displacement matches θ_desired.
+        With delay τ_d and VEL_RAMP mode, the actual displacement is:
+            θ_actual = ω_prev × τ_d  +  [ramp displacement over Ts_eff]
+                     = ω_prev × τ_d  +  ω_prev × Ts_eff + Δω_eff × Ts_eff - Δω_eff²/(2R)
+                     = ω_prev × Ts   +  Δω_eff × Ts_eff - Δω_eff²/(2R)
+        
+        Setting θ_actual = θ_desired:
+            ω_prev × Ts + Δω_eff × Ts_eff - Δω_eff²/(2R) = ω_target × Ts
+            Δω_eff × Ts_eff - Δω_eff²/(2R) = Δω_target × Ts
+        
+        This is a quadratic in Δω_eff with solution:
+            Δω_eff = R×Ts_eff - √((R×Ts_eff)² - 2×R×Ts×Δω_target)
         """
         R = self.ramp_rate
         Ts = self.cycle_time
@@ -178,9 +187,10 @@ class WheelRampCompensator:
         if abs(delta_target) < 1e-9:
             return omega_target, omega_target
         
-        # Maximum change that can be fully compensated within Ts_eff
-        # This comes from the constraint that discriminant >= 0
-        max_compensatable_delta = R * Ts_eff / 2.0
+        # Maximum change that can be fully compensated
+        # From discriminant >= 0: (R×Ts_eff)² >= 2×R×Ts×|Δω_target|
+        # => |Δω_target| <= R × Ts_eff² / (2 × Ts)
+        max_compensatable_delta = R * Ts_eff * Ts_eff / (2.0 * Ts)
         
         # Direction of velocity change
         sign_delta = 1.0 if delta_target > 0 else -1.0
@@ -188,11 +198,11 @@ class WheelRampCompensator:
         
         if abs_delta_target <= max_compensatable_delta:
             # --- CASE 1: Can fully compensate ---
-            # Solve: Δω_eff * Ts_eff - Δω_eff² / (2R) = Δω_target * Ts_eff
-            # Quadratic: Δω_eff² - 2*R*Ts_eff*Δω_eff + 2*R*Ts_eff*|Δω_target| = 0
-            # Solution: Δω_eff = R*Ts_eff - sqrt((R*Ts_eff)² - 2*R*Ts_eff*|Δω_target|)
+            # Solve: Δω_eff × Ts_eff - Δω_eff²/(2R) = Δω_target × Ts
+            # Quadratic: Δω_eff² - 2×R×Ts_eff×Δω_eff + 2×R×Ts×|Δω_target| = 0
+            # Solution: Δω_eff = R×Ts_eff - √((R×Ts_eff)² - 2×R×Ts×|Δω_target|)
             
-            discriminant = (R * Ts_eff) ** 2 - 2.0 * R * Ts_eff * abs_delta_target
+            discriminant = (R * Ts_eff) ** 2 - 2.0 * R * Ts * abs_delta_target
             
             # Numerical protection
             if discriminant < 0:
