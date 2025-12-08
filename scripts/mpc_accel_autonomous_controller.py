@@ -1606,8 +1606,8 @@ class MPCAccelController(Node):
 
         # Convert (v_cmd, ω_cmd) to wheel angular velocities (rad/s)
         # v = (r/2)(ωL + ωR), ω = (r/L)(ωR - ωL)
-        v = self.v_cmd
-        w = self.omega_cmd
+        v = self.v_cmd +dv; # lag compensation
+        w = self.omega_cmd +domega; # lag compensation
 
         if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
             omega_L = 0.0
