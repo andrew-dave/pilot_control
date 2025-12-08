@@ -866,6 +866,9 @@ class MPCAccelController(Node):
         self.ref_traj_pub = self.create_publisher(
             Float64MultiArray, "/mpc_accel/reference_trajectory", 10
         )
+        self.delta_cmd_pub = self.create_publisher(
+            Float64MultiArray, "/mpc_accel/delta_cmd", 10
+        )
 
         # ODrive axis state / clear error clients for arming/disarming
         self.left_axis_client = self.create_client(
@@ -1222,6 +1225,11 @@ class MPCAccelController(Node):
             twist.linear.x = float(v)
             twist.angular.z = float(w)
             self.cmd_pub.publish(twist)
+
+            # Delta command [Δv, Δω]
+            delta_msg = Float64MultiArray()
+            delta_msg.data = [dv, domega]
+            self.delta_cmd_pub.publish(delta_msg)
 
             # Error state [xe, ye, θe]
             err_msg = Float64MultiArray()
