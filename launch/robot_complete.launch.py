@@ -366,12 +366,11 @@ def generate_launch_description():
         ]
     )
 
-    # MPC Autonomous Controller - MPC-based autonomous waypoint navigation
-    # Uses tilt-corrected odometry and ODrive CAN wheel encoders.
+    # Accel MPC Autonomous Controller - drop-in replacement with accel-based MPC
     mpc_controller_node = Node(
         package='pilot_control',
-        executable='mpc_autonomous_controller.py',
-        name='mpc_autonomous_controller',
+        executable='mpc_accel_autonomous_controller.py',
+        name='mpc_accel_autonomous_controller',
         output='screen',
         parameters=[{
             # Robot kinematics
@@ -386,24 +385,21 @@ def generate_launch_description():
             'max_linear_velocity': 0.5,         # m/s
             'max_angular_velocity': 2.0,        # rad/s
 
-            # MPC parameters
+            # MPC parameters (Accel controller)
             'mpc_horizon': 50,
             'mpc_dt': 0.1,
             'mpc_Q_xe': 20.0,
             'mpc_Q_ye': 15.0,
             'mpc_Q_yaw': 8.0,
-            # Separate Δ-costs for linear and angular velocity (matching mpc_autonomous_controller)
             'mpc_R_delta_v': 0.075,
             'mpc_R_delta_omega': 0.010,
             'mpc_weight_increase_xe': 0.00,
             'mpc_weight_increase_ye': 0.10,
             'mpc_weight_increase_yaw': 0.20,
 
-            # Slip estimation parameters
+            # Slip/waypoint parameters (accepted for compatibility; slip unused)
             'slip_history_length': 100,
             'slip_estimation_window': 1.0,
-
-            # Waypoint / stopping parameters
             'lookahead_distance': 0.5,
             'target_reached_threshold': 0.01,
 
