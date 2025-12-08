@@ -187,55 +187,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    # Accel MPC controller script path (works in both src/ and install layouts)
-    if "/src/" in path_str:
-        # Source layout: src/pilot_control/scripts/mpc_accel_autonomous_controller.py
-        src_base = Path(path_str[: path_str.index("/src/") + 4])
-        source_script_dir = src_base / "pilot_control" / "scripts"
-        mpc_accel_controller_path = str(
-            source_script_dir / "mpc_accel_autonomous_controller.py"
-        )
-    elif "/install/" in path_str:
-        # Install layout: install/pilot_control/lib/pilot_control/mpc_accel_autonomous_controller.py
-        install_base = Path(path_str[: path_str.index("/install/") + 8])
-        install_script_dir = install_base / "pilot_control" / "lib" / "pilot_control"
-        mpc_accel_controller_path = str(
-            install_script_dir / "mpc_accel_autonomous_controller.py"
-        )
-    else:
-        # Fallback: relative to this launch file (for dev/test)
-        source_script_dir = launch_file_path.parent.parent / "scripts"
-        mpc_accel_controller_path = str(
-            source_script_dir / "mpc_accel_autonomous_controller.py"
-        )
-
-    # Run the accel MPC controller as a plain Python process. The node itself
-    # declares parameters with sensible defaults; here we forward all key
-    # launch-time parameters for tuning.
-    mpc_accel_controller_proc = ExecuteProcess(
-        cmd=[
-            "python3",
-            mpc_accel_controller_path,
-            "--ros-args",
-            # MPC tuning parameters forwarded from launch
-            "-p", ["mpc_horizon:=", LaunchConfiguration("mpc_horizon")],
-            "-p", ["mpc_dt:=", LaunchConfiguration("mpc_dt")],
-            "-p", ["mpc_Q_xe:=", LaunchConfiguration("mpc_Q_xe")],
-            "-p", ["mpc_Q_ye:=", LaunchConfiguration("mpc_Q_ye")],
-            "-p", ["mpc_Q_yaw:=", LaunchConfiguration("mpc_Q_yaw")],
-            "-p", ["mpc_R_delta_v:=", LaunchConfiguration("mpc_R_delta_v")],
-            "-p", ["mpc_R_delta_omega:=", LaunchConfiguration("mpc_R_delta_omega")],
-            "-p", ["mpc_dv_max:=", LaunchConfiguration("mpc_dv_max")],
-            "-p", ["mpc_domega_max:=", LaunchConfiguration("mpc_domega_max")],
-            "-p", ["mpc_weight_increase_xe:=", LaunchConfiguration("mpc_weight_increase_xe")],
-            "-p", ["mpc_weight_increase_ye:=", LaunchConfiguration("mpc_weight_increase_ye")],
-            "-p", ["mpc_weight_increase_yaw:=", LaunchConfiguration("mpc_weight_increase_yaw")],
-            "-p", ["max_linear_velocity:=", LaunchConfiguration("max_linear_velocity")],
-            "-p", ["max_angular_velocity:=", LaunchConfiguration("max_angular_velocity")],
-        ],
-        output="screen",
-    )
-
     # CAN setup
     can_setup = ExecuteProcess(
         cmd=[
@@ -267,6 +218,51 @@ def generate_launch_description():
             }
         ],
         output="screen",
+    )
+
+    # Accel MPC Autonomous Controller - acceleration-based MPC navigation
+    mpc_accel_controller_node = Node(
+        package="pilot_control",
+        executable="mpc_accel_autonomous_controller.py",
+        prefix="taskset -c 5",
+        name="mpc_accel_autonomous_controller",
+        output="screen",
+        parameters=[
+            {
+                # Robot kinematics
+                "wheel_radius": LaunchConfiguration("wheel_radius"),
+                "wheel_base": LaunchConfiguration("wheel_base"),
+                "gear_ratio": LaunchConfiguration("gear_ratio"),
+                "invert_left": LaunchConfiguration("invert_left"),
+                "invert_right": LaunchConfiguration("invert_right"),
+                # Control parameters
+                "control_frequency": LaunchConfiguration("control_frequency"),
+                "max_linear_velocity": LaunchConfiguration("max_linear_velocity"),
+                "max_angular_velocity": LaunchConfiguration("max_angular_velocity"),
+                # MPC parameters (using accel-specific defaults from this launch file)
+                "mpc_horizon": LaunchConfiguration("mpc_horizon"),
+                "mpc_dt": LaunchConfiguration("mpc_dt"),
+                "mpc_Q_xe": LaunchConfiguration("mpc_Q_xe"),
+                "mpc_Q_ye": LaunchConfiguration("mpc_Q_ye"),
+                "mpc_Q_yaw": LaunchConfiguration("mpc_Q_yaw"),
+                "mpc_R_delta_v": LaunchConfiguration("mpc_R_delta_v"),
+                "mpc_R_delta_omega": LaunchConfiguration("mpc_R_delta_omega"),
+                "mpc_dv_max": LaunchConfiguration("mpc_dv_max"),
+                "mpc_domega_max": LaunchConfiguration("mpc_domega_max"),
+                "mpc_weight_increase_xe": LaunchConfiguration("mpc_weight_increase_xe"),
+                "mpc_weight_increase_ye": LaunchConfiguration("mpc_weight_increase_ye"),
+                "mpc_weight_increase_yaw": LaunchConfiguration("mpc_weight_increase_yaw"),
+                # Error-reference shaping near start of each segment
+                "error_ref_ahead_min_scale": 0.02,
+                "error_ref_gate_distance": 0.20,
+                # Autonomy default: start enabled when using this dedicated MPC launch
+                "mpc_autonomy_enabled_default": True,
+                # Topic names
+                "odometry_topic": LaunchConfiguration("odometry_topic"),
+                "left_control_topic": LaunchConfiguration("left_control_topic"),
+                "right_control_topic": LaunchConfiguration("right_control_topic"),
+            }
+        ],
     )
 
     right_odrive_node = Node(
@@ -398,7 +394,7 @@ def generate_launch_description():
                     livox_driver,
                     fast_lio_node,
                     odom_tilt_corrector_proc,
-                    mpc_accel_controller_proc,
+                    mpc_accel_controller_node,
                     body_to_foot_transform,
                     camera_init_to_foot_init_transform,
                     shutdown_service_node,
