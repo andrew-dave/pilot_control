@@ -159,8 +159,8 @@ class ActuationDelayMeasurement(Node):
         self.left_axis_state = int(msg.axis_state)
         
         if self.recording and self.current_data and self.current_data.wheel in ['left', 'both']:
-            t = time.time() - self.current_data.command_time
-            self.current_data.timestamps.append(t)
+            # Store absolute timestamp - will be converted to relative later
+            self.current_data.timestamps.append(time.time())
             self.current_data.velocities.append(self.left_vel)
     
     def right_status_callback(self, msg: ControllerStatus):
@@ -170,8 +170,8 @@ class ActuationDelayMeasurement(Node):
         self.right_axis_state = int(msg.axis_state)
         
         if self.recording and self.current_data and self.current_data.wheel in ['right', 'both']:
-            t = time.time() - self.current_data.command_time
-            self.current_data.timestamps.append(t)
+            # Store absolute timestamp - will be converted to relative later
+            self.current_data.timestamps.append(time.time())
             self.current_data.velocities.append(self.right_vel)
     
     def _start_odrive_nodes(self) -> bool:
@@ -427,21 +427,28 @@ class ActuationDelayMeasurement(Node):
         self.current_data = StepResponseData(
             wheel=wheel,
             step_magnitude=step_mag,
-            direction=direction
+            direction=direction,
         )
         
-        # Record some baseline data
+        # Record baseline data (absolute timestamps stored by callbacks)
         self.recording = True
-        time.sleep(0.1)
+        time.sleep(0.15)  # Record 150ms of baseline
         
-        # Apply step command and record time
-        self.current_data.command_time = time.time()
+        # Apply step command and record the actual step time
+        step_time = time.time()
         self.send_velocity(wheel, end_vel)
+        self.current_data.command_time = step_time
         
         # Record response
         time.sleep(self.hold_time)
         
         self.recording = False
+        
+        # Convert absolute timestamps to relative (step happens at t=0)
+        # Baseline data will have negative timestamps, response data positive
+        self.current_data.timestamps = [
+            t - step_time for t in self.current_data.timestamps
+        ]
         
         return self.current_data
     
@@ -456,11 +463,20 @@ class ActuationDelayMeasurement(Node):
             DelayAnalysisResult with extracted parameters
         """
         if len(data.timestamps) < 10:
-            self.get_logger().warn("Not enough data points for analysis")
+            self.get_logger().warn(f"Not enough data points for analysis: {len(data.timestamps)}")
             return None
         
         t = np.array(data.timestamps)
         v = np.array(data.velocities)
+        
+        # Debug: print data statistics
+        n_baseline = np.sum(t < 0)
+        n_response = np.sum(t >= 0)
+        sample_rate = len(t) / (t[-1] - t[0]) if (t[-1] - t[0]) > 0 else 0
+        self.get_logger().debug(
+            f"    Data: {len(t)} samples, {n_baseline} baseline, {n_response} response, "
+            f"~{sample_rate:.1f} Hz, t=[{t[0]*1000:.1f}, {t[-1]*1000:.1f}] ms"
+        )
         
         # Find baseline (average of first few samples before step)
         # Step happens at t=0, so samples with t < 0 are baseline
@@ -477,8 +493,12 @@ class ActuationDelayMeasurement(Node):
         # Step size (actual achieved)
         step_size = v_steady - v_baseline
         
+        self.get_logger().debug(
+            f"    Baseline: {v_baseline:.4f}, Steady: {v_steady:.4f}, Step: {step_size:.4f} rev/s"
+        )
+        
         if abs(step_size) < 0.01:
-            self.get_logger().warn("Step size too small for analysis")
+            self.get_logger().warn(f"Step size too small for analysis: {step_size:.4f}")
             return None
         
         # Find transport delay: time until velocity starts changing
