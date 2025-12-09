@@ -76,28 +76,28 @@ def generate_launch_description():
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
         "mpc_Q_xe",
-        default_value="16.67", #266.0
+        default_value="10.0", #266.0
         description="MPC cost weight for position error x",
     )
     declare_mpc_Q_ye_arg = DeclareLaunchArgument(
         "mpc_Q_ye",
-        default_value="16.67", #120.0
+        default_value="10.0", #120.0
         description="MPC cost weight for position error y (higher for lateral correction)",
     )
     declare_mpc_Q_yaw_arg = DeclareLaunchArgument(
         "mpc_Q_yaw",
-        default_value="7.294", #was 1.042
+        default_value="5.0", #was 1.042
         description="MPC cost weight for yaw error (lower = less aggressive heading correction)",
     )
     # Separate Δ-costs for linear and angular velocity
     declare_mpc_R_delta_v_arg = DeclareLaunchArgument(
         "mpc_R_delta_v",
-        default_value="0.6675", #was 2.67
+        default_value="0.06675", #was 2.67
         description="MPC cost weight for change in linear velocity (Δv)",
     )
     declare_mpc_R_delta_omega_arg = DeclareLaunchArgument(
         "mpc_R_delta_omega",
-        default_value="0.1042", #was 1.042
+        default_value="0.08210", #was 1.042
         description="MPC cost weight for change in angular velocity (Δω) - higher = smoother turning",
     )
     # Rate limits on Δv and Δω per step
@@ -113,7 +113,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_xe_arg = DeclareLaunchArgument(
         "mpc_weight_increase_xe",
-        default_value="0.4",
+        default_value="0.2",
         description=(
             "Linear weight increase factor per step for xe. "
             "Weight at step k = base_weight * (1 + weight_increase_xe * k)."
@@ -130,7 +130,7 @@ def generate_launch_description():
     )
     declare_mpc_weight_increase_yaw_arg = DeclareLaunchArgument(
         "mpc_weight_increase_yaw",
-        default_value="0.4",
+        default_value="0.6",
         description=(
             "Linear weight increase factor per step for yaw error. "
             "Weight at step k = base_weight * (1 + weight_increase_yaw * k). "

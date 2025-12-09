@@ -93,7 +93,7 @@ class WheelRampCompensator:
     def __init__(
         self,
         ramp_rate: float = 20.0,      # Velocity ramp rate (turn/s² or consistent units)
-        delay_time: float = 0.01,        # Pure transport delay (seconds)
+        delay_time: float = 0.0,        # Pure transport delay (seconds)
         cycle_time: float = 0.1,        # MPC cycle time Ts (seconds)
         logger=None,
     ):
@@ -1009,7 +1009,7 @@ class MPCAccelController(Node):
         # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
         # delay_time: Pure transport delay (CAN latency + processing) in seconds
         # Set ramp_compensation_enabled=True and input_mode to VEL_RAMP for best results
-        self.declare_parameter("ramp_compensation_enabled", True)
+        self.declare_parameter("ramp_compensation_enabled", False)
         self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (from ODrive config)
         self.declare_parameter("wheel_delay_time", 0.01)  # seconds (~10ms typical CAN delay)
 
@@ -1899,6 +1899,8 @@ class MPCAccelController(Node):
             # Direct command (legacy behavior)
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
+        
+        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
