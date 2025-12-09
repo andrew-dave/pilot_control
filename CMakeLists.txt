@@ -248,6 +248,7 @@ install(
   scripts/setup_data_folders.py
   scripts/F2C/f2c_check.py
   scripts/F2C/pointcloud_to_f2c_field.py
+  scripts/measure_actuation_delay.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
