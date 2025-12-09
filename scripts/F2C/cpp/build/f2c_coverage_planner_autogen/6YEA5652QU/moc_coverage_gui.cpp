@@ -365,8 +365,8 @@ void f2c_cpp::PlotWidget::rectangleCompleted(const Polygon2D & _t1)
     QMetaObject::activate(this, &staticMetaObject, 4, _a);
 }
 struct qt_meta_stringdata_f2c_cpp__CoverageGUI_t {
-    QByteArrayData data[60];
-    char stringdata0[948];
+    QByteArrayData data[61];
+    char stringdata0[963];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -426,15 +426,16 @@ QT_MOC_LITERAL(47, 723, 19), // "updateWorkflowSteps"
 QT_MOC_LITERAL(48, 743, 21), // "onWorkflowStepClicked"
 QT_MOC_LITERAL(49, 765, 4), // "step"
 QT_MOC_LITERAL(50, 770, 21), // "updateLayerVisibility"
-QT_MOC_LITERAL(51, 792, 15), // "setupVideoPanel"
-QT_MOC_LITERAL(52, 808, 16), // "toggleVideoPanel"
-QT_MOC_LITERAL(53, 825, 15), // "onCameraToggled"
-QT_MOC_LITERAL(54, 841, 14), // "right_selected"
-QT_MOC_LITERAL(55, 856, 15), // "playVideoStream"
-QT_MOC_LITERAL(56, 872, 15), // "stopVideoStream"
-QT_MOC_LITERAL(57, 888, 22), // "onCameraStatusReceived"
-QT_MOC_LITERAL(58, 911, 32), // "std_msgs::msg::String::SharedPtr"
-QT_MOC_LITERAL(59, 944, 3) // "msg"
+QT_MOC_LITERAL(51, 792, 21), // "buildVideoPanelWidget"
+QT_MOC_LITERAL(52, 814, 8), // "QWidget*"
+QT_MOC_LITERAL(53, 823, 16), // "toggleVideoPanel"
+QT_MOC_LITERAL(54, 840, 15), // "onCameraToggled"
+QT_MOC_LITERAL(55, 856, 14), // "right_selected"
+QT_MOC_LITERAL(56, 871, 15), // "playVideoStream"
+QT_MOC_LITERAL(57, 887, 15), // "stopVideoStream"
+QT_MOC_LITERAL(58, 903, 22), // "onCameraStatusReceived"
+QT_MOC_LITERAL(59, 926, 32), // "std_msgs::msg::String::SharedPtr"
+QT_MOC_LITERAL(60, 959, 3) // "msg"
 
     },
     "f2c_cpp::CoverageGUI\0loadPointCloud\0"
@@ -458,7 +459,8 @@ QT_MOC_LITERAL(59, 944, 3) // "msg"
     "applyTheme\0updateCoverageStats\0"
     "computeStats\0CoverageStats\0"
     "updateWorkflowSteps\0onWorkflowStepClicked\0"
-    "step\0updateLayerVisibility\0setupVideoPanel\0"
+    "step\0updateLayerVisibility\0"
+    "buildVideoPanelWidget\0QWidget*\0"
     "toggleVideoPanel\0onCameraToggled\0"
     "right_selected\0playVideoStream\0"
     "stopVideoStream\0onCameraStatusReceived\0"
@@ -522,11 +524,11 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
       48,    1,  298,    2, 0x08 /* Private */,
       50,    0,  301,    2, 0x08 /* Private */,
       51,    0,  302,    2, 0x08 /* Private */,
-      52,    0,  303,    2, 0x08 /* Private */,
-      53,    1,  304,    2, 0x08 /* Private */,
-      55,    0,  307,    2, 0x08 /* Private */,
-      56,    0,  308,    2, 0x08 /* Private */,
-      57,    1,  309,    2, 0x08 /* Private */,
+      53,    0,  303,    2, 0x08 /* Private */,
+      54,    1,  304,    2, 0x08 /* Private */,
+      56,    0,  307,    2, 0x08 /* Private */,
+      57,    0,  308,    2, 0x08 /* Private */,
+      58,    1,  309,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void,
@@ -570,12 +572,12 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
     QMetaType::Void,
     QMetaType::Void, QMetaType::Int,   49,
     QMetaType::Void,
+    0x80000000 | 52,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::Bool,   55,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Bool,   54,
-    QMetaType::Void,
-    QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 58,   59,
+    QMetaType::Void, 0x80000000 | 59,   60,
 
        0        // eod
 };
@@ -628,7 +630,8 @@ void f2c_cpp::CoverageGUI::qt_static_metacall(QObject *_o, QMetaObject::Call _c,
         case 38: _t->updateWorkflowSteps(); break;
         case 39: _t->onWorkflowStepClicked((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 40: _t->updateLayerVisibility(); break;
-        case 41: _t->setupVideoPanel(); break;
+        case 41: { QWidget* _r = _t->buildVideoPanelWidget();
+            if (_a[0]) *reinterpret_cast< QWidget**>(_a[0]) = std::move(_r); }  break;
         case 42: _t->toggleVideoPanel(); break;
         case 43: _t->onCameraToggled((*reinterpret_cast< bool(*)>(_a[1]))); break;
         case 44: _t->playVideoStream(); break;

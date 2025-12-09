@@ -1089,14 +1089,19 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetworkglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetwork-config.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qabstractsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStackedWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstackedwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolButton \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \

@@ -41,8 +41,12 @@
 #include <QFutureWatcher>
 #include <QToolBox>
 #include <QButtonGroup>
-#include <QDockWidget>
 #include <QNetworkInterface>
+#include <QString>
+#include <QSplitter>
+#include <QStackedWidget>
+#include <QToolButton>
+#include <QAbstractItemView>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -159,6 +163,13 @@ public:
     void setReprojectionLines(const std::vector<ReprojectionLine>& lines);
     void clearReprojectionLines();
     int getHoveredReprojectionIndex() const { return hovered_reproj_index_; }
+    void setLiveOverlay(bool enabled, const std::vector<QString>& lines);
+    void setScanSegments(const std::vector<PathStateList>& segments,
+                         const std::vector<QString>& labels,
+                         const std::vector<double>& lengths,
+                         const std::vector<int>& turns,
+                         bool visible);
+    void setActiveScanSegment(int idx);
     
     // Rectangle drawing mode
     void startRectangleMode();
@@ -227,10 +238,19 @@ private:
     std::vector<bool> custom_waypoint_states_;
     bool show_custom_path_ = false;
     bool custom_draw_mode_ = false;
+    std::vector<PathStateList> scan_segments_;
+    std::vector<QString> scan_segment_labels_;
+    std::vector<double> scan_segment_lengths_;
+    std::vector<int> scan_segment_turns_;
+    bool show_scan_segments_ = false;
+    int hovered_scan_segment_ = -1;
+    int active_scan_segment_ = -1;
     
     // Reprojection error visualization
     std::vector<ReprojectionLine> reproj_lines_;
     int hovered_reproj_index_ = -1;  // -1 = none hovered
+    bool show_live_overlay_ = false;
+    std::vector<QString> live_overlay_lines_;
     
     // Rectangle drawing mode (3-click: corner1, corner2 defines edge, corner3 defines width)
     bool drawing_rectangle_ = false;
@@ -351,7 +371,7 @@ private slots:
     void updateLayerVisibility();
     
     // Video streaming
-    void setupVideoPanel();
+    QWidget* buildVideoPanelWidget();
     void toggleVideoPanel();
     void onCameraToggled(bool right_selected);
     void playVideoStream();
@@ -359,6 +379,8 @@ private slots:
     void onCameraStatusReceived(const std_msgs::msg::String::SharedPtr msg);
 
 private:
+    struct LiveStatsSnapshot;
+
     void setupUI();
     void setupConnections();
     void setupRobotTrackingSubscription();
@@ -379,6 +401,7 @@ private:
     QWidget* buildWorkflowIndicator();
     QWidget* buildLayerPanel();
     QWidget* buildQuickActionsBar();
+    QGroupBox* buildScanPlannerPanel();
     
     // Async point cloud loading
     void loadPointCloudAsync(const QString& path);
@@ -407,8 +430,56 @@ private:
     void updateCustomWaypointStatus();
     void setCustomModeActive(bool active);
     bool isCustomModeActive() const;
+    void syncPlannedPathCache();
+    void rebuildPlannedPathCache(const std::vector<Point2D>& path_points);
+    std::optional<LiveStatsSnapshot> updateLiveStatsFromOdom(
+        const PathState& state, std::chrono::steady_clock::time_point stamp, bool& should_emit_ui);
+    double projectAlongPlannedPath(const Point2D& point, size_t& segment_hint) const;
+    void resetLiveStatsUI();
+    void updateLiveStatsUI(const LiveStatsSnapshot& snapshot);
+    void rebuildLiveOverlay();
+    std::vector<QString> buildLiveOverlayLines(const LiveStatsSnapshot& snapshot) const;
+    void updateScanSegmentCompletion(double completed_m);
+    void generateScanSegments();
+    void refreshScanSegmentList();
+    std::vector<int> selectedScanSegmentIndices() const;
+    PathStateList buildPublishPathFromSegments(const std::vector<int>& indices) const;
+    int estimateTurns(const PathStateList& seg) const;
+    void publishSelectedScanSegments();
+    void startSelectedScanSegments();
+    void setActiveScanSegmentFromList(int idx);
+    
+    // UI helpers for collapsible panes
+    QWidget* buildLeftMiniPalette();
+    QWidget* buildRightMiniPalette();
+    QWidget* buildRightFullPane();
+    void toggleLeftPane();
+    void toggleRightPane();
+    void updateCollapseButtons();
 
 private:
+    struct LiveStatsSnapshot {
+        double planned_length_m = 0.0;
+        double completed_m = 0.0;
+        double remaining_m = 0.0;
+        double coverage_pct = 0.0;
+        double traveled_m = 0.0;
+        double speed_mps = 0.0;
+        double eta_sec = 0.0;
+        double elapsed_sec = 0.0;
+        bool active = false;
+    };
+    
+    struct ScanSegment {
+        QString name;
+        PathStateList path;
+        double start_m = 0.0;
+        double end_m = 0.0;
+        double length_m = 0.0;
+        int turns = 0;
+        bool completed = false;
+    };
+
     // Main widgets
     PlotWidget* plot_;
     QStatusBar* status_bar_;
@@ -435,6 +506,12 @@ private:
     QLabel* lbl_custom_status_ = nullptr;
     QPushButton* btn_publish_waypoints_ = nullptr;
     QPushButton* btn_start_navigation_ = nullptr;
+    QDoubleSpinBox* spin_scan_len_ = nullptr;
+    QListWidget* list_scan_segments_ = nullptr;
+    QPushButton* btn_make_segments_ = nullptr;
+    QPushButton* btn_publish_segments_ = nullptr;
+    QPushButton* btn_start_segments_ = nullptr;
+    QLabel* lbl_scan_progress_ = nullptr;
     
     // DDS profile controls
     QRadioButton* radio_dds_rf_;
@@ -544,12 +621,30 @@ private:
     // Throttle plot refresh to avoid excessive repaints from high-frequency odom
     std::chrono::steady_clock::time_point last_plot_refresh_;
     static constexpr int kPlotRefreshIntervalMs = 50;  // ~20 Hz max
+    static constexpr int kLiveUiIntervalMs = 200;      // 5 Hz UI updates for live stats
+    static constexpr double kLiveStartGateM = 0.05;    // Require 5 cm to arm live stats
+    static constexpr double kEtaMinSpeed = 0.05;       // Min speed to show ETA (m/s)
     
     // Reprojection error analysis
     QPushButton* btn_compute_reproj_ = nullptr;
     QPushButton* btn_clear_reproj_ = nullptr;
     QLabel* lbl_reproj_status_ = nullptr;
     std::vector<ReprojectionLine> reproj_lines_;
+    
+    // Collapsible layout
+    QSplitter* main_splitter_ = nullptr;
+    QStackedWidget* left_stack_ = nullptr;
+    QWidget* left_full_ = nullptr;
+    QWidget* left_mini_ = nullptr;
+    QStackedWidget* right_stack_ = nullptr;
+    QWidget* right_full_ = nullptr;
+    QWidget* right_mini_ = nullptr;
+    QToolButton* btn_collapse_left_ = nullptr;
+    QToolButton* btn_collapse_right_ = nullptr;
+    int left_saved_width_ = 320;
+    int right_saved_width_ = 260;
+    bool left_collapsed_ = false;
+    bool right_collapsed_ = false;
     
     // Rectangle drawing tool
     QPushButton* btn_rectangle_ = nullptr;
@@ -567,6 +662,19 @@ private:
     QLabel* lbl_stats_turns_ = nullptr;
     QLabel* lbl_stats_waypoints_ = nullptr;
     QLabel* lbl_stats_time_ = nullptr;
+    QLabel* lbl_stats_live_progress_ = nullptr;
+    QLabel* lbl_stats_live_travel_ = nullptr;
+    QLabel* lbl_stats_live_remaining_ = nullptr;
+    QLabel* lbl_stats_live_eta_ = nullptr;
+    QLabel* lbl_stats_live_elapsed_ = nullptr;
+    QLabel* lbl_stats_live_speed_ = nullptr;
+    QCheckBox* chk_live_overlay_ = nullptr;
+    QCheckBox* chk_live_show_progress_ = nullptr;
+    QCheckBox* chk_live_show_travel_ = nullptr;
+    QCheckBox* chk_live_show_remaining_ = nullptr;
+    QCheckBox* chk_live_show_eta_ = nullptr;
+    QCheckBox* chk_live_show_elapsed_ = nullptr;
+    QCheckBox* chk_live_show_speed_ = nullptr;
     QDoubleSpinBox* spin_robot_speed_ = nullptr;
     CoverageStats current_stats_;
     
@@ -588,6 +696,7 @@ private:
     QCheckBox* chk_layer_path_ = nullptr;
     QCheckBox* chk_layer_trail_ = nullptr;
     QCheckBox* chk_layer_robot_ = nullptr;
+    QCheckBox* chk_layer_scan_segments_ = nullptr;
     
     // Quick actions bar
     QWidget* quick_actions_bar_ = nullptr;
@@ -600,7 +709,7 @@ private:
     QToolBox* toolbox_ = nullptr;
     
     // Video streaming panel
-    QDockWidget* video_dock_ = nullptr;
+    QWidget* video_panel_widget_ = nullptr;
     VideoStreamWidget* video_widget_ = nullptr;
     QPushButton* btn_view_fov_ = nullptr;
     QRadioButton* radio_cam_left_ = nullptr;
@@ -620,6 +729,25 @@ private:
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_status_sub_;
     QString current_stream_target_;
     bool stream_target_confirmed_ = false;
+    
+    // Live coverage tracking
+    std::vector<Point2D> planned_path_points_;
+    std::vector<double> planned_cumulative_dist_;
+    double planned_path_length_m_ = 0.0;
+    size_t planned_segment_hint_ = 0;
+    double live_completed_m_ = 0.0;
+    double live_traveled_m_ = 0.0;
+    double live_filtered_speed_mps_ = 0.0;
+    bool live_progress_active_ = false;
+    bool mission_timer_active_ = false;
+    std::optional<Point2D> last_odom_point_live_;
+    std::chrono::steady_clock::time_point last_odom_time_live_;
+    std::chrono::steady_clock::time_point mission_start_time_;
+    std::chrono::steady_clock::time_point last_live_ui_update_;
+    mutable std::mutex live_stats_mutex_;
+    std::optional<LiveStatsSnapshot> last_live_snapshot_;
+    std::vector<ScanSegment> scan_segments_;
+    int active_scan_segment_idx_ = -1;
     
     // Auto-detect local IP for streaming
     QString detectLocalIP() const;

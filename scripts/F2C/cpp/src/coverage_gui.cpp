@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <chrono>
 #include <atomic>
+#include <limits>
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -364,6 +365,39 @@ void PlotWidget::clearReprojectionLines() {
     update();
 }
 
+void PlotWidget::setLiveOverlay(bool enabled, const std::vector<QString>& lines) {
+    show_live_overlay_ = enabled;
+    live_overlay_lines_ = lines;
+    update();
+}
+
+void PlotWidget::setScanSegments(const std::vector<PathStateList>& segments,
+                                 const std::vector<QString>& labels,
+                                 const std::vector<double>& lengths,
+                                 const std::vector<int>& turns,
+                                 bool visible) {
+    int prev_hover = hovered_scan_segment_;
+    scan_segments_ = segments;
+    scan_segment_labels_ = labels;
+    scan_segment_lengths_ = lengths;
+    scan_segment_turns_ = turns;
+    show_scan_segments_ = visible;
+    // Preserve hover if still valid; otherwise clear
+    if (!show_scan_segments_ || scan_segments_.empty() ||
+        prev_hover < 0 || prev_hover >= static_cast<int>(scan_segments_.size())) {
+        hovered_scan_segment_ = -1;
+    } else {
+        hovered_scan_segment_ = prev_hover;
+    }
+    updateDataBounds();
+    update();
+}
+
+void PlotWidget::setActiveScanSegment(int idx) {
+    active_scan_segment_ = idx;
+    update();
+}
+
 void PlotWidget::startRectangleMode() {
     drawing_rectangle_ = true;
     rect_points_.clear();
@@ -427,6 +461,13 @@ void PlotWidget::clearAll() {
     robot_trail_.clear();
     custom_waypoints_.clear();
     custom_waypoint_states_.clear();
+    scan_segments_.clear();
+    scan_segment_labels_.clear();
+    scan_segment_lengths_.clear();
+    scan_segment_turns_.clear();
+    show_scan_segments_ = false;
+    hovered_scan_segment_ = -1;
+    active_scan_segment_ = -1;
     reproj_lines_.clear();
     hovered_reproj_index_ = -1;
     selection_points_.clear();
@@ -536,6 +577,11 @@ void PlotWidget::updateDataBounds() {
         updateBounds(sw.end);
     }
     for (const auto& st : path_) updateBounds(st.point);
+    for (const auto& seg : scan_segments_) {
+        for (const auto& st : seg) {
+            updateBounds(st.point);
+        }
+    }
     if (robot_pose_.has_value()) {
         updateBounds(robot_pose_->point);
     }
@@ -697,6 +743,53 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
             painter.setBrush(Qt::red);
             QPointF end = worldToScreen(path_.back().point);
             painter.drawRect(QRectF(end.x() - 5, end.y() - 5, 10, 10));
+        }
+    }
+
+    // Draw scan segments
+    if (show_scan_segments_ && !scan_segments_.empty()) {
+        static const QVector<QColor> palette = {
+            QColor("#1f77b4"), QColor("#ff7f0e"), QColor("#2ca02c"),
+            QColor("#d62728"), QColor("#9467bd"), QColor("#8c564b"),
+            QColor("#e377c2"), QColor("#7f7f7f"), QColor("#bcbd22"), QColor("#17becf")
+        };
+        for (int i = 0; i < static_cast<int>(scan_segments_.size()); ++i) {
+            const auto& seg = scan_segments_[i];
+            if (seg.size() < 2) continue;
+            QColor base = palette[i % palette.size()];
+            bool hovered = (i == hovered_scan_segment_) || (i == active_scan_segment_);
+            QColor penColor = hovered ? base.lighter(130) : base;
+            penColor.setAlpha(hovered ? 255 : 190);
+            QPen pen(penColor, hovered ? 4.0 : 3.0, Qt::SolidLine, Qt::RoundCap);
+            painter.setPen(pen);
+            for (size_t j = 1; j < seg.size(); ++j) {
+                painter.drawLine(worldToScreen(seg[j-1].point),
+                                 worldToScreen(seg[j].point));
+            }
+            // Start/end markers
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(Qt::white);
+            QPointF start = worldToScreen(seg.front().point);
+            painter.drawEllipse(start, 4, 4);
+            painter.setBrush(penColor);
+            painter.drawEllipse(start, 7, 7);
+
+            painter.setBrush(Qt::white);
+            QPointF end = worldToScreen(seg.back().point);
+            painter.drawRect(QRectF(end.x() - 4, end.y() - 4, 8, 8));
+            painter.setBrush(penColor);
+            painter.drawRect(QRectF(end.x() - 6, end.y() - 6, 12, 12));
+
+            // Label with icon at midpoint
+            QPointF mid = worldToScreen(seg[seg.size() / 2].point);
+            painter.setPen(dark_mode_ ? Qt::white : Qt::black);
+            painter.setFont(QFont("Sans Serif", 8, QFont::Bold));
+            QString label = (i < static_cast<int>(scan_segment_labels_.size()))
+                ? scan_segment_labels_[i] : QString("Segment %1").arg(i + 1);
+            double len = (i < static_cast<int>(scan_segment_lengths_.size())) ? scan_segment_lengths_[i] : 0.0;
+            int turns = (i < static_cast<int>(scan_segment_turns_.size())) ? scan_segment_turns_[i] : 0;
+            painter.drawText(mid + QPointF(8, -8),
+                             QString("🛰 %1 • %2 m • %3 turns").arg(label).arg(len, 0, 'f', 1).arg(turns));
         }
     }
     
@@ -942,6 +1035,37 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     painter.setPen(dark_mode_ ? Qt::white : Qt::black);
     painter.setFont(QFont("Sans Serif", 10, QFont::Bold));
     painter.drawText(10, 20, "2D Projection / Coverage");
+    
+    // Draw live stats overlay (top-right)
+    if (show_live_overlay_ && !live_overlay_lines_.empty()) {
+        QFont overlay_font("Sans Serif", 9);
+        painter.setFont(overlay_font);
+        QFontMetrics fm(overlay_font);
+        
+        int max_width = 0;
+        for (const auto& line : live_overlay_lines_) {
+            max_width = std::max(max_width, fm.horizontalAdvance(line));
+        }
+        int line_height = fm.height();
+        int padding = 8;
+        int box_w = max_width + padding * 2;
+        int box_h = static_cast<int>(live_overlay_lines_.size()) * line_height + padding * 2;
+        
+        QRect box(rect().width() - box_w - 10, 10, box_w, box_h);
+        QColor bg = dark_mode_ ? QColor(30, 30, 35, 200) : QColor(255, 255, 255, 220);
+        QColor fg = dark_mode_ ? Qt::white : Qt::black;
+        
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(bg);
+        painter.drawRoundedRect(box, 6, 6);
+        
+        painter.setPen(fg);
+        int y = box.top() + padding + fm.ascent();
+        for (const auto& line : live_overlay_lines_) {
+            painter.drawText(box.left() + padding, y, line);
+            y += line_height;
+        }
+    }
 }
 
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
@@ -1059,6 +1183,46 @@ void PlotWidget::mouseMoveEvent(QMouseEvent* event) {
         update();
     } else if (selecting_) {
         update();  // Redraw preview line
+    }
+    
+    // Hover on scan segments
+    if (show_scan_segments_ && !scan_segments_.empty()) {
+        int old_hover = hovered_scan_segment_;
+        hovered_scan_segment_ = -1;
+        const double hover_threshold = 8.0;
+        double best = hover_threshold;
+        for (int i = 0; i < static_cast<int>(scan_segments_.size()); ++i) {
+            const auto& seg = scan_segments_[i];
+            for (size_t j = 1; j < seg.size(); ++j) {
+                double dist = distanceToLineSegment(event->pos(),
+                    worldToScreen(seg[j-1].point), worldToScreen(seg[j].point));
+                if (dist < best) {
+                    best = dist;
+                    hovered_scan_segment_ = i;
+                }
+            }
+        }
+        if (hovered_scan_segment_ != old_hover) {
+            update();
+            if (hovered_scan_segment_ >= 0) {
+                QString label = (hovered_scan_segment_ < scan_segment_labels_.size())
+                    ? scan_segment_labels_[hovered_scan_segment_] : QString("Segment %1").arg(hovered_scan_segment_ + 1);
+                double len = (hovered_scan_segment_ < scan_segment_lengths_.size())
+                    ? scan_segment_lengths_[hovered_scan_segment_] : 0.0;
+                int turns = (hovered_scan_segment_ < scan_segment_turns_.size())
+                    ? scan_segment_turns_[hovered_scan_segment_] : 0;
+                QString tip = QString("%1 — %2 m, %3 turns").arg(label).arg(len, 0, 'f', 1).arg(turns);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                QToolTip::showText(event->globalPosition().toPoint(), tip, this);
+#else
+                QToolTip::showText(event->globalPos(), tip, this);
+#endif
+                return;  // keep tooltip active
+            }
+        }
+        if (hovered_scan_segment_ >= 0) {
+            return;
+        }
     }
     
     // Check hover on reprojection lines
@@ -1184,6 +1348,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     }
     
     fit_view_pending_ = true;
+    last_live_ui_update_ = std::chrono::steady_clock::now();
     
     // Initialize async point cloud loader
     pcd_watcher_ = new QFutureWatcher<PointCloudPtr>(this);
@@ -1252,13 +1417,20 @@ CoverageGUI::~CoverageGUI() {
 
 void CoverageGUI::setupUI() {
     QWidget* central = new QWidget();
-    QHBoxLayout* main_layout = new QHBoxLayout(central);
+    QVBoxLayout* root_layout = new QVBoxLayout(central);
+    root_layout->setContentsMargins(0, 0, 0, 0);
+    root_layout->setSpacing(0);
     
-    // LEFT: Controls panel - fixed width
+    // Main splitter with left / center / right
+    main_splitter_ = new QSplitter(Qt::Horizontal);
+    main_splitter_->setChildrenCollapsible(false);
+    
+    // LEFT: full panel (scroll) and mini palette
     QScrollArea* controls_scroll = new QScrollArea();
     controls_scroll->setWidgetResizable(true);
     controls_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    controls_scroll->setFixedWidth(380);
+    controls_scroll->setMinimumWidth(300);
+    controls_scroll->setMaximumWidth(420);
     
     QWidget* controls_container = new QWidget();
     QVBoxLayout* controls_layout = new QVBoxLayout(controls_container);
@@ -1278,9 +1450,14 @@ void CoverageGUI::setupUI() {
     controls_layout->addStretch(1);
     
     controls_scroll->setWidget(controls_container);
-    main_layout->addWidget(controls_scroll);
+    left_full_ = controls_scroll;
+    left_mini_ = buildLeftMiniPalette();
     
-    // CENTER: Plot panel - takes remaining space
+    left_stack_ = new QStackedWidget();
+    left_stack_->addWidget(left_full_);
+    left_stack_->addWidget(left_mini_);
+    
+    // CENTER: Plot panel
     QWidget* plot_container = new QWidget();
     QVBoxLayout* plot_layout = new QVBoxLayout(plot_container);
     plot_layout->setContentsMargins(0, 0, 0, 0);
@@ -1293,6 +1470,7 @@ void CoverageGUI::setupUI() {
     
     // Toolbar for plot
     QHBoxLayout* toolbar = new QHBoxLayout();
+    toolbar->setContentsMargins(8, 4, 8, 4);
     QPushButton* btn_reset_view = new QPushButton("Reset View");
     QPushButton* btn_zoom_in = new QPushButton("+");
     QPushButton* btn_zoom_out = new QPushButton("-");
@@ -1315,6 +1493,7 @@ void CoverageGUI::setupUI() {
     btn_view_fov_->setCheckable(true);
     btn_view_fov_->setToolTip("Toggle camera feed panel");
     btn_view_fov_->setFixedWidth(100);
+    btn_view_fov_->setChecked(true);
     toolbar->addWidget(btn_view_fov_);
     
     plot_layout->addLayout(toolbar);
@@ -1324,20 +1503,38 @@ void CoverageGUI::setupUI() {
     connect(btn_zoom_out, &QPushButton::clicked, plot_, &PlotWidget::zoomOut);
     connect(btn_dark_mode_, &QPushButton::toggled, this, &CoverageGUI::toggleDarkMode);
     
-    main_layout->addWidget(plot_container, 1);
+    // RIGHT: full panel (layers + video) and mini palette
+    right_full_ = buildRightFullPane();
+    right_mini_ = buildRightMiniPalette();
+    right_stack_ = new QStackedWidget();
+    right_stack_->addWidget(right_full_);
+    right_stack_->addWidget(right_mini_);
+    
+    main_splitter_->addWidget(left_stack_);
+    main_splitter_->addWidget(plot_container);
+    main_splitter_->addWidget(right_stack_);
+    main_splitter_->setStretchFactor(0, 0);
+    main_splitter_->setStretchFactor(1, 1);
+    main_splitter_->setStretchFactor(2, 0);
+    main_splitter_->setSizes({left_saved_width_, 800, right_saved_width_});
+    
+    // Collapse buttons bar (near inner edges)
+    QHBoxLayout* collapse_bar = new QHBoxLayout();
+    collapse_bar->setContentsMargins(6, 4, 6, 4);
+    btn_collapse_left_ = new QToolButton();
+    btn_collapse_left_->setAutoRaise(true);
+    btn_collapse_left_->setToolTip("Collapse/expand left panel");
+    btn_collapse_right_ = new QToolButton();
+    btn_collapse_right_->setAutoRaise(true);
+    btn_collapse_right_->setToolTip("Collapse/expand right panel");
+    collapse_bar->addWidget(btn_collapse_left_, 0, Qt::AlignLeft);
+    collapse_bar->addStretch();
+    collapse_bar->addWidget(btn_collapse_right_, 0, Qt::AlignRight);
+    
+    root_layout->addLayout(collapse_bar);
+    root_layout->addWidget(main_splitter_);
     
     setCentralWidget(central);
-    
-    // RIGHT: Layer visibility panel (as dock widget for stacking)
-    QDockWidget* layer_dock = new QDockWidget("👁 Layers", this);
-    layer_dock->setObjectName("layerDock");
-    layer_dock->setAllowedAreas(Qt::RightDockWidgetArea);
-    layer_dock->setFeatures(QDockWidget::DockWidgetMovable);  // Not closable
-    layer_dock->setWidget(buildLayerPanel());
-    addDockWidget(Qt::RightDockWidgetArea, layer_dock);
-    
-    // Setup video panel (dockable, will be stacked below layers)
-    setupVideoPanel();
     
     // Status bar
     status_bar_ = new QStatusBar();
@@ -1347,6 +1544,9 @@ void CoverageGUI::setupUI() {
     progress_bar_->setVisible(false);
     progress_bar_->setMaximumWidth(200);
     status_bar_->addPermanentWidget(progress_bar_);
+    
+    toggleVideoPanel();
+    updateCollapseButtons();
 }
 
 void CoverageGUI::setupConnections() {
@@ -1376,6 +1576,46 @@ void CoverageGUI::setupConnections() {
     if (btn_custom_clear_) {
         connect(btn_custom_clear_, &QPushButton::clicked, this, &CoverageGUI::clearCustomWaypoints);
     }
+
+    // Live overlay toggles
+    auto connectOverlay = [this](QCheckBox* box) {
+        if (box) {
+            connect(box, &QCheckBox::toggled, this, &CoverageGUI::rebuildLiveOverlay);
+        }
+    };
+    connectOverlay(chk_live_overlay_);
+    connectOverlay(chk_live_show_progress_);
+    connectOverlay(chk_live_show_travel_);
+    connectOverlay(chk_live_show_remaining_);
+    connectOverlay(chk_live_show_eta_);
+    connectOverlay(chk_live_show_elapsed_);
+    connectOverlay(chk_live_show_speed_);
+    
+    // Scan planner
+    if (btn_make_segments_) {
+        connect(btn_make_segments_, &QPushButton::clicked, this, &CoverageGUI::generateScanSegments);
+    }
+    if (btn_publish_segments_) {
+        connect(btn_publish_segments_, &QPushButton::clicked, this, &CoverageGUI::publishSelectedScanSegments);
+    }
+    if (btn_start_segments_) {
+        connect(btn_start_segments_, &QPushButton::clicked, this, &CoverageGUI::startSelectedScanSegments);
+    }
+    if (list_scan_segments_) {
+        connect(list_scan_segments_, &QListWidget::itemSelectionChanged, this, [this]() {
+            auto selItems = list_scan_segments_->selectedItems();
+            active_scan_segment_idx_ = selItems.isEmpty() ? -1 : list_scan_segments_->row(selItems.first());
+            plot_->setActiveScanSegment(active_scan_segment_idx_);
+        });
+    }
+    
+    // Collapse buttons
+    if (btn_collapse_left_) {
+        connect(btn_collapse_left_, &QToolButton::clicked, this, &CoverageGUI::toggleLeftPane);
+    }
+    if (btn_collapse_right_) {
+        connect(btn_collapse_right_, &QToolButton::clicked, this, &CoverageGUI::toggleRightPane);
+    }
     
     // Set progress callback
     setProgressCallback([this](int percent, const std::string& msg) {
@@ -1385,15 +1625,72 @@ void CoverageGUI::setupConnections() {
     });
 }
 
-void CoverageGUI::setupVideoPanel() {
-    // Create dockable video panel
-    video_dock_ = new QDockWidget("📹 Camera FOV", this);
-    video_dock_->setObjectName("videoDock");
-    video_dock_->setAllowedAreas(Qt::RightDockWidgetArea | Qt::BottomDockWidgetArea | Qt::LeftDockWidgetArea);
-    video_dock_->setFeatures(QDockWidget::DockWidgetClosable | 
-                             QDockWidget::DockWidgetMovable |
-                             QDockWidget::DockWidgetFloatable);
-    
+void CoverageGUI::toggleLeftPane() {
+    if (!main_splitter_ || !left_stack_) return;
+    QList<int> sizes = main_splitter_->sizes();
+    if (!left_collapsed_) {
+        left_saved_width_ = sizes.value(0, left_saved_width_);
+        left_saved_width_ = std::max(left_saved_width_, 240);
+        left_collapsed_ = true;
+        left_stack_->setCurrentWidget(left_mini_);
+        sizes[0] = 60;
+        if (sizes.size() >= 2) {
+            sizes[1] = std::max(200, sizes[1] + left_saved_width_ - 60);
+        }
+    } else {
+        left_collapsed_ = false;
+        left_stack_->setCurrentWidget(left_full_);
+        int restore = std::max(left_saved_width_, 280);
+        if (sizes.size() >= 3) {
+            int center = sizes[1];
+            int delta = restore - sizes[0];
+            sizes[0] = restore;
+            sizes[1] = std::max(200, center - delta);
+        }
+    }
+    main_splitter_->setSizes(sizes);
+    updateCollapseButtons();
+}
+
+void CoverageGUI::toggleRightPane() {
+    if (!main_splitter_ || !right_stack_) return;
+    QList<int> sizes = main_splitter_->sizes();
+    if (!right_collapsed_) {
+        right_saved_width_ = sizes.value(2, right_saved_width_);
+        right_saved_width_ = std::max(right_saved_width_, 220);
+        right_collapsed_ = true;
+        right_stack_->setCurrentWidget(right_mini_);
+        if (sizes.size() >= 3) {
+            sizes[2] = 60;
+            sizes[1] = std::max(200, sizes[1] + right_saved_width_ - 60);
+        }
+    } else {
+        right_collapsed_ = false;
+        right_stack_->setCurrentWidget(right_full_);
+        int restore = std::max(right_saved_width_, 240);
+        if (sizes.size() >= 3) {
+            int center = sizes[1];
+            int delta = restore - sizes[2];
+            sizes[2] = restore;
+            sizes[1] = std::max(200, center - delta);
+        }
+    }
+    main_splitter_->setSizes(sizes);
+    updateCollapseButtons();
+}
+
+void CoverageGUI::updateCollapseButtons() {
+    if (btn_collapse_left_) {
+        btn_collapse_left_->setIcon(style()->standardIcon(
+            left_collapsed_ ? QStyle::SP_ArrowRight : QStyle::SP_ArrowLeft));
+    }
+    if (btn_collapse_right_) {
+        btn_collapse_right_->setIcon(style()->standardIcon(
+            right_collapsed_ ? QStyle::SP_ArrowLeft : QStyle::SP_ArrowRight));
+    }
+}
+
+QWidget* CoverageGUI::buildVideoPanelWidget() {
     QWidget* dock_content = new QWidget();
     QVBoxLayout* dock_layout = new QVBoxLayout(dock_content);
     dock_layout->setContentsMargins(6, 6, 6, 6);
@@ -1455,25 +1752,12 @@ void CoverageGUI::setupVideoPanel() {
     controls->addStretch();
     dock_layout->addLayout(controls);
     
-    video_dock_->setWidget(dock_content);
-    addDockWidget(Qt::RightDockWidgetArea, video_dock_);
-    
-    // Stack video dock below the layers panel (vertically)
-    // Find the layer panel dock widget and stack video below it
-    QList<QDockWidget*> docks = findChildren<QDockWidget*>();
-    for (QDockWidget* dock : docks) {
-        if (dock->objectName() == "layerDock" && dock != video_dock_) {
-            splitDockWidget(dock, video_dock_, Qt::Vertical);
-            break;
-        }
-    }
-    
-    video_dock_->hide();  // Hidden by default
-    
+    dock_content->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    dock_content->setMinimumWidth(280);
+
     // Connections for video panel (btn_view_fov_ created in setupUI)
     connect(btn_view_fov_, &QPushButton::toggled, this, &CoverageGUI::toggleVideoPanel);
-    connect(video_dock_, &QDockWidget::visibilityChanged, btn_view_fov_, &QPushButton::setChecked);
-    
+
     connect(btn_video_play_, &QPushButton::clicked, this, &CoverageGUI::playVideoStream);
     connect(btn_video_stop_, &QPushButton::clicked, this, &CoverageGUI::stopVideoStream);
     
@@ -1508,17 +1792,19 @@ void CoverageGUI::setupVideoPanel() {
             "/stream_camera_status", 10,
             std::bind(&CoverageGUI::onCameraStatusReceived, this, std::placeholders::_1));
     }
+
+    return dock_content;
 }
 
 void CoverageGUI::toggleVideoPanel() {
-    if (video_dock_) {
-        bool show = btn_view_fov_->isChecked();
-        video_dock_->setVisible(show);
-        
-        // When showing the panel, auto-configure stream target
-        if (show && !stream_target_confirmed_) {
-            publishStreamTarget();
-        }
+    bool show = btn_view_fov_ && btn_view_fov_->isChecked();
+    if (video_panel_widget_) {
+        video_panel_widget_->setVisible(show);
+    }
+    
+    // When showing the panel, auto-configure stream target
+    if (show && !stream_target_confirmed_) {
+        publishStreamTarget();
     }
 }
 
@@ -2279,8 +2565,36 @@ QGroupBox* CoverageGUI::buildCoverageStatsControls() {
     addStatRow(4, "Turns:", lbl_stats_turns_);
     addStatRow(5, "Waypoints:", lbl_stats_waypoints_);
     addStatRow(6, "Est. time:", lbl_stats_time_);
+    addStatRow(7, "Live progress:", lbl_stats_live_progress_);
+    addStatRow(8, "Distance traveled:", lbl_stats_live_travel_);
+    addStatRow(9, "Remaining:", lbl_stats_live_remaining_);
+    addStatRow(10, "ETA:", lbl_stats_live_eta_);
+    addStatRow(11, "Elapsed:", lbl_stats_live_elapsed_);
+    addStatRow(12, "Speed:", lbl_stats_live_speed_);
     
     layout->addLayout(grid);
+    
+    // Live overlay controls
+    QGroupBox* overlay_group = new QGroupBox("Live overlay on plot");
+    QVBoxLayout* overlay_layout = new QVBoxLayout(overlay_group);
+    chk_live_overlay_ = new QCheckBox("Show live stats overlay (top-right)");
+    chk_live_overlay_->setChecked(true);
+    overlay_layout->addWidget(chk_live_overlay_);
+    
+    auto addOverlayCheck = [&](const QString& label, QCheckBox*& box, bool checked) {
+        box = new QCheckBox(label);
+        box->setChecked(checked);
+        overlay_layout->addWidget(box);
+    };
+    
+    addOverlayCheck("Progress", chk_live_show_progress_, true);
+    addOverlayCheck("Distance traveled", chk_live_show_travel_, true);
+    addOverlayCheck("Remaining", chk_live_show_remaining_, true);
+    addOverlayCheck("ETA", chk_live_show_eta_, true);
+    addOverlayCheck("Elapsed", chk_live_show_elapsed_, true);
+    addOverlayCheck("Speed", chk_live_show_speed_, true);
+    
+    layout->addWidget(overlay_group);
     
     // Refresh button
     QPushButton* btn_refresh_stats = new QPushButton("Refresh Statistics");
@@ -2337,6 +2651,91 @@ QGroupBox* CoverageGUI::buildExportControls() {
     v->addWidget(lbl_reproj_status_);
 
     return box;
+}
+
+QWidget* CoverageGUI::buildLeftMiniPalette() {
+    QWidget* mini = new QWidget();
+    mini->setFixedWidth(72);
+    QVBoxLayout* v = new QVBoxLayout(mini);
+    v->setContentsMargins(6, 6, 6, 6);
+    v->setSpacing(6);
+    
+    QLabel* title = new QLabel("Panels");
+    title->setAlignment(Qt::AlignCenter);
+    title->setStyleSheet("font-weight: bold; font-size: 10px;");
+    v->addWidget(title);
+    
+    auto addChip = [&](const QString& text) {
+        QToolButton* btn = new QToolButton();
+        btn->setText(text);
+        btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        btn->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+        btn->setIconSize(QSize(18, 18));
+        btn->setAutoRaise(true);
+        btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        connect(btn, &QToolButton::clicked, this, &CoverageGUI::toggleLeftPane);
+        v->addWidget(btn);
+    };
+    
+    addChip("Files");
+    addChip("Robot");
+    addChip("Height");
+    addChip("Filter");
+    addChip("Hull");
+    addChip("Plan");
+    addChip("Stats");
+    addChip("Export");
+    v->addStretch();
+    return mini;
+}
+
+QWidget* CoverageGUI::buildRightMiniPalette() {
+    QWidget* mini = new QWidget();
+    mini->setFixedWidth(72);
+    QVBoxLayout* v = new QVBoxLayout(mini);
+    v->setContentsMargins(6, 6, 6, 6);
+    v->setSpacing(6);
+    
+    QLabel* title = new QLabel("Right");
+    title->setAlignment(Qt::AlignCenter);
+    title->setStyleSheet("font-weight: bold; font-size: 10px;");
+    v->addWidget(title);
+    
+    auto addChip = [&](const QString& text) {
+        QToolButton* btn = new QToolButton();
+        btn->setText(text);
+        btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        btn->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
+        btn->setIconSize(QSize(18, 18));
+        btn->setAutoRaise(true);
+        btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        connect(btn, &QToolButton::clicked, this, &CoverageGUI::toggleRightPane);
+        v->addWidget(btn);
+    };
+    
+    addChip("Layers");
+    addChip("Video");
+    v->addStretch();
+    return mini;
+}
+
+QWidget* CoverageGUI::buildRightFullPane() {
+    QWidget* pane = new QWidget();
+    QVBoxLayout* v = new QVBoxLayout(pane);
+    v->setContentsMargins(6, 6, 6, 6);
+    v->setSpacing(6);
+    
+    QWidget* layers = buildLayerPanel();
+    v->addWidget(layers);
+    
+    QGroupBox* scan_panel = buildScanPlannerPanel();
+    v->addWidget(scan_panel);
+    
+    video_panel_widget_ = buildVideoPanelWidget();
+    v->addWidget(video_panel_widget_);
+    
+    v->addStretch();
+    return pane;
 }
 
 // =============================================================================
@@ -2500,6 +2899,7 @@ QWidget* CoverageGUI::buildLayerPanel() {
     addLayerCheckbox("➜ Path", chk_layer_path_, true);
     addLayerCheckbox("📍 Trail", chk_layer_trail_, true);
     addLayerCheckbox("🤖 Robot", chk_layer_robot_, true);
+    addLayerCheckbox("🛰 Scan segments", chk_layer_scan_segments_, true);
     
     layout->addStretch();
     
@@ -2536,6 +2936,46 @@ QWidget* CoverageGUI::buildLayerPanel() {
     btn_layout->addWidget(btn_all_off);
     layout->addLayout(btn_layout);
     
+    return box;
+}
+
+QGroupBox* CoverageGUI::buildScanPlannerPanel() {
+    QGroupBox* box = new QGroupBox("Scan planner");
+    QVBoxLayout* v = new QVBoxLayout(box);
+
+    QHBoxLayout* row = new QHBoxLayout();
+    row->addWidget(new QLabel("Distance per scan (m):"));
+    spin_scan_len_ = new QDoubleSpinBox();
+    spin_scan_len_->setRange(10.0, 10000.0);
+    spin_scan_len_->setSingleStep(10.0);
+    spin_scan_len_->setValue(500.0);
+    row->addWidget(spin_scan_len_);
+    v->addLayout(row);
+
+    btn_make_segments_ = new QPushButton("⚙️ Split path");
+    btn_make_segments_->setObjectName("btn_quick_generate");
+    btn_make_segments_->setMinimumHeight(34);
+
+    btn_publish_segments_ = new QPushButton("📡 Publish selected");
+    btn_publish_segments_->setObjectName("btn_publish");
+    btn_publish_segments_->setMinimumHeight(34);
+
+    btn_start_segments_ = new QPushButton("▶️ Start selected");
+    btn_start_segments_->setObjectName("btn_navigation");
+    btn_start_segments_->setMinimumHeight(34);
+
+    v->addWidget(btn_make_segments_);
+    v->addWidget(btn_publish_segments_);
+    v->addWidget(btn_start_segments_);
+
+    list_scan_segments_ = new QListWidget();
+    list_scan_segments_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    v->addWidget(list_scan_segments_, 1);
+
+    lbl_scan_progress_ = new QLabel("Segments: none");
+    lbl_scan_progress_->setStyleSheet("color: #666; font-size: 10px;");
+    v->addWidget(lbl_scan_progress_);
+
     return box;
 }
 
@@ -2701,6 +3141,24 @@ void CoverageGUI::refreshPlot() {
     plot_->setPath(show_path ? path_ : PathStateList());
     plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
     plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty() && show_path);
+
+    // Scan segments overlay
+    bool show_segments = !chk_layer_scan_segments_ || chk_layer_scan_segments_->isChecked();
+    std::vector<PathStateList> seg_paths;
+    std::vector<QString> seg_labels;
+    std::vector<double> seg_lengths;
+    std::vector<int> seg_turns;
+    if (show_segments) {
+        for (const auto& s : scan_segments_) {
+            seg_paths.push_back(s.path);
+            seg_labels.push_back(s.name);
+            seg_lengths.push_back(s.length_m);
+            seg_turns.push_back(s.turns);
+        }
+    }
+    plot_->setScanSegments(seg_paths, seg_labels, seg_lengths, seg_turns,
+                           show_segments && !seg_paths.empty());
+    plot_->setActiveScanSegment(active_scan_segment_idx_);
     
     std::optional<PathState> pose_copy;
     std::vector<Point2D> trail_copy;
@@ -3463,15 +3921,225 @@ void CoverageGUI::generatePath() {
             swaths_ = result.swaths;
             route_ = result.route;
             path_ = result.path;
+            syncPlannedPathCache();
             refreshPlot();
             updateCoverageStats();  // Update statistics after path generation
             setStatus(QString("Generated path with %1 states").arg(path_.size()), 4000);
+            // Auto-refresh scan segments if user has a distance set
+            if (spin_scan_len_) {
+                generateScanSegments();
+            }
         }
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
     }
     
     showProgress(false);
+}
+
+int CoverageGUI::estimateTurns(const PathStateList& seg) const {
+    if (seg.size() < 3) return 0;
+    int turns = 0;
+    const double angle_thresh = 25.0 * M_PI / 180.0;  // 25 degrees
+    for (size_t i = 1; i + 1 < seg.size(); ++i) {
+        const auto& p0 = seg[i - 1].point;
+        const auto& p1 = seg[i].point;
+        const auto& p2 = seg[i + 1].point;
+        double v1x = p1.x - p0.x;
+        double v1y = p1.y - p0.y;
+        double v2x = p2.x - p1.x;
+        double v2y = p2.y - p1.y;
+        double len1 = std::hypot(v1x, v1y);
+        double len2 = std::hypot(v2x, v2y);
+        if (len1 < 1e-3 || len2 < 1e-3) continue;
+        double dot = v1x * v2x + v1y * v2y;
+        double det = v1x * v2y - v1y * v2x;
+        double angle = std::fabs(std::atan2(det, dot));
+        if (angle >= angle_thresh) {
+            ++turns;
+        }
+    }
+    return turns;
+}
+
+std::vector<int> CoverageGUI::selectedScanSegmentIndices() const {
+    std::vector<int> out;
+    if (!list_scan_segments_) return out;
+    for (int i = 0; i < list_scan_segments_->count(); ++i) {
+        if (list_scan_segments_->item(i)->checkState() == Qt::Checked) {
+            out.push_back(i);
+        }
+    }
+    return out;
+}
+
+PathStateList CoverageGUI::buildPublishPathFromSegments(const std::vector<int>& indices) const {
+    PathStateList combined;
+    for (int idx : indices) {
+        if (idx < 0 || idx >= static_cast<int>(scan_segments_.size())) continue;
+        const auto& seg = scan_segments_[idx].path;
+        if (seg.empty()) continue;
+        size_t start = 0;
+        if (!combined.empty()) {
+            const auto& prev = combined.back().point;
+            if (std::hypot(prev.x - seg.front().point.x, prev.y - seg.front().point.y) < 1e-6) {
+                start = 1;  // avoid duplicate joint
+            }
+        }
+        combined.insert(combined.end(), seg.begin() + start, seg.end());
+    }
+    return dedupePathStates(combined);
+}
+
+void CoverageGUI::refreshScanSegmentList() {
+    if (!list_scan_segments_) return;
+    list_scan_segments_->clear();
+    size_t done = 0;
+    for (const auto& seg : scan_segments_) {
+        auto* item = new QListWidgetItem(
+            QString("%1 — %2 m, %3 turns").arg(seg.name).arg(seg.length_m, 0, 'f', 1).arg(seg.turns));
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Unchecked);
+        item->setForeground(seg.completed ? QColor("#2e7d32") : QColor("#006064"));
+        list_scan_segments_->addItem(item);
+        if (seg.completed) ++done;
+    }
+    if (lbl_scan_progress_) {
+        if (scan_segments_.empty()) {
+            lbl_scan_progress_->setText("Segments: none");
+        } else {
+            lbl_scan_progress_->setText(QString("Segments: %1 total | %2 done")
+                .arg(scan_segments_.size()).arg(done));
+        }
+    }
+}
+
+void CoverageGUI::generateScanSegments() {
+    PathStateList base;
+    if (isCustomModeActive()) {
+        if (custom_waypoints_.size() < 2) {
+            QMessageBox::warning(this, "No path", "Add custom waypoints first.");
+            return;
+        }
+        base.reserve(custom_waypoints_.size());
+        for (size_t i = 0; i < custom_waypoints_.size(); ++i) {
+            double h = (i + 1 < custom_waypoints_.size())
+                ? std::atan2(custom_waypoints_[i + 1].y - custom_waypoints_[i].y,
+                             custom_waypoints_[i + 1].x - custom_waypoints_[i].x)
+                : 0.0;
+            base.push_back(PathState(custom_waypoints_[i], h));
+        }
+    } else {
+        if (path_.size() < 2) {
+            QMessageBox::warning(this, "No path", "Generate a coverage path first.");
+            return;
+        }
+        base = dedupePathStates(path_);
+    }
+
+    if (base.size() < 2) return;
+
+    std::vector<double> cum(base.size(), 0.0);
+    for (size_t i = 1; i < base.size(); ++i) {
+        cum[i] = cum[i - 1] + std::hypot(base[i].point.x - base[i - 1].point.x,
+                                         base[i].point.y - base[i - 1].point.y);
+    }
+    double total = cum.back();
+    double seg_len = std::max(1.0, spin_scan_len_ ? spin_scan_len_->value() : 500.0);
+
+    scan_segments_.clear();
+    active_scan_segment_idx_ = -1;
+    auto addSeg = [&](size_t a, size_t b, const QString& name) {
+        ScanSegment s;
+        s.name = name;
+        s.start_m = cum[a];
+        s.end_m = cum[b];
+        s.length_m = s.end_m - s.start_m;
+        s.path.assign(base.begin() + a, base.begin() + b + 1);
+        s.turns = estimateTurns(s.path);
+        s.completed = false;
+        scan_segments_.push_back(std::move(s));
+    };
+
+    size_t start_idx = 0;
+    int idx = 1;
+    for (double target = seg_len; target < total && start_idx < base.size() - 1; target += seg_len) {
+        size_t upper = std::lower_bound(cum.begin() + start_idx + 1, cum.end(), target) - cum.begin();
+        if (upper >= base.size()) break;
+        size_t lower = upper > 0 ? upper - 1 : upper;
+        size_t cut = (target - cum[lower] <= cum[upper] - target) ? lower : upper;
+        if (cut <= start_idx) cut = std::min(start_idx + 1, base.size() - 1);
+        addSeg(start_idx, cut, QString("#Scan %1").arg(idx++));
+        start_idx = cut;
+    }
+    addSeg(start_idx, base.size() - 1, QString("#Scan %1").arg(idx));
+
+    refreshScanSegmentList();
+    refreshPlot();
+    setStatus(QString("Generated %1 scan segments").arg(scan_segments_.size()), 4000);
+}
+
+void CoverageGUI::updateScanSegmentCompletion(double completed_m) {
+    bool changed = false;
+    size_t done = 0;
+    for (auto& seg : scan_segments_) {
+        bool now = completed_m >= seg.end_m - 0.05;
+        if (now != seg.completed) {
+            seg.completed = now;
+            changed = true;
+        }
+        if (seg.completed) ++done;
+    }
+    if (changed) {
+        refreshScanSegmentList();
+    }
+    if (lbl_scan_progress_ && !scan_segments_.empty()) {
+        lbl_scan_progress_->setText(QString("Segments: %1 total | %2 done")
+            .arg(scan_segments_.size()).arg(done));
+    }
+}
+
+void CoverageGUI::publishSelectedScanSegments() {
+    if (!ros_initialized_ || !waypoint_pub_) {
+        QMessageBox::warning(this, "ROS2 Unavailable", "ROS2 publisher is not ready.");
+        return;
+    }
+    auto idxs = selectedScanSegmentIndices();
+    if (idxs.empty()) {
+        QMessageBox::information(this, "No selection", "Select one or more scan segments.");
+        return;
+    }
+    PathStateList publish_path = buildPublishPathFromSegments(idxs);
+    if (publish_path.size() < 2) {
+        QMessageBox::warning(this, "No path", "Selected segments are empty.");
+        return;
+    }
+    publish_path = dedupePathStates(publish_path);
+
+    std_msgs::msg::Float64MultiArray msg;
+    msg.data.reserve(publish_path.size() * 2);
+    for (const auto& st : publish_path) {
+        msg.data.push_back(st.point.x);
+        msg.data.push_back(st.point.y);
+    }
+    waypoint_pub_->publish(msg);
+    waypoints_published_ = true;
+    if (btn_start_navigation_) {
+        btn_start_navigation_->setEnabled(true);
+    }
+    setStatus(QString("Published %1 scan(s), %2 points").arg(idxs.size()).arg(publish_path.size()), 4000);
+}
+
+void CoverageGUI::startSelectedScanSegments() {
+    if (!waypoints_published_) {
+        publishSelectedScanSegments();
+    }
+    startNavigation();
+}
+
+void CoverageGUI::setActiveScanSegmentFromList(int idx) {
+    active_scan_segment_idx_ = idx;
+    plot_->setActiveScanSegment(active_scan_segment_idx_);
 }
 
 void CoverageGUI::clearCoverage() {
@@ -3481,6 +4149,13 @@ void CoverageGUI::clearCoverage() {
     plot_->clearSwaths();
     plot_->clearRoute();
     plot_->clearPath();
+    scan_segments_.clear();
+    active_scan_segment_idx_ = -1;
+    refreshScanSegmentList();
+    plot_->setScanSegments({}, {}, {}, {}, false);
+    syncPlannedPathCache();
+    resetLiveStatsUI();
+    updateCoverageStats();
     setStatus("Coverage cleared", 4000);
     refreshPlot();
 }
@@ -3551,6 +4226,10 @@ void CoverageGUI::setupRobotTrackingSubscription() {
     fastlio_sub_ = ros_node_->create_subscription<nav_msgs::msg::Odometry>(
         topic, qos,
         [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+            const auto stamp = std::chrono::steady_clock::now();
+            bool emit_live_stats = false;
+            std::optional<LiveStatsSnapshot> live_snapshot;
+            
             tf2::Quaternion q(
                 msg->pose.pose.orientation.x,
                 msg->pose.pose.orientation.y,
@@ -3583,15 +4262,23 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                 last_robot_update_ = std::chrono::steady_clock::now();
             }
             
-            QMetaObject::invokeMethod(this, [this]() {
+            if (auto snapshot = updateLiveStatsFromOdom(state, stamp, emit_live_stats)) {
+                live_snapshot = *snapshot;
+            }
+            
+            QMetaObject::invokeMethod(this, [this, emit_live_stats, live_snapshot, stamp]() {
+                updateRobotStatusLabel(true);
                 updateCustomWaypointStatus();
                 
+                if (emit_live_stats && live_snapshot.has_value()) {
+                    updateLiveStatsUI(*live_snapshot);
+                }
+                
                 // Throttle plot refresh to reduce CPU usage at high odom rates
-                auto now = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now - last_plot_refresh_).count();
+                    stamp - last_plot_refresh_).count();
                 if (elapsed >= kPlotRefreshIntervalMs) {
-                    last_plot_refresh_ = now;
+                    last_plot_refresh_ = stamp;
                     refreshPlot();
                 }
             }, Qt::QueuedConnection);
@@ -3705,6 +4392,8 @@ void CoverageGUI::onPathModeChanged() {
     // Disable drawing if switching away from custom mode
     setCustomModeActive(custom_mode);
     refreshCustomPathUI();
+    syncPlannedPathCache();
+    updateCoverageStats();
     refreshPlot();
 }
 
@@ -3736,6 +4425,10 @@ void CoverageGUI::onPlotCustomWaypoint(const Point2D& point) {
     custom_waypoints_.push_back(point);
     custom_waypoints_visited_.push_back(false);
     refreshCustomPathUI();
+    if (isCustomModeActive()) {
+        syncPlannedPathCache();
+        updateCoverageStats();
+    }
 }
 
 void CoverageGUI::refreshCustomPathUI() {
@@ -3798,6 +4491,10 @@ void CoverageGUI::undoCustomWaypoint() {
         custom_waypoints_visited_.resize(custom_waypoints_.size());
     }
     refreshCustomPathUI();
+    if (isCustomModeActive()) {
+        syncPlannedPathCache();
+        updateCoverageStats();
+    }
 }
 
 void CoverageGUI::clearCustomWaypoints() {
@@ -3806,7 +4503,15 @@ void CoverageGUI::clearCustomWaypoints() {
     }
     custom_waypoints_.clear();
     custom_waypoints_visited_.clear();
+    scan_segments_.clear();
+    refreshScanSegmentList();
+    plot_->setScanSegments({}, {}, {}, {}, false);
     refreshCustomPathUI();
+    if (isCustomModeActive()) {
+        syncPlannedPathCache();
+        resetLiveStatsUI();
+        updateCoverageStats();
+    }
 }
 
 void CoverageGUI::updateCustomWaypointStatus() {
@@ -4326,6 +5031,295 @@ void CoverageGUI::applyTheme() {
     }
 }
 
+void CoverageGUI::resetLiveStatsUI() {
+    auto setLabel = [](QLabel* lbl) {
+        if (lbl) {
+            lbl->setText("-");
+        }
+    };
+    setLabel(lbl_stats_live_progress_);
+    setLabel(lbl_stats_live_travel_);
+    setLabel(lbl_stats_live_remaining_);
+    setLabel(lbl_stats_live_eta_);
+    setLabel(lbl_stats_live_elapsed_);
+    setLabel(lbl_stats_live_speed_);
+    last_live_snapshot_.reset();
+    if (plot_) {
+        plot_->setLiveOverlay(false, {});
+    }
+}
+
+void CoverageGUI::syncPlannedPathCache() {
+    std::vector<Point2D> path_points;
+    if (isCustomModeActive()) {
+        path_points = custom_waypoints_;
+    } else {
+        PathStateList deduped = dedupePathStates(path_);
+        path_points.reserve(deduped.size());
+        for (const auto& state : deduped) {
+            path_points.push_back(state.point);
+        }
+    }
+    rebuildPlannedPathCache(path_points);
+    if (path_points.size() < 2) {
+        resetLiveStatsUI();
+    }
+    rebuildLiveOverlay();
+}
+
+void CoverageGUI::rebuildPlannedPathCache(const std::vector<Point2D>& path_points) {
+    std::lock_guard<std::mutex> lock(live_stats_mutex_);
+    planned_path_points_ = path_points;
+    planned_cumulative_dist_.assign(path_points.size(), 0.0);
+    planned_path_length_m_ = 0.0;
+    planned_segment_hint_ = 0;
+    live_completed_m_ = 0.0;
+    live_traveled_m_ = 0.0;
+    live_filtered_speed_mps_ = 0.0;
+    live_progress_active_ = false;
+    mission_timer_active_ = false;
+    last_odom_point_live_.reset();
+    mission_start_time_ = std::chrono::steady_clock::now();
+    last_live_ui_update_ = mission_start_time_;
+    
+    if (path_points.size() >= 2) {
+        for (size_t i = 1; i < path_points.size(); ++i) {
+            double seg_len = std::hypot(path_points[i].x - path_points[i-1].x,
+                                        path_points[i].y - path_points[i-1].y);
+            planned_cumulative_dist_[i] = planned_cumulative_dist_[i-1] + seg_len;
+        }
+        planned_path_length_m_ = planned_cumulative_dist_.back();
+    }
+}
+
+double CoverageGUI::projectAlongPlannedPath(const Point2D& point, size_t& segment_hint) const {
+    if (planned_path_points_.size() < 2 || planned_cumulative_dist_.size() != planned_path_points_.size()) {
+        return 0.0;
+    }
+    
+    const size_t n = planned_path_points_.size();
+    size_t best_seg = 0;
+    double best_dist = std::numeric_limits<double>::max();
+    double best_t = 0.0;
+    
+    auto searchRange = [&](size_t start, size_t end) {
+        for (size_t i = start; i + 1 < end; ++i) {
+            const auto& a = planned_path_points_[i];
+            const auto& b = planned_path_points_[i + 1];
+            double dx = b.x - a.x;
+            double dy = b.y - a.y;
+            double len_sq = dx * dx + dy * dy;
+            if (len_sq < 1e-9) {
+                continue;
+            }
+            
+            double t = std::max(0.0, std::min(1.0,
+                ((point.x - a.x) * dx + (point.y - a.y) * dy) / len_sq));
+            double proj_x = a.x + t * dx;
+            double proj_y = a.y + t * dy;
+            double dist = std::hypot(point.x - proj_x, point.y - proj_y);
+            
+            if (dist < best_dist) {
+                best_dist = dist;
+                best_seg = i;
+                best_t = t;
+            }
+        }
+    };
+    
+    size_t start_seg = (segment_hint > 5) ? (segment_hint - 5) : 0;
+    size_t end_seg = std::min(n - 1, segment_hint + 6);
+    searchRange(start_seg, end_seg);
+    
+    // Fallback to full search if far from hint (e.g., teleport or reset)
+    if (best_dist > 1.5) {
+        searchRange(0, n - 1);
+    }
+    
+    segment_hint = best_seg;
+    double seg_len = planned_cumulative_dist_[best_seg + 1] - planned_cumulative_dist_[best_seg];
+    return planned_cumulative_dist_[best_seg] + best_t * seg_len;
+}
+
+std::optional<CoverageGUI::LiveStatsSnapshot> CoverageGUI::updateLiveStatsFromOdom(
+    const PathState& state,
+    std::chrono::steady_clock::time_point stamp,
+    bool& should_emit_ui) {
+    
+    std::lock_guard<std::mutex> lock(live_stats_mutex_);
+    should_emit_ui = false;
+    
+    if (planned_path_points_.size() < 2 || planned_path_length_m_ <= 0.0) {
+        return std::nullopt;
+    }
+    
+    if (last_odom_point_live_) {
+        double seg = std::hypot(state.point.x - last_odom_point_live_->x,
+                                state.point.y - last_odom_point_live_->y);
+        live_traveled_m_ += seg;
+        
+        double dt = std::chrono::duration<double>(stamp - last_odom_time_live_).count();
+        if (dt > 1e-3) {
+            double inst_speed = seg / dt;
+            double alpha = 0.25;
+            live_filtered_speed_mps_ = (live_filtered_speed_mps_ <= 0.0)
+                ? inst_speed
+                : alpha * inst_speed + (1.0 - alpha) * live_filtered_speed_mps_;
+        }
+    }
+    
+    last_odom_point_live_ = state.point;
+    last_odom_time_live_ = stamp;
+    
+    double dist_to_start = std::hypot(
+        state.point.x - planned_path_points_.front().x,
+        state.point.y - planned_path_points_.front().y);
+    
+    if (!live_progress_active_ && dist_to_start <= kLiveStartGateM) {
+        live_progress_active_ = true;
+        mission_timer_active_ = true;
+        mission_start_time_ = stamp;
+        live_completed_m_ = 0.0;
+        live_traveled_m_ = 0.0;
+        live_filtered_speed_mps_ = 0.0;
+    }
+    
+    if (live_progress_active_) {
+        double along = projectAlongPlannedPath(state.point, planned_segment_hint_);
+        live_completed_m_ = std::max(live_completed_m_, along);
+    }
+    
+    LiveStatsSnapshot snapshot;
+    snapshot.planned_length_m = planned_path_length_m_;
+    snapshot.completed_m = live_completed_m_;
+    snapshot.remaining_m = std::max(0.0, planned_path_length_m_ - live_completed_m_);
+    snapshot.coverage_pct = planned_path_length_m_ > 0.0
+        ? std::clamp((live_completed_m_ / planned_path_length_m_) * 100.0, 0.0, 100.0)
+        : 0.0;
+    snapshot.traveled_m = live_traveled_m_;
+    snapshot.speed_mps = live_filtered_speed_mps_;
+    snapshot.elapsed_sec = mission_timer_active_
+        ? std::chrono::duration<double>(stamp - mission_start_time_).count()
+        : 0.0;
+    snapshot.eta_sec = (live_filtered_speed_mps_ > kEtaMinSpeed && snapshot.remaining_m > 0.0 && live_progress_active_)
+        ? snapshot.remaining_m / live_filtered_speed_mps_
+        : 0.0;
+    snapshot.active = live_progress_active_;
+    
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        stamp - last_live_ui_update_).count();
+    if (elapsed_ms >= kLiveUiIntervalMs) {
+        last_live_ui_update_ = stamp;
+        should_emit_ui = true;
+    }
+    
+    return snapshot;
+}
+
+void CoverageGUI::updateLiveStatsUI(const LiveStatsSnapshot& snapshot) {
+    auto formatLen = [](double val) -> QString {
+        return (val > 0.0) ? QString("%1 m").arg(val, 0, 'f', 1) : "-";
+    };
+    
+    auto formatTime = [](double seconds) -> QString {
+        if (seconds <= 0.0) return "-";
+        int mins = static_cast<int>(seconds / 60.0);
+        int secs = static_cast<int>(seconds) % 60;
+        return QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0'));
+    };
+    
+    if (lbl_stats_live_progress_) {
+        if (!snapshot.active || snapshot.planned_length_m <= 0.0) {
+            lbl_stats_live_progress_->setText("-");
+        } else {
+            lbl_stats_live_progress_->setText(
+                QString("%1% (%2 / %3 m)")
+                .arg(snapshot.coverage_pct, 0, 'f', 0)
+                .arg(snapshot.completed_m, 0, 'f', 1)
+                .arg(snapshot.planned_length_m, 0, 'f', 1));
+        }
+    }
+    
+    if (lbl_stats_live_travel_) {
+        lbl_stats_live_travel_->setText(formatLen(snapshot.traveled_m));
+    }
+    if (lbl_stats_live_remaining_) {
+        lbl_stats_live_remaining_->setText(formatLen(snapshot.remaining_m));
+    }
+    if (lbl_stats_live_eta_) {
+        lbl_stats_live_eta_->setText(formatTime(snapshot.eta_sec));
+    }
+    if (lbl_stats_live_elapsed_) {
+        lbl_stats_live_elapsed_->setText(formatTime(snapshot.elapsed_sec));
+    }
+    if (lbl_stats_live_speed_) {
+        lbl_stats_live_speed_->setText(
+            snapshot.speed_mps > 0.0
+            ? QString("%1 m/s").arg(snapshot.speed_mps, 0, 'f', 2)
+            : "-");
+    }
+    
+    updateScanSegmentCompletion(snapshot.completed_m);
+    
+    last_live_snapshot_ = snapshot;
+    rebuildLiveOverlay();
+}
+
+std::vector<QString> CoverageGUI::buildLiveOverlayLines(const LiveStatsSnapshot& snapshot) const {
+    std::vector<QString> lines;
+    
+    auto formatLen = [](double val) -> QString {
+        return (val > 0.0) ? QString("%1 m").arg(val, 0, 'f', 1) : "-";
+    };
+    auto formatTime = [](double seconds) -> QString {
+        if (seconds <= 0.0) return "-";
+        int mins = static_cast<int>(seconds / 60.0);
+        int secs = static_cast<int>(seconds) % 60;
+        return QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0'));
+    };
+    auto formatPct = [](double pct) -> QString {
+        return pct > 0.0 ? QString("%1%").arg(pct, 0, 'f', 0) : "-";
+    };
+    
+    if (chk_live_show_progress_ && chk_live_show_progress_->isChecked()) {
+        lines.push_back(QString("Progress: %1 / %2 (%3)")
+            .arg(formatLen(snapshot.completed_m))
+            .arg(formatLen(snapshot.planned_length_m))
+            .arg(formatPct(snapshot.coverage_pct)));
+    }
+    if (chk_live_show_travel_ && chk_live_show_travel_->isChecked()) {
+        lines.push_back(QString("Traveled: %1").arg(formatLen(snapshot.traveled_m)));
+    }
+    if (chk_live_show_remaining_ && chk_live_show_remaining_->isChecked()) {
+        lines.push_back(QString("Remaining: %1").arg(formatLen(snapshot.remaining_m)));
+    }
+    if (chk_live_show_eta_ && chk_live_show_eta_->isChecked()) {
+        lines.push_back(QString("ETA: %1").arg(formatTime(snapshot.eta_sec)));
+    }
+    if (chk_live_show_elapsed_ && chk_live_show_elapsed_->isChecked()) {
+        lines.push_back(QString("Elapsed: %1").arg(formatTime(snapshot.elapsed_sec)));
+    }
+    if (chk_live_show_speed_ && chk_live_show_speed_->isChecked()) {
+        lines.push_back(snapshot.speed_mps > 0.0
+            ? QString("Speed: %1 m/s").arg(snapshot.speed_mps, 0, 'f', 2)
+            : QString("Speed: -"));
+    }
+    return lines;
+}
+
+void CoverageGUI::rebuildLiveOverlay() {
+    if (!plot_) {
+        return;
+    }
+    bool enabled = chk_live_overlay_ && chk_live_overlay_->isChecked();
+    if (!enabled || !last_live_snapshot_.has_value()) {
+        plot_->setLiveOverlay(false, {});
+        return;
+    }
+    auto lines = buildLiveOverlayLines(*last_live_snapshot_);
+    plot_->setLiveOverlay(enabled && !lines.empty(), lines);
+}
+
 // =============================================================================
 // Coverage Statistics
 // =============================================================================
@@ -4338,7 +5332,8 @@ CoverageStats CoverageGUI::computeStats() const {
     if (isCustomModeActive()) {
         path_points = custom_waypoints_;
     } else {
-        for (const auto& state : path_) {
+        PathStateList deduped = dedupePathStates(path_);
+        for (const auto& state : deduped) {
             path_points.push_back(state.point);
         }
     }
