@@ -232,15 +232,15 @@ class ActuationDelayMeasurement(Node):
         
         start = time.time()
         while time.time() - start < timeout:
-            left_ready = self.left_axis_client.wait_for_service(timeout_sec=0.5)
-            right_ready = self.right_axis_client.wait_for_service(timeout_sec=0.5)
+            # Use non-blocking wait - main thread handles spinning
+            left_ready = self.left_axis_client.service_is_ready()
+            right_ready = self.right_axis_client.service_is_ready()
             
             if left_ready and right_ready:
                 self.get_logger().info("  ODrive services are ready!")
                 return True
             
-            # Spin to process callbacks
-            rclpy.spin_once(self, timeout_sec=0.1)
+            time.sleep(0.2)
         
         self.get_logger().error("Timeout waiting for ODrive services")
         return False
@@ -251,8 +251,7 @@ class ActuationDelayMeasurement(Node):
         
         start = time.time()
         while time.time() - start < timeout:
-            rclpy.spin_once(self, timeout_sec=0.1)
-            
+            # Main thread handles spinning, we just check the timestamps
             now = time.time()
             left_recent = (now - self.left_vel_time) < 1.0 if self.left_vel_time > 0 else False
             right_recent = (now - self.right_vel_time) < 1.0 if self.right_vel_time > 0 else False
@@ -260,6 +259,8 @@ class ActuationDelayMeasurement(Node):
             if left_recent and right_recent:
                 self.get_logger().info(f"  Receiving feedback: L={self.left_vel:.3f}, R={self.right_vel:.3f} rev/s")
                 return True
+            
+            time.sleep(0.1)
         
         self.get_logger().error("Timeout waiting for encoder feedback")
         return False
@@ -276,17 +277,20 @@ class ActuationDelayMeasurement(Node):
             req_right = AxisState.Request()
             req_right.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
             
-            # Send requests
+            # Send requests asynchronously
             future_left = self.left_axis_client.call_async(req_left)
             future_right = self.right_axis_client.call_async(req_right)
             
-            # Wait for responses
-            rclpy.spin_until_future_complete(self, future_left, timeout_sec=5.0)
-            rclpy.spin_until_future_complete(self, future_right, timeout_sec=5.0)
+            # Wait for futures to complete (main thread handles spinning)
+            timeout = 5.0
+            start = time.time()
+            while time.time() - start < timeout:
+                if future_left.done() and future_right.done():
+                    break
+                time.sleep(0.1)
             
             # Check if successful
             time.sleep(0.5)  # Give time for state to update
-            rclpy.spin_once(self, timeout_sec=0.1)
             
             # Verify motors are armed (axis_state == 8)
             if self.left_axis_state == 8 and self.right_axis_state == 8:
@@ -310,11 +314,17 @@ class ActuationDelayMeasurement(Node):
             req_idle = AxisState.Request()
             req_idle.axis_requested_state = 1  # IDLE
             
+            # Send requests asynchronously
             future_left = self.left_axis_client.call_async(req_idle)
             future_right = self.right_axis_client.call_async(req_idle)
             
-            rclpy.spin_until_future_complete(self, future_left, timeout_sec=2.0)
-            rclpy.spin_until_future_complete(self, future_right, timeout_sec=2.0)
+            # Wait for completion
+            timeout = 2.0
+            start = time.time()
+            while time.time() - start < timeout:
+                if future_left.done() and future_right.done():
+                    break
+                time.sleep(0.1)
             
             self.get_logger().info("  Motors disarmed")
             
@@ -684,6 +694,7 @@ def main(args=None):
     test_success = [False]  # Use list to allow modification in nested function
     
     def run_tests():
+        import traceback
         try:
             # Setup: launch ODrive nodes and arm motors
             node.get_logger().info("\n" + "="*60)
@@ -701,6 +712,7 @@ def main(args=None):
             
         except Exception as e:
             node.get_logger().error(f"Test error: {e}")
+            node.get_logger().error(traceback.format_exc())
         finally:
             test_complete.set()
     
