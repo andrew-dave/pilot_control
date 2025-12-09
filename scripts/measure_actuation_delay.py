@@ -86,7 +86,7 @@ class ActuationDelayMeasurement(Node):
         self.declare_parameter('input_mode', 2)            # 1=PASSTHROUGH, 2=VEL_RAMP
         self.declare_parameter('output_dir', '/tmp')       # where to save results
         self.declare_parameter('can_interface', 'can0')    # CAN interface name
-        self.declare_parameter('left_node_id', 2)          # ODrive CAN node ID for left
+        self.declare_parameter('left_node_id', 0)          # ODrive CAN node ID for left
         self.declare_parameter('right_node_id', 1)         # ODrive CAN node ID for right
         self.declare_parameter('launch_odrive_nodes', True)  # whether to launch ODrive nodes
         
