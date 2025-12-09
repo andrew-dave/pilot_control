@@ -469,12 +469,12 @@ class ActuationDelayMeasurement(Node):
         t = np.array(data.timestamps)
         v = np.array(data.velocities)
         
-        # Debug: print data statistics
+        # Print data statistics (important for diagnosing sampling issues)
         n_baseline = np.sum(t < 0)
         n_response = np.sum(t >= 0)
         sample_rate = len(t) / (t[-1] - t[0]) if (t[-1] - t[0]) > 0 else 0
-        self.get_logger().debug(
-            f"    Data: {len(t)} samples, {n_baseline} baseline, {n_response} response, "
+        self.get_logger().info(
+            f"    Data: {len(t)} samples ({n_baseline} baseline, {n_response} response), "
             f"~{sample_rate:.1f} Hz, t=[{t[0]*1000:.1f}, {t[-1]*1000:.1f}] ms"
         )
         
@@ -493,8 +493,8 @@ class ActuationDelayMeasurement(Node):
         # Step size (actual achieved)
         step_size = v_steady - v_baseline
         
-        self.get_logger().debug(
-            f"    Baseline: {v_baseline:.4f}, Steady: {v_steady:.4f}, Step: {step_size:.4f} rev/s"
+        self.get_logger().info(
+            f"    Velocity: baseline={v_baseline:.3f}, steady={v_steady:.3f}, step={step_size:.3f} rev/s"
         )
         
         if abs(step_size) < 0.01:
@@ -524,6 +524,14 @@ class ActuationDelayMeasurement(Node):
             transport_delay = t_post[crossing_indices[0]]
         else:
             transport_delay = 0.0
+        
+        # Show first few velocity samples after step for debugging
+        if len(t_post) >= 5:
+            early_samples = min(10, len(t_post))
+            times_str = ", ".join([f"{t_post[i]*1000:.0f}" for i in range(early_samples)])
+            vels_str = ", ".join([f"{v_post[i]:.3f}" for i in range(early_samples)])
+            self.get_logger().info(f"    First {early_samples} samples after step: t(ms)=[{times_str}]")
+            self.get_logger().info(f"    Velocities: [{vels_str}]")
         
         # Find time constant: time to reach 63.2% of step
         threshold_63 = v_baseline + 0.632 * step_size
@@ -566,10 +574,19 @@ class ActuationDelayMeasurement(Node):
             if len(t_ramp) > 1:
                 slope = (v_ramp[-1] - v_ramp[0]) / (t_ramp[-1] - t_ramp[0])
                 effective_ramp_rate = abs(slope)
+                self.get_logger().info(
+                    f"    Ramp: {len(t_ramp)} samples in 10-90% range, "
+                    f"t=[{t_ramp[0]*1000:.1f}, {t_ramp[-1]*1000:.1f}] ms, "
+                    f"v=[{v_ramp[0]:.3f}, {v_ramp[-1]:.3f}] rev/s"
+                )
             else:
                 effective_ramp_rate = abs(step_size) / max(settling_time, 0.001)
         else:
-            effective_ramp_rate = abs(step_size) / max(settling_time, 0.001)
+            # Not enough samples in ramp region - estimate from settling time
+            effective_ramp_rate = abs(step_size) / max(settling_time - transport_delay, 0.001)
+            self.get_logger().info(
+                f"    Ramp: only {np.sum(ramp_mask)} samples in 10-90% range (using settling time estimate)"
+            )
         
         # Steady state error
         commanded_vel = v_baseline + data.step_magnitude * (1 if data.direction == "up" else -1)
