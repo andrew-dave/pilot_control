@@ -23,10 +23,12 @@
       scan_rate: 10
 
     mapping:
-      acc_cov: 0.03
-      gyr_cov: 0.003
-      b_acc_cov: 0.0005
-      b_gyr_cov: 0.0005
+      # acc_cov: 0.03
+      acc_cov: 0.000192
+      # gyr_cov: 0.003
+      gyr_cov: 0.00000123
+      b_acc_cov: 0.000001
+      b_gyr_cov: 0.0000001
       fov_degree: 360.0
       det_range: 10.0
       extrinsic_est_en: false
