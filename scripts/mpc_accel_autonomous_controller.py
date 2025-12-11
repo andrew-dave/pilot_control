@@ -1009,9 +1009,9 @@ class MPCAccelController(Node):
         # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
         # delay_time: Pure transport delay (CAN latency + processing) in seconds
         # Set ramp_compensation_enabled=True and input_mode to VEL_RAMP for best results
-        self.declare_parameter("ramp_compensation_enabled", False)
-        self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (from ODrive config)
-        self.declare_parameter("wheel_delay_time", 0.01)  # seconds (~10ms typical CAN delay)
+        self.declare_parameter("ramp_compensation_enabled", True)
+        self.declare_parameter("wheel_ramp_rate",20.0)  # turn/s² (from ODrive config)
+        self.declare_parameter("wheel_delay_time", 0.03)  # seconds (~10ms typical CAN delay)
 
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
