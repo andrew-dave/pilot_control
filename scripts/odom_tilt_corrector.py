@@ -37,6 +37,7 @@ class OdomTiltCorrector(Node):
         self.alignment_set = False
         self.origin_set = False
         self.R_map = np.eye(3, dtype=float)
+        self.R_body_level = np.eye(3, dtype=float)  # For body-frame velocity tilt correction
         self.p0_world = np.zeros(3, dtype=float)
         self.align_quat = (0.0, 0.0, 0.0, 1.0)
 
@@ -383,6 +384,21 @@ class OdomTiltCorrector(Node):
                     f'using fixed 15° pitch')
             
             self.R_map = R_flip @ R_align
+            
+            # Compute body-frame tilt correction for velocity
+            # This corrects body velocity to level body frame (horizontal XY plane)
+            # Uses IMU gravity directly in body frame (not rotated to world)
+            a_body_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+            R_body_align = self.compute_tilt_correction_matrix(a_body_norm)
+            self.R_body_level = R_flip @ R_body_align
+            
+            # Compute body pitch angle for logging
+            body_pitch = np.arctan2(a_body_norm[0], -a_body_norm[2])
+            self.get_logger().info(
+                f'✓ Body velocity tilt correction: pitch={math.degrees(body_pitch):.2f}° | '
+                f'a_body=[{a_body_norm[0]:.3f}, {a_body_norm[1]:.3f}, {a_body_norm[2]:.3f}]'
+            )
+            
             self.alignment_set = True
             
             # Verify the correction worked
@@ -437,13 +453,19 @@ class OdomTiltCorrector(Node):
         # z not used
         self.current_yaw = self.quaternion_to_yaw(q_local[0], q_local[1], q_local[2], q_local[3])
         
-        # Extract and transform velocities for consistency with pose transformation
+        # Extract and transform velocities to TILT-CORRECTED BODY FRAME
+        # This gives velocity in a level body frame (XY horizontal, Z vertical)
+        # but still aligned with robot heading (not rotated to world)
         raw_vel = np.array([
             float(msg.twist.twist.linear.x),
             float(msg.twist.twist.linear.y),
             float(msg.twist.twist.linear.z)
         ], dtype=float)
-        vel_local = self.R_map @ raw_vel
+        
+        # Transform raw body velocity to level body frame using body tilt correction
+        # R_body_level corrects pitch/roll but preserves heading direction
+        vel_body_level = self.R_body_level @ raw_vel
+        
         try:
             # One-time diagnostic: check z vs x slope sign changes by logging the ratio
             if not hasattr(self, '_logged_slope_hint') and abs(float(p_local[0])) > 1e-6:
@@ -452,10 +474,20 @@ class OdomTiltCorrector(Node):
                 self._logged_slope_hint = True
         except Exception:
             pass
-        self.current_vx = float(vel_local[0])
-        self.current_vy = float(vel_local[1])
-        # Angular velocity is not transformed (rotation around Z-axis is preserved)
-        self.current_vyaw = msg.twist.twist.angular.z
+        
+        # Body frame velocities (tilt-corrected)
+        self.current_vx = float(vel_body_level[0])  # Forward velocity (horizontal)
+        self.current_vy = float(vel_body_level[1])  # Lateral velocity (horizontal)
+        
+        # Angular velocity: transform to get yaw rate in level frame
+        # Raw angular velocity in body frame
+        raw_omega = np.array([
+            float(msg.twist.twist.angular.x),
+            float(msg.twist.twist.angular.y),
+            float(msg.twist.twist.angular.z)
+        ], dtype=float)
+        omega_body_level = self.R_body_level @ raw_omega
+        self.current_vyaw = float(omega_body_level[2])  # Yaw rate around vertical axis
         
         # Mark pose as initialized
         if not self.pose_initialized:
@@ -494,18 +526,18 @@ class OdomTiltCorrector(Node):
             odom_corr.pose.pose.orientation.y = q_local[1]
             odom_corr.pose.pose.orientation.z = q_local[2]
             odom_corr.pose.pose.orientation.w = q_local[3]
-            # Rotate linear twist into the flat, tilt-corrected local frame
-            # (use the already computed vel_local)
-            try:
-                odom_corr.twist.twist.linear.x = float(vel_local[0])
-                odom_corr.twist.twist.linear.y = float(vel_local[1])
-                odom_corr.twist.twist.linear.z = 0.0
-            except Exception:
-                odom_corr.twist.twist.linear.x = 0.0
-                odom_corr.twist.twist.linear.y = 0.0
-                odom_corr.twist.twist.linear.z = 0.0
-            # Keep angular twist as-is (planar control uses z)
-            odom_corr.twist.twist.angular = msg.twist.twist.angular
+            
+            # Twist in TILT-CORRECTED BODY FRAME
+            # Linear velocity: horizontal forward/lateral in robot body frame
+            odom_corr.twist.twist.linear.x = self.current_vx   # Forward (horizontal)
+            odom_corr.twist.twist.linear.y = self.current_vy   # Lateral (horizontal)
+            odom_corr.twist.twist.linear.z = 0.0               # Vertical (zeroed for planar)
+            
+            # Angular velocity: yaw rate around vertical axis
+            odom_corr.twist.twist.angular.x = 0.0              # Roll rate (zeroed)
+            odom_corr.twist.twist.angular.y = 0.0              # Pitch rate (zeroed)
+            odom_corr.twist.twist.angular.z = self.current_vyaw  # Yaw rate (around vertical)
+            
             self.odom_pub.publish(odom_corr)
         except Exception:
             pass
