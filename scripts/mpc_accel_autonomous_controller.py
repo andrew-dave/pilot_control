@@ -1005,13 +1005,13 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
-        # Wheel ramp compensation parameters
-        # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
-        # delay_time: Pure transport delay (CAN latency + processing) in seconds
-        # Set ramp_compensation_enabled=True and input_mode to VEL_RAMP for best results
-        self.declare_parameter("ramp_compensation_enabled", True)
-        self.declare_parameter("wheel_ramp_rate",20.0)  # turn/s² (from ODrive config)
-        self.declare_parameter("wheel_delay_time", 0.03)  # seconds (~10ms typical CAN delay)
+        # Wheel ramp compensation parameters (DISABLED - using measured velocity feedback instead)
+        # With measured velocity feedback from FAST-LIO, MPC naturally compensates for
+        # actuator dynamics. Ramp compensation is no longer needed.
+        # input_mode will be PASSTHROUGH (1) when disabled, VEL_RAMP (2) when enabled.
+        self.declare_parameter("ramp_compensation_enabled", False)
+        self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (unused when disabled)
+        self.declare_parameter("wheel_delay_time", 0.03)  # seconds (unused when disabled)
 
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
@@ -1084,10 +1084,13 @@ class MPCAccelController(Node):
         self.current_yaw = 0.0
         self.pose_initialized = False
 
-        # Note: Velocity feedback is NOT used. Instead, we use commanded velocity
-        # (v_cmd, omega_cmd) as the MPC state. This avoids noisy velocity estimates.
+        # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
+        # Used as MPC state input for closed-loop velocity feedback
+        self.measured_v = 0.0
+        self.measured_omega = 0.0
 
         # Commanded velocities (v, ω) that we integrate Δu into
+        # These are still tracked for computing wheel commands
         self.v_cmd = 0.0
         self.omega_cmd = 0.0
 
@@ -1266,9 +1269,10 @@ class MPCAccelController(Node):
     # -----------------------------
     def odometry_callback(self, msg: Odometry) -> None:
         """
-        Process odometry for POSITION only.
-        Velocity is not needed - we use commanded velocity (v_cmd, omega_cmd) as the MPC state.
+        Process odometry for position AND velocity.
+        Velocity is in tilt-corrected body frame from FAST-LIO (via odom_tilt_corrector).
         """
+        # Position (global tilt-corrected frame)
         self.current_x = float(msg.pose.pose.position.x)
         self.current_y = float(msg.pose.pose.position.y)
         qx = float(msg.pose.pose.orientation.x)
@@ -1276,6 +1280,11 @@ class MPCAccelController(Node):
         qz = float(msg.pose.pose.orientation.z)
         qw = float(msg.pose.pose.orientation.w)
         self.current_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
+
+        # Velocity (tilt-corrected body frame)
+        # linear.x = forward velocity, angular.z = yaw rate
+        self.measured_v = float(msg.twist.twist.linear.x)
+        self.measured_omega = float(msg.twist.twist.angular.z)
 
         if not self.pose_initialized:
             self.pose_initialized = True
@@ -1850,15 +1859,14 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Use COMMANDED velocity as the MPC state instead of measured velocity.
-        # This assumes the low-level ODrive velocity controller tracks well (which it does).
+        # Use MEASURED velocity from odometry as MPC state (closed-loop velocity feedback).
+        # Velocity comes from FAST-LIO's EKF estimate, tilt-corrected to body frame.
         # Benefits:
-        #   - No noisy velocity measurements needed
-        #   - Commanded velocity is inherently smooth (output of MPC itself)
-        #   - Position errors are still corrected via error states (xe, ye, θe)
-        # This is "open-loop on velocity, closed-loop on position" - common in cascaded control.
-        v_body = self.v_cmd
-        omega_body = self.omega_cmd
+        #   - MPC sees actual system state, naturally compensates for actuator delay
+        #   - No need for ramp compensation or delay modeling
+        #   - Closed-loop on both position and velocity
+        v_body = self.measured_v
+        omega_body = self.measured_omega
 
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
@@ -1900,7 +1908,8 @@ class MPCAccelController(Node):
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
         
-        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
+        # Debug logging (uncomment for troubleshooting)
+        # self.get_logger().debug(f"Wheel cmd: L={left_rps_eff:.3f}, R={right_rps_eff:.3f} rev/s")
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
