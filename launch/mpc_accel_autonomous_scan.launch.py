@@ -156,6 +156,7 @@ def generate_launch_description():
     )
 
     # Odometry tilt corrector
+    # Note: When installed, the script is renamed to 'odom_tilt_corrector' (no .py extension)
     launch_file_path = Path(__file__).resolve()
     path_str = str(launch_file_path)
     if "/src/" in path_str:
@@ -165,7 +166,8 @@ def generate_launch_description():
     elif "/install/" in path_str:
         install_base = Path(path_str[: path_str.index("/install/") + 8])
         install_script_dir = install_base / "pilot_control" / "lib" / "pilot_control"
-        odom_tilt_corrector_path = str(install_script_dir / "odom_tilt_corrector.py")
+        # Installed version has no .py extension (see CMakeLists.txt RENAME)
+        odom_tilt_corrector_path = str(install_script_dir / "odom_tilt_corrector")
     else:
         source_script_dir = launch_file_path.parent.parent / "scripts"
         odom_tilt_corrector_path = str(source_script_dir / "odom_tilt_corrector.py")
