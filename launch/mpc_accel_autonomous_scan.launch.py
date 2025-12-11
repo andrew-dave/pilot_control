@@ -137,6 +137,17 @@ def generate_launch_description():
             "Set to 0 for constant weights (more stable)."
         ),
     )
+    
+    # Velocity feedback blending
+    declare_velocity_feedback_alpha_arg = DeclareLaunchArgument(
+        "velocity_feedback_alpha",
+        default_value="0.5",
+        description=(
+            "Blending factor for velocity feedback. "
+            "0.0 = commanded only (open-loop), 1.0 = measured only (closed-loop). "
+            "0.3-0.7 recommended for stability with delay compensation."
+        ),
+    )
 
     # Topic names
     declare_odometry_topic_arg = DeclareLaunchArgument(
@@ -254,6 +265,8 @@ def generate_launch_description():
                 "mpc_weight_increase_xe": LaunchConfiguration("mpc_weight_increase_xe"),
                 "mpc_weight_increase_ye": LaunchConfiguration("mpc_weight_increase_ye"),
                 "mpc_weight_increase_yaw": LaunchConfiguration("mpc_weight_increase_yaw"),
+                # Velocity feedback blending
+                "velocity_feedback_alpha": LaunchConfiguration("velocity_feedback_alpha"),
                 # Error-reference shaping near start of each segment
                 "error_ref_ahead_min_scale": 0.02,
                 "error_ref_gate_distance": 0.20,
@@ -382,6 +395,7 @@ def generate_launch_description():
             declare_mpc_weight_increase_xe_arg,
             declare_mpc_weight_increase_ye_arg,
             declare_mpc_weight_increase_yaw_arg,
+            declare_velocity_feedback_alpha_arg,
             declare_odometry_topic_arg,
             declare_left_control_topic_arg,
             declare_right_control_topic_arg,

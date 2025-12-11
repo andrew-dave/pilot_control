@@ -1013,6 +1013,13 @@ class MPCAccelController(Node):
         self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (unused when disabled)
         self.declare_parameter("wheel_delay_time", 0.03)  # seconds (unused when disabled)
 
+        # Velocity feedback blending parameter
+        # Blends measured velocity (from FAST-LIO) with commanded velocity for MPC state input.
+        # alpha = 0.0: Use only commanded velocity (open-loop, no delay compensation)
+        # alpha = 1.0: Use only measured velocity (closed-loop, may oscillate if noisy/delayed)
+        # alpha = 0.3-0.7: Blend both (recommended - gets delay info while staying stable)
+        self.declare_parameter("velocity_feedback_alpha", 0.5)
+
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
         self.wheel_base = float(self.get_parameter("wheel_base").value)
@@ -1078,6 +1085,11 @@ class MPCAccelController(Node):
         self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
         self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
 
+        # Velocity feedback blending
+        self.velocity_feedback_alpha = float(
+            self.get_parameter("velocity_feedback_alpha").value
+        )
+
         # State
         self.current_x = 0.0
         self.current_y = 0.0
@@ -1085,9 +1097,12 @@ class MPCAccelController(Node):
         self.pose_initialized = False
 
         # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
-        # Used as MPC state input for closed-loop velocity feedback
         self.measured_v = 0.0
         self.measured_omega = 0.0
+        
+        # Blended velocity for MPC state (combines measured and commanded)
+        self.blended_v = 0.0
+        self.blended_omega = 0.0
 
         # Commanded velocities (v, ω) that we integrate Δu into
         # These are still tracked for computing wheel commands
@@ -1164,6 +1179,18 @@ class MPCAccelController(Node):
         else:
             self.get_logger().info(
                 "Wheel ramp compensation DISABLED (using direct velocity commands)"
+            )
+        
+        # Log velocity feedback mode
+        alpha = self.velocity_feedback_alpha
+        if alpha <= 0.01:
+            self.get_logger().info("Velocity feedback: COMMANDED only (open-loop)")
+        elif alpha >= 0.99:
+            self.get_logger().info("Velocity feedback: MEASURED only (closed-loop)")
+        else:
+            self.get_logger().info(
+                f"✓ Velocity feedback: BLENDED (alpha={alpha:.2f}) - "
+                f"{alpha*100:.0f}% measured + {(1-alpha)*100:.0f}% commanded"
             )
 
         # Subscribers
@@ -1859,14 +1886,17 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Use MEASURED velocity from odometry as MPC state (closed-loop velocity feedback).
-        # Velocity comes from FAST-LIO's EKF estimate, tilt-corrected to body frame.
-        # Benefits:
-        #   - MPC sees actual system state, naturally compensates for actuator delay
-        #   - No need for ramp compensation or delay modeling
-        #   - Closed-loop on both position and velocity
-        v_body = self.measured_v
-        omega_body = self.measured_omega
+        # Blend measured velocity (from FAST-LIO) with commanded velocity for MPC state.
+        # This provides a balance between:
+        #   - Measured velocity: sees actual delays, but may be noisy/laggy → can cause oscillation
+        #   - Commanded velocity: smooth, but doesn't see actuator delay → can cause snaking
+        # alpha = 0: pure commanded (open-loop), alpha = 1: pure measured (closed-loop)
+        alpha = self.velocity_feedback_alpha
+        self.blended_v = alpha * self.measured_v + (1.0 - alpha) * self.v_cmd
+        self.blended_omega = alpha * self.measured_omega + (1.0 - alpha) * self.omega_cmd
+        
+        v_body = self.blended_v
+        omega_body = self.blended_omega
 
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
