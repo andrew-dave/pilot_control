@@ -46,6 +46,7 @@ from std_srvs.srv import Trigger, Empty
 import numpy as np
 import math
 from typing import List, Tuple, Optional
+from collections import deque
 import time
 import os
 import signal
@@ -1048,9 +1049,10 @@ class MPCAccelController(Node):
         self.declare_parameter("velocity_gain_estimation_enabled", True)
         self.declare_parameter("velocity_gain_alpha_init", 0.5)  # Initial alpha
         self.declare_parameter("velocity_gain_beta_init", 0.5)   # Initial beta
-        self.declare_parameter("velocity_gain_filter_alpha", 0.1)  # EMA filter (0.1 = slow adaptation)
+        self.declare_parameter("velocity_gain_n_samples", 20)    # Sliding window size
         self.declare_parameter("velocity_gain_min", 0.2)  # Minimum allowed gain
         self.declare_parameter("velocity_gain_max", 1.0)  # Maximum allowed gain
+        self.declare_parameter("velocity_gain_outlier_iqr_scale", 1.5)  # IQR scale for outlier rejection
 
         # Wheel ramp compensation parameters (DISABLED - using measured velocity feedback instead)
         # With measured velocity feedback from FAST-LIO, MPC naturally compensates for
@@ -1131,8 +1133,8 @@ class MPCAccelController(Node):
         self.velocity_gain_beta = float(
             self.get_parameter("velocity_gain_beta_init").value
         )
-        self.velocity_gain_filter_alpha = float(
-            self.get_parameter("velocity_gain_filter_alpha").value
+        self.velocity_gain_n_samples = int(
+            self.get_parameter("velocity_gain_n_samples").value
         )
         self.velocity_gain_min = float(
             self.get_parameter("velocity_gain_min").value
@@ -1140,6 +1142,13 @@ class MPCAccelController(Node):
         self.velocity_gain_max = float(
             self.get_parameter("velocity_gain_max").value
         )
+        self.velocity_gain_outlier_iqr_scale = float(
+            self.get_parameter("velocity_gain_outlier_iqr_scale").value
+        )
+        
+        # Sliding window buffers for robust estimation
+        self.alpha_samples: deque = deque(maxlen=self.velocity_gain_n_samples)
+        self.beta_samples: deque = deque(maxlen=self.velocity_gain_n_samples)
 
         # Wheel ramp compensation (DISABLED - using velocity gain model instead)
         self.ramp_compensation_enabled = bool(
@@ -1249,7 +1258,7 @@ class MPCAccelController(Node):
             self.get_logger().info(
                 f"✓ Velocity gain estimation ENABLED: "
                 f"α_init={self.velocity_gain_alpha:.2f}, β_init={self.velocity_gain_beta:.2f}, "
-                f"filter={self.velocity_gain_filter_alpha:.2f}"
+                f"n_samples={self.velocity_gain_n_samples}, IQR_scale={self.velocity_gain_outlier_iqr_scale:.1f}"
             )
         else:
             self.get_logger().info(
@@ -1535,11 +1544,11 @@ class MPCAccelController(Node):
         These model the ramp delay: when commanding Δv, the effective velocity
         for position change is v_prev + alpha * Δv (where alpha < 1 if there's delay).
         
-        Estimation approach:
+        Robust estimation approach:
         1. Compute actual position change since last cycle
-        2. Compute expected position change based on (v_prev + Δv) model
-        3. Estimate alpha = actual_change / expected_change
-        4. Apply exponential moving average filter
+        2. Estimate instantaneous alpha/beta from position changes
+        3. Add to sliding window buffer
+        4. Compute robust estimate using median with IQR outlier rejection
         """
         # Compute actual position change
         dx = self.current_x - self.prev_x
@@ -1556,19 +1565,14 @@ class MPCAccelController(Node):
         
         # Estimate alpha (linear velocity gain)
         # Expected: position_change = (v_prev + alpha * dv) * dt
-        # We want to find alpha such that dx_body ≈ (v_prev + alpha * dv) * dt
+        # Solve: alpha = (dx_body / dt - v_prev) / dv
         if abs(self.prev_dv) > 0.01:  # Only update if there was a significant velocity change
-            # Solve: dx_body = (v_prev + alpha * dv) * dt
-            # alpha = (dx_body / dt - v_prev) / dv
             v_effective = dx_body / dt if dt > 0.001 else 0.0
             alpha_estimate = (v_effective - self.prev_v_cmd) / self.prev_dv
             
-            # Clamp to valid range
-            alpha_estimate = np.clip(alpha_estimate, self.velocity_gain_min, self.velocity_gain_max)
-            
-            # Apply EMA filter
-            gamma = self.velocity_gain_filter_alpha
-            self.velocity_gain_alpha = gamma * alpha_estimate + (1.0 - gamma) * self.velocity_gain_alpha
+            # Only add to buffer if estimate is in a reasonable range (initial filter)
+            if self.velocity_gain_min - 0.5 <= alpha_estimate <= self.velocity_gain_max + 0.5:
+                self.alpha_samples.append(alpha_estimate)
         
         # Estimate beta (angular velocity gain)
         # Expected: yaw_change = (omega_prev + beta * domega) * dt
@@ -1576,12 +1580,66 @@ class MPCAccelController(Node):
             omega_effective = dyaw / dt if dt > 0.001 else 0.0
             beta_estimate = (omega_effective - self.prev_omega_cmd) / self.prev_domega
             
-            # Clamp to valid range
-            beta_estimate = np.clip(beta_estimate, self.velocity_gain_min, self.velocity_gain_max)
+            # Only add to buffer if estimate is in a reasonable range (initial filter)
+            if self.velocity_gain_min - 0.5 <= beta_estimate <= self.velocity_gain_max + 0.5:
+                self.beta_samples.append(beta_estimate)
+        
+        # Update alpha using robust estimation
+        if len(self.alpha_samples) >= 3:
+            self.velocity_gain_alpha = self._robust_estimate(
+                list(self.alpha_samples),
+                self.velocity_gain_min,
+                self.velocity_gain_max
+            )
+        
+        # Update beta using robust estimation
+        if len(self.beta_samples) >= 3:
+            self.velocity_gain_beta = self._robust_estimate(
+                list(self.beta_samples),
+                self.velocity_gain_min,
+                self.velocity_gain_max
+            )
+    
+    def _robust_estimate(self, samples: List[float], min_val: float, max_val: float) -> float:
+        """
+        Compute robust estimate from samples using median with IQR outlier rejection.
+        
+        Args:
+            samples: List of sample values
+            min_val: Minimum allowed output value
+            max_val: Maximum allowed output value
             
-            # Apply EMA filter
-            gamma = self.velocity_gain_filter_alpha
-            self.velocity_gain_beta = gamma * beta_estimate + (1.0 - gamma) * self.velocity_gain_beta
+        Returns:
+            Robust estimate (median of inliers, clamped to [min_val, max_val])
+        """
+        if len(samples) < 3:
+            # Not enough samples for robust estimation
+            return np.clip(np.median(samples), min_val, max_val)
+        
+        arr = np.array(samples)
+        
+        # Compute quartiles
+        q1 = np.percentile(arr, 25)
+        q3 = np.percentile(arr, 75)
+        iqr = q3 - q1
+        
+        # Define outlier bounds
+        iqr_scale = self.velocity_gain_outlier_iqr_scale
+        lower_bound = q1 - iqr_scale * iqr
+        upper_bound = q3 + iqr_scale * iqr
+        
+        # Filter outliers
+        inliers = arr[(arr >= lower_bound) & (arr <= upper_bound)]
+        
+        if len(inliers) == 0:
+            # All samples are outliers - use median of original
+            inliers = arr
+        
+        # Compute median of inliers
+        estimate = float(np.median(inliers))
+        
+        # Clamp to valid range
+        return float(np.clip(estimate, min_val, max_val))
 
     def compute_error_state(self, ref_wp: np.ndarray) -> np.ndarray:
         """
@@ -2113,9 +2171,14 @@ class MPCAccelController(Node):
                 ]
                 self.ref_traj_pub.publish(ref_msg)
             
-            # Velocity gains [alpha, beta] for ramp delay modeling
+            # Velocity gains [alpha, beta, n_alpha_samples, n_beta_samples] for ramp delay modeling
             gains_msg = Float64MultiArray()
-            gains_msg.data = [self.velocity_gain_alpha, self.velocity_gain_beta]
+            gains_msg.data = [
+                self.velocity_gain_alpha,
+                self.velocity_gain_beta,
+                float(len(self.alpha_samples)),
+                float(len(self.beta_samples))
+            ]
             self.velocity_gains_pub.publish(gains_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
