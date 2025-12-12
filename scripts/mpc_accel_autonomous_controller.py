@@ -1566,23 +1566,53 @@ class MPCAccelController(Node):
         # Estimate alpha (linear velocity gain)
         # Expected: position_change = (v_prev + alpha * dv) * dt
         # Solve: alpha = (dx_body / dt - v_prev) / dv
-        if abs(self.prev_dv) > 0.01:  # Only update if there was a significant velocity change
+        # Use absolute values to get magnitude of gain regardless of direction
+        if abs(self.prev_dv) > 0.001:  # Only update if there was a significant velocity change
             v_effective = dx_body / dt if dt > 0.001 else 0.0
-            alpha_estimate = (v_effective - self.prev_v_cmd) / self.prev_dv
+            delta_v_observed = v_effective - self.prev_v_cmd
+            
+            # Use absolute values: alpha = |delta_v_observed| / |prev_dv|
+            # But preserve sign consistency: if signs match, gain is positive
+            if abs(self.prev_dv) > 1e-6:
+                alpha_raw = abs(delta_v_observed) / abs(self.prev_dv)
+                # Check sign consistency (response in same direction as command)
+                signs_match = (delta_v_observed * self.prev_dv) >= 0
+                if not signs_match:
+                    alpha_raw = -alpha_raw  # Negative gain means opposite response
+            else:
+                alpha_raw = 0.0
             
             # Only add to buffer if estimate is in a reasonable range (initial filter)
-            if self.velocity_gain_min - 0.5 <= alpha_estimate <= self.velocity_gain_max + 0.5:
-                self.alpha_samples.append(alpha_estimate)
+            if self.velocity_gain_min - 0.5 <= alpha_raw <= self.velocity_gain_max + 0.5:
+                self.alpha_samples.append(alpha_raw)
         
         # Estimate beta (angular velocity gain)
         # Expected: yaw_change = (omega_prev + beta * domega) * dt
-        if abs(self.prev_domega) > 0.01:  # Only update if there was a significant angular velocity change
+        # Use absolute values to get magnitude of gain regardless of direction
+        if abs(self.prev_domega) > 0.001:  # Only update if there was a significant angular velocity change
             omega_effective = dyaw / dt if dt > 0.001 else 0.0
-            beta_estimate = (omega_effective - self.prev_omega_cmd) / self.prev_domega
+            delta_omega_observed = omega_effective - self.prev_omega_cmd
+            
+            # Use absolute values: beta = |delta_omega_observed| / |prev_domega|
+            # But preserve sign consistency: if signs match, gain is positive
+            if abs(self.prev_domega) > 1e-6:
+                beta_raw = abs(delta_omega_observed) / abs(self.prev_domega)
+                # Check sign consistency (response in same direction as command)
+                signs_match = (delta_omega_observed * self.prev_domega) >= 0
+                if not signs_match:
+                    beta_raw = -beta_raw  # Negative gain means opposite response
+            else:
+                beta_raw = 0.0
+            
+            # Log raw estimate for diagnostics (info level for visibility)
+            self.get_logger().info(
+                f"β_raw={beta_raw:.3f} | ω_eff={omega_effective:.4f}, ω_cmd={self.prev_omega_cmd:.4f}, "
+                f"Δω_cmd={self.prev_domega:.4f}, Δω_obs={delta_omega_observed:.4f}"
+            )
             
             # Only add to buffer if estimate is in a reasonable range (initial filter)
-            if self.velocity_gain_min - 0.5 <= beta_estimate <= self.velocity_gain_max + 0.5:
-                self.beta_samples.append(beta_estimate)
+            if self.velocity_gain_min - 0.5 <= beta_raw <= self.velocity_gain_max + 0.5:
+                self.beta_samples.append(beta_raw)
         
         # Update alpha using robust estimation
         if len(self.alpha_samples) >= 3:
