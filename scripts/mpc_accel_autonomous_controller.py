@@ -797,18 +797,28 @@ class AccelMPC:
         current_v: float,
         current_omega: float,
         ref_traj: List[np.ndarray],
+        measured_v: Optional[float] = None,
+        measured_omega: Optional[float] = None,
     ) -> Tuple[np.ndarray, float, Optional[np.ndarray]]:
         """
         Solve the MPC problem.
 
         Args:
-            current_error: [xe, ye, θe]^T
-            current_v:     current linear velocity (v)
-            current_omega: current angular velocity (ω)
-            ref_traj:      list of waypoints [x, y, yaw, vx, vy, vyaw]
+            current_error:  [xe, ye, θe]^T
+            current_v:      current linear velocity state for MPC (typically commanded)
+            current_omega:  current angular velocity state for MPC (typically commanded)
+            ref_traj:       list of waypoints [x, y, yaw, vx, vy, vyaw]
+            measured_v:     (optional) measured velocity for first step position propagation
+            measured_omega: (optional) measured angular velocity for first step position propagation
 
         Returns:
             (Δu0_opt, solve_time_ms, solution)
+        
+        Note on measured velocity:
+            If measured_v/measured_omega are provided, they are used for computing
+            position error evolution in step 0→1 only. This accounts for velocity lag
+            while keeping the velocity state smooth (commanded). For steps 1→N,
+            commanded velocity is used for all predictions.
         """
         if not self.initialized:
             if not self.setup():
@@ -839,7 +849,32 @@ class AccelMPC:
             omega_ref0 = 0.0
 
         A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0)
-        rhs0 = A_aug0 @ x0
+        
+        # Hybrid velocity feedback for step 0→1:
+        # - Position error evolution (rhs0[0:3]): use measured velocity if provided
+        # - Velocity state evolution (rhs0[3:5]): use commanded velocity
+        # This accounts for velocity lag in position prediction while keeping
+        # velocity state smooth for subsequent predictions.
+        if measured_v is not None and measured_omega is not None:
+            # Create modified x0 with measured velocity for position propagation
+            x0_for_pos = np.copy(x0)
+            x0_for_pos[3] = float(np.clip(measured_v, self.v_min, self.v_max))
+            x0_for_pos[4] = float(np.clip(measured_omega, self.omega_min, self.omega_max))
+            
+            # Compute full RHS with measured velocity
+            rhs0_with_measured = A_aug0 @ x0_for_pos
+            
+            # Compute velocity part of RHS with commanded velocity
+            # rhs0[3:5] should be [v_cmd, omega_cmd] (identity mapping in A_aug)
+            rhs0_vel = np.array([x0[3], x0[4]])
+            
+            # Combine: position from measured, velocity from commanded
+            rhs0 = np.zeros(self.nx)
+            rhs0[0:3] = rhs0_with_measured[0:3]  # Position uses measured velocity
+            rhs0[3:5] = rhs0_vel                  # Velocity uses commanded
+        else:
+            # Standard case: use commanded velocity for everything
+            rhs0 = A_aug0 @ x0
 
         # First nx dynamics rows (k=0): equality constraint to rhs0
         for i in range(self.nx):
@@ -1013,12 +1048,8 @@ class MPCAccelController(Node):
         self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (unused when disabled)
         self.declare_parameter("wheel_delay_time", 0.03)  # seconds (unused when disabled)
 
-        # Velocity feedback blending parameter
-        # Blends measured velocity (from FAST-LIO) with commanded velocity for MPC state input.
-        # alpha = 0.0: Use only commanded velocity (open-loop, no delay compensation)
-        # alpha = 1.0: Use only measured velocity (closed-loop, may oscillate if noisy/delayed)
-        # alpha = 0.3-0.7: Blend both (recommended - gets delay info while staying stable)
-        self.declare_parameter("velocity_feedback_alpha", 0.5)
+        # Velocity feedback parameter (unused in hybrid mode, kept for compatibility)
+        self.declare_parameter("velocity_feedback_alpha", 0.0)
 
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
@@ -1085,10 +1116,10 @@ class MPCAccelController(Node):
         self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
         self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
 
-        # Velocity feedback blending
-        self.velocity_feedback_alpha = float(
-            self.get_parameter("velocity_feedback_alpha").value
-        )
+        # Velocity feedback (hybrid mode - parameter unused but kept for compatibility)
+        # self.velocity_feedback_alpha = float(
+        #     self.get_parameter("velocity_feedback_alpha").value
+        # )
 
         # State
         self.current_x = 0.0
@@ -1097,12 +1128,9 @@ class MPCAccelController(Node):
         self.pose_initialized = False
 
         # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
+        # Used for first-step position prediction in MPC (hybrid approach)
         self.measured_v = 0.0
         self.measured_omega = 0.0
-        
-        # Blended velocity for MPC state (combines measured and commanded)
-        self.blended_v = 0.0
-        self.blended_omega = 0.0
 
         # Commanded velocities (v, ω) that we integrate Δu into
         # These are still tracked for computing wheel commands
@@ -1182,16 +1210,10 @@ class MPCAccelController(Node):
             )
         
         # Log velocity feedback mode
-        alpha = self.velocity_feedback_alpha
-        if alpha <= 0.01:
-            self.get_logger().info("Velocity feedback: COMMANDED only (open-loop)")
-        elif alpha >= 0.99:
-            self.get_logger().info("Velocity feedback: MEASURED only (closed-loop)")
-        else:
-            self.get_logger().info(
-                f"✓ Velocity feedback: BLENDED (alpha={alpha:.2f}) - "
-                f"{alpha*100:.0f}% measured + {(1-alpha)*100:.0f}% commanded"
-            )
+        self.get_logger().info(
+            "✓ Velocity feedback: HYBRID mode - "
+            "commanded for MPC state, measured for first-step position prediction"
+        )
 
         # Subscribers
         self.create_subscription(
@@ -1886,20 +1908,20 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Blend measured velocity (from FAST-LIO) with commanded velocity for MPC state.
-        # This provides a balance between:
-        #   - Measured velocity: sees actual delays, but may be noisy/laggy → can cause oscillation
-        #   - Commanded velocity: smooth, but doesn't see actuator delay → can cause snaking
-        # alpha = 0: pure commanded (open-loop), alpha = 1: pure measured (closed-loop)
-        alpha = self.velocity_feedback_alpha
-        self.blended_v = alpha * self.measured_v + (1.0 - alpha) * self.v_cmd
-        self.blended_omega = alpha * self.measured_omega + (1.0 - alpha) * self.omega_cmd
-        
-        v_body = self.blended_v
-        omega_body = self.blended_omega
+        # Hybrid velocity feedback approach:
+        # - MPC velocity state: use COMMANDED velocity (smooth, stable for optimization)
+        # - First step position prediction: use MEASURED velocity (accounts for delay)
+        # - Subsequent steps: use commanded velocity for prediction
+        # This captures current velocity lag without feeding noisy measurements into state.
+        v_body = self.v_cmd
+        omega_body = self.omega_cmd
 
-        # Solve MPC for Δu
-        du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
+        # Solve MPC for Δu, passing measured velocity for first-step position propagation
+        du0, solve_ms, solution = self.mpc.solve(
+            err, v_body, omega_body, ref_traj,
+            measured_v=self.measured_v,
+            measured_omega=self.measured_omega
+        )
 
         # Integrate Δu into command velocities (MPC's internal state)
         dv = float(du0[0])
