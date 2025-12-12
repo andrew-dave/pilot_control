@@ -403,26 +403,49 @@ class AccelMPC:
         # Solver debug / verbosity
         self.solver_debug_enabled = bool(solver_debug_enabled)
 
-        # Velocity gain coefficients (model ramp delay)
-        # alpha: linear velocity gain (position effect of Δv)
-        # beta: angular velocity gain (yaw effect of Δω)
-        # Values < 1 mean velocity doesn't fully ramp up within one timestep
+        # Two-parameter ramp delay model:
+        # alpha, beta: Position gain coefficients (average velocity effect during cycle)
+        # gamma_v, gamma_omega: Ramp completion coefficients (velocity achieved by end of cycle)
+        # For linear ramp: alpha ≈ 0.5 * gamma
         self.alpha = 1.0
         self.beta = 1.0
+        self.gamma_v = 1.0
+        self.gamma_omega = 1.0
 
         # Flag
         self.initialized = False
 
-    def set_velocity_gains(self, alpha: float, beta: float) -> None:
+    def set_velocity_gains(
+        self, 
+        alpha: float, 
+        beta: float,
+        gamma_v: float = None,
+        gamma_omega: float = None,
+    ) -> None:
         """
-        Set velocity gain coefficients for ramp delay modeling.
+        Set velocity gain coefficients for two-parameter ramp delay modeling.
         
         Args:
-            alpha: Linear velocity gain [0.2, 1.0]. Lower = more ramp delay.
-            beta: Angular velocity gain [0.2, 1.0]. Lower = more ramp delay.
+            alpha: Linear velocity position gain [0.2, 1.0]. Lower = more ramp delay effect on position.
+            beta: Angular velocity position gain [0.2, 1.0]. Lower = more ramp delay effect on yaw.
+            gamma_v: Linear velocity ramp completion [0.2, 1.0]. How much of Δv is achieved by end of cycle.
+                     If None, derived as min(1.0, 2*alpha).
+            gamma_omega: Angular velocity ramp completion [0.2, 1.0]. How much of Δω is achieved by end of cycle.
+                         If None, derived as min(1.0, 2*beta).
         """
         self.alpha = float(np.clip(alpha, 0.2, 1.0))
         self.beta = float(np.clip(beta, 0.2, 1.0))
+        
+        # Derive gamma from alpha/beta if not provided (assumes linear ramp: gamma ≈ 2*alpha)
+        if gamma_v is None:
+            self.gamma_v = float(np.clip(2.0 * self.alpha, 0.2, 1.0))
+        else:
+            self.gamma_v = float(np.clip(gamma_v, 0.2, 1.0))
+            
+        if gamma_omega is None:
+            self.gamma_omega = float(np.clip(2.0 * self.beta, 0.2, 1.0))
+        else:
+            self.gamma_omega = float(np.clip(gamma_omega, 0.2, 1.0))
 
     def set_velocity_bound_scale(self, scale: float) -> None:
         """Scale the v bounds by a factor in [0, 1]."""
@@ -707,6 +730,8 @@ class AccelMPC:
         omega_ref: float,
         alpha: float = 1.0,
         beta: float = 1.0,
+        gamma_v: float = 1.0,
+        gamma_omega: float = 1.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Build augmented A and B for a given reference velocity.
@@ -725,10 +750,17 @@ class AccelMPC:
                       [ 0, -1]]
         B_err      = Ts * B_err_cont
         
-        Velocity gain coefficients (alpha, beta):
-            These model the ramp delay in velocity response. When commanding Δv,
-            the effective velocity for position change is v_prev + alpha*Δv.
-            alpha < 1 means velocity doesn't reach commanded value within one timestep.
+        Two-parameter ramp delay model:
+            - alpha, beta: Position gain coefficients
+              Position change uses effective velocity: v_eff = v_prev + alpha * Δv
+              alpha < 1 means velocity doesn't fully contribute to position within timestep.
+            
+            - gamma_v, gamma_omega: Velocity ramp completion coefficients
+              By end of cycle, velocity reaches: v_end = v_prev + gamma_v * Δv
+              gamma < 1 means velocity hasn't fully ramped to commanded value.
+              
+            For linear ramp: alpha ≈ 0.5 * gamma (average = half of final)
+            Typically: alpha < gamma ≤ 1.0
         """
         Ts = self.Ts
 
@@ -740,8 +772,8 @@ class AccelMPC:
             ]
         )
 
-        # B_err scaled by alpha/beta to model velocity ramp delay
-        # Position changes use effective velocity: v_eff = v_prev + alpha * Δv
+        # B_err scaled by alpha/beta to model position effect of ramp delay
+        # Position changes use effective (average) velocity during cycle
         B_err = Ts * np.array(
             [
                 [-alpha, 0.0],    # xe affected by alpha-scaled Δv
@@ -757,12 +789,12 @@ class AccelMPC:
         # Bottom-right already identity for [v, ω]
 
         # Augmented B (5x2): Δv, Δω affect both error states (via B_err) and [v, ω]
-        # Position effect is scaled by alpha/beta (ramp delay model)
-        # Velocity state always gets full Δu (we're commanding velocity, even if not achieved)
+        # Position effect is scaled by alpha/beta (average velocity during cycle)
+        # Velocity state is scaled by gamma (ramp completion by end of cycle)
         B_aug = np.zeros((self.nx, self.nu))
         B_aug[0:3, :] = B_err        # Scaled effect on [xe, ye, θe]
-        B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k (full update to velocity state)
-        B_aug[4, 1] = 1.0            # ω_{k+1} = ω_k + Δω_k
+        B_aug[3, 0] = gamma_v        # v_{k+1} = v_k + gamma_v * Δv_k
+        B_aug[4, 1] = gamma_omega    # ω_{k+1} = ω_k + gamma_omega * Δω_k
 
         return A_aug, B_aug
 
@@ -792,8 +824,11 @@ class AccelMPC:
             v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
             omega_ref = float(wp[5])
 
-            # Use velocity gain coefficients (alpha, beta) to model ramp delay
-            A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref, self.alpha, self.beta)
+            # Use velocity gain coefficients to model ramp delay
+            # alpha, beta: position effect; gamma_v, gamma_omega: velocity ramp completion
+            A_aug, B_aug = self._build_A_aug_and_B_aug(
+                v_ref, omega_ref, self.alpha, self.beta, self.gamma_v, self.gamma_omega
+            )
 
             # -A_aug x_k terms (k>0)
             if k > 0 and k in self.A_indices:
@@ -871,9 +906,11 @@ class AccelMPC:
             v_ref0 = 0.0
             omega_ref0 = 0.0
 
-        # Use velocity gain coefficients (alpha, beta) to model ramp delay
-        # This scales the effect of Δu on position while keeping full effect on velocity state
-        A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0, self.alpha, self.beta)
+        # Use velocity gain coefficients to model ramp delay
+        # alpha, beta: position effect; gamma_v, gamma_omega: velocity ramp completion
+        A_aug0, _ = self._build_A_aug_and_B_aug(
+            v_ref0, omega_ref0, self.alpha, self.beta, self.gamma_v, self.gamma_omega
+        )
         
         # Compute initial state propagation (rhs for first dynamics constraint)
         rhs0 = A_aug0 @ x0
@@ -1042,17 +1079,20 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
-        # Velocity gain estimation parameters (models ramp delay)
-        # alpha: linear velocity gain (how much of commanded v is achieved in one timestep)
-        # beta: angular velocity gain (how much of commanded omega is achieved)
-        # Values < 1 model ramp delay; estimated online from position changes
+        # Two-parameter ramp delay model:
+        # alpha, beta: Position gain (average velocity effect during cycle)
+        # gamma_v, gamma_omega: Ramp completion (velocity achieved by end of cycle)
+        # For linear ramp: alpha ≈ 0.5 * gamma
         self.declare_parameter("velocity_gain_estimation_enabled", True)
-        self.declare_parameter("velocity_gain_alpha_init", 0.5)  # Initial alpha
-        self.declare_parameter("velocity_gain_beta_init", 0.5)   # Initial beta
+        self.declare_parameter("velocity_gain_alpha_init", 0.4)  # Initial alpha (position gain)
+        self.declare_parameter("velocity_gain_beta_init", 0.4)   # Initial beta (position gain)
+        self.declare_parameter("velocity_gain_gamma_v_init", 0.8)  # Initial gamma_v (ramp completion)
+        self.declare_parameter("velocity_gain_gamma_omega_init", 0.8)  # Initial gamma_omega (ramp completion)
         self.declare_parameter("velocity_gain_n_samples", 20)    # Sliding window size
         self.declare_parameter("velocity_gain_min", 0.2)  # Minimum allowed gain
         self.declare_parameter("velocity_gain_max", 1.0)  # Maximum allowed gain
         self.declare_parameter("velocity_gain_outlier_iqr_scale", 1.5)  # IQR scale for outlier rejection
+        self.declare_parameter("velocity_gain_derive_gamma", True)  # Derive gamma from alpha (gamma = 2*alpha)
 
         # Wheel ramp compensation parameters (DISABLED - using measured velocity feedback instead)
         # With measured velocity feedback from FAST-LIO, MPC naturally compensates for
@@ -1123,7 +1163,7 @@ class MPCAccelController(Node):
             self.get_parameter("target_reached_threshold").value
         )
 
-        # Velocity gain estimation parameters
+        # Velocity gain estimation parameters (two-parameter model)
         self.velocity_gain_estimation_enabled = bool(
             self.get_parameter("velocity_gain_estimation_enabled").value
         )
@@ -1132,6 +1172,12 @@ class MPCAccelController(Node):
         )
         self.velocity_gain_beta = float(
             self.get_parameter("velocity_gain_beta_init").value
+        )
+        self.velocity_gain_gamma_v = float(
+            self.get_parameter("velocity_gain_gamma_v_init").value
+        )
+        self.velocity_gain_gamma_omega = float(
+            self.get_parameter("velocity_gain_gamma_omega_init").value
         )
         self.velocity_gain_n_samples = int(
             self.get_parameter("velocity_gain_n_samples").value
@@ -1144,6 +1190,9 @@ class MPCAccelController(Node):
         )
         self.velocity_gain_outlier_iqr_scale = float(
             self.get_parameter("velocity_gain_outlier_iqr_scale").value
+        )
+        self.velocity_gain_derive_gamma = bool(
+            self.get_parameter("velocity_gain_derive_gamma").value
         )
         
         # Sliding window buffers for robust estimation
@@ -1253,17 +1302,22 @@ class MPCAccelController(Node):
                 "Wheel ramp compensation DISABLED (using direct velocity commands)"
             )
         
-        # Log velocity gain estimation mode
+        # Log velocity gain estimation mode (two-parameter model)
         if self.velocity_gain_estimation_enabled:
             self.get_logger().info(
-                f"✓ Velocity gain estimation ENABLED: "
+                f"✓ Two-parameter ramp model ENABLED: "
                 f"α_init={self.velocity_gain_alpha:.2f}, β_init={self.velocity_gain_beta:.2f}, "
-                f"n_samples={self.velocity_gain_n_samples}, IQR_scale={self.velocity_gain_outlier_iqr_scale:.1f}"
+                f"γv_init={self.velocity_gain_gamma_v:.2f}, γω_init={self.velocity_gain_gamma_omega:.2f}"
+            )
+            self.get_logger().info(
+                f"  Estimation: n_samples={self.velocity_gain_n_samples}, "
+                f"derive_gamma={self.velocity_gain_derive_gamma}"
             )
         else:
             self.get_logger().info(
-                f"Velocity gain estimation DISABLED: "
-                f"α={self.velocity_gain_alpha:.2f}, β={self.velocity_gain_beta:.2f} (fixed)"
+                f"Two-parameter ramp model (FIXED): "
+                f"α={self.velocity_gain_alpha:.2f}, β={self.velocity_gain_beta:.2f}, "
+                f"γv={self.velocity_gain_gamma_v:.2f}, γω={self.velocity_gain_gamma_omega:.2f}"
             )
 
         # Subscribers
@@ -2101,8 +2155,20 @@ class MPCAccelController(Node):
         if self.velocity_gain_estimation_enabled and self.last_control_time is not None:
             self._update_velocity_gains()
         
-        # Update MPC's velocity gain coefficients
-        self.mpc.set_velocity_gains(self.velocity_gain_alpha, self.velocity_gain_beta)
+        # Derive gamma from alpha if enabled (assumes linear ramp: gamma ≈ 2*alpha)
+        if self.velocity_gain_derive_gamma:
+            self.velocity_gain_gamma_v = float(np.clip(2.0 * self.velocity_gain_alpha, 
+                                                        self.velocity_gain_min, self.velocity_gain_max))
+            self.velocity_gain_gamma_omega = float(np.clip(2.0 * self.velocity_gain_beta, 
+                                                            self.velocity_gain_min, self.velocity_gain_max))
+        
+        # Update MPC's velocity gain coefficients (two-parameter model)
+        self.mpc.set_velocity_gains(
+            self.velocity_gain_alpha, 
+            self.velocity_gain_beta,
+            self.velocity_gain_gamma_v,
+            self.velocity_gain_gamma_omega
+        )
         
         # MPC velocity state: use COMMANDED velocity
         v_body = self.v_cmd
@@ -2201,11 +2267,14 @@ class MPCAccelController(Node):
                 ]
                 self.ref_traj_pub.publish(ref_msg)
             
-            # Velocity gains [alpha, beta, n_alpha_samples, n_beta_samples] for ramp delay modeling
+            # Velocity gains [alpha, beta, gamma_v, gamma_omega, n_alpha_samples, n_beta_samples]
+            # Two-parameter ramp delay model
             gains_msg = Float64MultiArray()
             gains_msg.data = [
                 self.velocity_gain_alpha,
                 self.velocity_gain_beta,
+                self.velocity_gain_gamma_v,
+                self.velocity_gain_gamma_omega,
                 float(len(self.alpha_samples)),
                 float(len(self.beta_samples))
             ]
