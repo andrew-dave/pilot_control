@@ -49,7 +49,7 @@ def generate_launch_description():
     # MPC controller parameters
     declare_control_frequency_arg = DeclareLaunchArgument(
         "control_frequency",
-        default_value="5.0",
+        default_value="10.0",
         description="Control loop frequency (Hz)",
     )
     declare_max_linear_velocity_arg = DeclareLaunchArgument(
@@ -71,7 +71,7 @@ def generate_launch_description():
     )
     declare_mpc_dt_arg = DeclareLaunchArgument(
         "mpc_dt",
-        default_value="0.2",
+        default_value="0.1",
         description="MPC time step (seconds)",
     )
     declare_mpc_Q_xe_arg = DeclareLaunchArgument(
@@ -141,7 +141,7 @@ def generate_launch_description():
     # Velocity feedback blending
     declare_velocity_feedback_alpha_arg = DeclareLaunchArgument(
         "velocity_feedback_alpha",
-        default_value="0.5",
+        default_value="1.0",
         description=(
             "Blending factor for velocity feedback. "
             "0.0 = commanded only (open-loop), 1.0 = measured only (closed-loop). "
