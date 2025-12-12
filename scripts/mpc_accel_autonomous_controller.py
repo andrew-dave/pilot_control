@@ -402,8 +402,26 @@ class AccelMPC:
         # Solver debug / verbosity
         self.solver_debug_enabled = bool(solver_debug_enabled)
 
+        # Velocity gain coefficients (model ramp delay)
+        # alpha: linear velocity gain (position effect of Δv)
+        # beta: angular velocity gain (yaw effect of Δω)
+        # Values < 1 mean velocity doesn't fully ramp up within one timestep
+        self.alpha = 1.0
+        self.beta = 1.0
+
         # Flag
         self.initialized = False
+
+    def set_velocity_gains(self, alpha: float, beta: float) -> None:
+        """
+        Set velocity gain coefficients for ramp delay modeling.
+        
+        Args:
+            alpha: Linear velocity gain [0.2, 1.0]. Lower = more ramp delay.
+            beta: Angular velocity gain [0.2, 1.0]. Lower = more ramp delay.
+        """
+        self.alpha = float(np.clip(alpha, 0.2, 1.0))
+        self.beta = float(np.clip(beta, 0.2, 1.0))
 
     def set_velocity_bound_scale(self, scale: float) -> None:
         """Scale the v bounds by a factor in [0, 1]."""
@@ -686,6 +704,8 @@ class AccelMPC:
         self,
         v_ref: float,
         omega_ref: float,
+        alpha: float = 1.0,
+        beta: float = 1.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Build augmented A and B for a given reference velocity.
@@ -703,6 +723,11 @@ class AccelMPC:
                       [ 0,  0],
                       [ 0, -1]]
         B_err      = Ts * B_err_cont
+        
+        Velocity gain coefficients (alpha, beta):
+            These model the ramp delay in velocity response. When commanding Δv,
+            the effective velocity for position change is v_prev + alpha*Δv.
+            alpha < 1 means velocity doesn't reach commanded value within one timestep.
         """
         Ts = self.Ts
 
@@ -714,11 +739,13 @@ class AccelMPC:
             ]
         )
 
+        # B_err scaled by alpha/beta to model velocity ramp delay
+        # Position changes use effective velocity: v_eff = v_prev + alpha * Δv
         B_err = Ts * np.array(
             [
-                [-1.0, 0.0],
+                [-alpha, 0.0],    # xe affected by alpha-scaled Δv
                 [0.0, 0.0],
-                [0.0, -1.0],
+                [0.0, -beta],     # θe affected by beta-scaled Δω
             ]
         )
 
@@ -729,11 +756,11 @@ class AccelMPC:
         # Bottom-right already identity for [v, ω]
 
         # Augmented B (5x2): Δv, Δω affect both error states (via B_err) and [v, ω]
-        # This models "immediate effect" discretization where Δu takes effect at
-        # the start of the interval, giving the solver more flexibility.
+        # Position effect is scaled by alpha/beta (ramp delay model)
+        # Velocity state always gets full Δu (we're commanding velocity, even if not achieved)
         B_aug = np.zeros((self.nx, self.nu))
-        B_aug[0:3, :] = B_err        # Immediate effect on [xe, ye, θe]
-        B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k
+        B_aug[0:3, :] = B_err        # Scaled effect on [xe, ye, θe]
+        B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k (full update to velocity state)
         B_aug[4, 1] = 1.0            # ω_{k+1} = ω_k + Δω_k
 
         return A_aug, B_aug
@@ -764,7 +791,8 @@ class AccelMPC:
             v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
             omega_ref = float(wp[5])
 
-            A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref)
+            # Use velocity gain coefficients (alpha, beta) to model ramp delay
+            A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref, self.alpha, self.beta)
 
             # -A_aug x_k terms (k>0)
             if k > 0 and k in self.A_indices:
@@ -797,28 +825,22 @@ class AccelMPC:
         current_v: float,
         current_omega: float,
         ref_traj: List[np.ndarray],
-        measured_v: Optional[float] = None,
-        measured_omega: Optional[float] = None,
     ) -> Tuple[np.ndarray, float, Optional[np.ndarray]]:
         """
         Solve the MPC problem.
 
         Args:
             current_error:  [xe, ye, θe]^T
-            current_v:      current linear velocity state for MPC (typically commanded)
-            current_omega:  current angular velocity state for MPC (typically commanded)
+            current_v:      current linear velocity state for MPC (commanded velocity)
+            current_omega:  current angular velocity state for MPC (commanded velocity)
             ref_traj:       list of waypoints [x, y, yaw, vx, vy, vyaw]
-            measured_v:     (optional) measured velocity for first step position propagation
-            measured_omega: (optional) measured angular velocity for first step position propagation
 
         Returns:
             (Δu0_opt, solve_time_ms, solution)
         
-        Note on measured velocity:
-            If measured_v/measured_omega are provided, they are used for computing
-            position error evolution in step 0→1 only. This accounts for velocity lag
-            while keeping the velocity state smooth (commanded). For steps 1→N,
-            commanded velocity is used for all predictions.
+        Note:
+            Ramp delay is modeled via velocity gain coefficients (alpha, beta) in
+            the dynamics matrices, not via measured velocity feedback.
         """
         if not self.initialized:
             if not self.setup():
@@ -848,33 +870,12 @@ class AccelMPC:
             v_ref0 = 0.0
             omega_ref0 = 0.0
 
-        A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0)
+        # Use velocity gain coefficients (alpha, beta) to model ramp delay
+        # This scales the effect of Δu on position while keeping full effect on velocity state
+        A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0, self.alpha, self.beta)
         
-        # Hybrid velocity feedback for step 0→1:
-        # - Position error evolution (rhs0[0:3]): use measured velocity if provided
-        # - Velocity state evolution (rhs0[3:5]): use commanded velocity
-        # This accounts for velocity lag in position prediction while keeping
-        # velocity state smooth for subsequent predictions.
-        if measured_v is not None and measured_omega is not None:
-            # Create modified x0 with measured velocity for position propagation
-            x0_for_pos = np.copy(x0)
-            x0_for_pos[3] = float(np.clip(measured_v, self.v_min, self.v_max))
-            x0_for_pos[4] = float(np.clip(measured_omega, self.omega_min, self.omega_max))
-            
-            # Compute full RHS with measured velocity
-            rhs0_with_measured = A_aug0 @ x0_for_pos
-            
-            # Compute velocity part of RHS with commanded velocity
-            # rhs0[3:5] should be [v_cmd, omega_cmd] (identity mapping in A_aug)
-            rhs0_vel = np.array([x0[3], x0[4]])
-            
-            # Combine: position from measured, velocity from commanded
-            rhs0 = np.zeros(self.nx)
-            rhs0[0:3] = rhs0_with_measured[0:3]  # Position uses measured velocity
-            rhs0[3:5] = rhs0_vel                  # Velocity uses commanded
-        else:
-            # Standard case: use commanded velocity for everything
-            rhs0 = A_aug0 @ x0
+        # Compute initial state propagation (rhs for first dynamics constraint)
+        rhs0 = A_aug0 @ x0
 
         # First nx dynamics rows (k=0): equality constraint to rhs0
         for i in range(self.nx):
@@ -1040,6 +1041,17 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
+        # Velocity gain estimation parameters (models ramp delay)
+        # alpha: linear velocity gain (how much of commanded v is achieved in one timestep)
+        # beta: angular velocity gain (how much of commanded omega is achieved)
+        # Values < 1 model ramp delay; estimated online from position changes
+        self.declare_parameter("velocity_gain_estimation_enabled", True)
+        self.declare_parameter("velocity_gain_alpha_init", 0.5)  # Initial alpha
+        self.declare_parameter("velocity_gain_beta_init", 0.5)   # Initial beta
+        self.declare_parameter("velocity_gain_filter_alpha", 0.1)  # EMA filter (0.1 = slow adaptation)
+        self.declare_parameter("velocity_gain_min", 0.2)  # Minimum allowed gain
+        self.declare_parameter("velocity_gain_max", 1.0)  # Maximum allowed gain
+
         # Wheel ramp compensation parameters (DISABLED - using measured velocity feedback instead)
         # With measured velocity feedback from FAST-LIO, MPC naturally compensates for
         # actuator dynamics. Ramp compensation is no longer needed.
@@ -1109,17 +1121,32 @@ class MPCAccelController(Node):
             self.get_parameter("target_reached_threshold").value
         )
 
-        # Wheel ramp compensation
+        # Velocity gain estimation parameters
+        self.velocity_gain_estimation_enabled = bool(
+            self.get_parameter("velocity_gain_estimation_enabled").value
+        )
+        self.velocity_gain_alpha = float(
+            self.get_parameter("velocity_gain_alpha_init").value
+        )
+        self.velocity_gain_beta = float(
+            self.get_parameter("velocity_gain_beta_init").value
+        )
+        self.velocity_gain_filter_alpha = float(
+            self.get_parameter("velocity_gain_filter_alpha").value
+        )
+        self.velocity_gain_min = float(
+            self.get_parameter("velocity_gain_min").value
+        )
+        self.velocity_gain_max = float(
+            self.get_parameter("velocity_gain_max").value
+        )
+
+        # Wheel ramp compensation (DISABLED - using velocity gain model instead)
         self.ramp_compensation_enabled = bool(
             self.get_parameter("ramp_compensation_enabled").value
         )
         self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
         self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
-
-        # Velocity feedback (hybrid mode - parameter unused but kept for compatibility)
-        # self.velocity_feedback_alpha = float(
-        #     self.get_parameter("velocity_feedback_alpha").value
-        # )
 
         # State
         self.current_x = 0.0
@@ -1128,14 +1155,22 @@ class MPCAccelController(Node):
         self.pose_initialized = False
 
         # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
-        # Used for first-step position prediction in MPC (hybrid approach)
         self.measured_v = 0.0
         self.measured_omega = 0.0
 
         # Commanded velocities (v, ω) that we integrate Δu into
-        # These are still tracked for computing wheel commands
         self.v_cmd = 0.0
         self.omega_cmd = 0.0
+        
+        # Previous state for velocity gain estimation
+        self.prev_x = 0.0
+        self.prev_y = 0.0
+        self.prev_yaw = 0.0
+        self.prev_v_cmd = 0.0
+        self.prev_omega_cmd = 0.0
+        self.prev_dv = 0.0
+        self.prev_domega = 0.0
+        self.last_control_time = None
 
         # Target pose and path state
         self.target_x = 0.0
@@ -1209,11 +1244,18 @@ class MPCAccelController(Node):
                 "Wheel ramp compensation DISABLED (using direct velocity commands)"
             )
         
-        # Log velocity feedback mode
-        self.get_logger().info(
-            "✓ Velocity feedback: HYBRID mode - "
-            "commanded for MPC state, measured for first-step position prediction"
-        )
+        # Log velocity gain estimation mode
+        if self.velocity_gain_estimation_enabled:
+            self.get_logger().info(
+                f"✓ Velocity gain estimation ENABLED: "
+                f"α_init={self.velocity_gain_alpha:.2f}, β_init={self.velocity_gain_beta:.2f}, "
+                f"filter={self.velocity_gain_filter_alpha:.2f}"
+            )
+        else:
+            self.get_logger().info(
+                f"Velocity gain estimation DISABLED: "
+                f"α={self.velocity_gain_alpha:.2f}, β={self.velocity_gain_beta:.2f} (fixed)"
+            )
 
         # Subscribers
         self.create_subscription(
@@ -1268,6 +1310,9 @@ class MPCAccelController(Node):
         )
         self.delta_cmd_pub = self.create_publisher(
             Float64MultiArray, "/mpc_accel/delta_cmd", 10
+        )
+        self.velocity_gains_pub = self.create_publisher(
+            Float64MultiArray, "/mpc_accel/velocity_gains", 10
         )
 
         # ODrive axis state / clear error clients for arming/disarming
@@ -1482,6 +1527,61 @@ class MPCAccelController(Node):
             )
 
         return waypoints
+
+    def _update_velocity_gains(self) -> None:
+        """
+        Online estimation of velocity gain coefficients (alpha, beta).
+        
+        These model the ramp delay: when commanding Δv, the effective velocity
+        for position change is v_prev + alpha * Δv (where alpha < 1 if there's delay).
+        
+        Estimation approach:
+        1. Compute actual position change since last cycle
+        2. Compute expected position change based on (v_prev + Δv) model
+        3. Estimate alpha = actual_change / expected_change
+        4. Apply exponential moving average filter
+        """
+        # Compute actual position change
+        dx = self.current_x - self.prev_x
+        dy = self.current_y - self.prev_y
+        dyaw = self.normalize_angle(self.current_yaw - self.prev_yaw)
+        
+        # Transform to body frame (at previous pose)
+        cy = math.cos(self.prev_yaw)
+        sy = math.sin(self.prev_yaw)
+        dx_body = cy * dx + sy * dy  # Forward displacement
+        
+        # Compute dt
+        dt = self.mpc_dt  # Use MPC timestep as reference
+        
+        # Estimate alpha (linear velocity gain)
+        # Expected: position_change = (v_prev + alpha * dv) * dt
+        # We want to find alpha such that dx_body ≈ (v_prev + alpha * dv) * dt
+        if abs(self.prev_dv) > 0.01:  # Only update if there was a significant velocity change
+            # Solve: dx_body = (v_prev + alpha * dv) * dt
+            # alpha = (dx_body / dt - v_prev) / dv
+            v_effective = dx_body / dt if dt > 0.001 else 0.0
+            alpha_estimate = (v_effective - self.prev_v_cmd) / self.prev_dv
+            
+            # Clamp to valid range
+            alpha_estimate = np.clip(alpha_estimate, self.velocity_gain_min, self.velocity_gain_max)
+            
+            # Apply EMA filter
+            gamma = self.velocity_gain_filter_alpha
+            self.velocity_gain_alpha = gamma * alpha_estimate + (1.0 - gamma) * self.velocity_gain_alpha
+        
+        # Estimate beta (angular velocity gain)
+        # Expected: yaw_change = (omega_prev + beta * domega) * dt
+        if abs(self.prev_domega) > 0.01:  # Only update if there was a significant angular velocity change
+            omega_effective = dyaw / dt if dt > 0.001 else 0.0
+            beta_estimate = (omega_effective - self.prev_omega_cmd) / self.prev_domega
+            
+            # Clamp to valid range
+            beta_estimate = np.clip(beta_estimate, self.velocity_gain_min, self.velocity_gain_max)
+            
+            # Apply EMA filter
+            gamma = self.velocity_gain_filter_alpha
+            self.velocity_gain_beta = gamma * beta_estimate + (1.0 - gamma) * self.velocity_gain_beta
 
     def compute_error_state(self, ref_wp: np.ndarray) -> np.ndarray:
         """
@@ -1908,20 +2008,30 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Hybrid velocity feedback approach:
-        # - MPC velocity state: use COMMANDED velocity (smooth, stable for optimization)
-        # - First step position prediction: use MEASURED velocity (accounts for delay)
-        # - Subsequent steps: use commanded velocity for prediction
-        # This captures current velocity lag without feeding noisy measurements into state.
+        # Online velocity gain estimation (alpha, beta)
+        # These model how much of the commanded velocity change is achieved in one timestep
+        if self.velocity_gain_estimation_enabled and self.last_control_time is not None:
+            self._update_velocity_gains()
+        
+        # Update MPC's velocity gain coefficients
+        self.mpc.set_velocity_gains(self.velocity_gain_alpha, self.velocity_gain_beta)
+        
+        # MPC velocity state: use COMMANDED velocity
         v_body = self.v_cmd
         omega_body = self.omega_cmd
 
-        # Solve MPC for Δu, passing measured velocity for first-step position propagation
-        du0, solve_ms, solution = self.mpc.solve(
-            err, v_body, omega_body, ref_traj,
-            measured_v=self.measured_v,
-            measured_omega=self.measured_omega
-        )
+        # Solve MPC for Δu (no measured velocity pass - using gain model instead)
+        du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
+
+        # Store previous state for next estimation cycle
+        self.prev_x = self.current_x
+        self.prev_y = self.current_y
+        self.prev_yaw = self.current_yaw
+        self.prev_v_cmd = self.v_cmd
+        self.prev_omega_cmd = self.omega_cmd
+        self.prev_dv = float(du0[0])
+        self.prev_domega = float(du0[1])
+        self.last_control_time = self.get_clock().now()
 
         # Integrate Δu into command velocities (MPC's internal state)
         dv = float(du0[0])
@@ -2002,6 +2112,11 @@ class MPCAccelController(Node):
                     float(wp0[5]),
                 ]
                 self.ref_traj_pub.publish(ref_msg)
+            
+            # Velocity gains [alpha, beta] for ramp delay modeling
+            gains_msg = Float64MultiArray()
+            gains_msg.data = [self.velocity_gain_alpha, self.velocity_gain_beta]
+            self.velocity_gains_pub.publish(gains_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
 
