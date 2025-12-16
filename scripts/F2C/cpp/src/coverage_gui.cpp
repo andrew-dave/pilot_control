@@ -1321,7 +1321,7 @@ void PlotWidget::resizeEvent(QResizeEvent* event) {
 CoverageGUI::CoverageGUI(QWidget* parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("Roof Coverage Planner (C++)");
+    setWindowTitle("BDR Coverage Planner");
     resize(1500, 900);
     
     // Initialize robot map fetch settings (user-agnostic)
@@ -1332,7 +1332,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     dds_wifi_config_path_ = QDir::homePath() + "/wifi_cyclonedds.xml";
 
     // Load persisted settings
-    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    QSettings settings("PilotControl", "BDRCoveragePlanner");
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
     dds_profile_ = settings.value("dds_profile", "rf").toString();  // Default to RF
     robot_odom_topic_ = settings.value("robot_odom_topic", robot_odom_topic_).toString();
@@ -1342,9 +1342,9 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     QString dds_config = currentDdsConfigPath();
     if (QFile::exists(dds_config)) {
         qputenv("CYCLONEDDS_URI", dds_config.toUtf8());
-        std::cout << "[F2C GUI] Using CycloneDDS config: " << dds_config.toStdString() << std::endl;
+        std::cout << "[Coverage Planner] Using CycloneDDS config: " << dds_config.toStdString() << std::endl;
     } else {
-        std::cerr << "[F2C GUI] Warning: DDS config not found: " << dds_config.toStdString() << std::endl;
+        std::cerr << "[Coverage Planner] Warning: DDS config not found: " << dds_config.toStdString() << std::endl;
     }
     
     fit_view_pending_ = true;
@@ -1372,7 +1372,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     waypoints_published_ = false;
     ros_initialized_ = false;
     try {
-        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
         setupRobotTrackingSubscription();
@@ -1384,8 +1384,8 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         ros_initialized_ = true;
         setStatus(QString("Ready (ROS2 connected via %1)").arg(dds_profile_.toUpper()));
     } catch (const std::exception& e) {
-        std::cerr << "[F2C GUI] Warning: ROS2 initialization failed: " << e.what() << std::endl;
-        std::cerr << "[F2C GUI] Starting background reconnection timer..." << std::endl;
+        std::cerr << "[Coverage Planner] Warning: ROS2 initialization failed: " << e.what() << std::endl;
+        std::cerr << "[Coverage Planner] Starting background reconnection timer..." << std::endl;
         setStatus("Ready (ROS2 unavailable - reconnecting...)");
         
         // Start the reconnection timer
@@ -2051,7 +2051,7 @@ QGroupBox* CoverageGUI::buildFileControls() {
             txt_robot_ip_->setText(trimmed);
         }
         robot_host_ = trimmed;
-        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
         settings.setValue("robot_ip", robot_host_);
         updateFetchTooltip();
     });
@@ -2109,14 +2109,14 @@ QGroupBox* CoverageGUI::buildRobotTrackingControls() {
             return;
         }
         robot_odom_topic_ = trimmed;
-        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
         settings.setValue("robot_odom_topic", robot_odom_topic_);
         updateRobotStatusLabel(false);
         setupRobotTrackingSubscription();
     });
     connect(spin_robot_marker_size_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
         robot_marker_size_m_ = value;
-        QSettings settings("PilotControl", "F2CCoveragePlanner");
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
         settings.setValue("robot_marker_size_m", robot_marker_size_m_);
         plot_->setRobotMarkerSize(robot_marker_size_m_);
         refreshPlot();
@@ -2304,7 +2304,7 @@ QGroupBox* CoverageGUI::buildPathPlanningControls() {
     // Mode selector
     QHBoxLayout* mode_layout = new QHBoxLayout();
     mode_layout->addWidget(new QLabel("Mode:"));
-    radio_mode_f2c_ = new QRadioButton("F2C Coverage");
+    radio_mode_f2c_ = new QRadioButton("Coverage planning");
     radio_mode_custom_ = new QRadioButton("Custom Path");
     radio_mode_f2c_->setChecked(true);
     radio_mode_f2c_->setToolTip("Use Fields2Cover library for coverage path planning");
@@ -2314,7 +2314,7 @@ QGroupBox* CoverageGUI::buildPathPlanningControls() {
     mode_layout->addStretch();
     v->addLayout(mode_layout);
     
-    // F2C controls container
+    // Coverage planning controls container
     f2c_controls_widget_ = buildF2CControls();
     v->addWidget(f2c_controls_widget_);
     
@@ -3542,7 +3542,7 @@ pcd = o3d.io.read_point_cloud(pcd_file)
 print(f"Loaded {len(pcd.points)} points")
 
 vis = o3d.visualization.Visualizer()
-vis.create_window(window_name="F2C 3D Viewer - Point Cloud + Path", width=1200, height=900)
+vis.create_window(window_name="3D Viewer - Point Cloud + Path", width=1200, height=900)
 vis.add_geometry(pcd)
 
 opt = vis.get_render_option()
@@ -4183,11 +4183,11 @@ void CoverageGUI::exportPathCSV() {
         mode_label = "custom";
     } else {
     if (path_.empty()) {
-            QMessageBox::warning(this, "Warning", "Generate F2C path first.");
+            QMessageBox::warning(this, "Warning", "Generate a coverage path first.");
         return;
         }
         export_path = path_;
-        mode_label = "F2C";
+        mode_label = "planned";
     }
     
     QString filename = QFileDialog::getSaveFileName(this, "Save Path CSV", "", "CSV (*.csv)");
@@ -4222,7 +4222,7 @@ void CoverageGUI::setupRobotTrackingSubscription() {
     
     auto qos = rclcpp::QoS(rclcpp::KeepLast(50)).best_effort();
     std::string topic = topic_qt.toStdString();
-    std::cout << "[F2C GUI] Subscribing to robot odom topic: " << topic << std::endl;
+    std::cout << "[Coverage Planner] Subscribing to robot odom topic: " << topic << std::endl;
     fastlio_sub_ = ros_node_->create_subscription<nav_msgs::msg::Odometry>(
         topic, qos,
         [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -4340,7 +4340,7 @@ void CoverageGUI::publishWaypoints() {
         custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
         refreshCustomPathUI();
         
-        std::cout << "[F2C GUI] Published " << waypoint_count << " custom waypoints to /f2c_waypoints topic" << std::endl;
+        std::cout << "[Coverage Planner] Published " << waypoint_count << " custom waypoints" << std::endl;
     } else {
         // F2C coverage mode
         if (path_.empty()) {
@@ -4358,7 +4358,7 @@ void CoverageGUI::publishWaypoints() {
         }
         waypoint_count = deduped_path.size();
         
-        std::cout << "[F2C GUI] Published " << waypoint_count << " F2C waypoints to /f2c_waypoints topic" << std::endl;
+        std::cout << "[Coverage Planner] Published " << waypoint_count << " planned waypoints" << std::endl;
     }
 
     // Publish to ROS2 topic
@@ -4572,7 +4572,7 @@ void CoverageGUI::startNavigation() {
     waypoint_pub_->publish(msg);
 
     setStatus("🚀 Navigation started!", 3000);
-    std::cout << "[F2C GUI] Sent navigation start signal" << std::endl;
+    std::cout << "[Coverage Planner] Sent navigation start signal" << std::endl;
 }
 
 // Helper: find closest point on a line segment to a given point
@@ -4767,7 +4767,7 @@ void CoverageGUI::computeReprojectionError() {
     }
     setStatus(status, 5000);
     
-    std::cout << "[F2C GUI] Reprojection error computed: " << reproj_lines_.size() 
+    std::cout << "[Coverage Planner] Reprojection error computed: " << reproj_lines_.size() 
               << " samples over " << trail_length_m << "m, avg=" << (avg_error * 100) 
               << " cm, max=" << (max_error * 100) << " cm" << std::endl;
 }
@@ -4861,7 +4861,7 @@ void CoverageGUI::onPointCloudLoaded() {
 void CoverageGUI::toggleDarkMode() {
     dark_mode_ = btn_dark_mode_ ? btn_dark_mode_->isChecked() : !dark_mode_;
     
-    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    QSettings settings("PilotControl", "BDRCoveragePlanner");
     settings.setValue("dark_mode", dark_mode_);
     
     applyTheme();
@@ -5474,11 +5474,11 @@ void CoverageGUI::tryReconnectROS2() {
         return;
     }
     
-    std::cout << "[F2C GUI] Attempting ROS2 reconnection..." << std::endl;
+    std::cout << "[Coverage Planner] Attempting ROS2 reconnection..." << std::endl;
     
     try {
         // Try to initialize ROS2
-        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
         setupRobotTrackingSubscription();
@@ -5494,7 +5494,7 @@ void CoverageGUI::tryReconnectROS2() {
         ros_reconnect_timer_->stop();
         
         setStatus(QString("✅ ROS2 connected via %1!").arg(dds_profile_.toUpper()), 5000);
-        std::cout << "[F2C GUI] ROS2 reconnection successful!" << std::endl;
+        std::cout << "[Coverage Planner] ROS2 reconnection successful!" << std::endl;
         
     } catch (const std::exception& e) {
         // Still not available - timer will try again
@@ -5521,7 +5521,7 @@ void CoverageGUI::onDdsProfileChanged() {
     dds_profile_ = new_profile;
     
     // Persist the selection
-    QSettings settings("PilotControl", "F2CCoveragePlanner");
+    QSettings settings("PilotControl", "BDRCoveragePlanner");
     settings.setValue("dds_profile", dds_profile_);
     
     // Update status label
@@ -5534,7 +5534,7 @@ void CoverageGUI::onDdsProfileChanged() {
         lbl_dds_status_->setStyleSheet("color: orange; font-size: 10px;");
     }
     
-    std::cout << "[F2C GUI] DDS profile changed to: " << dds_profile_.toStdString() << std::endl;
+    std::cout << "[Coverage Planner] DDS profile changed to: " << dds_profile_.toStdString() << std::endl;
     
     // Update environment variable
     qputenv("CYCLONEDDS_URI", config_path.toUtf8());
@@ -5551,7 +5551,7 @@ void CoverageGUI::reinitializeROS2() {
     
     // Shutdown existing ROS2 connection if any
     if (ros_initialized_) {
-        std::cout << "[F2C GUI] Shutting down ROS2 for profile switch..." << std::endl;
+        std::cout << "[Coverage Planner] Shutting down ROS2 for profile switch..." << std::endl;
         fastlio_sub_.reset();
         
         // Stop the spin thread by shutting down the node's context
@@ -5585,7 +5585,7 @@ void CoverageGUI::reinitializeROS2() {
     }
     
     try {
-        ros_node_ = rclcpp::Node::make_shared("f2c_coverage_gui");
+        ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
         setupRobotTrackingSubscription();
@@ -5596,10 +5596,10 @@ void CoverageGUI::reinitializeROS2() {
         
         ros_initialized_ = true;
         setStatus(QString("✅ ROS2 connected via %1").arg(dds_profile_.toUpper()), 5000);
-        std::cout << "[F2C GUI] ROS2 reinitialized with " << dds_profile_.toStdString() << " profile" << std::endl;
+        std::cout << "[Coverage Planner] ROS2 reinitialized with " << dds_profile_.toStdString() << " profile" << std::endl;
         
     } catch (const std::exception& e) {
-        std::cerr << "[F2C GUI] ROS2 reinit failed: " << e.what() << std::endl;
+        std::cerr << "[Coverage Planner] ROS2 reinit failed: " << e.what() << std::endl;
         setStatus(QString("ROS2 unavailable on %1 - retrying...").arg(dds_profile_.toUpper()));
         ros_reconnect_timer_->start();
     }

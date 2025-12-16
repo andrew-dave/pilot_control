@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(f2c_coverage_planner VERSION 1.0.0 LANGUAGES CXX)
+project(bdr_coverage_planner VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -79,6 +79,7 @@ set(PIPELINE_SOURCES
 set(GUI_SOURCES
     src/coverage_gui.cpp
     src/main.cpp
+    resources.qrc
 )
 
 # If QCustomPlot is available, add it
@@ -88,7 +89,7 @@ if(USE_QCUSTOMPLOT)
 endif()
 
 # Create executable
-add_executable(f2c_coverage_planner
+add_executable(bdr_coverage_planner
     ${HEADERS}
     ${PIPELINE_SOURCES}
     ${GUI_SOURCES}
@@ -101,7 +102,7 @@ set(PCL_FILTERED_LIBS
     ${PCL_FILTERS_LIBRARIES}
 )
 
-target_link_libraries(f2c_coverage_planner
+target_link_libraries(bdr_coverage_planner
     ${QT_LIBS}
     ${PCL_FILTERED_LIBS}
     Eigen3::Eigen
@@ -110,8 +111,8 @@ target_link_libraries(f2c_coverage_planner
 
 # Link Fields2Cover if found
 if(Fields2Cover_FOUND)
-    target_link_libraries(f2c_coverage_planner Fields2Cover::Fields2Cover)
-    target_compile_definitions(f2c_coverage_planner PRIVATE HAVE_FIELDS2COVER)
+    target_link_libraries(bdr_coverage_planner Fields2Cover::Fields2Cover)
+    target_compile_definitions(bdr_coverage_planner PRIVATE HAVE_FIELDS2COVER)
     message(STATUS "Fields2Cover found and linked")
 else()
     # Try to find it manually
@@ -122,9 +123,9 @@ else()
         PATHS /usr/local/include /usr/include /opt/fields2cover/include
     )
     if(FIELDS2COVER_LIB AND FIELDS2COVER_INCLUDE)
-        target_include_directories(f2c_coverage_planner PRIVATE ${FIELDS2COVER_INCLUDE})
-        target_link_libraries(f2c_coverage_planner ${FIELDS2COVER_LIB})
-        target_compile_definitions(f2c_coverage_planner PRIVATE HAVE_FIELDS2COVER)
+        target_include_directories(bdr_coverage_planner PRIVATE ${FIELDS2COVER_INCLUDE})
+        target_link_libraries(bdr_coverage_planner ${FIELDS2COVER_LIB})
+        target_compile_definitions(bdr_coverage_planner PRIVATE HAVE_FIELDS2COVER)
         message(STATUS "Fields2Cover found manually: ${FIELDS2COVER_LIB}")
     else()
         message(WARNING "Fields2Cover not found - coverage features will be disabled")
@@ -133,8 +134,8 @@ endif()
 
 # Link CGAL if found
 if(CGAL_FOUND)
-    target_link_libraries(f2c_coverage_planner CGAL::CGAL)
-    target_compile_definitions(f2c_coverage_planner PRIVATE HAVE_CGAL)
+    target_link_libraries(bdr_coverage_planner CGAL::CGAL)
+    target_compile_definitions(bdr_coverage_planner PRIVATE HAVE_CGAL)
     message(STATUS "CGAL found and linked")
 else()
     message(WARNING "CGAL not found - alphashape will use fallback method")
@@ -150,16 +151,16 @@ find_package(tf2_geometry_msgs REQUIRED)
 
 # Add ROS2 includes and libraries
 include_directories(${rclcpp_INCLUDE_DIRS})
-target_link_libraries(f2c_coverage_planner ${rclcpp_LIBRARIES})
-ament_target_dependencies(f2c_coverage_planner rclcpp std_msgs nav_msgs tf2 tf2_geometry_msgs)
+target_link_libraries(bdr_coverage_planner ${rclcpp_LIBRARIES})
+ament_target_dependencies(bdr_coverage_planner rclcpp std_msgs nav_msgs tf2 tf2_geometry_msgs)
 
 # Install
-install(TARGETS f2c_coverage_planner
+install(TARGETS bdr_coverage_planner
     RUNTIME DESTINATION bin
 )
 
 # Print configuration summary
-message(STATUS "=== F2C Coverage Planner Configuration ===")
+message(STATUS "=== BDR Coverage Planner Configuration ===")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Qt version: ${QT_VERSION}")
 message(STATUS "PCL: ${PCL_VERSION}")

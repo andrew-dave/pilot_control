@@ -1,5 +1,5 @@
 #!/bin/bash
-# F2C Coverage Planner Launcher with ROS2 Support
+# BDR Coverage Planner Launcher with ROS2 Support
 
 # Source ROS2 environment (try different distributions)
 if [ -f "/opt/ros/humble/setup.bash" ]; then
@@ -15,7 +15,7 @@ elif [ -f "/opt/ros/noetic/setup.bash" ]; then
     source /opt/ros/noetic/setup.bash
     ROS_DISTRO="noetic"
 else
-    echo "Warning: No ROS2 installation found. F2C waypoint publishing will not work."
+    echo "Warning: No ROS2 installation found. Waypoint publishing will not work."
     echo "Please install ROS2 (Humble, Foxy, or Galactic recommended) to enable waypoint publishing features."
 fi
 

@@ -181,7 +181,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=f2c_coverage_planner
+CMAKE_PROJECT_NAME:STATIC=bdr_coverage_planner
 
 //Value Computed by CMake
 CMAKE_PROJECT_VERSION:STATIC=1.0.0
@@ -878,6 +878,15 @@ ament_cmake_version_DIR:PATH=/opt/ros/humble/share/ament_cmake_version/cmake
 
 //The directory containing a CMake configuration file for ament_index_cpp.
 ament_index_cpp_DIR:PATH=/opt/ros/humble/share/ament_index_cpp/cmake
+
+//Value Computed by CMake
+bdr_coverage_planner_BINARY_DIR:STATIC=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build
+
+//Value Computed by CMake
+bdr_coverage_planner_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+bdr_coverage_planner_SOURCE_DIR:STATIC=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp
 
 //The directory containing a CMake configuration file for boost_date_time.
 boost_date_time_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/boost_date_time-1.74.0

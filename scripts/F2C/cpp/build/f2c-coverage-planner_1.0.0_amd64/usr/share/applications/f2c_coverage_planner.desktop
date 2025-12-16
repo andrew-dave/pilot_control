@@ -1,8 +1,8 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=F2C Coverage Planner
-Comment=Fields2Cover Coverage Path Planning GUI
+Name=BDR Coverage Planner
+Comment=Coverage path planning GUI (Fields2Cover)
 Exec=/usr/bin/f2c_coverage_planner_launcher
 Icon=f2c_coverage_planner
 Terminal=false

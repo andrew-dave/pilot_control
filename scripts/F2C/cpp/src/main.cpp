@@ -10,6 +10,7 @@
 #include <QStyleFactory>
 #include <QFont>
 #include <QFontDatabase>
+#include <QIcon>
 #include <iostream>
 #include <rclcpp/rclcpp.hpp>
 
@@ -23,9 +24,13 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     
     // Set application metadata
-    app.setApplicationName("F2C Coverage Planner");
+    app.setApplicationName("BDR Coverage Planner");
+    app.setApplicationDisplayName("BDR Coverage Planner");
     app.setApplicationVersion("1.0.0");
     app.setOrganizationName("PilotControl");
+
+    // Set application/window icon (embedded via Qt resources)
+    app.setWindowIcon(QIcon(":/assets/bdr_logo.png"));
     
     // Use Fusion style for modern look
     app.setStyle(QStyleFactory::create("Fusion"));
@@ -39,7 +44,7 @@ int main(int argc, char* argv[])
     app.setFont(font);
     
     // Print startup info
-    std::cout << "=== F2C Coverage Planner (C++) ===" << std::endl;
+    std::cout << "=== BDR Coverage Planner (C++) ===" << std::endl;
     std::cout << "Version: 1.0.0" << std::endl;
     std::cout << "Qt Version: " << QT_VERSION_STR << std::endl;
 #ifdef HAVE_FIELDS2COVER

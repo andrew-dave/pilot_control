@@ -1,0 +1,79 @@
+#!/bin/bash
+# BDR Coverage Planner Launcher with ROS2 Support
+
+# Source ROS2 environment (try different distributions)
+if [ -f "/opt/ros/humble/setup.bash" ]; then
+    source /opt/ros/humble/setup.bash
+    ROS_DISTRO="humble"
+elif [ -f "/opt/ros/foxy/setup.bash" ]; then
+    source /opt/ros/foxy/setup.bash
+    ROS_DISTRO="foxy"
+elif [ -f "/opt/ros/galactic/setup.bash" ]; then
+    source /opt/ros/galactic/setup.bash
+    ROS_DISTRO="galactic"
+elif [ -f "/opt/ros/noetic/setup.bash" ]; then
+    source /opt/ros/noetic/setup.bash
+    ROS_DISTRO="noetic"
+else
+    echo "Warning: No ROS2 installation found. Waypoint publishing will not work."
+    echo "Please install ROS2 (Humble, Foxy, or Galactic recommended) to enable waypoint publishing features."
+fi
+
+# Set basic environment
+export DISPLAY=${DISPLAY:-:0}
+
+# Determine CycloneDDS config (user-agnostic)
+# Read saved profile from QSettings config file if it exists
+SETTINGS_FILE="$HOME/.config/PilotControl/BDRCoveragePlanner.conf"
+DDS_PROFILE="rf"  # Default to RF
+
+if [ -f "$SETTINGS_FILE" ]; then
+    # Extract dds_profile value from INI-style config
+    SAVED_PROFILE=$(grep -E "^dds_profile=" "$SETTINGS_FILE" 2>/dev/null | cut -d'=' -f2)
+    if [ -n "$SAVED_PROFILE" ]; then
+        DDS_PROFILE="$SAVED_PROFILE"
+    fi
+fi
+
+# Select appropriate config file based on profile
+if [ "$DDS_PROFILE" = "wifi" ]; then
+    DDS_CONFIG="$HOME/wifi_cyclonedds.xml"
+else
+    DDS_CONFIG="$HOME/rf_cyclonedds.xml"
+fi
+
+# Set CYCLONEDDS_URI if config file exists, otherwise let CycloneDDS auto-discover
+if [ -f "$DDS_CONFIG" ]; then
+    export CYCLONEDDS_URI="$DDS_CONFIG"
+    echo "Using CycloneDDS config: $DDS_CONFIG"
+else
+    echo "Warning: DDS config not found at $DDS_CONFIG"
+    echo "CycloneDDS will use auto-discovery (may not work on all networks)"
+fi
+
+# Add bundled library path first (highest priority)
+export LD_LIBRARY_PATH="/usr/lib/bdr-coverage-planner:$LD_LIBRARY_PATH"
+
+# Add system ROS paths if available (fallback)
+if [ -n "$ROS_DISTRO" ] && [ -d "/opt/ros/$ROS_DISTRO/lib" ]; then
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/$ROS_DISTRO/lib:/opt/ros/$ROS_DISTRO/lib/x86_64-linux-gnu:/opt/ros/$ROS_DISTRO/opt/ortools_vendor/lib"
+fi
+
+# Add other common library paths
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
+
+# Set Qt platform plugin path - try system Qt first, fallback to bundled
+if [ -d "/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms" ]; then
+    export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
+elif [ -d "/usr/lib/qt5/plugins/platforms" ]; then
+    export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
+else
+    # Fallback to bundled plugins
+    export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/bdr-coverage-planner/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
+fi
+
+# Set Qt to use xcb platform (standard Linux desktop)
+export QT_QPA_PLATFORM=xcb
+
+# Launch the application
+exec "/usr/bin/bdr_coverage_planner" "$@"

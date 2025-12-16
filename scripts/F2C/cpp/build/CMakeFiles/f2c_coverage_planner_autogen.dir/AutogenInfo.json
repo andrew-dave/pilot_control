@@ -1493,7 +1493,8 @@
 		"/opt/ros/humble/share/tf2_msgs/cmake/export_tf2_msgs__rosidl_generator_pyExport.cmake",
 		"/opt/ros/humble/share/tf2_msgs/cmake/export_tf2_msgs__rosidl_generator_pyExport-none.cmake",
 		"/opt/ros/humble/share/tf2_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake",
-		"/opt/ros/humble/share/tf2_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake"
+		"/opt/ros/humble/share/tf2_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake",
+		"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/resources.qrc"
 	],
 	"CMAKE_SOURCE_DIR" : "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp",
 	"DEP_FILE" : "",

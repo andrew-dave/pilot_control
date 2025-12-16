@@ -883,7 +883,7 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
     CoverageResult result;
     
     try {
-        reportProgress(5, "Building F2C field...");
+        reportProgress(5, "Building field...");
         
         // Use ROI if provided
         const Polygon2D& effective_poly = (roi && !roi->empty()) ? *roi : boundary;
@@ -1175,7 +1175,7 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
     // Note: obstacles are not handled in the simple fallback version
     (void)obstacles;
     
-    reportProgress(5, "Generating simple coverage (no F2C)...");
+    reportProgress(5, "Generating simple coverage...");
     
     // Simple coverage without F2C - generate parallel swaths
     const Polygon2D& effective_poly = (roi && !roi->empty()) ? *roi : boundary;

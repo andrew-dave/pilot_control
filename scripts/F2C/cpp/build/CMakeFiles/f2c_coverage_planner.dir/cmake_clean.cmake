@@ -2,6 +2,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/f2c_coverage_planner_autogen.dir/AutogenUsed.txt"
   "CMakeFiles/f2c_coverage_planner_autogen.dir/ParseCache.txt"
   "f2c_coverage_planner_autogen"
+  "CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o"
+  "CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o.d"
   "CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o"
   "CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o.d"
   "CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o"
@@ -12,6 +14,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o.d"
   "f2c_coverage_planner"
   "f2c_coverage_planner.pdb"
+  "f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp"
 )
 
 # Per-language clean rules from dependency scanning.

@@ -1,21 +1,21 @@
 #!/bin/bash
-# Create Debian package for F2C Coverage Planner
+# Create Debian package for BDR Coverage Planner
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
-PACKAGE_NAME="f2c-coverage-planner"
+PACKAGE_NAME="bdr-coverage-planner"
 VERSION="1.0.0"
 ARCH="amd64"
 DEB_DIR="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
 DEB_FILE="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
 
-echo "=== Creating Debian Package for F2C Coverage Planner ==="
+echo "=== Creating Debian Package for BDR Coverage Planner ==="
 
 # Check if executable exists
-if [ ! -f "${BUILD_DIR}/f2c_coverage_planner" ]; then
-    echo "Error: Executable not found at ${BUILD_DIR}/f2c_coverage_planner"
+if [ ! -f "${BUILD_DIR}/bdr_coverage_planner" ]; then
+    echo "Error: Executable not found at ${BUILD_DIR}/bdr_coverage_planner"
     echo "Please build the application first: ./build.sh"
     exit 1
 fi
@@ -28,24 +28,25 @@ rm -f "$DEB_FILE"
 echo "Creating package structure..."
 mkdir -p "$DEB_DIR/DEBIAN"
 mkdir -p "$DEB_DIR/usr/bin"
-mkdir -p "$DEB_DIR/usr/lib/f2c-coverage-planner"
+mkdir -p "$DEB_DIR/usr/lib/bdr-coverage-planner"
 mkdir -p "$DEB_DIR/usr/share/applications"
 mkdir -p "$DEB_DIR/usr/share/icons/hicolor/256x256/apps"
-mkdir -p "$DEB_DIR/usr/share/doc/f2c-coverage-planner"
-mkdir -p "$DEB_DIR/usr/share/f2c-coverage-planner"
+mkdir -p "$DEB_DIR/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "$DEB_DIR/usr/share/doc/bdr-coverage-planner"
+mkdir -p "$DEB_DIR/usr/share/bdr-coverage-planner"
 
 # Create control file
 echo "Creating control file..."
 cat > "$DEB_DIR/DEBIAN/control" << EOF
-Package: f2c-coverage-planner
+Package: bdr-coverage-planner
 Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
 Depends: libqt5core5a (>= 5.9.5), libqt5widgets5 (>= 5.9.5), libqt5gui5 (>= 5.9.5), libc6 (>= 2.27), libstdc++6 (>= 6.0), libgcc-s1 (>= 3.0), ros-humble-rclcpp, ros-humble-std-msgs
 Maintainer: Your Name <your.email@example.com>
-Description: F2C Coverage Path Planning GUI with ROS2 Integration
- Fields2Cover Coverage Path Planning GUI application with ROS2 waypoint publishing.
+Description: Coverage Path Planning GUI with ROS2 Integration
+ Fields2Cover Coverage Path Planning GUI application with ROS2 waypoint publishing (BDR Coverage Planner).
  This application provides a graphical interface for planning coverage paths
  using the Fields2Cover library and can directly publish waypoints to ROS2
  pose controllers for autonomous robot navigation.
@@ -68,11 +69,11 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
 fi
 
 # Set executable permissions
-chmod +x /usr/bin/f2c_coverage_planner
-chmod +x /usr/bin/f2c_coverage_planner_launcher
+chmod +x /usr/bin/bdr_coverage_planner
+chmod +x /usr/bin/bdr_coverage_planner_launcher
 
-echo "F2C Coverage Planner has been installed successfully!"
-echo "You can find it in your applications menu or run 'f2c_coverage_planner_launcher' from the terminal."
+echo "BDR Coverage Planner has been installed successfully!"
+echo "You can find it in your applications menu or run 'bdr_coverage_planner_launcher' from the terminal."
 EOF
 chmod +x "$DEB_DIR/DEBIAN/postinst"
 
@@ -91,13 +92,13 @@ chmod +x "$DEB_DIR/DEBIAN/prerm"
 
 # Copy executable
 echo "Copying executable..."
-cp "${BUILD_DIR}/f2c_coverage_planner" "$DEB_DIR/usr/bin/"
+cp "${BUILD_DIR}/bdr_coverage_planner" "$DEB_DIR/usr/bin/"
 
 # Create launcher script
 echo "Creating launcher script..."
-cat > "$DEB_DIR/usr/bin/f2c_coverage_planner_launcher" << 'EOF'
+cat > "$DEB_DIR/usr/bin/bdr_coverage_planner_launcher" << 'EOF'
 #!/bin/bash
-# F2C Coverage Planner Launcher with ROS2 Support
+# BDR Coverage Planner Launcher with ROS2 Support
 
 # Source ROS2 environment (try different distributions)
 if [ -f "/opt/ros/humble/setup.bash" ]; then
@@ -113,7 +114,7 @@ elif [ -f "/opt/ros/noetic/setup.bash" ]; then
     source /opt/ros/noetic/setup.bash
     ROS_DISTRO="noetic"
 else
-    echo "Warning: No ROS2 installation found. F2C waypoint publishing will not work."
+    echo "Warning: No ROS2 installation found. Waypoint publishing will not work."
     echo "Please install ROS2 (Humble, Foxy, or Galactic recommended) to enable waypoint publishing features."
 fi
 
@@ -122,7 +123,7 @@ export DISPLAY=${DISPLAY:-:0}
 
 # Determine CycloneDDS config (user-agnostic)
 # Read saved profile from QSettings config file if it exists
-SETTINGS_FILE="$HOME/.config/PilotControl/F2CCoveragePlanner.conf"
+SETTINGS_FILE="$HOME/.config/PilotControl/BDRCoveragePlanner.conf"
 DDS_PROFILE="rf"  # Default to RF
 
 if [ -f "$SETTINGS_FILE" ]; then
@@ -150,7 +151,7 @@ else
 fi
 
 # Add bundled library path first (highest priority)
-export LD_LIBRARY_PATH="/usr/lib/f2c-coverage-planner:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/usr/lib/bdr-coverage-planner:$LD_LIBRARY_PATH"
 
 # Add system ROS paths if available (fallback)
 if [ -n "$ROS_DISTRO" ] && [ -d "/opt/ros/$ROS_DISTRO/lib" ]; then
@@ -167,25 +168,25 @@ elif [ -d "/usr/lib/qt5/plugins/platforms" ]; then
     export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
 else
     # Fallback to bundled plugins
-    export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/f2c-coverage-planner/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
+    export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/bdr-coverage-planner/qt5/plugins/platforms:$QT_QPA_PLATFORM_PLUGIN_PATH"
 fi
 
 # Set Qt to use xcb platform (standard Linux desktop)
 export QT_QPA_PLATFORM=xcb
 
 # Launch the application
-exec "/usr/bin/f2c_coverage_planner" "$@"
+exec "/usr/bin/bdr_coverage_planner" "$@"
 EOF
-chmod +x "$DEB_DIR/usr/bin/f2c_coverage_planner_launcher"
+chmod +x "$DEB_DIR/usr/bin/bdr_coverage_planner_launcher"
 
 # Copy required Qt libraries (only the ones not commonly available)
 echo "Copying required libraries..."
-QT_LIBS=$(ldd "${BUILD_DIR}/f2c_coverage_planner" | grep -E "(Qt5Core|Qt5Widgets|Qt5Gui)" | awk '{print $3}')
+QT_LIBS=$(ldd "${BUILD_DIR}/bdr_coverage_planner" | grep -E "(Qt5Core|Qt5Widgets|Qt5Gui)" | awk '{print $3}')
 for lib in $QT_LIBS; do
     if [ -f "$lib" ]; then
         # Only copy if it's not in standard system locations
         if [[ "$lib" == /usr/local/* ]] || [[ "$lib" == /opt/* ]]; then
-            cp "$lib" "$DEB_DIR/usr/lib/f2c-coverage-planner/"
+            cp "$lib" "$DEB_DIR/usr/lib/bdr-coverage-planner/"
         fi
     fi
 done
@@ -197,62 +198,82 @@ done
 # Copy Fields2Cover and related libraries (required for functionality)
 echo "Copying Fields2Cover libraries..."
 if [ -d "/home/avenblake/pilot_ws/install/fields2cover/lib" ]; then
-    cp -r /home/avenblake/pilot_ws/install/fields2cover/lib/* "$DEB_DIR/usr/lib/f2c-coverage-planner/" 2>/dev/null || true
+    cp -r /home/avenblake/pilot_ws/install/fields2cover/lib/* "$DEB_DIR/usr/lib/bdr-coverage-planner/" 2>/dev/null || true
 fi
 
 # Copy OR-Tools library
 echo "Copying OR-Tools library..."
 if [ -f "/opt/ros/humble/opt/ortools_vendor/lib/libortools.so.9" ]; then
-    cp "/opt/ros/humble/opt/ortools_vendor/lib/libortools.so.9" "$DEB_DIR/usr/lib/f2c-coverage-planner/"
+    cp "/opt/ros/humble/opt/ortools_vendor/lib/libortools.so.9" "$DEB_DIR/usr/lib/bdr-coverage-planner/"
 fi
 
 # Copy other required libraries (only non-standard ones)
-REQUIRED_LIBS=$(ldd "${BUILD_DIR}/f2c_coverage_planner" | grep -v "=>" | grep -v "linux-vdso" | grep -v "ld-linux" | awk '{print $1}')
+REQUIRED_LIBS=$(ldd "${BUILD_DIR}/bdr_coverage_planner" | grep -v "=>" | grep -v "linux-vdso" | grep -v "ld-linux" | awk '{print $1}')
 for lib in $REQUIRED_LIBS; do
-    LIB_PATH=$(ldd "${BUILD_DIR}/f2c_coverage_planner" | grep "$lib" | awk '{print $3}')
+    LIB_PATH=$(ldd "${BUILD_DIR}/bdr_coverage_planner" | grep "$lib" | awk '{print $3}')
     if [ -f "$LIB_PATH" ] && [ "$LIB_PATH" != "" ]; then
         # Only copy non-standard libraries
         if [[ "$LIB_PATH" == /usr/local/* ]] || [[ "$LIB_PATH" == /opt/* ]] || [[ "$LIB_PATH" == /home/avenblake/pilot_ws/* ]]; then
-            cp "$LIB_PATH" "$DEB_DIR/usr/lib/f2c-coverage-planner/"
+            cp "$LIB_PATH" "$DEB_DIR/usr/lib/bdr-coverage-planner/"
         fi
     fi
 done
 
 # Create desktop file
 echo "Creating desktop entry..."
-cat > "$DEB_DIR/usr/share/applications/f2c_coverage_planner.desktop" << EOF
+cat > "$DEB_DIR/usr/share/applications/bdr_coverage_planner.desktop" << EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=F2C Coverage Planner
-Comment=Fields2Cover Coverage Path Planning GUI
-Exec=/usr/bin/f2c_coverage_planner_launcher
-Icon=f2c_coverage_planner
+Name=BDR Coverage Planner
+Comment=Coverage path planning GUI (Fields2Cover)
+Exec=/usr/bin/bdr_coverage_planner_launcher
+Icon=bdr_coverage_planner
 Terminal=false
 Categories=Development;Engineering;
-StartupWMClass=f2c_coverage_planner
+StartupWMClass=bdr_coverage_planner
 EOF
-chmod +x "$DEB_DIR/usr/share/applications/f2c_coverage_planner.desktop"
+chmod +x "$DEB_DIR/usr/share/applications/bdr_coverage_planner.desktop"
 
 # Create icon
-echo "Creating application icon..."
-convert -size 256x256 xc:"#4A90E2" -fill white -pointsize 72 -gravity center -annotate +0+0 "F2C" "$DEB_DIR/usr/share/icons/hicolor/256x256/apps/f2c_coverage_planner.png" 2>/dev/null || {
-    echo "ImageMagick not found, creating simple icon manually..."
-    cat > "$DEB_DIR/usr/share/icons/hicolor/256x256/apps/f2c_coverage_planner.svg" << 'EOF'
+echo "Installing application icon..."
+ASSET_PNG="${SCRIPT_DIR}/assets/bdr_logo.png"
+ASSET_SVG="${SCRIPT_DIR}/assets/bdr_logo.svg"
+ICON_PNG_DEST="$DEB_DIR/usr/share/icons/hicolor/256x256/apps/bdr_coverage_planner.png"
+ICON_SVG_DEST="$DEB_DIR/usr/share/icons/hicolor/scalable/apps/bdr_coverage_planner.svg"
+
+# Prefer PNG for consistent, non-distorted rendering. If PNG is missing, render from SVG.
+if [ -f "$ASSET_PNG" ]; then
+    cp "$ASSET_PNG" "$ICON_PNG_DEST"
+elif [ -f "$ASSET_SVG" ] && command -v convert >/dev/null 2>&1; then
+    # Trim extra whitespace, then resize uniformly, then pad to square.
+    convert -background none -density 384 "$ASSET_SVG" -trim +repage -resize 256x256 -gravity center -extent 256x256 \
+        "$ICON_PNG_DEST" 2>/dev/null || true
+fi
+
+# Final fallback: generate a simple text icon if rendering failed.
+if [ ! -f "$ICON_PNG_DEST" ]; then
+    if command -v convert >/dev/null 2>&1; then
+        convert -size 256x256 xc:"#111111" -fill white -pointsize 64 -gravity center -annotate +0+0 "BDR" \
+            "$ICON_PNG_DEST" 2>/dev/null || true
+    fi
+    if [ ! -f "$ICON_PNG_DEST" ]; then
+        cat > "$ICON_SVG_DEST" << 'EOF'
 <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" fill="#4A90E2"/>
-  <text x="128" y="140" font-family="Arial" font-size="72" fill="white" text-anchor="middle">F2C</text>
+  <rect width="256" height="256" fill="#111111"/>
+  <text x="128" y="148" font-family="Arial" font-size="64" fill="white" text-anchor="middle">BDR</text>
 </svg>
 EOF
-}
+    fi
+fi
 
 # Create copyright file
 echo "Creating copyright file..."
-cat > "$DEB_DIR/usr/share/doc/f2c-coverage-planner/copyright" << EOF
+cat > "$DEB_DIR/usr/share/doc/bdr-coverage-planner/copyright" << EOF
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: f2c-coverage-planner
+Upstream-Name: bdr-coverage-planner
 Upstream-Contact: Your Name <your.email@example.com>
-Source: https://github.com/your-repo/f2c-coverage-planner
+Source: https://github.com/your-repo/bdr-coverage-planner
 
 Files: *
 Copyright: $(date +%Y) Your Name <your.email@example.com>
@@ -273,14 +294,14 @@ EOF
 
 # Create changelog
 echo "Creating changelog..."
-cat > "$DEB_DIR/usr/share/doc/f2c-coverage-planner/changelog.Debian" << EOF
-f2c-coverage-planner ($VERSION) unstable; urgency=medium
+cat > "$DEB_DIR/usr/share/doc/bdr-coverage-planner/changelog.Debian" << EOF
+bdr-coverage-planner ($VERSION) unstable; urgency=medium
 
   * Initial release
 
  -- Your Name <your.email@example.com>  $(date -R)
 EOF
-gzip "$DEB_DIR/usr/share/doc/f2c-coverage-planner/changelog.Debian"
+gzip "$DEB_DIR/usr/share/doc/bdr-coverage-planner/changelog.Debian"
 
 # Set permissions
 echo "Setting permissions..."
@@ -303,7 +324,7 @@ echo "  sudo dpkg -i $DEB_FILE"
 echo "  sudo apt-get install -f  # Install any missing dependencies"
 echo ""
 echo "To test installation:"
-echo "  f2c_coverage_planner_launcher"
+echo "  bdr_coverage_planner_launcher"
 echo ""
 echo "Package contents:"
-dpkg-deb -c "$DEB_FILE" | head -10
+dpkg-deb -c "$DEB_FILE" 2>/dev/null | head -10

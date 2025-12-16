@@ -69,10 +69,17 @@ include CMakeFiles/f2c_coverage_planner.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/f2c_coverage_planner.dir/flags.make
 
+f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: ../resources.qrc
+f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: CMakeFiles/f2c_coverage_planner_autogen.dir/AutoRcc_resources_EWIEGA46WW_Info.json
+f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: ../assets/bdr_logo.png
+f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: /usr/lib/qt5/bin/rcc
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic RCC for resources.qrc"
+	/usr/bin/cmake -E cmake_autorcc /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/f2c_coverage_planner_autogen.dir/AutoRcc_resources_EWIEGA46WW_Info.json Release
+
 CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o: CMakeFiles/f2c_coverage_planner.dir/flags.make
 CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o: f2c_coverage_planner_autogen/mocs_compilation.cpp
 CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o: CMakeFiles/f2c_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o -MF CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o.d -o CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/f2c_coverage_planner_autogen/mocs_compilation.cpp
 
 CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.i: cmake_force
@@ -86,7 +93,7 @@ CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilatio
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o: CMakeFiles/f2c_coverage_planner.dir/flags.make
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage_pipeline.cpp
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o: CMakeFiles/f2c_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o -MF CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o.d -o CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp
 
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.i: cmake_force
@@ -100,7 +107,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.s: cmake_force
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: CMakeFiles/f2c_coverage_planner.dir/flags.make
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.cpp
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o: CMakeFiles/f2c_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o -MF CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o.d -o CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp
 
 CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.i: cmake_force
@@ -114,7 +121,7 @@ CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.s: cmake_force
 CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: CMakeFiles/f2c_coverage_planner.dir/flags.make
 CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp
 CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o: CMakeFiles/f2c_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o -MF CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o.d -o CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp
 
 CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.i: cmake_force
@@ -125,12 +132,27 @@ CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp -o CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.s
 
+CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: CMakeFiles/f2c_coverage_planner.dir/flags.make
+CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
+CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: CMakeFiles/f2c_coverage_planner.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -MF CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o.d -o CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
+
+CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp > CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i
+
+CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp -o CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s
+
 # Object files for target f2c_coverage_planner
 f2c_coverage_planner_OBJECTS = \
 "CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/mocs_compilation.cpp.o" \
 "CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o" \
 "CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o" \
-"CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o"
+"CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o" \
+"CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o"
 
 # External object files for target f2c_coverage_planner
 f2c_coverage_planner_EXTERNAL_OBJECTS =
@@ -139,6 +161,7 @@ f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_a
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/coverage_pipeline.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/coverage_gui.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/src/main.cpp.o
+f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/build.make
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Concurrent.so.5.15.3
 f2c_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Network.so.5.15.3
@@ -684,7 +707,7 @@ f2c_coverage_planner: /opt/ros/humble/lib/libunique_identifier_msgs__rosidl_gene
 f2c_coverage_planner: /opt/ros/humble/lib/librosidl_runtime_c.so
 f2c_coverage_planner: /opt/ros/humble/lib/librcutils.so
 f2c_coverage_planner: CMakeFiles/f2c_coverage_planner.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable f2c_coverage_planner"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX executable f2c_coverage_planner"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/f2c_coverage_planner.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -695,7 +718,7 @@ CMakeFiles/f2c_coverage_planner.dir/clean:
 	$(CMAKE_COMMAND) -P CMakeFiles/f2c_coverage_planner.dir/cmake_clean.cmake
 .PHONY : CMakeFiles/f2c_coverage_planner.dir/clean
 
-CMakeFiles/f2c_coverage_planner.dir/depend:
+CMakeFiles/f2c_coverage_planner.dir/depend: f2c_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
 	cd /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/f2c_coverage_planner.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/f2c_coverage_planner.dir/depend
 
