@@ -1083,7 +1083,7 @@ class MPCAccelController(Node):
         # alpha, beta: Position gain (average velocity effect during cycle)
         # gamma_v, gamma_omega: Ramp completion (velocity achieved by end of cycle)
         # For linear ramp: alpha ≈ 0.5 * gamma
-        self.declare_parameter("velocity_gain_estimation_enabled", True)
+        self.declare_parameter("velocity_gain_estimation_enabled", False)
         self.declare_parameter("velocity_gain_alpha_init", 0.4)  # Initial alpha (position gain)
         self.declare_parameter("velocity_gain_beta_init", 0.4)   # Initial beta (position gain)
         self.declare_parameter("velocity_gain_gamma_v_init", 0.8)  # Initial gamma_v (ramp completion)
@@ -1094,13 +1094,21 @@ class MPCAccelController(Node):
         self.declare_parameter("velocity_gain_outlier_iqr_scale", 1.5)  # IQR scale for outlier rejection
         self.declare_parameter("velocity_gain_derive_gamma", True)  # Derive gamma from alpha (gamma = 2*alpha)
 
-        # Wheel ramp compensation parameters (DISABLED - using measured velocity feedback instead)
-        # With measured velocity feedback from FAST-LIO, MPC naturally compensates for
-        # actuator dynamics. Ramp compensation is no longer needed.
-        # input_mode will be PASSTHROUGH (1) when disabled, VEL_RAMP (2) when enabled.
+        # Wheel ramp compensation parameters (DISABLED)
         self.declare_parameter("ramp_compensation_enabled", False)
         self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (unused when disabled)
         self.declare_parameter("wheel_delay_time", 0.03)  # seconds (unused when disabled)
+        
+        # Yaw offset estimation parameters
+        # Estimates constant yaw offset between LiDAR frame and chassis frame
+        # When robot moves, measured vy should be ~0 if aligned; non-zero vy indicates offset
+        self.declare_parameter("yaw_offset_estimation_enabled", True)
+        self.declare_parameter("yaw_offset_init", 0.0)  # Initial offset estimate (rad)
+        self.declare_parameter("yaw_offset_v_threshold", 0.05)  # Min |v_cmd| for estimation (m/s)
+        self.declare_parameter("yaw_offset_omega_threshold", 0.1)  # Max |ω_cmd| for "straight" (rad/s)
+        self.declare_parameter("yaw_offset_filter_alpha", 0.05)  # EMA filter (lower = slower adaptation)
+        self.declare_parameter("yaw_offset_max", 0.4)  # Max offset magnitude (rad, ~22.5°)
+        self.declare_parameter("yaw_offset_n_samples", 200 )  # Sliding window for robust estimation
 
         # Velocity feedback parameter (unused in hybrid mode, kept for compatibility)
         self.declare_parameter("velocity_feedback_alpha", 0.0)
@@ -1205,6 +1213,34 @@ class MPCAccelController(Node):
         )
         self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
         self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
+        
+        # Yaw offset estimation parameters
+        self.yaw_offset_estimation_enabled = bool(
+            self.get_parameter("yaw_offset_estimation_enabled").value
+        )
+        self.yaw_offset = float(
+            self.get_parameter("yaw_offset_init").value
+        )
+        self.yaw_offset_v_threshold = float(
+            self.get_parameter("yaw_offset_v_threshold").value
+        )
+        self.yaw_offset_omega_threshold = float(
+            self.get_parameter("yaw_offset_omega_threshold").value
+        )
+        self.yaw_offset_filter_alpha = float(
+            self.get_parameter("yaw_offset_filter_alpha").value
+        )
+        self.yaw_offset_max = float(
+            self.get_parameter("yaw_offset_max").value
+        )
+        self.yaw_offset_n_samples = int(
+            self.get_parameter("yaw_offset_n_samples").value
+        )
+        
+        # Sliding window for yaw offset estimation
+        self.yaw_offset_samples: deque = deque(maxlen=self.yaw_offset_n_samples)
+        self.yaw_offset_raw = 0.0  # Raw (unfiltered) estimate for diagnostics
+        self.yaw_offset_instantaneous = 0.0  # Single-sample estimate for plotting
 
         # State
         self.current_x = 0.0
@@ -1213,7 +1249,10 @@ class MPCAccelController(Node):
         self.pose_initialized = False
 
         # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
-        self.measured_v = 0.0
+        # These are in LiDAR frame, which may have yaw offset from chassis
+        self.measured_vx = 0.0  # Forward velocity in LiDAR frame
+        self.measured_vy = 0.0  # Lateral velocity in LiDAR frame (should be ~0 if aligned)
+        self.measured_v = 0.0   # Magnitude (for compatibility)
         self.measured_omega = 0.0
 
         # Commanded velocities (v, ω) that we integrate Δu into
@@ -1319,6 +1358,20 @@ class MPCAccelController(Node):
                 f"α={self.velocity_gain_alpha:.2f}, β={self.velocity_gain_beta:.2f}, "
                 f"γv={self.velocity_gain_gamma_v:.2f}, γω={self.velocity_gain_gamma_omega:.2f}"
             )
+        
+        # Log yaw offset estimation mode
+        if self.yaw_offset_estimation_enabled:
+            self.get_logger().info(
+                f"✓ Yaw offset estimation ENABLED: "
+                f"v_thresh={self.yaw_offset_v_threshold:.2f}m/s, "
+                f"ω_thresh={self.yaw_offset_omega_threshold:.2f}rad/s, "
+                f"max={math.degrees(self.yaw_offset_max):.1f}°"
+            )
+        else:
+            self.get_logger().info(
+                f"Yaw offset estimation DISABLED: "
+                f"offset={math.degrees(self.yaw_offset):.2f}° (fixed)"
+            )
 
         # Subscribers
         self.create_subscription(
@@ -1377,6 +1430,9 @@ class MPCAccelController(Node):
         self.velocity_gains_pub = self.create_publisher(
             Float64MultiArray, "/mpc_accel/velocity_gains", 10
         )
+        self.yaw_offset_pub = self.create_publisher(
+            Float64MultiArray, "/mpc_accel/yaw_offset", 10
+        )
 
         # ODrive axis state / clear error clients for arming/disarming
         self.left_axis_client = self.create_client(
@@ -1428,6 +1484,9 @@ class MPCAccelController(Node):
         """
         Process odometry for position AND velocity.
         Velocity is in tilt-corrected body frame from FAST-LIO (via odom_tilt_corrector).
+        
+        Note: If LiDAR has yaw offset from chassis, velocities are in LiDAR frame.
+        We estimate and correct for this offset.
         """
         # Position (global tilt-corrected frame)
         self.current_x = float(msg.pose.pose.position.x)
@@ -1436,12 +1495,26 @@ class MPCAccelController(Node):
         qy = float(msg.pose.pose.orientation.y)
         qz = float(msg.pose.pose.orientation.z)
         qw = float(msg.pose.pose.orientation.w)
-        self.current_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
+        raw_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
+        
+        # Apply yaw offset correction (LiDAR frame to chassis frame)
+        self.current_yaw = self.normalize_angle(raw_yaw - self.yaw_offset)
 
-        # Velocity (tilt-corrected body frame)
-        # linear.x = forward velocity, angular.z = yaw rate
-        self.measured_v = float(msg.twist.twist.linear.x)
+        # Velocity in LiDAR frame (tilt-corrected)
+        # linear.x = forward, linear.y = lateral, angular.z = yaw rate
+        self.measured_vx = float(msg.twist.twist.linear.x)
+        self.measured_vy = float(msg.twist.twist.linear.y)
         self.measured_omega = float(msg.twist.twist.angular.z)
+        
+        # Transform velocity from LiDAR frame to chassis frame
+        # v_chassis = R(-yaw_offset) @ v_lidar
+        cos_offset = math.cos(self.yaw_offset)
+        sin_offset = math.sin(self.yaw_offset)
+        vx_chassis = self.measured_vx * cos_offset + self.measured_vy * sin_offset
+        vy_chassis = -self.measured_vx * sin_offset + self.measured_vy * cos_offset
+        
+        # For MPC, we use chassis frame velocity
+        self.measured_v = vx_chassis  # Forward velocity in chassis frame
 
         if not self.pose_initialized:
             self.pose_initialized = True
@@ -1658,8 +1731,8 @@ class MPCAccelController(Node):
             else:
                 beta_raw = 0.0
             
-            # Log raw estimate for diagnostics (info level for visibility)
-            self.get_logger().info(
+            # Log raw estimate for diagnostics (debug level - enable if needed)
+            self.get_logger().debug(
                 f"β_raw={beta_raw:.3f} | ω_eff={omega_effective:.4f}, ω_cmd={self.prev_omega_cmd:.4f}, "
                 f"Δω_cmd={self.prev_domega:.4f}, Δω_obs={delta_omega_observed:.4f}"
             )
@@ -1724,6 +1797,83 @@ class MPCAccelController(Node):
         
         # Clamp to valid range
         return float(np.clip(estimate, min_val, max_val))
+
+    def _update_yaw_offset(self) -> None:
+        """
+        Online estimation of yaw offset between LiDAR frame and chassis frame.
+        
+        When the robot moves forward (v_cmd > threshold, |ω_cmd| < threshold),
+        the measured lateral velocity (vy) should be ~0 if LiDAR is aligned.
+        Non-zero vy indicates yaw offset: θ_offset ≈ atan2(vy, vx)
+        
+        This method uses:
+        1. Velocity ratio: θ_offset = atan2(vy_measured, vx_measured) when going "straight"
+        2. Sliding window with IQR outlier rejection for robustness
+        """
+        # Only estimate when robot is moving forward and not turning much
+        if abs(self.v_cmd) < self.yaw_offset_v_threshold:
+            return  # Not moving fast enough
+        if abs(self.omega_cmd) > self.yaw_offset_omega_threshold:
+            return  # Turning too much
+        
+        # Also check measured velocity magnitude
+        vx = self.measured_vx
+        vy = self.measured_vy
+        v_mag = math.sqrt(vx*vx + vy*vy)
+        
+        if v_mag < self.yaw_offset_v_threshold:
+            return  # Measured velocity too low
+        
+        # Estimate offset from velocity direction
+        # When robot goes straight, velocity should be in chassis forward direction
+        # If LiDAR has offset, velocity appears rotated
+        offset_estimate = math.atan2(vy, vx)
+        
+        # Store instantaneous estimate for plotting
+        self.yaw_offset_instantaneous = offset_estimate
+        
+        # Sign convention: positive offset means LiDAR is rotated CCW from chassis
+        # If vy > 0 when vx > 0 (going forward), LiDAR is rotated CCW
+        
+        # Only add to buffer if estimate is reasonable
+        if abs(offset_estimate) <= self.yaw_offset_max * 1.5:
+            self.yaw_offset_samples.append(offset_estimate)
+        
+        # Update offset using robust estimation (median with IQR outlier rejection)
+        if len(self.yaw_offset_samples) >= 5:
+            arr = np.array(self.yaw_offset_samples)
+            
+            # IQR outlier rejection
+            q1 = np.percentile(arr, 25)
+            q3 = np.percentile(arr, 75)
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            inliers = arr[(arr >= lower_bound) & (arr <= upper_bound)]
+            
+            if len(inliers) > 0:
+                new_offset = float(np.median(inliers))
+            else:
+                new_offset = float(np.median(arr))
+            
+            # Clamp to max offset
+            new_offset = float(np.clip(new_offset, -self.yaw_offset_max, self.yaw_offset_max))
+            
+            # Store raw (median) estimate before EMA filtering
+            self.yaw_offset_raw = new_offset
+            
+            # Apply EMA filter for smooth adaptation
+            alpha = self.yaw_offset_filter_alpha
+            old_offset = self.yaw_offset
+            self.yaw_offset = alpha * new_offset + (1.0 - alpha) * self.yaw_offset
+            
+            # Log periodically when offset changes significantly or buffer fills
+            if len(self.yaw_offset_samples) == self.yaw_offset_n_samples:
+                self.get_logger().info(
+                    f"Yaw offset: {math.degrees(self.yaw_offset):.2f}° "
+                    f"(raw={math.degrees(new_offset):.2f}°, n={len(inliers)}/{len(arr)} inliers, "
+                    f"vx={vx:.3f}, vy={vy:.3f})"
+                )
 
     def compute_error_state(self, ref_wp: np.ndarray) -> np.ndarray:
         """
@@ -2150,7 +2300,11 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Online velocity gain estimation (alpha, beta)
+        # Online yaw offset estimation (LiDAR to chassis frame)
+        if self.yaw_offset_estimation_enabled:
+            self._update_yaw_offset()
+        
+        # Online velocity gain estimation (alpha, beta) - DISABLED by default
         # These model how much of the commanded velocity change is achieved in one timestep
         if self.velocity_gain_estimation_enabled and self.last_control_time is not None:
             self._update_velocity_gains()
@@ -2279,6 +2433,30 @@ class MPCAccelController(Node):
                 float(len(self.beta_samples))
             ]
             self.velocity_gains_pub.publish(gains_msg)
+            
+            # Yaw offset diagnostics:
+            # [0] offset_filtered_rad - EMA filtered estimate (used for correction)
+            # [1] offset_filtered_deg - Same in degrees
+            # [2] offset_raw_rad - Median estimate before EMA (from sliding window)
+            # [3] offset_raw_deg - Same in degrees
+            # [4] offset_instant_rad - Single-sample instantaneous estimate
+            # [5] offset_instant_deg - Same in degrees
+            # [6] n_samples - Number of samples in sliding window
+            # [7] vx - Measured forward velocity (LiDAR frame)
+            # [8] vy - Measured lateral velocity (LiDAR frame)
+            yaw_offset_msg = Float64MultiArray()
+            yaw_offset_msg.data = [
+                self.yaw_offset,                              # [0] filtered (rad)
+                math.degrees(self.yaw_offset),                # [1] filtered (deg)
+                self.yaw_offset_raw,                          # [2] raw median (rad)
+                math.degrees(self.yaw_offset_raw),            # [3] raw median (deg)
+                self.yaw_offset_instantaneous,                # [4] instantaneous (rad)
+                math.degrees(self.yaw_offset_instantaneous),  # [5] instantaneous (deg)
+                float(len(self.yaw_offset_samples)),          # [6] n_samples
+                self.measured_vx,                             # [7] vx
+                self.measured_vy                              # [8] vy
+            ]
+            self.yaw_offset_pub.publish(yaw_offset_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
 
