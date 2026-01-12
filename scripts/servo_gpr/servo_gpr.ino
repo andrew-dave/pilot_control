@@ -39,19 +39,19 @@ void gprPower() {
 }
 
 void linestart() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 250);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
   delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 250);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(100);
+  analogWrite(LIN_ACT_PWM, 250);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(100);
+  analogWrite(LIN_ACT_PWM, 250);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
   delay(200);
@@ -64,11 +64,11 @@ void linestop() {
   analogWrite(LIN_ACT_PWM, 150);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
+  delay(600);
   analogWrite(LIN_ACT_PWM, 150);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(600);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
@@ -85,7 +85,8 @@ void setup() {
 //  setServoRPM(0);   // ensure stopped
 
   // Power on the GPR at startup
-  gprPower();
+  //gprPower();
+  linestart();
 }
 
 void loop() {
