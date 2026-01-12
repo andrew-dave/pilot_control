@@ -551,6 +551,7 @@ private:
     QCheckBox* chk_decomposition_;
     QComboBox* combo_decomp_type_;
     QCheckBox* chk_axial_turns_;
+    QDoubleSpinBox* spin_waypoint_spacing_ = nullptr;
     
     // ROI controls
     QPushButton* btn_roi_;
@@ -574,6 +575,7 @@ private:
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
+    double effective_area_m2_ = 0.0;  // From backend: (boundary ∩ ROI) − obstacles
     QString loaded_file_;
 
     // ROS2 integration for waypoint publishing

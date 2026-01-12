@@ -15,6 +15,14 @@
 #include <iomanip>
 #include <set>
 #include <map>
+#include <limits>
+
+// Robust polygon ops (ROI intersection, obstacle clipping, validity checks)
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/geometries/multi_polygon.hpp>
+#include <boost/geometry/policies/is_valid/failing_reason_policy.hpp>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -50,6 +58,358 @@ static void reportProgress(int percent, const std::string& message) {
         g_progressCallback(percent, message);
     }
 }
+
+namespace {
+namespace bg = boost::geometry;
+
+// We want outer rings CCW and inner rings CW (matches common GIS conventions and our F2C usage).
+using BgPoint = bg::model::d2::point_xy<double>;
+using BgPolygon = bg::model::polygon<BgPoint, /*ClockWise=*/false, /*Closed=*/true>;
+using BgMultiPolygon = bg::model::multi_polygon<BgPolygon>;
+
+constexpr double kGeomEps = 1e-9;
+constexpr double kMinValidArea = 1e-10;  // m^2-ish (depends on input units)
+
+static bool nearEqual(double a, double b, double eps = kGeomEps) {
+    return std::fabs(a - b) <= eps;
+}
+
+static bool nearPoint(const Point2D& a, const Point2D& b, double eps = kGeomEps) {
+    return nearEqual(a.x, b.x, eps) && nearEqual(a.y, b.y, eps);
+}
+
+static Polygon2D sanitizePolygon2D(const Polygon2D& in, double eps = kGeomEps) {
+    Polygon2D out;
+    out.reserve(in.size());
+    for (const auto& p : in) {
+        if (out.empty() || !nearPoint(out.back(), p, eps)) {
+            out.push_back(p);
+        }
+    }
+    // Drop duplicate closing point if present
+    if (out.size() >= 2 && nearPoint(out.front(), out.back(), eps)) {
+        out.pop_back();
+    }
+    return out;
+}
+
+static double signedAreaLocal(const Polygon2D& poly) {
+    if (poly.size() < 3) return 0.0;
+    double area = 0.0;
+    for (size_t i = 0; i < poly.size(); ++i) {
+        const auto& p1 = poly[i];
+        const auto& p2 = poly[(i + 1) % poly.size()];
+        area += (p1.x * p2.y - p2.x * p1.y);
+    }
+    return area / 2.0;
+}
+
+static bool isClockwiseLocal(const Polygon2D& poly) {
+    return signedAreaLocal(poly) < 0.0;
+}
+
+static BgPolygon toBgPolygon(const Polygon2D& in) {
+    BgPolygon poly;
+    auto cleaned = sanitizePolygon2D(in);
+    for (const auto& p : cleaned) {
+        poly.outer().push_back(BgPoint(p.x, p.y));
+    }
+    bg::correct(poly);
+    return poly;
+}
+
+static bool bgValidate(const BgPolygon& poly, std::string& reason) {
+    bg::validity_failure_type failure;
+    if (!bg::is_valid(poly, failure)) {
+        reason = bg::validity_failure_type_message(failure);
+        return false;
+    }
+    // Boost considers some degenerate polygons "valid" depending on failure modes; guard area too.
+    if (std::fabs(bg::area(poly)) <= kMinValidArea) {
+        reason = "area is too small";
+        return false;
+    }
+    return true;
+}
+
+template <typename RingT>
+static Polygon2D bgRingToPolygon2D(const RingT& ring) {
+    Polygon2D out;
+    out.reserve(ring.size());
+    for (const auto& pt : ring) {
+        out.emplace_back(bg::get<0>(pt), bg::get<1>(pt));
+    }
+    // Boost rings are closed; drop trailing duplicate for our representation.
+    if (out.size() >= 2 && nearPoint(out.front(), out.back())) {
+        out.pop_back();
+    }
+    return out;
+}
+
+static BgMultiPolygon bgIntersection(const BgPolygon& a, const BgPolygon& b) {
+    BgMultiPolygon out;
+    bg::intersection(a, b, out);
+    for (auto& p : out) {
+        bg::correct(p);
+    }
+    return out;
+}
+
+static BgMultiPolygon bgDifference(const BgMultiPolygon& in, const BgPolygon& sub) {
+    BgMultiPolygon out;
+    for (const auto& p : in) {
+        BgMultiPolygon tmp;
+        bg::difference(p, sub, tmp);
+        for (auto& t : tmp) {
+            bg::correct(t);
+            if (std::fabs(bg::area(t)) > kMinValidArea) {
+                out.push_back(t);
+            }
+        }
+    }
+    return out;
+}
+
+static double pathLengthMeters(const std::vector<Point2D>& pts) {
+    if (pts.size() < 2) return 0.0;
+    double len = 0.0;
+    for (size_t i = 1; i < pts.size(); ++i) {
+        len += std::hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    }
+    return len;
+}
+
+static PathStateList resamplePathStates(const PathStateList& in, double spacing_m) {
+    if (spacing_m <= 0.0 || in.size() < 2) {
+        return in;
+    }
+
+    // Dedupe consecutive duplicates and work in Point2D space
+    std::vector<Point2D> pts;
+    pts.reserve(in.size());
+    for (const auto& st : in) {
+        if (pts.empty() || std::hypot(st.point.x - pts.back().x, st.point.y - pts.back().y) > 1e-9) {
+            pts.push_back(st.point);
+        }
+    }
+    if (pts.size() < 2) {
+        return in;
+    }
+
+    // Clamp spacing to avoid producing an excessive number of waypoints
+    constexpr size_t kMaxWaypoints = 20000;
+    double total_len = pathLengthMeters(pts);
+    if (total_len > 0.0) {
+        double min_spacing = total_len / std::max<double>(1.0, static_cast<double>(kMaxWaypoints - 1));
+        if (spacing_m < min_spacing) {
+            spacing_m = min_spacing;
+        }
+    }
+
+    std::vector<Point2D> out_pts;
+    out_pts.reserve(static_cast<size_t>(std::ceil(total_len / spacing_m)) + 2);
+    out_pts.push_back(pts.front());
+
+    double remaining = spacing_m;
+    Point2D cur = pts.front();
+
+    for (size_t i = 1; i < pts.size(); ++i) {
+        Point2D next = pts[i];
+        double seg_len = std::hypot(next.x - cur.x, next.y - cur.y);
+        if (seg_len < 1e-12) {
+            continue;
+        }
+
+        while (seg_len + 1e-12 >= remaining) {
+            double t = remaining / seg_len;
+            Point2D p{cur.x + t * (next.x - cur.x), cur.y + t * (next.y - cur.y)};
+            out_pts.push_back(p);
+            cur = p;
+            seg_len = std::hypot(next.x - cur.x, next.y - cur.y);
+            remaining = spacing_m;
+            if (seg_len < 1e-12) {
+                break;
+            }
+        }
+
+        // Consume the remainder of this segment
+        remaining -= seg_len;
+        cur = next;
+    }
+
+    // Ensure we end exactly at the final point
+    if (out_pts.empty() ||
+        std::hypot(out_pts.back().x - pts.back().x, out_pts.back().y - pts.back().y) > 1e-6) {
+        out_pts.push_back(pts.back());
+    }
+
+    // Convert back to PathStateList with headings and unit direction vectors
+    PathStateList out;
+    out.reserve(out_pts.size());
+    for (size_t i = 0; i < out_pts.size(); ++i) {
+        double heading = 0.0;
+        if (i + 1 < out_pts.size()) {
+            heading = std::atan2(out_pts[i + 1].y - out_pts[i].y, out_pts[i + 1].x - out_pts[i].x);
+        } else if (!out.empty()) {
+            heading = out.back().heading;
+        }
+        out.emplace_back(out_pts[i], heading);
+    }
+    return out;
+}
+
+#ifdef HAVE_FIELDS2COVER
+static void addBgPolygonToF2CCells(const BgPolygon& poly, F2CCells& cells) {
+    // Exterior ring (ensure CCW)
+    Polygon2D outer = bgRingToPolygon2D(poly.outer());
+    if (outer.size() < 3) return;
+    if (isClockwiseLocal(outer)) {
+        std::reverse(outer.begin(), outer.end());
+    }
+    F2CLinearRing outer_ring;
+    for (const auto& p : outer) {
+        outer_ring.addPoint(p.x, p.y);
+    }
+
+    F2CCell cell;
+    cell.addRing(outer_ring);
+
+    // Interior rings (holes) must be clockwise
+    for (const auto& inner_bg : poly.inners()) {
+        Polygon2D inner = bgRingToPolygon2D(inner_bg);
+        if (inner.size() < 3) continue;
+        if (!isClockwiseLocal(inner)) {
+            std::reverse(inner.begin(), inner.end());
+        }
+        F2CLinearRing inner_ring;
+        for (const auto& p : inner) {
+            inner_ring.addPoint(p.x, p.y);
+        }
+        cell.addRing(inner_ring);
+    }
+
+    cells.addGeometry(cell);
+}
+
+static bool buildEffectiveCellsFromROIAndObstacles(
+    const Polygon2D& boundary,
+    const Polygon2D* roi,
+    const std::vector<Polygon2D>* obstacles,
+    F2CCells& out_cells,
+    Polygon2D& out_primary_outer,
+    double& out_effective_area_m2,
+    std::string& error) {
+
+    Polygon2D boundary_clean = sanitizePolygon2D(boundary);
+    if (boundary_clean.size() < 3) {
+        error = "Boundary polygon is too small (need >= 3 vertices)";
+        return false;
+    }
+
+    BgPolygon boundary_bg = toBgPolygon(boundary_clean);
+    {
+        std::string why;
+        if (!bgValidate(boundary_bg, why)) {
+            error = "Boundary polygon is invalid: " + why;
+            return false;
+        }
+    }
+
+    BgMultiPolygon work;
+    if (roi && !roi->empty()) {
+        Polygon2D roi_clean = sanitizePolygon2D(*roi);
+        if (roi_clean.size() < 3) {
+            error = "ROI polygon is too small (need >= 3 vertices)";
+            return false;
+        }
+        BgPolygon roi_bg = toBgPolygon(roi_clean);
+        {
+            std::string why;
+            if (!bgValidate(roi_bg, why)) {
+                error = "ROI polygon is invalid: " + why;
+                return false;
+            }
+        }
+        work = bgIntersection(boundary_bg, roi_bg);
+    } else {
+        work.push_back(boundary_bg);
+    }
+
+    // Drop tiny pieces (helps after intersection/difference)
+    BgMultiPolygon filtered;
+    for (auto& p : work) {
+        bg::correct(p);
+        if (std::fabs(bg::area(p)) > kMinValidArea) {
+            filtered.push_back(p);
+        }
+    }
+    work = filtered;
+    if (work.empty()) {
+        error = "ROI does not intersect the boundary (effective area is empty)";
+        return false;
+    }
+
+    if (obstacles && !obstacles->empty()) {
+        for (size_t i = 0; i < obstacles->size(); ++i) {
+            const auto& obs_in = obstacles->at(i);
+            Polygon2D obs_clean = sanitizePolygon2D(obs_in);
+            if (obs_clean.size() < 3) {
+                error = "Obstacle polygon #" + std::to_string(i + 1) + " is too small (need >= 3 vertices)";
+                return false;
+            }
+            BgPolygon obs_bg = toBgPolygon(obs_clean);
+            {
+                std::string why;
+                if (!bgValidate(obs_bg, why)) {
+                    error = "Obstacle polygon #" + std::to_string(i + 1) + " is invalid: " + why;
+                    return false;
+                }
+            }
+            work = bgDifference(work, obs_bg);
+            if (work.empty()) {
+                error = "Obstacles removed all usable area";
+                return false;
+            }
+        }
+    }
+
+    out_effective_area_m2 = 0.0;
+    for (const auto& p : work) {
+        out_effective_area_m2 += std::fabs(bg::area(p));
+    }
+
+    // Choose a primary polygon (largest area) for swath alignment / concavity checks
+    double best_area = -1.0;
+    BgPolygon const* best = nullptr;
+    for (const auto& p : work) {
+        double a = std::fabs(bg::area(p));
+        if (a > best_area) {
+            best_area = a;
+            best = &p;
+        }
+    }
+    if (!best) {
+        error = "Effective area is empty";
+        return false;
+    }
+    out_primary_outer = bgRingToPolygon2D(best->outer());
+
+    // Convert to F2C cells (multi-polygons become multiple cells; holes become interior rings)
+    out_cells = F2CCells();
+    for (const auto& p : work) {
+        addBgPolygonToF2CCells(p, out_cells);
+    }
+
+    if (out_cells.size() == 0) {
+        error = "Failed to build Fields2Cover cells from effective area";
+        return false;
+    }
+
+    return true;
+}
+#endif  // HAVE_FIELDS2COVER
+
+}  // namespace
 
 // =============================================================================
 // Point Cloud Processing
@@ -884,49 +1244,59 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
     
     try {
         reportProgress(5, "Building field...");
-        
-        // Use ROI if provided
-        const Polygon2D& effective_poly = (roi && !roi->empty()) ? *roi : boundary;
-        
-        // Convert polygon to F2C types
-        F2CLinearRing ring;
-        for (const auto& p : effective_poly) {
-            ring.addPoint(p.x, p.y);
+
+        // Build robust effective geometry: (boundary ∩ ROI) − obstacles
+        reportProgress(8, "Clipping ROI / obstacles...");
+        F2CCells cells;
+        Polygon2D effective_outer;
+        double effective_area_m2 = 0.0;
+        std::string geom_error;
+        if (!buildEffectiveCellsFromROIAndObstacles(
+                boundary, roi, obstacles, cells, effective_outer, effective_area_m2, geom_error)) {
+            result.error_message = geom_error;
+            return result;
         }
-        
-        F2CCell cell;
-        cell.addRing(ring);  // Exterior ring
-        
-        // Add obstacles as interior rings (holes)
-        // Interior rings must have clockwise winding order (negative area)
-        // Check each obstacle's winding and reverse if necessary
-        if (obstacles && !obstacles->empty()) {
-            reportProgress(8, "Adding obstacles...");
-            for (const auto& obs : *obstacles) {
-                if (obs.size() >= 3) {
-                    F2CLinearRing obs_ring;
-                    
-                    // Check if obstacle is already clockwise (correct for interior ring)
-                    if (isClockwise(obs)) {
-                        // Already clockwise - add as-is
-                        for (const auto& p : obs) {
-                            obs_ring.addPoint(p.x, p.y);
+        result.effective_area_m2 = effective_area_m2;
+
+        F2CField field(cells);
+
+        // Compute swath direction early (also used as a sensible decomposition split angle)
+        double direction = M_PI;
+        if (config.auto_align) {
+            double base_angle = computeSwathAngle(effective_outer);
+            direction = (config.align_mode == "long") ? base_angle : base_angle + M_PI / 2.0;
+        }
+
+        // Optional decomposition for concave fields (and/or fields with obstacles)
+        if (config.use_decomposition) {
+            bool is_concave = isPolygonConcave(effective_outer);
+            bool has_obstacles = (obstacles && !obstacles->empty());
+            if (is_concave || has_obstacles || cells.size() > 1) {
+                reportProgress(10, "Decomposing field...");
+                try {
+                    if (config.decomposition_type == "trapezoidal") {
+                        f2c::decomp::TrapezoidalDecomp decomp;
+                        decomp.setSplitAngle(direction);
+                        auto decomposed = decomp.decompose(cells);
+                        if (decomposed.size() > 0) {
+                            cells = decomposed;
+                            field = F2CField(cells);
                         }
                     } else {
-                        // Counter-clockwise - reverse to make clockwise
-                        for (auto it = obs.rbegin(); it != obs.rend(); ++it) {
-                            obs_ring.addPoint(it->x, it->y);
+                        // Default to boustrophedon decomposition
+                        f2c::decomp::BoustrophedonDecomp decomp;
+                        decomp.setSplitAngle(direction);
+                        auto decomposed = decomp.decompose(cells);
+                        if (decomposed.size() > 0) {
+                            cells = decomposed;
+                            field = F2CField(cells);
                         }
                     }
-                    cell.addRing(obs_ring);  // Interior ring (hole)
+                } catch (...) {
+                    // Keep original cells if decomposition fails
                 }
             }
         }
-        
-        F2CCells cells;
-        cells.addGeometry(cell);
-        
-        F2CField field(cells);
         
         // Generate headlands
         reportProgress(15, "Generating headlands...");
@@ -946,67 +1316,91 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
         // Generate swaths
         reportProgress(30, "Generating swaths...");
         f2c::sg::BruteForce sg;
-        
-        // Compute swath direction
-        double direction = M_PI;
-        if (config.auto_align) {
-            double base_angle = computeSwathAngle(effective_poly);
-            direction = (config.align_mode == "long") ? base_angle : base_angle + M_PI / 2.0;
-        }
-        
-        F2CSwaths f2c_swaths;
-        try {
-            f2c_swaths = sg.generateSwaths(direction, config.swath_width, working_area.getGeometry(0));
-        } catch (...) {
-            for (size_t i = 0; i < working_area.size(); ++i) {
+
+        // Generate swaths per cell (critical for decomposed/multi-cell fields)
+        F2CSwathsByCells swaths_by_cells_raw;
+        for (size_t i = 0; i < working_area.size(); ++i) {
+            try {
                 auto part = sg.generateSwaths(direction, config.swath_width, working_area.getGeometry(i));
-                for (size_t j = 0; j < part.size(); ++j) {
-                    f2c_swaths.push_back(part.at(j));
-                }
+                swaths_by_cells_raw.push_back(part);
+            } catch (...) {
+                // If one cell fails, skip it
+                swaths_by_cells_raw.push_back(F2CSwaths());
             }
         }
-        
-        if (f2c_swaths.size() == 0) {
+
+        // Flatten swaths into our format for visualization/stats
+        size_t total_swaths = 0;
+        for (size_t i = 0; i < swaths_by_cells_raw.size(); ++i) {
+            total_swaths += swaths_by_cells_raw.at(i).size();
+        }
+        if (total_swaths == 0) {
             result.error_message = "No swaths generated";
             return result;
         }
         
-        // Convert swaths to our format
-        for (size_t i = 0; i < f2c_swaths.size(); ++i) {
-            auto& sw = f2c_swaths.at(i);
-            Swath swath;
-            swath.start = Point2D(sw.startPoint().getX(), sw.startPoint().getY());
-            swath.end = Point2D(sw.endPoint().getX(), sw.endPoint().getY());
-            swath.heading = std::atan2(swath.end.y - swath.start.y, swath.end.x - swath.start.x);
-            result.swaths.push_back(swath);
-        }
-        
-        // Generate route
-        reportProgress(50, "Generating route...");
-        try {
-            F2CSwathsByCells swaths_by_cells;
-            swaths_by_cells.push_back(f2c_swaths);
-            
-            // Sort swaths
-            F2CSwaths sorted_swaths = f2c_swaths;
-            f2c::rp::BoustrophedonOrder sorter;
-            sorted_swaths = sorter.genSortedSwaths(f2c_swaths);
-            
-            swaths_by_cells = F2CSwathsByCells();
-            swaths_by_cells.push_back(sorted_swaths);
-            
-            f2c::rp::RoutePlannerBase route_planner;
-            F2CRoute f2c_route = route_planner.genRoute(working_area, swaths_by_cells);
-            
-            // Update swaths with sorted order
-            result.swaths.clear();
-            for (size_t i = 0; i < sorted_swaths.size(); ++i) {
-                auto& sw = sorted_swaths.at(i);
+        for (size_t ci = 0; ci < swaths_by_cells_raw.size(); ++ci) {
+            auto& cell_swaths = swaths_by_cells_raw.at(ci);
+            for (size_t si = 0; si < cell_swaths.size(); ++si) {
+                auto& sw = cell_swaths.at(si);
                 Swath swath;
                 swath.start = Point2D(sw.startPoint().getX(), sw.startPoint().getY());
                 swath.end = Point2D(sw.endPoint().getX(), sw.endPoint().getY());
                 swath.heading = std::atan2(swath.end.y - swath.start.y, swath.end.x - swath.start.x);
                 result.swaths.push_back(swath);
+            }
+        }
+        
+        // Generate route
+        reportProgress(50, "Generating route...");
+        try {
+            // Sort swaths within each cell according to selected pattern
+            F2CSwathsByCells swaths_by_cells_sorted;
+
+            for (size_t ci = 0; ci < swaths_by_cells_raw.size(); ++ci) {
+                const auto& cell_swaths = swaths_by_cells_raw.at(ci);
+                if (cell_swaths.size() == 0) {
+                    swaths_by_cells_sorted.push_back(F2CSwaths());
+                    continue;
+                }
+
+                std::string pattern = config.route_pattern;
+                std::transform(pattern.begin(), pattern.end(), pattern.begin(), ::tolower);
+
+                F2CSwaths sorted_swaths = cell_swaths;
+                if (pattern == "snake") {
+                    f2c::rp::SnakeOrder sorter;
+                    sorted_swaths = sorter.genSortedSwaths(cell_swaths);
+                } else if (pattern == "spiral") {
+                    f2c::rp::SpiralOrder sorter;
+                    sorted_swaths = sorter.genSortedSwaths(cell_swaths);
+                } else {
+                    // Default: boustrophedon
+                    f2c::rp::BoustrophedonOrder sorter;
+                    sorted_swaths = sorter.genSortedSwaths(cell_swaths);
+                }
+                swaths_by_cells_sorted.push_back(sorted_swaths);
+            }
+
+            f2c::rp::RoutePlannerBase route_planner;
+            if (config.start_point.has_value()) {
+                route_planner.setStartAndEndPoint(
+                    F2CPoint(config.start_point->x, config.start_point->y));
+            }
+            F2CRoute f2c_route = route_planner.genRoute(working_area, swaths_by_cells_sorted);
+            
+            // Update swaths with sorted order
+            result.swaths.clear();
+            for (size_t ci = 0; ci < swaths_by_cells_sorted.size(); ++ci) {
+                auto& cell_swaths = swaths_by_cells_sorted.at(ci);
+                for (size_t si = 0; si < cell_swaths.size(); ++si) {
+                    auto& sw = cell_swaths.at(si);
+                    Swath swath;
+                    swath.start = Point2D(sw.startPoint().getX(), sw.startPoint().getY());
+                    swath.end = Point2D(sw.endPoint().getX(), sw.endPoint().getY());
+                    swath.heading = std::atan2(swath.end.y - swath.start.y, swath.end.x - swath.start.x);
+                    result.swaths.push_back(swath);
+                }
             }
             
             // Extract route waypoints
@@ -1147,6 +1541,12 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                         result.path = swathsToAxialTurnPath(result.swaths);
                     }
                 }
+            }
+
+            // Optional controller-facing polish: resample path to fixed spacing
+            if (config.waypoint_spacing > 0.0 && !result.path.empty()) {
+                reportProgress(85, "Resampling path...");
+                result.path = resamplePathStates(result.path, config.waypoint_spacing);
             }
             
         } catch (const std::exception& e) {

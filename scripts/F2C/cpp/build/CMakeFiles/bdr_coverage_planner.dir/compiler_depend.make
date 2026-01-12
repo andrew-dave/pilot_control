@@ -5107,58 +5107,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/c++/11/map \
   /usr/include/c++/11/bits/stl_map.h \
   /usr/include/c++/11/bits/stl_multimap.h \
-  /usr/include/pcl-1.12/pcl/io/pcd_io.h \
-  /usr/include/pcl-1.12/pcl/io/file_io.h \
-  /usr/include/pcl-1.12/pcl/conversions.h \
-  /usr/include/pcl-1.12/pcl/PCLPointCloud2.h \
-  /usr/include/boost/predef/other/endian.h \
-  /usr/include/boost/predef/version_number.h \
-  /usr/include/boost/predef/make.h \
-  /usr/include/boost/predef/detail/test.h \
-  /usr/include/boost/predef/library/c/gnu.h \
-  /usr/include/boost/predef/library/c/_prefix.h \
-  /usr/include/boost/predef/detail/_cassert.h \
-  /usr/include/boost/predef/os/macos.h \
-  /usr/include/boost/predef/os/ios.h \
-  /usr/include/boost/predef/os/bsd.h \
-  /usr/include/boost/predef/os/bsd/bsdi.h \
-  /usr/include/boost/predef/os/bsd/dragonfly.h \
-  /usr/include/boost/predef/os/bsd/free.h \
-  /usr/include/boost/predef/os/bsd/open.h \
-  /usr/include/boost/predef/os/bsd/net.h \
-  /usr/include/boost/predef/platform/android.h \
-  /usr/include/pcl-1.12/pcl/PCLImage.h \
-  /usr/include/pcl-1.12/pcl/for_each_type.h \
-  /usr/include/boost/mpl/is_sequence.hpp \
-  /usr/include/boost/mpl/remove_if.hpp \
-  /usr/include/boost/mpl/reverse_fold.hpp \
-  /usr/include/boost/mpl/aux_/reverse_fold_impl.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp \
-  /usr/include/boost/mpl/aux_/inserter_algorithm.hpp \
-  /usr/include/boost/mpl/back_inserter.hpp \
-  /usr/include/boost/mpl/push_back.hpp \
-  /usr/include/boost/mpl/aux_/push_back_impl.hpp \
-  /usr/include/boost/mpl/inserter.hpp \
-  /usr/include/boost/mpl/front_inserter.hpp \
-  /usr/include/boost/mpl/push_front.hpp \
-  /usr/include/boost/mpl/aux_/push_front_impl.hpp \
-  /usr/include/boost/mpl/clear.hpp \
-  /usr/include/boost/mpl/aux_/clear_impl.hpp \
-  /usr/include/boost/mpl/aux_/unwrap.hpp \
-  /usr/include/boost/ref.hpp \
-  /usr/include/boost/core/ref.hpp \
-  /usr/include/boost/core/addressof.hpp \
-  /usr/include/boost/foreach.hpp \
-  /usr/include/boost/noncopyable.hpp \
-  /usr/include/boost/core/noncopyable.hpp \
-  /usr/include/boost/range/end.hpp \
+  /usr/include/boost/geometry.hpp \
+  /usr/include/boost/geometry/geometry.hpp \
+  /usr/include/boost/geometry/core/closure.hpp \
+  /usr/include/boost/mpl/size_t.hpp \
+  /usr/include/boost/mpl/size_t_fwd.hpp \
+  /usr/include/boost/range/value_type.hpp \
   /usr/include/boost/range/config.hpp \
-  /usr/include/boost/range/detail/implementation_help.hpp \
-  /usr/include/boost/range/detail/common.hpp \
-  /usr/include/boost/range/detail/sfinae.hpp \
-  /usr/include/boost/type_traits/is_array.hpp \
-  /usr/include/boost/type_traits/detail/yes_no_type.hpp \
-  /usr/include/boost/type_traits/is_void.hpp \
   /usr/include/boost/range/iterator.hpp \
   /usr/include/boost/range/range_fwd.hpp \
   /usr/include/boost/range/mutable_iterator.hpp \
@@ -5171,62 +5126,43 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/range/const_iterator.hpp \
   /usr/include/boost/type_traits/remove_const.hpp \
   /usr/include/boost/type_traits/is_const.hpp \
-  /usr/include/boost/range/begin.hpp \
-  /usr/include/boost/range/rend.hpp \
-  /usr/include/boost/range/reverse_iterator.hpp \
-  /usr/include/boost/iterator/reverse_iterator.hpp \
-  /usr/include/boost/iterator/iterator_adaptor.hpp \
+  /usr/include/boost/geometry/core/ring_type.hpp \
+  /usr/include/boost/geometry/core/tag.hpp \
+  /usr/include/boost/geometry/core/tags.hpp \
+  /usr/include/boost/geometry/util/bare_type.hpp \
+  /usr/include/boost/type_traits/remove_pointer.hpp \
+  /usr/include/boost/geometry/core/coordinate_dimension.hpp \
   /usr/include/boost/static_assert.hpp \
-  /usr/include/boost/core/use_default.hpp \
-  /usr/include/boost/iterator/iterator_categories.hpp \
-  /usr/include/boost/iterator/detail/config_def.hpp \
-  /usr/include/boost/type_traits/is_convertible.hpp \
+  /usr/include/boost/geometry/core/point_type.hpp \
+  /usr/include/boost/geometry/core/coordinate_system.hpp \
+  /usr/include/boost/geometry/core/coordinate_type.hpp \
+  /usr/include/boost/geometry/util/promote_floating_point.hpp \
+  /usr/include/boost/type_traits/is_integral.hpp \
+  /usr/include/boost/geometry/core/cs.hpp \
+  /usr/include/boost/geometry/core/interior_type.hpp \
+  /usr/include/boost/geometry/core/point_order.hpp \
+  /usr/include/boost/geometry/core/tag_cast.hpp \
+  /usr/include/boost/type_traits/is_base_of.hpp \
+  /usr/include/boost/type_traits/is_base_and_derived.hpp \
   /usr/include/boost/type_traits/intrinsics.hpp \
   /usr/include/boost/type_traits/detail/config.hpp \
   /usr/include/boost/version.hpp \
-  /usr/include/boost/type_traits/is_complete.hpp \
-  /usr/include/boost/type_traits/declval.hpp \
-  /usr/include/boost/type_traits/add_rvalue_reference.hpp \
-  /usr/include/boost/type_traits/is_reference.hpp \
-  /usr/include/boost/type_traits/is_lvalue_reference.hpp \
-  /usr/include/boost/type_traits/is_rvalue_reference.hpp \
-  /usr/include/boost/type_traits/is_function.hpp \
-  /usr/include/boost/type_traits/detail/is_function_cxx_11.hpp \
-  /usr/include/boost/type_traits/is_arithmetic.hpp \
-  /usr/include/boost/type_traits/is_integral.hpp \
-  /usr/include/boost/type_traits/is_floating_point.hpp \
-  /usr/include/boost/type_traits/is_abstract.hpp \
-  /usr/include/boost/type_traits/add_lvalue_reference.hpp \
-  /usr/include/boost/type_traits/add_reference.hpp \
-  /usr/include/boost/iterator/detail/config_undef.hpp \
-  /usr/include/boost/iterator/iterator_facade.hpp \
-  /usr/include/boost/iterator/interoperable.hpp \
-  /usr/include/boost/iterator/detail/facade_iterator_category.hpp \
-  /usr/include/boost/detail/indirect_traits.hpp \
-  /usr/include/boost/type_traits/is_pointer.hpp \
-  /usr/include/boost/type_traits/is_class.hpp \
-  /usr/include/boost/type_traits/is_volatile.hpp \
-  /usr/include/boost/type_traits/is_member_function_pointer.hpp \
-  /usr/include/boost/type_traits/detail/is_member_function_pointer_cxx_11.hpp \
-  /usr/include/boost/type_traits/is_member_pointer.hpp \
   /usr/include/boost/type_traits/remove_cv.hpp \
-  /usr/include/boost/type_traits/remove_pointer.hpp \
-  /usr/include/boost/detail/select_type.hpp \
-  /usr/include/boost/iterator/detail/enable_if.hpp \
-  /usr/include/boost/type_traits/add_const.hpp \
-  /usr/include/boost/type_traits/add_pointer.hpp \
-  /usr/include/boost/type_traits/is_pod.hpp \
-  /usr/include/boost/type_traits/is_scalar.hpp \
-  /usr/include/boost/type_traits/is_enum.hpp \
-  /usr/include/boost/range/rbegin.hpp \
-  /usr/include/boost/type_traits/is_base_and_derived.hpp \
-  /usr/include/boost/utility/addressof.hpp \
-  /usr/include/boost/foreach_fwd.hpp \
+  /usr/include/boost/type_traits/is_class.hpp \
+  /usr/include/boost/geometry/core/access.hpp \
+  /usr/include/boost/core/ignore_unused.hpp \
+  /usr/include/boost/type_traits/is_pointer.hpp \
+  /usr/include/boost/geometry/core/exterior_ring.hpp \
+  /usr/include/boost/geometry/util/add_const_if_c.hpp \
+  /usr/include/boost/geometry/core/interior_rings.hpp \
+  /usr/include/boost/geometry/core/radian_access.hpp \
   /usr/include/boost/numeric/conversion/cast.hpp \
   /usr/include/boost/type.hpp \
   /usr/include/boost/numeric/conversion/converter.hpp \
   /usr/include/boost/numeric/conversion/conversion_traits.hpp \
   /usr/include/boost/numeric/conversion/detail/conversion_traits.hpp \
+  /usr/include/boost/type_traits/is_arithmetic.hpp \
+  /usr/include/boost/type_traits/is_floating_point.hpp \
   /usr/include/boost/numeric/conversion/detail/meta.hpp \
   /usr/include/boost/mpl/equal_to.hpp \
   /usr/include/boost/mpl/aux_/comparison_op.hpp \
@@ -5257,13 +5193,131 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp \
   /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp \
   /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_long_long.hpp \
-  /usr/include/boost/algorithm/string/predicate.hpp \
-  /usr/include/boost/algorithm/string/config.hpp \
-  /usr/include/boost/range/as_literal.hpp \
-  /usr/include/boost/range/iterator_range.hpp \
-  /usr/include/boost/range/iterator_range_core.hpp \
+  /usr/include/boost/geometry/util/math.hpp \
+  /usr/include/boost/math/constants/constants.hpp \
+  /usr/include/boost/math/tools/config.hpp \
+  /usr/include/boost/predef/architecture/x86.h \
+  /usr/include/boost/predef/architecture/x86/32.h \
+  /usr/include/boost/predef/version_number.h \
+  /usr/include/boost/predef/make.h \
+  /usr/include/boost/predef/detail/test.h \
+  /usr/include/boost/predef/architecture/x86/64.h \
+  /usr/include/c++/11/cfloat \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
+  /usr/include/boost/math/tools/user.hpp \
+  /usr/include/boost/math/tools/cxx03_warn.hpp \
+  /usr/include/boost/config/pragma_message.hpp \
+  /usr/include/boost/math/policies/policy.hpp \
+  /usr/include/boost/mpl/list.hpp \
+  /usr/include/boost/mpl/limits/list.hpp \
+  /usr/include/boost/mpl/list/list20.hpp \
+  /usr/include/boost/mpl/list/list10.hpp \
+  /usr/include/boost/mpl/list/list0.hpp \
+  /usr/include/boost/mpl/list/aux_/push_front.hpp \
+  /usr/include/boost/mpl/list/aux_/item.hpp \
+  /usr/include/boost/mpl/list/aux_/tag.hpp \
+  /usr/include/boost/mpl/list/aux_/pop_front.hpp \
+  /usr/include/boost/mpl/list/aux_/push_back.hpp \
+  /usr/include/boost/mpl/list/aux_/front.hpp \
+  /usr/include/boost/mpl/list/aux_/clear.hpp \
+  /usr/include/boost/mpl/list/aux_/O1_size.hpp \
+  /usr/include/boost/mpl/list/aux_/size.hpp \
+  /usr/include/boost/mpl/list/aux_/empty.hpp \
+  /usr/include/boost/mpl/list/aux_/begin_end.hpp \
+  /usr/include/boost/mpl/list/aux_/iterator.hpp \
+  /usr/include/boost/mpl/list/aux_/include_preprocessed.hpp \
+  /usr/include/boost/mpl/list/aux_/preprocessed/plain/list10.hpp \
+  /usr/include/boost/mpl/list/aux_/preprocessed/plain/list20.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/list.hpp \
+  /usr/include/boost/mpl/remove_if.hpp \
+  /usr/include/boost/mpl/reverse_fold.hpp \
+  /usr/include/boost/mpl/aux_/reverse_fold_impl.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp \
+  /usr/include/boost/mpl/aux_/inserter_algorithm.hpp \
+  /usr/include/boost/mpl/back_inserter.hpp \
+  /usr/include/boost/mpl/push_back.hpp \
+  /usr/include/boost/mpl/aux_/push_back_impl.hpp \
+  /usr/include/boost/mpl/inserter.hpp \
+  /usr/include/boost/mpl/front_inserter.hpp \
+  /usr/include/boost/mpl/push_front.hpp \
+  /usr/include/boost/mpl/aux_/push_front_impl.hpp \
+  /usr/include/boost/mpl/clear.hpp \
+  /usr/include/boost/mpl/aux_/clear_impl.hpp \
+  /usr/include/boost/mpl/at.hpp \
+  /usr/include/boost/mpl/aux_/at_impl.hpp \
+  /usr/include/boost/mpl/advance.hpp \
+  /usr/include/boost/mpl/negate.hpp \
+  /usr/include/boost/mpl/aux_/advance_forward.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_forward.hpp \
+  /usr/include/boost/mpl/aux_/advance_backward.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp \
+  /usr/include/boost/mpl/size.hpp \
+  /usr/include/boost/mpl/aux_/size_impl.hpp \
+  /usr/include/boost/mpl/distance.hpp \
+  /usr/include/boost/mpl/iter_fold.hpp \
+  /usr/include/boost/mpl/aux_/iter_fold_impl.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp \
+  /usr/include/boost/mpl/iterator_range.hpp \
+  /usr/include/boost/mpl/comparison.hpp \
+  /usr/include/boost/mpl/not_equal_to.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp \
+  /usr/include/boost/mpl/greater.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp \
+  /usr/include/boost/mpl/less_equal.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp \
+  /usr/include/boost/mpl/greater_equal.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp \
   /usr/include/boost/assert.hpp \
+  /usr/include/c++/11/math.h \
+  /usr/include/boost/math/tools/precision.hpp \
+  /usr/include/boost/math/tools/convert_from_string.hpp \
+  /usr/include/boost/type_traits/is_constructible.hpp \
+  /usr/include/boost/type_traits/is_destructible.hpp \
+  /usr/include/boost/type_traits/is_complete.hpp \
+  /usr/include/boost/type_traits/declval.hpp \
+  /usr/include/boost/type_traits/add_rvalue_reference.hpp \
+  /usr/include/boost/type_traits/is_void.hpp \
+  /usr/include/boost/type_traits/is_reference.hpp \
+  /usr/include/boost/type_traits/is_lvalue_reference.hpp \
+  /usr/include/boost/type_traits/is_rvalue_reference.hpp \
+  /usr/include/boost/type_traits/is_function.hpp \
+  /usr/include/boost/type_traits/detail/is_function_cxx_11.hpp \
+  /usr/include/boost/type_traits/detail/yes_no_type.hpp \
+  /usr/include/boost/type_traits/is_default_constructible.hpp \
+  /usr/include/boost/type_traits/conditional.hpp \
+  /usr/include/boost/lexical_cast.hpp \
+  /usr/include/boost/range/iterator_range_core.hpp \
+  /usr/include/boost/iterator/iterator_facade.hpp \
+  /usr/include/boost/iterator/interoperable.hpp \
+  /usr/include/boost/type_traits/is_convertible.hpp \
+  /usr/include/boost/type_traits/is_array.hpp \
+  /usr/include/boost/type_traits/is_abstract.hpp \
+  /usr/include/boost/type_traits/add_lvalue_reference.hpp \
+  /usr/include/boost/type_traits/add_reference.hpp \
+  /usr/include/boost/iterator/detail/config_def.hpp \
+  /usr/include/boost/iterator/detail/config_undef.hpp \
+  /usr/include/boost/iterator/iterator_categories.hpp \
+  /usr/include/boost/iterator/detail/facade_iterator_category.hpp \
+  /usr/include/boost/core/use_default.hpp \
+  /usr/include/boost/detail/indirect_traits.hpp \
+  /usr/include/boost/type_traits/is_volatile.hpp \
+  /usr/include/boost/type_traits/is_member_function_pointer.hpp \
+  /usr/include/boost/type_traits/detail/is_member_function_pointer_cxx_11.hpp \
+  /usr/include/boost/type_traits/is_member_pointer.hpp \
+  /usr/include/boost/detail/select_type.hpp \
+  /usr/include/boost/iterator/detail/enable_if.hpp \
+  /usr/include/boost/core/addressof.hpp \
+  /usr/include/boost/type_traits/add_const.hpp \
+  /usr/include/boost/type_traits/add_pointer.hpp \
+  /usr/include/boost/type_traits/is_pod.hpp \
+  /usr/include/boost/type_traits/is_scalar.hpp \
+  /usr/include/boost/type_traits/is_enum.hpp \
   /usr/include/boost/range/functions.hpp \
+  /usr/include/boost/range/begin.hpp \
+  /usr/include/boost/range/end.hpp \
+  /usr/include/boost/range/detail/implementation_help.hpp \
+  /usr/include/boost/range/detail/common.hpp \
+  /usr/include/boost/range/detail/sfinae.hpp \
   /usr/include/boost/range/size.hpp \
   /usr/include/boost/range/size_type.hpp \
   /usr/include/boost/range/difference_type.hpp \
@@ -5276,14 +5330,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/concept/detail/general.hpp \
   /usr/include/boost/concept/detail/backward_compatibility.hpp \
   /usr/include/boost/concept/detail/has_constraints.hpp \
-  /usr/include/boost/type_traits/conditional.hpp \
   /usr/include/boost/type_traits/conversion_traits.hpp \
   /usr/include/boost/concept/usage.hpp \
   /usr/include/boost/concept/detail/concept_def.hpp \
   /usr/include/boost/preprocessor/seq/for_each_i.hpp \
   /usr/include/boost/concept/detail/concept_undef.hpp \
   /usr/include/boost/iterator/iterator_concepts.hpp \
-  /usr/include/boost/range/value_type.hpp \
   /usr/include/boost/range/detail/misc_concept.hpp \
   /usr/include/boost/type_traits/make_unsigned.hpp \
   /usr/include/boost/type_traits/is_signed.hpp \
@@ -5302,9 +5354,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/utility/identity_type.hpp \
   /usr/include/boost/type_traits/function_traits.hpp \
   /usr/include/boost/core/checked_delete.hpp \
+  /usr/include/boost/core/noncopyable.hpp \
   /usr/include/boost/range/distance.hpp \
   /usr/include/boost/iterator/distance.hpp \
   /usr/include/boost/range/empty.hpp \
+  /usr/include/boost/range/rbegin.hpp \
+  /usr/include/boost/range/reverse_iterator.hpp \
+  /usr/include/boost/iterator/reverse_iterator.hpp \
+  /usr/include/boost/iterator/iterator_adaptor.hpp \
+  /usr/include/boost/range/rend.hpp \
   /usr/include/boost/range/algorithm/equal.hpp \
   /usr/include/boost/range/detail/safe_bool.hpp \
   /usr/include/boost/next_prior.hpp \
@@ -5315,14 +5373,1124 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/type_traits/has_minus.hpp \
   /usr/include/boost/type_traits/has_minus_assign.hpp \
   /usr/include/boost/iterator/advance.hpp \
+  /usr/include/boost/lexical_cast/bad_lexical_cast.hpp \
+  /usr/include/boost/lexical_cast/try_lexical_convert.hpp \
+  /usr/include/boost/type_traits/type_identity.hpp \
+  /usr/include/boost/lexical_cast/detail/is_character.hpp \
+  /usr/include/boost/lexical_cast/detail/converter_numeric.hpp \
+  /usr/include/boost/type_traits/is_float.hpp \
+  /usr/include/boost/lexical_cast/detail/converter_lexical.hpp \
+  /usr/include/boost/type_traits/has_left_shift.hpp \
+  /usr/include/boost/type_traits/has_right_shift.hpp \
+  /usr/include/boost/detail/lcast_precision.hpp \
+  /usr/include/boost/integer_traits.hpp \
+  /usr/include/boost/lexical_cast/detail/widest_char.hpp \
+  /usr/include/boost/array.hpp \
+  /usr/include/boost/swap.hpp \
+  /usr/include/boost/core/swap.hpp \
+  /usr/include/boost/container/container_fwd.hpp \
+  /usr/include/boost/container/detail/std_fwd.hpp \
+  /usr/include/boost/move/detail/std_ns_begin.hpp \
+  /usr/include/boost/move/detail/std_ns_end.hpp \
+  /usr/include/boost/lexical_cast/detail/converter_lexical_streams.hpp \
+  /usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp \
+  /usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp \
+  /usr/include/boost/noncopyable.hpp \
+  /usr/include/boost/lexical_cast/detail/inf_nan.hpp \
+  /usr/include/boost/math/special_functions/sign.hpp \
+  /usr/include/boost/math/special_functions/math_fwd.hpp \
+  /usr/include/boost/math/special_functions/detail/round_fwd.hpp \
+  /usr/include/boost/math/tools/promotion.hpp \
+  /usr/include/boost/config/no_tr1/complex.hpp \
+  /usr/include/boost/math/special_functions/detail/fp_traits.hpp \
+  /usr/include/boost/predef/other/endian.h \
+  /usr/include/boost/predef/library/c/gnu.h \
+  /usr/include/boost/predef/library/c/_prefix.h \
+  /usr/include/boost/predef/detail/_cassert.h \
+  /usr/include/boost/predef/os/macos.h \
+  /usr/include/boost/predef/os/ios.h \
+  /usr/include/boost/predef/os/bsd.h \
+  /usr/include/boost/predef/os/bsd/bsdi.h \
+  /usr/include/boost/predef/os/bsd/dragonfly.h \
+  /usr/include/boost/predef/os/bsd/free.h \
+  /usr/include/boost/predef/os/bsd/open.h \
+  /usr/include/boost/predef/os/bsd/net.h \
+  /usr/include/boost/predef/platform/android.h \
+  /usr/include/boost/math/special_functions/fpclassify.hpp \
+  /usr/include/boost/math/tools/real_cast.hpp \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/quadmath.h \
+  /usr/include/boost/integer.hpp \
+  /usr/include/boost/integer_fwd.hpp \
+  /usr/include/boost/detail/basic_pointerbuf.hpp \
+  /usr/include/boost/utility/declval.hpp \
+  /usr/include/boost/math/constants/calculate_constants.hpp \
+  /usr/include/boost/math/special_functions/trunc.hpp \
+  /usr/include/boost/math/policies/error_handling.hpp \
+  /usr/include/boost/type_traits/is_fundamental.hpp \
+  /usr/include/boost/geometry/util/select_most_precise.hpp \
+  /usr/include/boost/geometry/core/radius.hpp \
+  /usr/include/boost/geometry/core/topological_dimension.hpp \
+  /usr/include/boost/geometry/arithmetic/arithmetic.hpp \
+  /usr/include/boost/call_traits.hpp \
+  /usr/include/boost/detail/call_traits.hpp \
+  /usr/include/boost/concept/requires.hpp \
+  /usr/include/boost/geometry/geometries/concepts/point_concept.hpp \
+  /usr/include/boost/geometry/util/for_each_coordinate.hpp \
+  /usr/include/boost/geometry/arithmetic/dot_product.hpp \
+  /usr/include/boost/geometry/util/select_coordinate_type.hpp \
+  /usr/include/boost/geometry/strategies/strategies.hpp \
+  /usr/include/boost/geometry/strategies/tags.hpp \
+  /usr/include/boost/geometry/strategies/area.hpp \
+  /usr/include/boost/geometry/strategies/azimuth.hpp \
+  /usr/include/boost/geometry/strategies/buffer.hpp \
+  /usr/include/boost/geometry/strategies/centroid.hpp \
+  /usr/include/boost/geometry/strategies/compare.hpp \
+  /usr/include/boost/mpl/min.hpp \
+  /usr/include/boost/mpl/min_max.hpp \
+  /usr/include/boost/geometry/strategies/convex_hull.hpp \
+  /usr/include/boost/geometry/strategies/covered_by.hpp \
+  /usr/include/boost/geometry/strategies/densify.hpp \
+  /usr/include/boost/geometry/strategies/disjoint.hpp \
+  /usr/include/boost/geometry/strategies/default_strategy.hpp \
+  /usr/include/boost/geometry/strategies/relate.hpp \
+  /usr/include/boost/geometry/strategies/intersection.hpp \
+  /usr/include/boost/geometry/strategies/within.hpp \
+  /usr/include/boost/geometry/strategies/distance.hpp \
+  /usr/include/boost/geometry/strategies/envelope.hpp \
+  /usr/include/boost/geometry/strategies/intersection_strategies.hpp \
+  /usr/include/boost/geometry/geometries/segment.hpp \
+  /usr/include/boost/geometry/policies/relate/intersection_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/assign_indexed_point.hpp \
+  /usr/include/boost/geometry/geometries/concepts/check.hpp \
+  /usr/include/boost/variant/variant_fwd.hpp \
+  /usr/include/boost/variant/detail/config.hpp \
+  /usr/include/boost/blank_fwd.hpp \
+  /usr/include/boost/preprocessor/enum.hpp \
+  /usr/include/boost/preprocessor/repetition/enum.hpp \
+  /usr/include/boost/preprocessor/enum_params.hpp \
+  /usr/include/boost/preprocessor/enum_shifted_params.hpp \
+  /usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp \
+  /usr/include/boost/variant/detail/substitute_fwd.hpp \
+  /usr/include/boost/geometry/geometries/concepts/box_concept.hpp \
+  /usr/include/boost/geometry/geometries/concepts/linestring_concept.hpp \
+  /usr/include/boost/geometry/core/mutable_range.hpp \
+  /usr/include/boost/geometry/geometries/concepts/multi_point_concept.hpp \
+  /usr/include/boost/range/metafunctions.hpp \
+  /usr/include/boost/range/category.hpp \
+  /usr/include/boost/range/reference.hpp \
+  /usr/include/boost/range/pointer.hpp \
+  /usr/include/boost/geometry/geometries/concepts/multi_linestring_concept.hpp \
+  /usr/include/boost/geometry/geometries/concepts/multi_polygon_concept.hpp \
+  /usr/include/boost/geometry/geometries/concepts/polygon_concept.hpp \
+  /usr/include/boost/geometry/geometries/concepts/ring_concept.hpp \
+  /usr/include/boost/geometry/geometries/concepts/segment_concept.hpp \
+  /usr/include/boost/geometry/algorithms/not_implemented.hpp \
+  /usr/include/boost/geometry/algorithms/detail/assign_values.hpp \
+  /usr/include/boost/geometry/algorithms/append.hpp \
+  /usr/include/boost/range.hpp \
+  /usr/include/boost/range/iterator_range.hpp \
   /usr/include/boost/range/iterator_range_io.hpp \
+  /usr/include/boost/range/sub_range.hpp \
+  /usr/include/boost/variant/apply_visitor.hpp \
+  /usr/include/boost/variant/detail/apply_visitor_unary.hpp \
+  /usr/include/boost/move/utility.hpp \
+  /usr/include/boost/move/detail/config_begin.hpp \
+  /usr/include/boost/move/detail/workaround.hpp \
+  /usr/include/boost/move/utility_core.hpp \
+  /usr/include/boost/move/core.hpp \
+  /usr/include/boost/move/detail/config_end.hpp \
+  /usr/include/boost/move/detail/meta_utils.hpp \
+  /usr/include/boost/move/detail/meta_utils_core.hpp \
+  /usr/include/boost/move/traits.hpp \
+  /usr/include/boost/move/detail/type_traits.hpp \
+  /usr/include/boost/type_traits/copy_cv_ref.hpp \
+  /usr/include/boost/type_traits/copy_cv.hpp \
+  /usr/include/boost/type_traits/copy_reference.hpp \
+  /usr/include/boost/variant/detail/has_result_type.hpp \
+  /usr/include/boost/variant/detail/apply_visitor_binary.hpp \
+  /usr/include/boost/variant/detail/apply_visitor_delayed.hpp \
+  /usr/include/boost/variant/static_visitor.hpp \
+  /usr/include/boost/geometry/algorithms/num_interior_rings.hpp \
+  /usr/include/boost/geometry/algorithms/detail/counting.hpp \
+  /usr/include/boost/geometry/util/range.hpp \
+  /usr/include/boost/geometry/core/assert.hpp \
+  /usr/include/boost/geometry/algorithms/detail/interior_iterator.hpp \
+  /usr/include/boost/geometry/algorithms/detail/convert_point_to_point.hpp \
+  /usr/include/boost/geometry/geometries/variant.hpp \
+  /usr/include/boost/mpl/front.hpp \
+  /usr/include/boost/mpl/aux_/front_impl.hpp \
+  /usr/include/boost/geometry/algorithms/clear.hpp \
+  /usr/include/boost/geometry/util/is_inverse_spheroidal_coordinates.hpp \
+  /usr/include/boost/geometry/strategies/side_info.hpp \
+  /usr/include/boost/geometry/policies/relate/direction.hpp \
+  /usr/include/boost/geometry/arithmetic/determinant.hpp \
+  /usr/include/boost/geometry/util/select_calculation_type.hpp \
+  /usr/include/boost/geometry/policies/relate/tupled.hpp \
+  /usr/include/boost/tuple/tuple.hpp \
+  /usr/include/boost/ref.hpp \
+  /usr/include/boost/core/ref.hpp \
+  /usr/include/boost/tuple/detail/tuple_basic.hpp \
+  /usr/include/boost/type_traits/cv_traits.hpp \
+  /usr/include/boost/type_traits/add_cv.hpp \
+  /usr/include/boost/type_traits/remove_volatile.hpp \
+  /usr/include/boost/utility/swap.hpp \
+  /usr/include/boost/geometry/strategies/intersection_result.hpp \
+  /usr/include/boost/geometry/policies/robustness/segment_ratio.hpp \
+  /usr/include/boost/rational.hpp \
+  /usr/include/boost/operators.hpp \
+  /usr/include/boost/integer/common_factor_rt.hpp \
+  /usr/include/boost/geometry/strategies/side.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/intersection.hpp \
+  /usr/include/boost/geometry/core/exception.hpp \
+  /usr/include/boost/geometry/algorithms/detail/equals/point_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/recalculate.hpp \
+  /usr/include/boost/geometry/util/promote_integral.hpp \
+  /usr/include/boost/mpl/begin.hpp \
+  /usr/include/boost/mpl/end.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/area.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/disjoint_box_box.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/disjoint_segment_box.hpp \
+  /usr/include/boost/geometry/util/calculation_type.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/point_in_box.hpp \
+  /usr/include/boost/geometry/util/normalize_spheroidal_coordinates.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_pythagoras.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/envelope.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/initialize.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/envelope_box.hpp \
+  /usr/include/boost/geometry/views/detail/indexed_point_view.hpp \
+  /usr/include/boost/geometry/algorithms/detail/normalize.hpp \
+  /usr/include/boost/geometry/strategies/normalize.hpp \
+  /usr/include/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/transform_units.hpp \
+  /usr/include/boost/geometry/strategies/strategy_transform.hpp \
+  /usr/include/boost/geometry/algorithms/convert.hpp \
+  /usr/include/boost/geometry/algorithms/for_each.hpp \
+  /usr/include/boost/geometry/algorithms/detail/assign_box_corners.hpp \
+  /usr/include/boost/geometry/algorithms/detail/convert_indexed_to_indexed.hpp \
+  /usr/include/boost/geometry/views/closeable_view.hpp \
+  /usr/include/boost/geometry/iterators/closing_iterator.hpp \
+  /usr/include/boost/geometry/views/identity_view.hpp \
+  /usr/include/boost/geometry/views/reversible_view.hpp \
+  /usr/include/boost/range/adaptor/reversed.hpp \
+  /usr/include/boost/geometry/strategies/transform.hpp \
+  /usr/include/boost/geometry/views/detail/two_dimensional_view.hpp \
+  /usr/include/boost/geometry/algorithms/transform.hpp \
+  /usr/include/boost/geometry/algorithms/assign.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/envelope.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/expand_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/indexed.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/expand.hpp \
+  /usr/include/boost/geometry/policies/compare.hpp \
+  /usr/include/boost/geometry/strategies/expand.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/envelope_segment.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/envelope_point.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/expand_point.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/expand_segment.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/point_in_point.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/point_in_poly_winding.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/side_by_triangle.hpp \
+  /usr/include/boost/geometry/policies/robustness/rescale_policy_tags.hpp \
+  /usr/include/boost/geometry/policies/robustness/no_rescale_policy.hpp \
+  /usr/include/boost/geometry/policies/robustness/robust_point_type.hpp \
+  /usr/include/boost/geometry/strategies/spherical/intersection.hpp \
+  /usr/include/boost/geometry/arithmetic/cross_product.hpp \
+  /usr/include/boost/geometry/arithmetic/normalize.hpp \
+  /usr/include/boost/geometry/formulas/spherical.hpp \
+  /usr/include/boost/geometry/formulas/result_direct.hpp \
+  /usr/include/boost/geometry/strategies/spherical/area.hpp \
+  /usr/include/boost/geometry/formulas/area_formulas.hpp \
+  /usr/include/boost/geometry/formulas/flattening.hpp \
+  /usr/include/boost/math/special_functions/hypot.hpp \
+  /usr/include/boost/geometry/srs/sphere.hpp \
+  /usr/include/boost/geometry/strategies/spherical/get_radius.hpp \
+  /usr/include/boost/geometry/strategies/spherical/disjoint_box_box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/disjoint_segment_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/segment_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/point_box.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/disjoint.hpp \
+  /usr/include/boost/geometry/core/reverse_dispatch.hpp \
+  /usr/include/boost/geometry/core/geometry_id.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/box_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/segment.hpp \
+  /usr/include/boost/geometry/strategies/spherical/envelope_segment.hpp \
+  /usr/include/boost/geometry/formulas/meridian_segment.hpp \
+  /usr/include/boost/geometry/util/condition.hpp \
+  /usr/include/boost/geometry/formulas/vertex_latitude.hpp \
+  /usr/include/boost/geometry/geometries/helper_geometry.hpp \
+  /usr/include/boost/geometry/geometries/box.hpp \
+  /usr/include/boost/geometry/geometries/point.hpp \
+  /usr/include/boost/geometry/strategies/spherical/azimuth.hpp \
+  /usr/include/boost/geometry/strategies/spherical/expand_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/range_of_boxes.hpp \
+  /usr/include/boost/geometry/algorithms/detail/max_interval_gap.hpp \
+  /usr/include/c++/11/queue \
+  /usr/include/c++/11/deque \
+  /usr/include/c++/11/bits/stl_deque.h \
+  /usr/include/c++/11/bits/deque.tcc \
+  /usr/include/c++/11/bits/stl_queue.h \
+  /usr/include/boost/geometry/algorithms/detail/sweep.hpp \
+  /usr/include/boost/geometry/strategies/geographic/envelope_segment.hpp \
+  /usr/include/boost/geometry/srs/spheroid.hpp \
+  /usr/include/boost/geometry/strategies/geographic/azimuth.hpp \
+  /usr/include/boost/geometry/strategies/geographic/parameters.hpp \
+  /usr/include/boost/geometry/formulas/andoyer_inverse.hpp \
+  /usr/include/boost/geometry/formulas/differential_quantities.hpp \
+  /usr/include/boost/geometry/formulas/result_inverse.hpp \
+  /usr/include/boost/geometry/formulas/thomas_direct.hpp \
+  /usr/include/boost/geometry/formulas/thomas_inverse.hpp \
+  /usr/include/boost/geometry/formulas/vincenty_direct.hpp \
+  /usr/include/boost/geometry/formulas/vincenty_inverse.hpp \
+  /usr/include/boost/geometry/algorithms/envelope.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/is_empty.hpp \
+  /usr/include/boost/geometry/algorithms/detail/check_iterator_range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/areal.hpp \
+  /usr/include/boost/geometry/iterators/segment_iterator.hpp \
+  /usr/include/boost/geometry/iterators/detail/point_iterator/inner_range_type.hpp \
+  /usr/include/boost/geometry/iterators/detail/segment_iterator/iterator_type.hpp \
+  /usr/include/boost/geometry/iterators/concatenate_iterator.hpp \
+  /usr/include/boost/geometry/iterators/flatten_iterator.hpp \
+  /usr/include/boost/geometry/iterators/detail/segment_iterator/range_segment_iterator.hpp \
+  /usr/include/boost/geometry/iterators/detail/segment_iterator/value_type.hpp \
+  /usr/include/boost/geometry/iterators/point_iterator.hpp \
+  /usr/include/boost/geometry/iterators/dispatch/point_iterator.hpp \
+  /usr/include/boost/geometry/iterators/detail/point_iterator/iterator_type.hpp \
+  /usr/include/boost/geometry/iterators/detail/point_iterator/value_type.hpp \
+  /usr/include/boost/geometry/geometries/pointing_segment.hpp \
+  /usr/include/boost/geometry/iterators/dispatch/segment_iterator.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/point.hpp \
+  /usr/include/boost/geometry/strategies/spherical/expand_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/segment.hpp \
+  /usr/include/boost/geometry/strategies/geographic/expand_segment.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/envelope_box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/expand_segment.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/linear.hpp \
+  /usr/include/boost/geometry/strategies/spherical/envelope.hpp \
+  /usr/include/boost/geometry/strategies/geographic/envelope.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/multipoint.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/envelope_multipoint.hpp \
+  /usr/include/boost/geometry/strategies/spherical/envelope_multipoint.hpp \
+  /usr/include/boost/algorithm/minmax_element.hpp \
+  /usr/include/boost/geometry/strategies/spherical/envelope_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/envelope/point.hpp \
+  /usr/include/boost/geometry/formulas/vertex_longitude.hpp \
+  /usr/include/boost/geometry/strategies/spherical/distance_haversine.hpp \
+  /usr/include/boost/geometry/strategies/spherical/point_in_point.hpp \
+  /usr/include/boost/geometry/strategies/spherical/point_in_poly_winding.hpp \
+  /usr/include/boost/geometry/strategies/spherical/ssf.hpp \
+  /usr/include/boost/geometry/policies/robustness/segment_ratio_type.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/azimuth.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/box_in_box.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_end_flat.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_end_round.hpp \
+  /usr/include/boost/geometry/io/wkt/wkt.hpp \
+  /usr/include/boost/geometry/io/wkt/read.hpp \
+  /usr/include/boost/tokenizer.hpp \
+  /usr/include/boost/token_iterator.hpp \
+  /usr/include/boost/iterator/minimum_category.hpp \
+  /usr/include/boost/token_functions.hpp \
+  /usr/include/boost/algorithm/string.hpp \
+  /usr/include/boost/algorithm/string/std_containers_traits.hpp \
+  /usr/include/boost/algorithm/string/std/string_traits.hpp \
+  /usr/include/boost/algorithm/string/yes_no_type.hpp \
+  /usr/include/boost/algorithm/string/sequence_traits.hpp \
+  /usr/include/boost/algorithm/string/std/list_traits.hpp \
+  /usr/include/c++/11/list \
+  /usr/include/c++/11/bits/stl_list.h \
+  /usr/include/c++/11/bits/list.tcc \
+  /usr/include/boost/algorithm/string/std/slist_traits.hpp \
+  /usr/include/boost/algorithm/string/config.hpp \
+  /usr/include/c++/11/ext/slist \
+  /usr/include/boost/algorithm/string/trim.hpp \
+  /usr/include/boost/range/as_literal.hpp \
   /usr/include/boost/range/detail/str_types.hpp \
+  /usr/include/boost/algorithm/string/detail/trim.hpp \
+  /usr/include/boost/algorithm/string/classification.hpp \
+  /usr/include/boost/algorithm/string/detail/classification.hpp \
+  /usr/include/boost/algorithm/string/predicate_facade.hpp \
+  /usr/include/boost/algorithm/string/case_conv.hpp \
+  /usr/include/boost/iterator/transform_iterator.hpp \
+  /usr/include/boost/utility/result_of.hpp \
+  /usr/include/boost/preprocessor/iteration/iterate.hpp \
+  /usr/include/boost/preprocessor/slot/slot.hpp \
+  /usr/include/boost/preprocessor/slot/detail/def.hpp \
+  /usr/include/boost/preprocessor/facilities/intercept.hpp \
+  /usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp \
+  /usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp \
+  /usr/include/boost/preprocessor/slot/detail/shared.hpp \
+  /usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp \
+  /usr/include/boost/utility/detail/result_of_iterate.hpp \
+  /usr/include/boost/algorithm/string/detail/case_conv.hpp \
+  /usr/include/boost/algorithm/string/predicate.hpp \
   /usr/include/boost/algorithm/string/compare.hpp \
   /usr/include/boost/algorithm/string/find.hpp \
   /usr/include/boost/algorithm/string/finder.hpp \
   /usr/include/boost/algorithm/string/constants.hpp \
   /usr/include/boost/algorithm/string/detail/finder.hpp \
   /usr/include/boost/algorithm/string/detail/predicate.hpp \
+  /usr/include/boost/algorithm/string/split.hpp \
+  /usr/include/boost/algorithm/string/iter_find.hpp \
+  /usr/include/boost/algorithm/string/concept.hpp \
+  /usr/include/boost/algorithm/string/find_iterator.hpp \
+  /usr/include/boost/algorithm/string/detail/find_iterator.hpp \
+  /usr/include/boost/function.hpp \
+  /usr/include/boost/preprocessor/iterate.hpp \
+  /usr/include/boost/function/detail/prologue.hpp \
+  /usr/include/boost/config/no_tr1/functional.hpp \
+  /usr/include/boost/function/function_base.hpp \
+  /usr/include/boost/type_index.hpp \
+  /usr/include/boost/type_index/stl_type_index.hpp \
+  /usr/include/boost/type_index/type_index_facade.hpp \
+  /usr/include/boost/container_hash/hash_fwd.hpp \
+  /usr/include/boost/core/demangle.hpp \
+  /usr/include/c++/11/cxxabi.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h \
+  /usr/include/boost/type_traits/has_trivial_copy.hpp \
+  /usr/include/boost/type_traits/is_copy_constructible.hpp \
+  /usr/include/boost/type_traits/has_trivial_destructor.hpp \
+  /usr/include/boost/type_traits/composite_traits.hpp \
+  /usr/include/boost/type_traits/is_union.hpp \
+  /usr/include/boost/type_traits/alignment_of.hpp \
+  /usr/include/boost/type_traits/enable_if.hpp \
+  /usr/include/boost/function_equal.hpp \
+  /usr/include/boost/function/function_fwd.hpp \
+  /usr/include/boost/mem_fn.hpp \
+  /usr/include/boost/bind/mem_fn.hpp \
+  /usr/include/boost/get_pointer.hpp \
+  /usr/include/boost/config/no_tr1/memory.hpp \
+  /usr/include/boost/bind/mem_fn_template.hpp \
+  /usr/include/boost/bind/mem_fn_cc.hpp \
+  /usr/include/boost/function/detail/function_iterate.hpp \
+  /usr/include/boost/function/detail/maybe_include.hpp \
+  /usr/include/boost/function/function_template.hpp \
+  /usr/include/boost/core/no_exceptions_support.hpp \
+  /usr/include/boost/algorithm/string/detail/util.hpp \
+  /usr/include/boost/algorithm/string/join.hpp \
+  /usr/include/boost/algorithm/string/detail/sequence.hpp \
+  /usr/include/boost/algorithm/string/replace.hpp \
+  /usr/include/boost/algorithm/string/find_format.hpp \
+  /usr/include/boost/algorithm/string/detail/find_format.hpp \
+  /usr/include/boost/algorithm/string/detail/find_format_store.hpp \
+  /usr/include/boost/algorithm/string/detail/replace_storage.hpp \
+  /usr/include/boost/algorithm/string/detail/find_format_all.hpp \
+  /usr/include/boost/algorithm/string/formatter.hpp \
+  /usr/include/boost/algorithm/string/detail/formatter.hpp \
+  /usr/include/boost/algorithm/string/erase.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/point_point.hpp \
+  /usr/include/boost/geometry/util/coordinate_cast.hpp \
+  /usr/include/boost/geometry/io/wkt/detail/prefix.hpp \
+  /usr/include/boost/geometry/io/wkt/write.hpp \
+  /usr/include/boost/geometry/geometries/ring.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_join_miter.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_join_round.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_point_circle.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_point_square.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/buffer_side_straight.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/centroid_average.hpp \
+  /usr/include/boost/geometry/algorithms/detail/signed_size_type.hpp \
+  /usr/include/boost/type_traits/make_signed.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/interface.hpp \
+  /usr/include/boost/geometry/strategies/default_distance_result.hpp \
+  /usr/include/boost/geometry/strategies/distance_result.hpp \
+  /usr/include/boost/geometry/util/compress_variant.hpp \
+  /usr/include/boost/mpl/insert.hpp \
+  /usr/include/boost/mpl/insert_fwd.hpp \
+  /usr/include/boost/mpl/aux_/insert_impl.hpp \
+  /usr/include/boost/mpl/set.hpp \
+  /usr/include/boost/mpl/limits/set.hpp \
+  /usr/include/boost/mpl/set/set20.hpp \
+  /usr/include/boost/mpl/set/set10.hpp \
+  /usr/include/boost/mpl/set/set0.hpp \
+  /usr/include/boost/mpl/set/aux_/at_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/has_key_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/tag.hpp \
+  /usr/include/boost/mpl/has_key_fwd.hpp \
+  /usr/include/boost/mpl/aux_/overload_names.hpp \
+  /usr/include/boost/mpl/aux_/ptr_to_ref.hpp \
+  /usr/include/boost/mpl/aux_/config/operators.hpp \
+  /usr/include/boost/mpl/set/aux_/clear_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/set0.hpp \
+  /usr/include/boost/mpl/set/aux_/size_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/empty_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/insert_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/item.hpp \
+  /usr/include/boost/mpl/base.hpp \
+  /usr/include/boost/mpl/set/aux_/insert_range_impl.hpp \
+  /usr/include/boost/mpl/insert_range_fwd.hpp \
+  /usr/include/boost/mpl/set/aux_/erase_impl.hpp \
+  /usr/include/boost/mpl/erase_fwd.hpp \
+  /usr/include/boost/mpl/set/aux_/erase_key_impl.hpp \
+  /usr/include/boost/mpl/erase_key_fwd.hpp \
+  /usr/include/boost/mpl/set/aux_/key_type_impl.hpp \
+  /usr/include/boost/mpl/key_type_fwd.hpp \
+  /usr/include/boost/mpl/set/aux_/value_type_impl.hpp \
+  /usr/include/boost/mpl/value_type_fwd.hpp \
+  /usr/include/boost/mpl/set/aux_/begin_end_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/iterator.hpp \
+  /usr/include/boost/mpl/has_key.hpp \
+  /usr/include/boost/mpl/aux_/has_key_impl.hpp \
+  /usr/include/boost/mpl/set/aux_/include_preprocessed.hpp \
+  /usr/include/boost/mpl/set/aux_/preprocessed/plain/set10.hpp \
+  /usr/include/boost/mpl/set/aux_/preprocessed/plain/set20.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/set.hpp \
+  /usr/include/boost/geometry/util/transform_variant.hpp \
+  /usr/include/boost/mpl/transform.hpp \
+  /usr/include/boost/mpl/pair_view.hpp \
+  /usr/include/boost/mpl/iterator_category.hpp \
+  /usr/include/boost/mpl/is_sequence.hpp \
+  /usr/include/boost/geometry/util/combine_if.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/default_strategies.hpp \
+  /usr/include/boost/geometry/algorithms/detail/throw_on_empty_input.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/distance.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/point_to_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/closest_feature/geometry_to_range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/closest_feature/point_to_range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/is_comparable.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/iterator_selector.hpp \
+  /usr/include/boost/geometry/algorithms/detail/within/point_in_geometry.hpp \
+  /usr/include/boost/geometry/strategies/concepts/within_concept.hpp \
+  /usr/include/boost/function_types/result_type.hpp \
+  /usr/include/boost/blank.hpp \
+  /usr/include/boost/detail/templated_streams.hpp \
+  /usr/include/boost/type_traits/is_empty.hpp \
+  /usr/include/boost/type_traits/is_stateless.hpp \
+  /usr/include/boost/type_traits/has_trivial_constructor.hpp \
+  /usr/include/boost/function_types/is_callable_builtin.hpp \
+  /usr/include/boost/function_types/components.hpp \
+  /usr/include/boost/mpl/remove.hpp \
+  /usr/include/boost/function_types/config/config.hpp \
+  /usr/include/boost/function_types/config/compiler.hpp \
+  /usr/include/boost/function_types/config/cc_names.hpp \
+  /usr/include/boost/mpl/vector/vector30.hpp \
+  /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector30.hpp \
+  /usr/include/boost/function_types/detail/class_transform.hpp \
+  /usr/include/boost/function_types/property_tags.hpp \
+  /usr/include/boost/mpl/bitxor.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/bitxor.hpp \
+  /usr/include/boost/function_types/detail/pp_tags/preprocessed.hpp \
+  /usr/include/boost/function_types/detail/pp_loop.hpp \
+  /usr/include/boost/preprocessor/punctuation/paren.hpp \
+  /usr/include/boost/function_types/detail/encoding/def.hpp \
+  /usr/include/boost/function_types/detail/encoding/aliases_def.hpp \
+  /usr/include/boost/function_types/detail/pp_cc_loop/preprocessed.hpp \
+  /usr/include/boost/function_types/detail/pp_tags/cc_tag.hpp \
+  /usr/include/boost/function_types/detail/encoding/aliases_undef.hpp \
+  /usr/include/boost/function_types/detail/encoding/undef.hpp \
+  /usr/include/boost/function_types/detail/pp_variate_loop/preprocessed.hpp \
+  /usr/include/boost/function_types/detail/pp_arity_loop.hpp \
+  /usr/include/boost/function_types/detail/components_impl/arity20_0.hpp \
+  /usr/include/boost/function_types/detail/components_impl/arity10_0.hpp \
+  /usr/include/boost/function_types/detail/components_impl/arity20_1.hpp \
+  /usr/include/boost/function_types/detail/components_impl/arity10_1.hpp \
+  /usr/include/boost/function_types/detail/components_as_mpl_sequence.hpp \
+  /usr/include/boost/function_types/detail/retag_default_cc.hpp \
+  /usr/include/boost/mpl/bitand.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/bitand.hpp \
+  /usr/include/boost/function_types/detail/pp_retag_default_cc/preprocessed.hpp \
+  /usr/include/boost/geometry/util/parameter_type_of.hpp \
+  /usr/include/boost/function_types/function_arity.hpp \
+  /usr/include/boost/function_types/is_member_function_pointer.hpp \
+  /usr/include/boost/function_types/parameter_types.hpp \
+  /usr/include/boost/mpl/pop_front.hpp \
+  /usr/include/boost/mpl/aux_/pop_front_impl.hpp \
+  /usr/include/boost/geometry/views/detail/normalized_view.hpp \
+  /usr/include/boost/geometry/views/detail/range_type.hpp \
+  /usr/include/boost/geometry/views/box_view.hpp \
+  /usr/include/boost/geometry/views/detail/points_view.hpp \
+  /usr/include/boost/geometry/util/order_as_direction.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/densify.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_pythagoras_point_box.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_projected_point.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_projected_point_ax.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/distance_segment_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/segment_to_box.hpp \
+  /usr/include/boost/geometry/util/has_nan_coordinate.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/index.hpp \
+  /usr/include/boost/geometry/strategies/index.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/line_interpolate.hpp \
+  /usr/include/boost/geometry/strategies/line_interpolate.hpp \
+  /usr/include/boost/geometry/strategies/spherical/densify.hpp \
+  /usr/include/boost/geometry/formulas/interpolate_point_spherical.hpp \
+  /usr/include/boost/geometry/strategies/spherical/distance_cross_track.hpp \
+  /usr/include/boost/geometry/strategies/concepts/distance_concept.hpp \
+  /usr/include/boost/geometry/strategies/spherical/distance_cross_track_box_box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/distance_segment_box.hpp \
+  /usr/include/boost/geometry/strategies/spherical/compare.hpp \
+  /usr/include/boost/geometry/strategies/spherical/index.hpp \
+  /usr/include/boost/geometry/strategies/spherical/line_interpolate.hpp \
+  /usr/include/boost/geometry/strategies/geographic/area.hpp \
+  /usr/include/boost/geometry/formulas/authalic_radius_sqr.hpp \
+  /usr/include/boost/geometry/formulas/eccentricity_sqr.hpp \
+  /usr/include/boost/math/special_functions/atanh.hpp \
+  /usr/include/boost/math/special_functions/log1p.hpp \
+  /usr/include/boost/math/tools/series.hpp \
+  /usr/include/boost/math/tools/rational.hpp \
+  /usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp \
+  /usr/include/boost/math/tools/detail/rational_horner3_20.hpp \
+  /usr/include/boost/math/tools/big_constant.hpp \
+  /usr/include/boost/geometry/strategies/geographic/buffer_point_circle.hpp \
+  /usr/include/boost/geometry/strategies/geographic/densify.hpp \
+  /usr/include/boost/geometry/strategies/geographic/disjoint_segment_box.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance.hpp \
+  /usr/include/boost/geometry/formulas/meridian_inverse.hpp \
+  /usr/include/boost/geometry/geometries/point_xy.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_andoyer.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_cross_track.hpp \
+  /usr/include/boost/algorithm/minmax.hpp \
+  /usr/include/boost/geometry/strategies/geographic/intersection.hpp \
+  /usr/include/boost/geometry/formulas/sjoberg_intersection.hpp \
+  /usr/include/boost/geometry/formulas/unit_spheroid.hpp \
+  /usr/include/boost/geometry/strategies/geographic/point_in_poly_winding.hpp \
+  /usr/include/boost/geometry/strategies/geographic/side.hpp \
+  /usr/include/boost/geometry/formulas/mean_radius.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_cross_track_box_box.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_cross_track_point_box.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_segment_box.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_thomas.hpp \
+  /usr/include/boost/geometry/strategies/geographic/distance_vincenty.hpp \
+  /usr/include/boost/geometry/strategies/geographic/index.hpp \
+  /usr/include/boost/geometry/strategies/geographic/line_interpolate.hpp \
+  /usr/include/boost/geometry/strategies/geographic/side_andoyer.hpp \
+  /usr/include/boost/geometry/strategies/geographic/side_thomas.hpp \
+  /usr/include/boost/geometry/strategies/geographic/side_vincenty.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp \
+  /usr/include/boost/geometry/algorithms/detail/for_each_range.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/point_in_point.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp \
+  /usr/include/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp \
+  /usr/include/boost/geometry/strategies/transform/matrix_transformers.hpp \
+  /usr/include/boost/qvm/mat.hpp \
+  /usr/include/boost/qvm/detail/mat_assign.hpp \
+  /usr/include/boost/qvm/gen/mat_assign2.hpp \
+  /usr/include/boost/qvm/enable_if.hpp \
+  /usr/include/boost/qvm/inline.hpp \
+  /usr/include/boost/qvm/mat_traits.hpp \
+  /usr/include/boost/qvm/gen/mat_assign3.hpp \
+  /usr/include/boost/qvm/gen/mat_assign4.hpp \
+  /usr/include/boost/qvm/assert.hpp \
+  /usr/include/boost/qvm/static_assert.hpp \
+  /usr/include/boost/qvm/vec.hpp \
+  /usr/include/boost/qvm/detail/vec_assign.hpp \
+  /usr/include/boost/qvm/gen/vec_assign2.hpp \
+  /usr/include/boost/qvm/vec_traits.hpp \
+  /usr/include/boost/qvm/gen/vec_assign3.hpp \
+  /usr/include/boost/qvm/gen/vec_assign4.hpp \
+  /usr/include/boost/qvm/mat_access.hpp \
+  /usr/include/boost/qvm/vec_access.hpp \
+  /usr/include/boost/qvm/mat_operations.hpp \
+  /usr/include/boost/qvm/mat_operations2.hpp \
+  /usr/include/boost/qvm/gen/mat_operations2.hpp \
+  /usr/include/boost/qvm/deduce_mat.hpp \
+  /usr/include/boost/qvm/deduce_scalar.hpp \
+  /usr/include/boost/qvm/scalar_traits.hpp \
+  /usr/include/boost/qvm/quat_traits.hpp \
+  /usr/include/boost/qvm/deduce_vec.hpp \
+  /usr/include/boost/qvm/error.hpp \
+  /usr/include/boost/exception/error_info.hpp \
+  /usr/include/boost/qvm/throw_exception.hpp \
+  /usr/include/boost/qvm/mat_operations3.hpp \
+  /usr/include/boost/qvm/gen/mat_operations3.hpp \
+  /usr/include/boost/qvm/mat_operations4.hpp \
+  /usr/include/boost/qvm/gen/mat_operations4.hpp \
+  /usr/include/boost/qvm/math.hpp \
+  /usr/include/boost/qvm/detail/determinant_impl.hpp \
+  /usr/include/boost/qvm/mat_traits_array.hpp \
+  /usr/include/boost/qvm/detail/remove_const.hpp \
+  /usr/include/boost/qvm/detail/cofactor_impl.hpp \
+  /usr/include/boost/qvm/detail/transp_impl.hpp \
+  /usr/include/boost/qvm/vec_mat_operations.hpp \
+  /usr/include/boost/qvm/vec_mat_operations2.hpp \
+  /usr/include/boost/qvm/gen/vec_mat_operations2.hpp \
+  /usr/include/boost/qvm/vec_mat_operations3.hpp \
+  /usr/include/boost/qvm/gen/vec_mat_operations3.hpp \
+  /usr/include/boost/qvm/vec_mat_operations4.hpp \
+  /usr/include/boost/qvm/gen/vec_mat_operations4.hpp \
+  /usr/include/boost/qvm/map_mat_mat.hpp \
+  /usr/include/boost/qvm/map_mat_vec.hpp \
+  /usr/include/boost/geometry/strategies/transform/map_transformer.hpp \
+  /usr/include/boost/geometry/strategies/transform/inverse_transformer.hpp \
+  /usr/include/boost/geometry/algorithms/area.hpp \
+  /usr/include/boost/geometry/algorithms/detail/calculate_null.hpp \
+  /usr/include/boost/geometry/algorithms/detail/calculate_sum.hpp \
+  /usr/include/boost/geometry/algorithms/detail/multi_sum.hpp \
+  /usr/include/boost/geometry/strategies/area_result.hpp \
+  /usr/include/boost/geometry/util/select_sequence_element.hpp \
+  /usr/include/boost/geometry/strategies/default_area_result.hpp \
+  /usr/include/boost/geometry/strategies/concepts/area_concept.hpp \
+  /usr/include/boost/geometry/algorithms/buffer.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/buffer_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp \
+  /usr/include/boost/geometry/algorithms/detail/direction_code.hpp \
+  /usr/include/boost/geometry/arithmetic/infinite_line_functions.hpp \
+  /usr/include/boost/geometry/core/config.hpp \
+  /usr/include/boost/geometry/geometries/infinite_line.hpp \
+  /usr/include/boost/geometry/algorithms/detail/make/make.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp \
+  /usr/include/boost/geometry/algorithms/covered_by.hpp \
+  /usr/include/boost/geometry/algorithms/detail/covered_by/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/within/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/covered_by/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/within/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/within/multi_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand_by_epsilon.hpp \
+  /usr/include/boost/geometry/algorithms/detail/partition.hpp \
+  /usr/include/boost/geometry/index/rtree.hpp \
+  /usr/include/boost/container/new_allocator.hpp \
+  /usr/include/boost/container/detail/config_begin.hpp \
+  /usr/include/boost/container/detail/workaround.hpp \
+  /usr/include/boost/container/throw_exception.hpp \
+  /usr/include/boost/container/detail/config_end.hpp \
+  /usr/include/boost/move/move.hpp \
+  /usr/include/boost/move/iterator.hpp \
+  /usr/include/boost/move/detail/iterator_traits.hpp \
+  /usr/include/boost/move/algorithm.hpp \
+  /usr/include/boost/move/algo/move.hpp \
+  /usr/include/boost/move/detail/iterator_to_raw_pointer.hpp \
+  /usr/include/boost/move/detail/to_raw_pointer.hpp \
+  /usr/include/boost/move/detail/pointer_element.hpp \
+  /usr/include/boost/geometry/algorithms/detail/comparable_distance/interface.hpp \
+  /usr/include/boost/geometry/strategies/comparable_distance_result.hpp \
+  /usr/include/boost/geometry/strategies/default_comparable_distance_result.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/de9im.hpp \
+  /usr/include/boost/mpl/vector_c.hpp \
+  /usr/include/boost/mpl/vector/vector20_c.hpp \
+  /usr/include/boost/mpl/vector/vector10_c.hpp \
+  /usr/include/boost/mpl/vector/vector0_c.hpp \
+  /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10_c.hpp \
+  /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20_c.hpp \
+  /usr/include/boost/mpl/aux_/preprocessed/gcc/vector_c.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/result.hpp \
+  /usr/include/boost/geometry/util/tuples.hpp \
+  /usr/include/boost/geometry/algorithms/detail/equals/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersects/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlaps/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/relate_impl.hpp \
+  /usr/include/boost/geometry/algorithms/detail/touches/interface.hpp \
+  /usr/include/boost/geometry/algorithms/centroid.hpp \
+  /usr/include/boost/geometry/algorithms/detail/point_on_border.hpp \
+  /usr/include/boost/geometry/strategies/concepts/centroid_concept.hpp \
+  /usr/include/boost/geometry/algorithms/detail/centroid/translating_transformer.hpp \
+  /usr/include/boost/geometry/index/detail/config_begin.hpp \
+  /usr/include/boost/geometry/index/detail/assert.hpp \
+  /usr/include/boost/geometry/index/detail/exception.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/options.hpp \
+  /usr/include/boost/geometry/index/parameters.hpp \
+  /usr/include/boost/geometry/index/indexable.hpp \
+  /usr/include/boost/geometry/index/detail/is_indexable.hpp \
+  /usr/include/boost/geometry/index/equal_to.hpp \
+  /usr/include/boost/geometry/index/detail/translator.hpp \
+  /usr/include/boost/geometry/index/predicates.hpp \
+  /usr/include/boost/geometry/index/detail/predicates.hpp \
+  /usr/include/boost/geometry/index/detail/tags.hpp \
+  /usr/include/boost/geometry/index/distance_predicates.hpp \
+  /usr/include/boost/geometry/index/detail/distance_predicates.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/comparable_distance_near.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/sum_for_indexable.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/comparable_distance_far.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/diff_abs.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/comparable_distance_centroid.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/path_intersection.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/segment_intersection.hpp \
+  /usr/include/boost/geometry/strategies/default_length_result.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/adaptors.hpp \
+  /usr/include/boost/geometry/index/adaptors/query.hpp \
+  /usr/include/boost/geometry/index/detail/meta.hpp \
+  /usr/include/boost/geometry/index/detail/utilities.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/node.hpp \
+  /usr/include/boost/container/vector.hpp \
+  /usr/include/boost/container/allocator_traits.hpp \
+  /usr/include/boost/container/detail/mpl.hpp \
+  /usr/include/boost/intrusive/detail/mpl.hpp \
+  /usr/include/boost/intrusive/detail/config_begin.hpp \
+  /usr/include/boost/intrusive/detail/config_end.hpp \
+  /usr/include/boost/container/detail/type_traits.hpp \
+  /usr/include/boost/container/detail/placement_new.hpp \
+  /usr/include/boost/intrusive/pointer_traits.hpp \
+  /usr/include/boost/intrusive/detail/workaround.hpp \
+  /usr/include/boost/intrusive/pointer_rebind.hpp \
+  /usr/include/boost/intrusive/detail/has_member_function_callable_with.hpp \
+  /usr/include/boost/move/detail/fwd_macros.hpp \
+  /usr/include/boost/container/options.hpp \
+  /usr/include/boost/intrusive/pack_options.hpp \
+  /usr/include/boost/container/detail/advanced_insert_int.hpp \
+  /usr/include/boost/container/detail/copy_move_algo.hpp \
+  /usr/include/boost/container/detail/iterator.hpp \
+  /usr/include/boost/intrusive/detail/iterator.hpp \
+  /usr/include/boost/intrusive/detail/std_fwd.hpp \
+  /usr/include/boost/container/detail/construct_in_place.hpp \
+  /usr/include/boost/container/detail/iterators.hpp \
+  /usr/include/boost/container/detail/value_init.hpp \
+  /usr/include/boost/intrusive/detail/reverse_iterator.hpp \
+  /usr/include/boost/container/detail/variadic_templates_tools.hpp \
+  /usr/include/boost/move/adl_move_swap.hpp \
+  /usr/include/boost/container/detail/destroyers.hpp \
+  /usr/include/boost/container/detail/version_type.hpp \
+  /usr/include/boost/container/detail/algorithm.hpp \
+  /usr/include/boost/intrusive/detail/algorithm.hpp \
+  /usr/include/boost/container/detail/alloc_helpers.hpp \
+  /usr/include/boost/container/detail/allocation_type.hpp \
+  /usr/include/boost/container/detail/next_capacity.hpp \
+  /usr/include/boost/container/detail/min_max.hpp \
+  /usr/include/boost/container/detail/value_functors.hpp \
+  /usr/include/boost/move/detail/move_helpers.hpp \
+  /usr/include/boost/move/algo/adaptive_merge.hpp \
+  /usr/include/boost/move/algo/detail/adaptive_sort_merge.hpp \
+  /usr/include/boost/move/detail/reverse_iterator.hpp \
+  /usr/include/boost/move/algo/detail/merge.hpp \
+  /usr/include/boost/move/algo/detail/basic_op.hpp \
+  /usr/include/boost/move/detail/destruct_n.hpp \
+  /usr/include/boost/move/algo/predicate.hpp \
+  /usr/include/boost/move/algo/detail/insertion_sort.hpp \
+  /usr/include/boost/move/detail/placement_new.hpp \
+  /usr/include/boost/move/algo/detail/merge_sort.hpp \
+  /usr/include/boost/move/algo/detail/heap_sort.hpp \
+  /usr/include/boost/move/algo/detail/is_sorted.hpp \
+  /usr/include/boost/move/algo/unique.hpp \
+  /usr/include/boost/move/algo/detail/set_difference.hpp \
+  /usr/include/boost/geometry/index/detail/varray.hpp \
+  /usr/include/boost/type_traits/aligned_storage.hpp \
+  /usr/include/boost/type_traits/type_with_alignment.hpp \
+  /usr/include/boost/geometry/index/detail/varray_detail.hpp \
+  /usr/include/boost/type_traits/has_trivial_assign.hpp \
+  /usr/include/boost/type_traits/is_assignable.hpp \
+  /usr/include/boost/type_traits/has_trivial_move_constructor.hpp \
+  /usr/include/boost/type_traits/has_trivial_move_assign.hpp \
+  /usr/include/boost/detail/no_exceptions_support.hpp \
+  /usr/include/boost/config/header_deprecated.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/concept.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/pairs.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/node_elements.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/scoped_deallocator.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/variant_visitor.hpp \
+  /usr/include/boost/variant/get.hpp \
+  /usr/include/boost/utility/addressof.hpp \
+  /usr/include/boost/variant/detail/element_index.hpp \
+  /usr/include/boost/variant/recursive_wrapper_fwd.hpp \
+  /usr/include/boost/type_traits/is_nothrow_move_constructible.hpp \
+  /usr/include/boost/variant/detail/move.hpp \
+  /usr/include/boost/variant/variant.hpp \
+  /usr/include/boost/variant/detail/backup_holder.hpp \
+  /usr/include/boost/variant/detail/enable_recursive_fwd.hpp \
+  /usr/include/boost/variant/detail/forced_return.hpp \
+  /usr/include/boost/variant/detail/initializer.hpp \
+  /usr/include/boost/detail/reference_content.hpp \
+  /usr/include/boost/type_traits/has_nothrow_copy.hpp \
+  /usr/include/boost/variant/detail/make_variant_list.hpp \
+  /usr/include/boost/variant/detail/over_sequence.hpp \
+  /usr/include/boost/variant/detail/visitation_impl.hpp \
+  /usr/include/boost/variant/detail/cast_storage.hpp \
+  /usr/include/boost/variant/detail/hash_variant.hpp \
+  /usr/include/boost/functional/hash_fwd.hpp \
+  /usr/include/boost/variant/detail/std_hash.hpp \
+  /usr/include/boost/integer/common_factor_ct.hpp \
+  /usr/include/boost/type_traits/has_nothrow_constructor.hpp \
+  /usr/include/boost/type_traits/is_nothrow_move_assignable.hpp \
+  /usr/include/boost/type_traits/has_nothrow_assign.hpp \
+  /usr/include/boost/mpl/empty.hpp \
+  /usr/include/boost/mpl/aux_/empty_impl.hpp \
+  /usr/include/boost/mpl/insert_range.hpp \
+  /usr/include/boost/mpl/aux_/insert_range_impl.hpp \
+  /usr/include/boost/mpl/joint_view.hpp \
+  /usr/include/boost/mpl/aux_/joint_iter.hpp \
+  /usr/include/boost/mpl/aux_/iter_push_front.hpp \
+  /usr/include/boost/type_traits/same_traits.hpp \
+  /usr/include/boost/mpl/max_element.hpp \
+  /usr/include/boost/mpl/sizeof.hpp \
+  /usr/include/boost/variant/detail/variant_io.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/variant_dynamic.hpp \
+  /usr/include/boost/core/pointer_traits.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/variant_static.hpp \
+  /usr/include/boost/geometry/algorithms/expand.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/expand/implementation.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/destroy.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/is_leaf.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/bounds.hpp \
+  /usr/include/boost/geometry/index/detail/bounded_view.hpp \
+  /usr/include/boost/geometry/index/detail/is_bounding_geometry.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/is_valid.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/insert.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/content.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/node/subtree_destroyer.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/iterator.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/remove.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/copy.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/spatial_query.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/distance_query.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/count.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/visitors/children_box.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/linear/linear.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/linear/redistribute_elements.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/quadratic/quadratic.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/quadratic/redistribute_elements.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/union_content.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/rstar/rstar.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/rstar/insert.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/rstar/choose_next_node.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/intersection_content.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/intersection_box_box.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/nth_element.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/rstar/redistribute_elements.hpp \
+  /usr/include/boost/geometry/index/detail/algorithms/margin.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/pack_create.hpp \
+  /usr/include/boost/geometry/index/inserter.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/utilities/view.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/iterators.hpp \
+  /usr/include/boost/geometry/index/detail/rtree/query_iterators.hpp \
+  /usr/include/boost/scoped_ptr.hpp \
+  /usr/include/boost/smart_ptr/scoped_ptr.hpp \
+  /usr/include/boost/checked_delete.hpp \
+  /usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp \
+  /usr/include/boost/smart_ptr/detail/sp_disable_deprecated.hpp \
+  /usr/include/boost/smart_ptr/detail/sp_noexcept.hpp \
+  /usr/include/boost/smart_ptr/detail/operator_bool.hpp \
+  /usr/include/boost/geometry/index/detail/config_end.hpp \
+  /usr/include/boost/geometry/algorithms/relate.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/point_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/point_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/topology_check.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/linear_linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/sub_range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/single_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/do_reverse.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turns.hpp \
+  /usr/include/boost/geometry/iterators/ever_circling_iterator.hpp \
+  /usr/include/boost/geometry/iterators/base.hpp \
+  /usr/include/boost/geometry/algorithms/detail/sections/section_box_policies.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_distance_measure.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/turn_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/segment_identifier.hpp \
+  /usr/include/boost/geometry/algorithms/detail/ring_identifier.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/overlay_type.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_helpers.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_ll.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_for_endpoint.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_la.hpp \
+  /usr/include/boost/geometry/algorithms/detail/sections/range_by_section.hpp \
+  /usr/include/boost/geometry/algorithms/detail/sections/sectionalize.hpp \
+  /usr/include/boost/geometry/algorithms/detail/sections/section_functions.hpp \
+  /usr/include/boost/geometry/policies/robustness/get_rescale_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/get_max_size.hpp \
+  /usr/include/boost/geometry/policies/robustness/robust_type.hpp \
+  /usr/include/boost/geometry/policies/robustness/rescale_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/boundary_checker.hpp \
+  /usr/include/boost/geometry/algorithms/num_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/follow_helpers.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/linear_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/multi_point_geometry.hpp \
+  /usr/include/boost/geometry/core/is_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relate/areal_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp \
+  /usr/include/boost/geometry/algorithms/within.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/copy_segments.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/append_no_duplicates.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/append_no_dups_or_spikes.hpp \
+  /usr/include/boost/geometry/algorithms/detail/point_is_spike_or_equal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/copy_segment_point.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/enrichment_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_ring.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/traversal_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/visit_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/buffer_policies.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/backtrack_check_si.hpp \
+  /usr/include/boost/geometry/algorithms/detail/has_self_intersections.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/self_turn_points.hpp \
+  /usr/include/boost/geometry/policies/disjoint_interrupt_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/cluster_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/get_piece_turns.hpp \
+  /usr/include/boost/geometry/algorithms/equals.hpp \
+  /usr/include/boost/geometry/algorithms/detail/equals/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/length.hpp \
+  /usr/include/boost/geometry/algorithms/detail/equals/collect_vectors.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/piece_border.hpp \
+  /usr/include/boost/geometry/algorithms/comparable_distance.hpp \
+  /usr/include/boost/geometry/algorithms/detail/comparable_distance/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/multipoint_to_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/range_to_geometry_rtree.hpp \
+  /usr/include/boost/geometry/iterators/has_one_element.hpp \
+  /usr/include/boost/geometry/algorithms/detail/closest_feature/range_to_range.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/linear_to_linear.hpp \
+  /usr/include/boost/geometry/algorithms/num_segments.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/linear_or_areal_to_areal.hpp \
+  /usr/include/boost/geometry/algorithms/intersects.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersects/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/areal_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/linear_linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/segment_as_subrange.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/linear_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/linear_segment_or_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/multirange_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/point_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/disjoint/multipoint_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/linear_to_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/geometry_to_segment_or_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/segment_to_segment.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/box_to_box.hpp \
+  /usr/include/boost/geometry/algorithms/detail/distance/backward_compatibility.hpp \
+  /usr/include/boost/geometry/strategies/cartesian/turn_in_ring_winding.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/turn_in_piece_visitor.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/turn_in_original_visitor.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/add_rings.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/convert_ring.hpp \
+  /usr/include/boost/range/algorithm/reverse.hpp \
+  /usr/include/boost/range/detail/range_return.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/assign_parents.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/range_in_geometry.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/enrich_intersection_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/handle_colocations.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/is_self_turn.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/sort_by_side.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/handle_self_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/less_by_segment_ratio.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/ring_properties.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/select_rings.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/traverse.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/traversal_ring_creator.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/traversal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/cluster_exits.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/traversal_switch_detector.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp \
+  /usr/include/boost/geometry/algorithms/detail/buffer/line_line_intersection.hpp \
+  /usr/include/boost/geometry/algorithms/simplify.hpp \
+  /usr/include/boost/geometry/strategies/concepts/simplify_concept.hpp \
+  /usr/include/boost/geometry/algorithms/perimeter.hpp \
+  /usr/include/boost/geometry/algorithms/convex_hull.hpp \
+  /usr/include/boost/geometry/strategies/concepts/convex_hull_concept.hpp \
+  /usr/include/boost/geometry/algorithms/detail/as_range.hpp \
+  /usr/include/boost/geometry/algorithms/correct.hpp \
+  /usr/include/boost/geometry/algorithms/correct_closure.hpp \
+  /usr/include/boost/geometry/algorithms/disjoint.hpp \
+  /usr/include/boost/geometry/algorithms/detail/multi_modify.hpp \
+  /usr/include/boost/geometry/algorithms/crosses.hpp \
+  /usr/include/boost/geometry/algorithms/densify.hpp \
+  /usr/include/boost/geometry/algorithms/difference.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersection/multi.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersection/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/clip_linestring.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/follow.hpp \
+  /usr/include/boost/geometry/algorithms/detail/tupled_output.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/get_intersection_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/overlay.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/needs_self_turns.hpp \
+  /usr/include/boost/geometry/algorithms/reverse.hpp \
+  /usr/include/boost/geometry/views/segment_view.hpp \
+  /usr/include/boost/geometry/views/detail/boundary_view.hpp \
+  /usr/include/boost/geometry/views/detail/boundary_view/interface.hpp \
+  /usr/include/boost/geometry/views/detail/boundary_view/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/linear_linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/turns/compare_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/inconsistent_turns_exception.hpp \
+  /usr/include/boost/geometry/algorithms/detail/turns/debug_turn.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/pointlike_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/not.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/pointlike_linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlay/pointlike_pointlike.hpp \
+  /usr/include/boost/geometry/algorithms/discrete_frechet_distance.hpp \
+  /usr/include/boost/geometry/algorithms/discrete_hausdorff_distance.hpp \
+  /usr/include/boost/geometry/algorithms/distance.hpp \
+  /usr/include/boost/geometry/algorithms/intersection.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersection/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersection/areal_areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/intersection/box_box.hpp \
+  /usr/include/boost/geometry/algorithms/is_simple.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/interface.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/is_simple.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/always_simple.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/areal.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/failure_policy.hpp \
+  /usr/include/boost/geometry/algorithms/validity_failure_type.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/has_duplicates.hpp \
+  /usr/include/boost/geometry/policies/is_valid/default_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/linear.hpp \
+  /usr/include/boost/geometry/policies/predicate_based_interrupt_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/has_spikes.hpp \
+  /usr/include/boost/geometry/io/dsv/write.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_simple/multipoint.hpp \
+  /usr/include/boost/geometry/algorithms/is_valid.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/interface.hpp \
+  /usr/include/boost/geometry/algorithms/dispatch/is_valid.hpp \
+  /usr/include/boost/geometry/policies/is_valid/failing_reason_policy.hpp \
+  /usr/include/boost/geometry/policies/is_valid/failure_type_policy.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/pointlike.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/has_invalid_coordinate.hpp \
+  /usr/include/boost/geometry/util/has_non_finite_coordinate.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/linear.hpp \
+  /usr/include/boost/geometry/algorithms/detail/num_distinct_consecutive_points.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/polygon.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp \
+  /usr/include/c++/11/stack \
+  /usr/include/c++/11/bits/stl_stack.h \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/has_valid_self_turns.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/is_acceptable_turn.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/ring.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/debug_complement_graph.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/multipolygon.hpp \
+  /usr/include/boost/iterator/filter_iterator.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/segment.hpp \
+  /usr/include/boost/geometry/algorithms/detail/is_valid/box.hpp \
+  /usr/include/boost/geometry/algorithms/line_interpolate.hpp \
+  /usr/include/boost/geometry/algorithms/make.hpp \
+  /usr/include/boost/geometry/algorithms/num_geometries.hpp \
+  /usr/include/boost/geometry/algorithms/overlaps.hpp \
+  /usr/include/boost/geometry/algorithms/detail/overlaps/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/relation.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relation/interface.hpp \
+  /usr/include/boost/geometry/algorithms/detail/relation/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/remove_spikes.hpp \
+  /usr/include/boost/geometry/algorithms/sym_difference.hpp \
+  /usr/include/boost/geometry/algorithms/union.hpp \
+  /usr/include/boost/geometry/geometries/multi_polygon.hpp \
+  /usr/include/boost/geometry/algorithms/touches.hpp \
+  /usr/include/boost/geometry/algorithms/detail/touches/implementation.hpp \
+  /usr/include/boost/geometry/algorithms/unique.hpp \
+  /usr/include/boost/geometry/srs/srs.hpp \
+  /usr/include/boost/geometry/io/io.hpp \
+  /usr/include/boost/geometry/io/svg/svg_mapper.hpp \
+  /usr/include/boost/geometry/io/svg/write.hpp \
+  /usr/include/boost/geometry/geometries/geometries.hpp \
+  /usr/include/boost/geometry/geometries/linestring.hpp \
+  /usr/include/boost/geometry/geometries/polygon.hpp \
+  /usr/include/boost/geometry/geometries/multi_point.hpp \
+  /usr/include/boost/geometry/geometries/multi_linestring.hpp \
+  /usr/include/pcl-1.12/pcl/io/pcd_io.h \
+  /usr/include/pcl-1.12/pcl/io/file_io.h \
+  /usr/include/pcl-1.12/pcl/conversions.h \
+  /usr/include/pcl-1.12/pcl/PCLPointCloud2.h \
+  /usr/include/pcl-1.12/pcl/PCLImage.h \
+  /usr/include/pcl-1.12/pcl/for_each_type.h \
+  /usr/include/boost/mpl/aux_/unwrap.hpp \
+  /usr/include/boost/foreach.hpp \
+  /usr/include/boost/foreach_fwd.hpp \
   /usr/include/boost/interprocess/sync/file_lock.hpp \
   /usr/include/boost/interprocess/detail/config_begin.hpp \
   /usr/include/boost/interprocess/detail/workaround.hpp \
@@ -5333,14 +6501,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/interprocess/permissions.hpp \
   /usr/include/boost/interprocess/interprocess_fwd.hpp \
   /usr/include/boost/interprocess/detail/std_fwd.hpp \
-  /usr/include/boost/move/detail/std_ns_begin.hpp \
-  /usr/include/boost/move/detail/std_ns_end.hpp \
-  /usr/include/boost/move/detail/type_traits.hpp \
-  /usr/include/boost/move/detail/config_begin.hpp \
-  /usr/include/boost/move/detail/workaround.hpp \
-  /usr/include/boost/move/detail/meta_utils.hpp \
-  /usr/include/boost/move/detail/meta_utils_core.hpp \
-  /usr/include/boost/move/detail/config_end.hpp \
   /usr/include/fcntl.h \
   /usr/include/x86_64-linux-gnu/bits/fcntl.h \
   /usr/include/x86_64-linux-gnu/bits/fcntl-linux.h \
@@ -5383,19 +6543,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp \
   /usr/include/boost/smart_ptr/detail/sp_typeinfo_.hpp \
   /usr/include/boost/smart_ptr/detail/sp_counted_impl.hpp \
-  /usr/include/boost/smart_ptr/detail/sp_noexcept.hpp \
-  /usr/include/boost/checked_delete.hpp \
-  /usr/include/boost/smart_ptr/detail/sp_disable_deprecated.hpp \
   /usr/include/boost/smart_ptr/detail/sp_convertible.hpp \
-  /usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp \
   /usr/include/boost/smart_ptr/detail/spinlock_pool.hpp \
   /usr/include/boost/smart_ptr/detail/spinlock.hpp \
   /usr/include/boost/smart_ptr/detail/spinlock_gcc_atomic.hpp \
   /usr/include/boost/smart_ptr/detail/yield_k.hpp \
   /usr/include/boost/smart_ptr/detail/sp_thread_pause.hpp \
   /usr/include/boost/smart_ptr/detail/sp_thread_sleep.hpp \
-  /usr/include/boost/config/pragma_message.hpp \
-  /usr/include/boost/smart_ptr/detail/operator_bool.hpp \
   /usr/include/boost/smart_ptr/detail/local_sp_deleter.hpp \
   /usr/include/boost/smart_ptr/detail/local_counted_base.hpp \
   /usr/include/boost/date_time/compiler_config.hpp \
@@ -5409,7 +6563,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/date_time/time_duration.hpp \
   /usr/include/boost/date_time/special_defs.hpp \
   /usr/include/boost/date_time/time_defs.hpp \
-  /usr/include/boost/operators.hpp \
   /usr/include/boost/date_time/time_resolution_traits.hpp \
   /usr/include/boost/date_time/int_adapter.hpp \
   /usr/include/boost/date_time/gregorian/gregorian_types.hpp \
@@ -5419,7 +6572,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/date_time/gregorian/greg_calendar.hpp \
   /usr/include/boost/date_time/gregorian/greg_weekday.hpp \
   /usr/include/boost/date_time/constrained_value.hpp \
-  /usr/include/boost/type_traits/is_base_of.hpp \
   /usr/include/boost/date_time/date_defs.hpp \
   /usr/include/boost/date_time/gregorian/greg_day_of_year.hpp \
   /usr/include/boost/date_time/gregorian_calendar.hpp \
@@ -5445,14 +6597,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/interprocess/sync/detail/common_algorithms.hpp \
   /usr/include/boost/interprocess/sync/spin/wait.hpp \
   /usr/include/boost/interprocess/sync/detail/locks.hpp \
-  /usr/include/boost/move/utility_core.hpp \
-  /usr/include/boost/move/core.hpp \
   /usr/include/pcl-1.12/pcl/io/impl/pcd_io.hpp \
-  /usr/include/boost/algorithm/string/trim.hpp \
-  /usr/include/boost/algorithm/string/detail/trim.hpp \
-  /usr/include/boost/algorithm/string/classification.hpp \
-  /usr/include/boost/algorithm/string/detail/classification.hpp \
-  /usr/include/boost/algorithm/string/predicate_facade.hpp \
   /usr/include/pcl-1.12/pcl/common/io.h \
   /usr/include/pcl-1.12/pcl/PointIndices.h \
   /usr/include/pcl-1.12/pcl/PolygonMesh.h \
@@ -5474,105 +6619,10 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/pcl-1.12/pcl/io/ply/ply.h \
   /usr/include/pcl-1.12/pcl/io/ply/byte_order.h \
   /usr/include/pcl-1.12/pcl/io/ply/io_operators.h \
-  /usr/include/boost/lexical_cast.hpp \
-  /usr/include/boost/lexical_cast/bad_lexical_cast.hpp \
-  /usr/include/boost/lexical_cast/try_lexical_convert.hpp \
-  /usr/include/boost/type_traits/type_identity.hpp \
-  /usr/include/boost/lexical_cast/detail/is_character.hpp \
-  /usr/include/boost/lexical_cast/detail/converter_numeric.hpp \
-  /usr/include/boost/type_traits/is_float.hpp \
-  /usr/include/boost/lexical_cast/detail/converter_lexical.hpp \
-  /usr/include/boost/type_traits/has_left_shift.hpp \
-  /usr/include/boost/type_traits/has_right_shift.hpp \
-  /usr/include/boost/detail/lcast_precision.hpp \
-  /usr/include/boost/integer_traits.hpp \
-  /usr/include/boost/lexical_cast/detail/widest_char.hpp \
-  /usr/include/boost/array.hpp \
-  /usr/include/boost/swap.hpp \
-  /usr/include/boost/core/swap.hpp \
-  /usr/include/boost/container/container_fwd.hpp \
-  /usr/include/boost/container/detail/std_fwd.hpp \
-  /usr/include/boost/lexical_cast/detail/converter_lexical_streams.hpp \
-  /usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp \
-  /usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp \
-  /usr/include/boost/lexical_cast/detail/inf_nan.hpp \
-  /usr/include/boost/math/special_functions/sign.hpp \
-  /usr/include/boost/math/tools/config.hpp \
-  /usr/include/boost/predef/architecture/x86.h \
-  /usr/include/boost/predef/architecture/x86/32.h \
-  /usr/include/boost/predef/architecture/x86/64.h \
-  /usr/include/c++/11/cfloat \
-  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
-  /usr/include/boost/math/tools/user.hpp \
-  /usr/include/boost/math/special_functions/math_fwd.hpp \
-  /usr/include/boost/math/special_functions/detail/round_fwd.hpp \
-  /usr/include/boost/math/tools/promotion.hpp \
-  /usr/include/boost/math/policies/policy.hpp \
-  /usr/include/boost/mpl/list.hpp \
-  /usr/include/boost/mpl/limits/list.hpp \
-  /usr/include/boost/mpl/list/list20.hpp \
-  /usr/include/boost/mpl/list/list10.hpp \
-  /usr/include/boost/mpl/list/list0.hpp \
-  /usr/include/boost/mpl/list/aux_/push_front.hpp \
-  /usr/include/boost/mpl/list/aux_/item.hpp \
-  /usr/include/boost/mpl/list/aux_/tag.hpp \
-  /usr/include/boost/mpl/list/aux_/pop_front.hpp \
-  /usr/include/boost/mpl/list/aux_/push_back.hpp \
-  /usr/include/boost/mpl/list/aux_/front.hpp \
-  /usr/include/boost/mpl/list/aux_/clear.hpp \
-  /usr/include/boost/mpl/list/aux_/O1_size.hpp \
-  /usr/include/boost/mpl/list/aux_/size.hpp \
-  /usr/include/boost/mpl/list/aux_/empty.hpp \
-  /usr/include/boost/mpl/list/aux_/begin_end.hpp \
-  /usr/include/boost/mpl/list/aux_/iterator.hpp \
-  /usr/include/boost/mpl/list/aux_/include_preprocessed.hpp \
-  /usr/include/boost/mpl/list/aux_/preprocessed/plain/list10.hpp \
-  /usr/include/boost/mpl/list/aux_/preprocessed/plain/list20.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/list.hpp \
-  /usr/include/boost/mpl/at.hpp \
-  /usr/include/boost/mpl/aux_/at_impl.hpp \
-  /usr/include/boost/mpl/advance.hpp \
-  /usr/include/boost/mpl/negate.hpp \
-  /usr/include/boost/mpl/aux_/advance_forward.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_forward.hpp \
-  /usr/include/boost/mpl/aux_/advance_backward.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/advance_backward.hpp \
-  /usr/include/boost/mpl/size.hpp \
-  /usr/include/boost/mpl/aux_/size_impl.hpp \
-  /usr/include/boost/mpl/distance.hpp \
-  /usr/include/boost/mpl/iter_fold.hpp \
-  /usr/include/boost/mpl/aux_/iter_fold_impl.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_impl.hpp \
-  /usr/include/boost/mpl/iterator_range.hpp \
-  /usr/include/boost/mpl/comparison.hpp \
-  /usr/include/boost/mpl/not_equal_to.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp \
-  /usr/include/boost/mpl/greater.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/greater.hpp \
-  /usr/include/boost/mpl/less_equal.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp \
-  /usr/include/boost/mpl/greater_equal.hpp \
-  /usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp \
-  /usr/include/c++/11/math.h \
-  /usr/include/boost/config/no_tr1/complex.hpp \
-  /usr/include/boost/math/special_functions/detail/fp_traits.hpp \
-  /usr/include/boost/math/special_functions/fpclassify.hpp \
-  /usr/include/boost/math/tools/real_cast.hpp \
-  /usr/lib/gcc/x86_64-linux-gnu/11/include/quadmath.h \
-  /usr/include/boost/integer.hpp \
-  /usr/include/boost/integer_fwd.hpp \
-  /usr/include/boost/detail/basic_pointerbuf.hpp \
   /usr/include/boost/mpl/inherit.hpp \
   /usr/include/boost/mpl/empty_base.hpp \
-  /usr/include/boost/type_traits/is_empty.hpp \
   /usr/include/boost/mpl/aux_/preprocessed/gcc/inherit.hpp \
   /usr/include/boost/mpl/inherit_linearly.hpp \
-  /usr/include/boost/mpl/joint_view.hpp \
-  /usr/include/boost/mpl/aux_/joint_iter.hpp \
-  /usr/include/boost/mpl/transform.hpp \
-  /usr/include/boost/mpl/pair_view.hpp \
-  /usr/include/boost/mpl/iterator_category.hpp \
-  /usr/include/boost/mpl/min_max.hpp \
   /usr/include/pcl-1.12/pcl/filters/voxel_grid.h \
   /usr/include/pcl-1.12/pcl/filters/filter.h \
   /usr/include/pcl-1.12/pcl/pcl_base.h \
@@ -5598,17 +6648,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h \
   /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h \
   /usr/include/gdal/ogr_core.h \
-  /usr/include/boost/math/constants/constants.hpp \
-  /usr/include/boost/math/tools/cxx03_warn.hpp \
-  /usr/include/boost/math/tools/precision.hpp \
-  /usr/include/boost/math/tools/convert_from_string.hpp \
-  /usr/include/boost/type_traits/is_constructible.hpp \
-  /usr/include/boost/type_traits/is_destructible.hpp \
-  /usr/include/boost/type_traits/is_default_constructible.hpp \
-  /usr/include/boost/utility/declval.hpp \
-  /usr/include/boost/math/constants/calculate_constants.hpp \
-  /usr/include/boost/math/special_functions/trunc.hpp \
-  /usr/include/boost/math/policies/error_handling.hpp \
   /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp \
   /usr/include/gdal/cpl_conv.h \
   /usr/include/geos_c.h \
@@ -5832,18 +6871,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/CGAL/Kernel/mpl.h \
   /usr/include/CGAL/Coercion_traits.h \
   /usr/include/CGAL/boost/iterator/transform_iterator.hpp \
-  /usr/include/boost/iterator/transform_iterator.hpp \
-  /usr/include/boost/utility/result_of.hpp \
-  /usr/include/boost/preprocessor/iteration/iterate.hpp \
-  /usr/include/boost/preprocessor/slot/slot.hpp \
-  /usr/include/boost/preprocessor/slot/detail/def.hpp \
-  /usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp \
-  /usr/include/boost/preprocessor/facilities/intercept.hpp \
-  /usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp \
-  /usr/include/boost/preprocessor/iteration/detail/bounds/lower1.hpp \
-  /usr/include/boost/preprocessor/slot/detail/shared.hpp \
-  /usr/include/boost/preprocessor/iteration/detail/bounds/upper1.hpp \
-  /usr/include/boost/utility/detail/result_of_iterate.hpp \
   /usr/include/CGAL/Algebraic_structure_traits.h \
   /usr/include/CGAL/type_traits.h \
   /usr/include/CGAL/use.h \
@@ -5895,96 +6922,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/CGAL/aff_transformation_tags_impl.h \
   /usr/include/CGAL/Object.h \
   /usr/include/boost/variant.hpp \
-  /usr/include/boost/variant/variant.hpp \
-  /usr/include/boost/type_index.hpp \
-  /usr/include/boost/type_index/stl_type_index.hpp \
-  /usr/include/boost/type_index/type_index_facade.hpp \
-  /usr/include/boost/container_hash/hash_fwd.hpp \
-  /usr/include/boost/core/demangle.hpp \
-  /usr/include/c++/11/cxxabi.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h \
-  /usr/include/boost/variant/detail/config.hpp \
-  /usr/include/boost/variant/variant_fwd.hpp \
-  /usr/include/boost/blank_fwd.hpp \
-  /usr/include/boost/preprocessor/enum.hpp \
-  /usr/include/boost/preprocessor/repetition/enum.hpp \
-  /usr/include/boost/preprocessor/enum_params.hpp \
-  /usr/include/boost/preprocessor/enum_shifted_params.hpp \
-  /usr/include/boost/variant/detail/substitute_fwd.hpp \
-  /usr/include/boost/variant/detail/backup_holder.hpp \
-  /usr/include/boost/variant/detail/enable_recursive_fwd.hpp \
-  /usr/include/boost/variant/detail/forced_return.hpp \
-  /usr/include/boost/variant/detail/initializer.hpp \
-  /usr/include/boost/call_traits.hpp \
-  /usr/include/boost/detail/call_traits.hpp \
-  /usr/include/boost/detail/reference_content.hpp \
-  /usr/include/boost/type_traits/has_nothrow_copy.hpp \
-  /usr/include/boost/type_traits/is_copy_constructible.hpp \
-  /usr/include/boost/variant/recursive_wrapper_fwd.hpp \
-  /usr/include/boost/type_traits/is_nothrow_move_constructible.hpp \
-  /usr/include/boost/type_traits/enable_if.hpp \
-  /usr/include/boost/variant/detail/move.hpp \
-  /usr/include/boost/move/adl_move_swap.hpp \
-  /usr/include/boost/variant/detail/make_variant_list.hpp \
-  /usr/include/boost/variant/detail/over_sequence.hpp \
-  /usr/include/boost/variant/detail/visitation_impl.hpp \
-  /usr/include/boost/variant/detail/cast_storage.hpp \
-  /usr/include/boost/variant/detail/hash_variant.hpp \
-  /usr/include/boost/variant/static_visitor.hpp \
-  /usr/include/boost/variant/apply_visitor.hpp \
-  /usr/include/boost/variant/detail/apply_visitor_unary.hpp \
-  /usr/include/boost/move/utility.hpp \
-  /usr/include/boost/move/traits.hpp \
-  /usr/include/boost/type_traits/copy_cv_ref.hpp \
-  /usr/include/boost/type_traits/copy_cv.hpp \
-  /usr/include/boost/type_traits/copy_reference.hpp \
-  /usr/include/boost/variant/detail/has_result_type.hpp \
-  /usr/include/boost/variant/detail/apply_visitor_binary.hpp \
-  /usr/include/boost/variant/detail/apply_visitor_delayed.hpp \
-  /usr/include/boost/functional/hash_fwd.hpp \
-  /usr/include/boost/variant/detail/std_hash.hpp \
-  /usr/include/boost/blank.hpp \
-  /usr/include/boost/detail/templated_streams.hpp \
-  /usr/include/boost/type_traits/is_stateless.hpp \
-  /usr/include/boost/type_traits/has_trivial_constructor.hpp \
-  /usr/include/boost/type_traits/has_trivial_copy.hpp \
-  /usr/include/boost/type_traits/has_trivial_destructor.hpp \
-  /usr/include/boost/integer/common_factor_ct.hpp \
-  /usr/include/boost/type_traits/aligned_storage.hpp \
-  /usr/include/boost/type_traits/alignment_of.hpp \
-  /usr/include/boost/type_traits/type_with_alignment.hpp \
-  /usr/include/boost/type_traits/has_nothrow_constructor.hpp \
-  /usr/include/boost/type_traits/is_nothrow_move_assignable.hpp \
-  /usr/include/boost/type_traits/has_trivial_move_assign.hpp \
-  /usr/include/boost/type_traits/is_assignable.hpp \
-  /usr/include/boost/type_traits/has_nothrow_assign.hpp \
-  /usr/include/boost/core/no_exceptions_support.hpp \
-  /usr/include/boost/mpl/empty.hpp \
-  /usr/include/boost/mpl/aux_/empty_impl.hpp \
-  /usr/include/boost/mpl/front.hpp \
-  /usr/include/boost/mpl/aux_/front_impl.hpp \
-  /usr/include/boost/mpl/insert_range.hpp \
-  /usr/include/boost/mpl/insert_range_fwd.hpp \
-  /usr/include/boost/mpl/aux_/insert_range_impl.hpp \
-  /usr/include/boost/mpl/insert.hpp \
-  /usr/include/boost/mpl/insert_fwd.hpp \
-  /usr/include/boost/mpl/aux_/insert_impl.hpp \
-  /usr/include/boost/mpl/aux_/iter_push_front.hpp \
-  /usr/include/boost/type_traits/same_traits.hpp \
-  /usr/include/boost/mpl/max_element.hpp \
-  /usr/include/boost/mpl/size_t.hpp \
-  /usr/include/boost/mpl/size_t_fwd.hpp \
-  /usr/include/boost/mpl/sizeof.hpp \
-  /usr/include/boost/variant/detail/variant_io.hpp \
   /usr/include/boost/variant/recursive_variant.hpp \
   /usr/include/boost/variant/detail/enable_recursive.hpp \
   /usr/include/boost/variant/detail/substitute.hpp \
   /usr/include/boost/mpl/aux_/preprocessor/repeat.hpp \
-  /usr/include/boost/preprocessor/iterate.hpp \
   /usr/include/boost/variant/recursive_wrapper.hpp \
   /usr/include/boost/mpl/equal.hpp \
-  /usr/include/boost/variant/get.hpp \
-  /usr/include/boost/variant/detail/element_index.hpp \
   /usr/include/boost/variant/visitor_ptr.hpp \
   /usr/include/boost/variant/bad_visit.hpp \
   /usr/include/boost/optional.hpp \
@@ -6031,9 +6974,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/CGAL/Conic_2.h \
   /usr/include/CGAL/Kernel/Conic_misc.h \
   /usr/include/boost/math/special_functions/cbrt.hpp \
-  /usr/include/boost/math/tools/rational.hpp \
-  /usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp \
-  /usr/include/boost/math/tools/detail/rational_horner3_20.hpp \
   /usr/include/boost/mpl/divides.hpp \
   /usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp \
   /usr/include/CGAL/Aff_transformation_2.h \
@@ -6065,22 +7005,10 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/c++/11/variant \
   /usr/include/boost/container_hash/extensions.hpp \
   /usr/include/boost/detail/container_fwd.hpp \
-  /usr/include/c++/11/deque \
-  /usr/include/c++/11/bits/stl_deque.h \
-  /usr/include/c++/11/bits/deque.tcc \
-  /usr/include/c++/11/list \
-  /usr/include/c++/11/bits/stl_list.h \
-  /usr/include/c++/11/bits/list.tcc \
   /usr/include/CGAL/Cartesian/Point_2.h \
   /usr/include/CGAL/Cartesian/Weighted_point_2.h \
   /usr/include/CGAL/Handle_for.h \
   /usr/include/CGAL/memory.h \
-  /usr/include/boost/tuple/tuple.hpp \
-  /usr/include/boost/tuple/detail/tuple_basic.hpp \
-  /usr/include/boost/type_traits/cv_traits.hpp \
-  /usr/include/boost/type_traits/add_cv.hpp \
-  /usr/include/boost/type_traits/remove_volatile.hpp \
-  /usr/include/boost/utility/swap.hpp \
   /usr/include/CGAL/Cartesian/Vector_2.h \
   /usr/include/CGAL/constant.h \
   /usr/include/CGAL/Cartesian/Direction_2.h \
@@ -6464,7 +7392,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/CGAL/NT_converter.h \
   /usr/include/CGAL/Enum_converter.h \
   /usr/include/CGAL/Kernel/Type_mapper.h \
-  /usr/include/boost/mpl/remove.hpp \
   /usr/include/CGAL/Exact_kernel_selector.h \
   /usr/include/CGAL/Simple_homogeneous.h \
   /usr/include/CGAL/Homogeneous/Homogeneous_base.h \
@@ -6543,7 +7470,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/multiprecision/detail/digits.hpp \
   /usr/include/boost/multiprecision/detail/generic_interconvert.hpp \
   /usr/include/boost/multiprecision/detail/default_ops.hpp \
-  /usr/include/boost/math/special_functions/hypot.hpp \
   /usr/include/boost/multiprecision/detail/functions/constants.hpp \
   /usr/include/boost/multiprecision/detail/functions/pow.hpp \
   /usr/include/boost/multiprecision/detail/functions/trig.hpp \
@@ -6563,11 +7489,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/core/empty_value.hpp \
   /usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp \
   /usr/include/boost/multiprecision/rational_adaptor.hpp \
-  /usr/include/boost/rational.hpp \
-  /usr/include/boost/integer/common_factor_rt.hpp \
   /usr/include/boost/multiprecision/traits/is_byte_container.hpp \
   /usr/include/boost/integer/static_min_max.hpp \
-  /usr/include/boost/type_traits/make_signed.hpp \
   /usr/include/boost/multiprecision/cpp_int/checked.hpp \
   /usr/include/boost/multiprecision/detail/constexpr.hpp \
   /usr/include/boost/multiprecision/cpp_int/value_pack.hpp \
@@ -6589,16 +7512,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/multiprecision/detail/big_lanczos.hpp \
   /usr/include/boost/math/bindings/detail/big_lanczos.hpp \
   /usr/include/boost/math/special_functions/lanczos.hpp \
-  /usr/include/boost/math/tools/big_constant.hpp \
   /usr/include/boost/math/special_functions/detail/lanczos_sse2.hpp \
   /usr/include/boost/multiprecision/detail/atomic.hpp \
   /usr/include/boost/math/special_functions/asinh.hpp \
   /usr/include/boost/math/special_functions/sqrt1pm1.hpp \
-  /usr/include/boost/math/special_functions/log1p.hpp \
-  /usr/include/boost/math/tools/series.hpp \
   /usr/include/boost/math/special_functions/expm1.hpp \
   /usr/include/boost/math/special_functions/acosh.hpp \
-  /usr/include/boost/math/special_functions/atanh.hpp \
   /usr/include/boost/math/special_functions/gamma.hpp \
   /usr/include/boost/math/tools/fraction.hpp \
   /usr/include/boost/math/special_functions/powm1.hpp \
@@ -6702,13 +7621,10 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/type_traits/has_post_increment.hpp \
   /usr/include/boost/type_traits/has_pre_decrement.hpp \
   /usr/include/boost/type_traits/has_right_shift_assign.hpp \
-  /usr/include/boost/type_traits/has_trivial_assign.hpp \
-  /usr/include/boost/type_traits/has_trivial_move_constructor.hpp \
   /usr/include/boost/type_traits/has_unary_minus.hpp \
   /usr/include/boost/type_traits/has_unary_plus.hpp \
   /usr/include/boost/type_traits/has_virtual_destructor.hpp \
   /usr/include/boost/type_traits/is_compound.hpp \
-  /usr/include/boost/type_traits/is_fundamental.hpp \
   /usr/include/boost/type_traits/is_copy_assignable.hpp \
   /usr/include/boost/type_traits/is_noncopyable.hpp \
   /usr/include/boost/type_traits/is_final.hpp \
@@ -6720,7 +7636,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/type_traits/is_scoped_enum.hpp \
   /usr/include/boost/type_traits/negation.hpp \
   /usr/include/boost/type_traits/is_trivially_copyable.hpp \
-  /usr/include/boost/type_traits/is_union.hpp \
   /usr/include/boost/type_traits/is_unscoped_enum.hpp \
   /usr/include/boost/type_traits/is_virtual_base_of.hpp \
   /usr/include/boost/type_traits/rank.hpp \
@@ -6755,8 +7670,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/CGAL/Iterator_range.h \
   /usr/include/CGAL/tuple.h \
   /usr/include/CGAL/Triangulation_data_structure_2.h \
-  /usr/include/c++/11/stack \
-  /usr/include/c++/11/bits/stl_stack.h \
   /usr/include/CGAL/Compact_container.h \
   /usr/include/CGAL/CC_safe_handle.h \
   /usr/include/CGAL/Time_stamper.h \
@@ -6790,7 +7703,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/iterator/counting_iterator.hpp \
   /usr/include/boost/detail/numeric_traits.hpp \
   /usr/include/boost/iterator/zip_iterator.hpp \
-  /usr/include/boost/iterator/minimum_category.hpp \
   /usr/include/boost/fusion/adapted/boost_tuple.hpp \
   /usr/include/boost/fusion/support/config.hpp \
   /usr/include/boost/fusion/adapted/boost_tuple/tag_of.hpp \
@@ -6881,11 +7793,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/fusion/adapted/mpl/detail/begin_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/mpl_iterator.hpp \
   /usr/include/boost/fusion/support/detail/mpl_iterator_category.hpp \
-  /usr/include/boost/mpl/begin.hpp \
   /usr/include/boost/fusion/iterator/mpl/fusion_iterator.hpp \
   /usr/include/boost/fusion/mpl/end.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/end_impl.hpp \
-  /usr/include/boost/mpl/end.hpp \
   /usr/include/boost/fusion/view/joint_view/joint_view_iterator.hpp \
   /usr/include/boost/fusion/view/joint_view/detail/deref_impl.hpp \
   /usr/include/boost/fusion/iterator/detail/adapt_deref_traits.hpp \
@@ -6947,9 +7857,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/fusion/adapted/mpl/detail/value_at_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/at_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/has_key_impl.hpp \
-  /usr/include/boost/mpl/has_key.hpp \
-  /usr/include/boost/mpl/has_key_fwd.hpp \
-  /usr/include/boost/mpl/aux_/has_key_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/is_view_impl.hpp \
   /usr/include/boost/fusion/adapted/mpl/detail/empty_impl.hpp \
@@ -6967,13 +7874,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/fusion/mpl/empty.hpp \
   /usr/include/boost/fusion/mpl/erase.hpp \
   /usr/include/boost/mpl/erase.hpp \
-  /usr/include/boost/mpl/erase_fwd.hpp \
   /usr/include/boost/mpl/aux_/erase_impl.hpp \
   /usr/include/boost/fusion/algorithm/transformation/erase.hpp \
   /usr/include/boost/fusion/sequence/convert.hpp \
   /usr/include/boost/fusion/mpl/erase_key.hpp \
   /usr/include/boost/mpl/erase_key.hpp \
-  /usr/include/boost/mpl/erase_key_fwd.hpp \
   /usr/include/boost/mpl/aux_/erase_key_impl.hpp \
   /usr/include/boost/fusion/algorithm/transformation/erase_key.hpp \
   /usr/include/boost/fusion/algorithm/query/find.hpp \
@@ -6994,8 +7899,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/boost/fusion/algorithm/transformation/pop_back.hpp \
   /usr/include/boost/fusion/iterator/iterator_adapter.hpp \
   /usr/include/boost/fusion/mpl/pop_front.hpp \
-  /usr/include/boost/mpl/pop_front.hpp \
-  /usr/include/boost/mpl/aux_/pop_front_impl.hpp \
   /usr/include/boost/fusion/algorithm/transformation/pop_front.hpp \
   /usr/include/boost/fusion/mpl/push_back.hpp \
   /usr/include/boost/fusion/mpl/push_front.hpp \
@@ -8975,8 +9878,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/ch_graham_andrew.h:
 
-/usr/include/CGAL/ch_selected_extreme_points_2.h:
-
 /usr/include/CGAL/Convex_hull_2/convexity_check_2_impl.h:
 
 /usr/include/CGAL/convexity_check_2.h:
@@ -9009,31 +9910,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/vector/vector.hpp:
 
-/usr/include/boost/fusion/algorithm/iteration/detail/preprocessed/fold.hpp:
-
-/usr/include/boost/fusion/algorithm/iteration/fold.hpp:
-
 /usr/include/boost/fusion/mpl/push_front.hpp:
 
 /usr/include/boost/fusion/mpl/pop_front.hpp:
 
-/usr/include/boost/fusion/iterator/iterator_adapter.hpp:
-
 /usr/include/boost/mpl/aux_/pop_back_impl.hpp:
 
-/usr/include/boost/mpl/pop_back.hpp:
-
 /usr/include/boost/fusion/algorithm/transformation/insert.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/has_key.hpp:
 
 /usr/include/boost/fusion/algorithm/query/find_fwd.hpp:
 
 /usr/include/boost/fusion/algorithm/query/find.hpp:
-
-/usr/include/boost/mpl/aux_/erase_key_impl.hpp:
-
-/usr/include/boost/fusion/mpl/erase_key.hpp:
 
 /usr/include/boost/mpl/aux_/erase_impl.hpp:
 
@@ -9043,13 +9930,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/map/map_fwd.hpp:
 
-/usr/include/boost/fusion/container/vector/detail/config.hpp:
-
 /usr/include/boost/fusion/container/vector/vector_fwd.hpp:
 
 /usr/include/boost/fusion/mpl/detail/clear.hpp:
-
-/usr/include/boost/fusion/mpl/clear.hpp:
 
 /usr/include/boost/mpl/aux_/back_impl.hpp:
 
@@ -9058,10 +9941,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/mpl/at.hpp:
 
 /usr/include/boost/fusion/adapted/mpl/detail/empty_impl.hpp:
-
-/usr/include/boost/mpl/aux_/has_key_impl.hpp:
-
-/usr/include/boost/mpl/has_key.hpp:
 
 /usr/include/boost/fusion/adapted/mpl/detail/value_at_impl.hpp:
 
@@ -9087,8 +9966,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/view/transform_view/transform_view.hpp:
 
-/usr/include/boost/fusion/algorithm/transformation/transform.hpp:
-
 /usr/include/boost/fusion/algorithm/iteration/detail/for_each.hpp:
 
 /usr/include/boost/fusion/algorithm/iteration/for_each.hpp:
@@ -9105,15 +9982,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/view/single_view/detail/equal_to_impl.hpp:
 
-/usr/include/boost/fusion/view/single_view/detail/next_impl.hpp:
-
-/usr/include/boost/fusion/view/single_view/detail/deref_impl.hpp:
-
 /usr/include/boost/fusion/view/joint_view/detail/end_impl.hpp:
-
-/usr/include/boost/fusion/view/joint_view/detail/value_of_data_impl.hpp:
-
-/usr/include/boost/fusion/view/joint_view/detail/value_of_impl.hpp:
 
 /usr/include/boost/fusion/view/joint_view/joint_view_iterator.hpp:
 
@@ -9122,8 +9991,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/iterator/detail/adapt_value_traits.hpp:
 
 /usr/include/boost/fusion/iterator/mpl/fusion_iterator.hpp:
-
-/usr/include/boost/mpl/begin.hpp:
 
 /usr/include/boost/fusion/adapted/mpl/mpl_iterator.hpp:
 
@@ -9167,11 +10034,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/container/list/cons.hpp:
 
-/usr/include/boost/fusion/iterator/detail/segmented_equal_to.hpp:
-
 /usr/include/boost/fusion/iterator/deref_data.hpp:
-
-/usr/include/boost/fusion/iterator/detail/segmented_iterator.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/segments.hpp:
 
@@ -9179,13 +10042,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/support/is_segmented.hpp:
 
-/usr/include/boost/fusion/iterator/deref.hpp:
-
 /usr/include/boost/fusion/adapted/boost_tuple/detail/convert_impl.hpp:
 
 /usr/include/boost/fusion/adapted/boost_tuple/detail/value_at_impl.hpp:
-
-/usr/include/boost/fusion/adapted/boost_tuple/detail/at_impl.hpp:
 
 /usr/include/boost/fusion/adapted/boost_tuple/detail/end_impl.hpp:
 
@@ -9215,29 +10074,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/support/config.hpp:
 
-/usr/include/boost/fusion/adapted/boost_tuple.hpp:
-
 /usr/include/boost/detail/numeric_traits.hpp:
 
 /usr/include/boost/property_map/vector_property_map.hpp:
 
 /usr/include/boost/property_map/property_map.hpp:
 
-/usr/include/boost/fusion/mpl.hpp:
-
-/usr/include/CGAL/Hilbert_sort_median_d.h:
-
 /usr/include/CGAL/Hilbert_sort_middle_3.h:
-
-/usr/include/CGAL/Hilbert_sort_middle_2.h:
-
-/usr/include/CGAL/Hilbert_sort_median_2.h:
 
 /usr/include/CGAL/Hilbert_sort_2.h:
 
 /usr/include/CGAL/hilbert_sort.h:
-
-/usr/include/CGAL/spatial_sort.h:
 
 /usr/include/CGAL/Triangulation_2/internal/Triangulation_line_face_circulator_2.h:
 
@@ -9247,15 +10094,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/CC_safe_handle.h:
 
-/usr/include/c++/11/stack:
-
 /usr/include/CGAL/tuple.h:
 
 /usr/include/CGAL/circulator_bases.h:
-
-/usr/include/boost/mpl/pop_front.hpp:
-
-/usr/include/CGAL/iterator.h:
 
 /usr/include/CGAL/Triangulation_utils_2.h:
 
@@ -9287,8 +10128,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/is_trivially_copyable.hpp:
 
-/usr/include/boost/type_traits/negation.hpp:
-
 /usr/include/boost/type_traits/is_nothrow_swappable.hpp:
 
 /usr/include/boost/type_traits/is_member_object_pointer.hpp:
@@ -9299,19 +10138,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_virtual_destructor.hpp:
 
-/usr/include/boost/type_traits/has_trivial_move_constructor.hpp:
-
-/usr/include/boost/type_traits/has_trivial_assign.hpp:
-
 /usr/include/boost/type_traits/has_pre_decrement.hpp:
-
-/usr/include/boost/type_traits/has_post_increment.hpp:
 
 /usr/include/boost/type_traits/detail/has_postfix_operator.hpp:
 
 /usr/include/boost/type_traits/has_nothrow_destructor.hpp:
-
-/usr/include/boost/type_traits/has_new_operator.hpp:
 
 /usr/include/boost/type_traits/has_negate.hpp:
 
@@ -9331,8 +10162,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_divides_assign.hpp:
 
-/usr/include/boost/type_traits/has_divides.hpp:
-
 /usr/include/boost/type_traits/has_dereference.hpp:
 
 /usr/include/boost/type_traits/has_bit_xor.hpp:
@@ -9348,8 +10177,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/type_traits.hpp:
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_distance_3.h:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Power_side_of_oriented_power_sphere_3.h:
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_weighted_squared_radius_3.h:
 
@@ -9373,8 +10200,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Orientation_3.h:
 
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Static_filter_error.h:
-
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/Orientation_2.h:
 
 /usr/include/CGAL/Filtered_kernel/internal/Static_filters/tools.h:
@@ -9384,10 +10209,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Mpzf.h:
 
 /usr/include/CGAL/GMP_arithmetic_kernel.h:
-
-/usr/include/boost/fusion/container/vector/detail/begin_impl.hpp:
-
-/usr/include/CGAL/Gmpzf.h:
 
 /usr/include/CGAL/Gmpq.h:
 
@@ -9417,27 +10238,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/smart_ptr/detail/lightweight_mutex.hpp:
 
-/usr/include/boost/detail/lightweight_mutex.hpp:
-
 /usr/include/boost/math/special_functions/detail/unchecked_bernoulli.hpp:
 
 /usr/include/boost/math/special_functions/bernoulli.hpp:
 
 /usr/include/boost/math/special_functions/detail/igamma_large.hpp:
 
-/usr/include/boost/math/special_functions/powm1.hpp:
-
 /usr/include/boost/math/tools/fraction.hpp:
 
 /usr/include/boost/math/special_functions/gamma.hpp:
 
 /usr/include/boost/math/special_functions/acosh.hpp:
-
-/usr/include/boost/math/special_functions/expm1.hpp:
-
-/usr/include/boost/math/tools/series.hpp:
-
-/usr/include/boost/math/tools/big_constant.hpp:
 
 /usr/include/boost/math/bindings/detail/big_lanczos.hpp:
 
@@ -9455,15 +10266,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/multiprecision/cpp_int/multiply.hpp:
 
-/usr/include/boost/multiprecision/cpp_int/add.hpp:
-
-/usr/include/boost/multiprecision/cpp_int/comparison.hpp:
-
 /usr/include/boost/fusion/container/vector/vector_iterator.hpp:
 
 /usr/include/boost/multiprecision/detail/constexpr.hpp:
-
-/usr/include/boost/rational.hpp:
 
 /usr/include/boost/multiprecision/rational_adaptor.hpp:
 
@@ -9473,23 +10278,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/multiprecision/cpp_int.hpp:
 
-/usr/include/boost/type_traits/detail/mp_defer.hpp:
-
 /usr/include/boost/type_traits/common_type.hpp:
 
 /usr/include/boost/multiprecision/detail/ublas_interop.hpp:
 
 /usr/include/boost/multiprecision/detail/number_compare.hpp:
 
-/usr/include/boost/multiprecision/detail/et_ops.hpp:
-
 /usr/include/boost/multiprecision/detail/functions/trig.hpp:
 
 /usr/include/boost/multiprecision/detail/functions/constants.hpp:
-
-/usr/include/boost/math/special_functions/hypot.hpp:
-
-/usr/include/boost/multiprecision/detail/default_ops.hpp:
 
 /usr/include/boost/multiprecision/detail/generic_interconvert.hpp:
 
@@ -9501,15 +10298,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Default.h:
 
-/usr/include/CGAL/MP_Float_impl.h:
-
 /usr/include/CGAL/Sqrt_extension/Eigen_NumTraits.h:
-
-/usr/include/CGAL/Sqrt_extension/Wang_traits.h:
-
-/usr/include/boost/fusion/adapted/mpl/detail/at_impl.hpp:
-
-/usr/include/CGAL/Cache.h:
 
 /usr/include/boost/fusion/sequence/intrinsic/size.hpp:
 
@@ -9543,8 +10332,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Interval_arithmetic.h:
 
-/usr/include/CGAL/Sqrt_extension.h:
-
 /usr/include/CGAL/Number_types/internal/Exact_type_selector.h:
 
 /usr/include/CGAL/Homogeneous/function_objects.h:
@@ -9559,8 +10346,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Homogeneous/predicates_on_pointsH3.h:
 
-/usr/include/CGAL/Homogeneous/Weighted_point_2.h:
-
 /usr/include/CGAL/Homogeneous/LineH2.h:
 
 /usr/include/CGAL/Homogeneous/basic_constructionsH3.h:
@@ -9574,8 +10359,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Homogeneous/PointH2.h:
 
 /usr/include/CGAL/Homogeneous/Aff_transformationH2.h:
-
-/usr/include/CGAL/Homogeneous/Homogeneous_base.h:
 
 /usr/include/CGAL/NT_converter.h:
 
@@ -9609,8 +10392,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Segment_3_Triangle_3.h:
 
-/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_intersection.h:
-
 /usr/include/boost/math/special_functions/detail/polygamma.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Segment_3_Sphere_3_do_intersect.h:
@@ -9635,15 +10416,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Ray_3_Ray_3.h:
 
-/usr/include/CGAL/Compact_container.h:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Triangle_3_intersection.h:
-
 /usr/include/boost/fusion/view/single_view/detail/value_at_impl.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Point_3_Triangle_3_do_intersect.h:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Tetrahedron_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/Point_3_Tetrahedron_3.h:
 
@@ -9660,10 +10435,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/internal/Plane_3_Segment_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Segment_3.h:
-
-/usr/include/boost/fusion/view/iterator_range/detail/segmented_iterator_range.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Ray_3_intersection.h:
 
 /usr/include/boost/fusion/support/void.hpp:
 
@@ -9687,8 +10458,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/tetrahedron_lines_intersections_3.h:
 
-/usr/include/CGAL/Intersections_3/internal/Line_3_Tetrahedron_3_intersection.h:
-
 /usr/include/CGAL/Intersections_3/internal/Line_3_Tetrahedron_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_3/Line_3_Tetrahedron_3.h:
@@ -9700,10 +10469,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/Point_3_Sphere_3.h:
 
 /usr/include/CGAL/Intersections_3/Line_3_Segment_3.h:
-
-/usr/include/CGAL/Intersections_3/internal/Point_3_Ray_3_do_intersect.h:
-
-/usr/include/CGAL/Intersections_3/Line_3_Ray_3.h:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_do_intersect.h:
 
@@ -9739,10 +10504,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/Iso_cuboid_3_Ray_3.h:
 
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end_impl.hpp:
-
-/usr/include/CGAL/Intersections_3/Iso_cuboid_3_Plane_3.h:
-
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Line_3_intersection.h:
 
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Line_3_do_intersect.h:
@@ -9775,8 +10536,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Line_3_intersection.h:
 
-/usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_do_intersect.h:
-
 /usr/include/CGAL/intersection_3.h:
 
 /usr/include/CGAL/Intersections_2/internal/Triangle_2_Triangle_2_intersection_impl.h:
@@ -9787,10 +10546,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_2/Segment_2_Triangle_2.h:
 
-/usr/include/boost/integer/common_factor_rt.hpp:
-
-/usr/include/CGAL/Intersections_2/Ray_2_Segment_2.h:
-
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Segment_3_do_intersect.h:
 
 /usr/include/CGAL/Intersections_2/Point_2_Triangle_2.h:
@@ -9800,8 +10555,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_2/Point_2_Point_2.h:
 
 /usr/include/CGAL/Intersections_2/internal/Straight_2.h:
-
-/usr/include/CGAL/Intersections_2/Line_2_Triangle_2.h:
 
 /usr/include/CGAL/Intersections_2/Line_2_Point_2.h:
 
@@ -9821,15 +10574,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_2/Iso_rectangle_2_Ray_2.h:
 
-/usr/include/CGAL/Intersections_2/Bbox_2_Ray_2.h:
-
 /usr/include/CGAL/Intersections_2/Bbox_2_Line_2.h:
 
 /usr/include/CGAL/Intersection_traits.h:
 
 /usr/include/CGAL/Distance_3/Plane_3_Plane_3.h:
-
-/usr/include/CGAL/Distance_3/Triangle_3_Triangle_3.h:
 
 /usr/include/boost/type_traits/floating_point_promotion.hpp:
 
@@ -9873,19 +10622,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Kernel/Wutils.h:
 
-/usr/include/CGAL/Distance_2/internal/squared_distance_utils_2.h:
-
 /usr/include/CGAL/Distance_2/Point_2_Segment_2.h:
 
 /usr/include/CGAL/squared_distance_2.h:
 
 /usr/include/CGAL/Kernel/function_objects.h:
 
-/usr/include/CGAL/Cartesian/function_objects.h:
-
 /usr/include/CGAL/Cartesian/ft_constructions_3.h:
-
-/usr/include/CGAL/Cartesian/point_constructions_3.h:
 
 /usr/include/CGAL/Cartesian/basic_constructions_3.h:
 
@@ -9894,8 +10637,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Cartesian/Translation_rep_3.h:
 
 /usr/include/CGAL/Cartesian/Aff_transformation_rep_3.h:
-
-/usr/include/CGAL/Cartesian/Circle_3.h:
 
 /usr/include/CGAL/Cartesian/predicates_on_points_3.h:
 
@@ -9909,19 +10650,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Cartesian/solve_3.h:
 
-/usr/include/boost/mpl/aux_/pop_front_impl.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_size.hpp:
-
-/usr/include/CGAL/constructions/kernel_ftC3.h:
-
-/usr/include/CGAL/predicates/kernel_ftC3.h:
-
 /usr/include/CGAL/Cartesian/Direction_3.h:
 
 /usr/include/CGAL/Cartesian/Vector_3.h:
-
-/usr/include/CGAL/Cartesian/Weighted_point_3.h:
 
 /usr/include/CGAL/Cartesian/line_constructions_2.h:
 
@@ -9938,10 +10669,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Cartesian/Rotation_rep_2.h:
 
 /usr/include/CGAL/Cartesian/Translation_rep_2.h:
-
-/usr/include/CGAL/Cartesian/Aff_transformation_2.h:
-
-/usr/include/CGAL/Cartesian/Triangle_2.h:
 
 /usr/include/CGAL/Convex_hull_2/ch_assertions.h:
 
@@ -9969,8 +10696,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/geometric_distribution.hpp:
 
-/usr/include/boost/random/fisher_f_distribution.hpp:
-
 /usr/include/boost/io_fwd.hpp:
 
 /usr/include/boost/type_traits/detail/has_prefix_operator.hpp:
@@ -9985,21 +10710,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/exponential_distribution.hpp:
 
-/usr/include/boost/fusion/iterator/detail/segmented_next_impl.hpp:
-
-/usr/include/boost/random/beta_distribution.hpp:
-
 /usr/include/CGAL/Iterator_range.h:
 
 /usr/include/boost/random/generate_canonical.hpp:
 
-/usr/include/boost/random/xor_combine.hpp:
-
-/usr/include/boost/random/taus88.hpp:
-
 /usr/include/boost/random/shuffle_output.hpp:
-
-/usr/include/boost/random/subtract_with_carry.hpp:
 
 /usr/include/boost/random/ranlux.hpp:
 
@@ -10019,10 +10734,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/linear_congruential.hpp:
 
-/usr/include/boost/mpl/erase_key_fwd.hpp:
-
-/usr/include/boost/random/detail/seed.hpp:
-
 /usr/include/boost/random/additive_combine.hpp:
 
 /usr/include/boost/random.hpp:
@@ -10034,10 +10745,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/random/detail/enable_warnings.hpp:
 
 /usr/include/boost/random/detail/disable_warnings.hpp:
-
-/usr/include/boost/fusion/view/joint_view/joint_view.hpp:
-
-/usr/include/boost/random/detail/config.hpp:
 
 /usr/include/boost/random/uniform_int_distribution.hpp:
 
@@ -10053,19 +10760,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Cartesian/Vector_2.h:
 
-/usr/include/boost/utility/swap.hpp:
-
-/usr/include/boost/type_traits/remove_volatile.hpp:
-
-/usr/include/boost/tuple/tuple.hpp:
-
 /usr/include/CGAL/Cartesian/Weighted_point_2.h:
 
 /usr/include/CGAL/Cartesian/Point_2.h:
 
 /usr/include/boost/detail/container_fwd.hpp:
-
-/usr/include/boost/container_hash/extensions.hpp:
 
 /usr/include/boost/container_hash/detail/limits.hpp:
 
@@ -10074,12 +10773,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/container_hash/detail/float_functions.hpp:
 
 /usr/include/CGAL/Kernel/global_functions_internal_3.h:
-
-/usr/include/CGAL/Kernel/global_functions_internal_2.h:
-
-/usr/include/CGAL/Aff_transformation_3.h:
-
-/usr/include/CGAL/Sphere_3.h:
 
 /usr/include/boost/math/special_functions/polygamma.hpp:
 
@@ -10097,17 +10790,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Vector_3.h:
 
-/usr/include/boost/fusion/view/joint_view/detail/deref_impl.hpp:
-
-/usr/include/CGAL/Weighted_point_3.h:
-
 /usr/include/CGAL/Distance_3/Point_3_Ray_3.h:
 
 /usr/include/boost/mpl/divides.hpp:
-
-/usr/include/boost/math/tools/detail/rational_horner3_20.hpp:
-
-/usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
 
 /usr/include/boost/math/special_functions/cbrt.hpp:
 
@@ -10120,8 +10805,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Line_2.h:
 
 /usr/include/CGAL/Direction_2.h:
-
-/usr/include/CGAL/Vector_2.h:
 
 /usr/include/CGAL/Weighted_point_2.h:
 
@@ -10151,11 +10834,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/optional/optional_fwd.hpp:
 
-/usr/include/boost/type_traits/remove_extent.hpp:
-
 /usr/include/boost/type_traits/remove_bounds.hpp:
-
-/usr/include/boost/optional/bad_optional_access.hpp:
 
 /usr/include/boost/core/explicit_operator_bool.hpp:
 
@@ -10173,143 +10852,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/variant/detail/enable_recursive.hpp:
 
-/usr/include/boost/mpl/size_t_fwd.hpp:
-
-/usr/include/boost/mpl/size_t.hpp:
-
-/usr/include/boost/mpl/max_element.hpp:
-
-/usr/include/boost/math/tools/tuple.hpp:
-
-/usr/include/boost/type_traits/same_traits.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_intersection.h:
-
-/usr/include/boost/mpl/aux_/iter_push_front.hpp:
-
-/usr/include/CGAL/Distance_3/Point_3_Segment_3.h:
-
-/usr/include/boost/mpl/aux_/insert_impl.hpp:
-
-/usr/include/boost/core/nvp.hpp:
-
-/usr/include/boost/mpl/insert.hpp:
-
-/usr/include/boost/mpl/aux_/insert_range_impl.hpp:
-
-/usr/include/boost/mpl/insert_range_fwd.hpp:
-
-/usr/include/boost/mpl/aux_/front_impl.hpp:
-
-/usr/include/boost/mpl/front.hpp:
-
-/usr/include/boost/mpl/aux_/empty_impl.hpp:
-
-/usr/include/boost/mpl/empty.hpp:
-
-/usr/include/boost/math/special_functions/lanczos.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_assign.hpp:
-
-/usr/include/boost/type_traits/is_assignable.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_constructor.hpp:
-
-/usr/include/boost/type_traits/type_with_alignment.hpp:
-
-/usr/include/boost/random/linear_feedback_shift.hpp:
-
-/usr/include/boost/type_traits/alignment_of.hpp:
-
-/usr/include/boost/type_traits/aligned_storage.hpp:
-
-/usr/include/boost/mpl/has_key_fwd.hpp:
-
-/usr/include/boost/integer/common_factor_ct.hpp:
-
-/usr/include/boost/type_traits/has_trivial_destructor.hpp:
-
-/usr/include/boost/type_traits/has_trivial_copy.hpp:
-
-/usr/include/boost/mpl/sizeof.hpp:
-
-/usr/include/boost/type_traits/is_stateless.hpp:
-
-/usr/include/boost/blank.hpp:
-
-/usr/include/boost/variant/detail/std_hash.hpp:
-
-/usr/include/boost/variant/detail/apply_visitor_delayed.hpp:
-
-/usr/include/boost/multiprecision/traits/is_restricted_conversion.hpp:
-
-/usr/include/boost/variant/detail/apply_visitor_binary.hpp:
-
-/usr/include/boost/type_traits/copy_cv.hpp:
-
-/usr/include/boost/variant/static_visitor.hpp:
-
-/usr/include/boost/variant/detail/visitation_impl.hpp:
-
-/usr/include/boost/move/adl_move_swap.hpp:
-
-/usr/include/boost/type_traits/enable_if.hpp:
-
-/usr/include/boost/variant/recursive_wrapper_fwd.hpp:
-
-/usr/include/boost/type_traits/has_nothrow_copy.hpp:
-
-/usr/include/boost/detail/reference_content.hpp:
-
-/usr/include/boost/detail/call_traits.hpp:
-
-/usr/include/boost/call_traits.hpp:
-
-/usr/include/CGAL/license/Triangulation_2.h:
-
-/usr/include/boost/variant/detail/enable_recursive_fwd.hpp:
-
-/usr/include/boost/variant/detail/backup_holder.hpp:
-
-/usr/include/boost/variant/detail/substitute_fwd.hpp:
-
-/usr/include/boost/preprocessor/enum_shifted_params.hpp:
-
-/usr/include/boost/preprocessor/enum_params.hpp:
-
-/usr/include/boost/preprocessor/enum.hpp:
-
-/usr/include/boost/variant/variant_fwd.hpp:
-
-/usr/include/boost/core/demangle.hpp:
-
-/usr/include/boost/container_hash/hash_fwd.hpp:
-
-/usr/include/boost/type_index.hpp:
-
-/usr/include/boost/variant/variant.hpp:
-
 /usr/include/boost/variant.hpp:
 
 /usr/include/CGAL/aff_transformation_tags.h:
-
-/usr/include/boost/preprocessor/repetition/enum.hpp:
-
-/usr/include/CGAL/kernel_assertions.h:
 
 /usr/include/CGAL/kernel_config.h:
 
 /usr/include/CGAL/kernel_basic.h:
 
-/usr/include/CGAL/number_utils_classes.h:
-
-/usr/include/CGAL/Get_arithmetic_kernel.h:
-
 /usr/include/CGAL/Arithmetic_kernel/Arithmetic_kernel_base.h:
 
 /usr/include/CGAL/GMPXX_arithmetic_kernel.h:
-
-/usr/include/CGAL/Quotient.h:
 
 /usr/include/mpfr.h:
 
@@ -10320,10 +10873,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/long_long.h:
 
 /usr/include/CGAL/tss.h:
-
-/usr/include/CGAL/Intersections_3/internal/Plane_3_Segment_3_intersection.h:
-
-/usr/include/CGAL/Modular_arithmetic/Residue_type.h:
 
 /usr/include/CGAL/Interval_nt.h:
 
@@ -10337,21 +10886,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/fenv.h:
 
-/usr/include/fenv.h:
-
 /usr/include/c++/11/fenv.h:
 
 /usr/include/CGAL/utils.h:
-
-/usr/include/CGAL/utils_classes.h:
 
 /usr/include/CGAL/array.h:
 
 /usr/include/boost/fusion/algorithm/query/detail/find_if.hpp:
 
 /usr/include/CGAL/IO/Color.h:
-
-/usr/include/CGAL/IO/io.h:
 
 /usr/include/CGAL/Algebraic_extension_traits.h:
 
@@ -10361,49 +10904,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/gmpxx.h:
 
-/usr/include/CGAL/Rational_traits.h:
-
 /usr/include/CGAL/Real_embeddable_traits.h:
 
 /usr/include/CGAL/use.h:
 
 /usr/include/CGAL/Algebraic_structure_traits.h:
 
-/usr/include/boost/preprocessor/slot/detail/shared.hpp:
-
-/usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp:
-
-/usr/include/boost/preprocessor/facilities/intercept.hpp:
-
-/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
-
-/usr/include/boost/preprocessor/slot/detail/def.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtGui/qfontdatabase.h:
-
-/usr/include/boost/preprocessor/slot/slot.hpp:
-
-/usr/include/boost/random/uniform_real_distribution.hpp:
-
-/usr/include/boost/preprocessor/iteration/iterate.hpp:
-
-/usr/include/boost/utility/result_of.hpp:
-
-/usr/include/CGAL/Cartesian/Sphere_3.h:
-
-/usr/include/boost/iterator/transform_iterator.hpp:
-
 /usr/include/CGAL/boost/iterator/transform_iterator.hpp:
-
-/usr/include/CGAL/Coercion_traits.h:
 
 /usr/include/CGAL/Kernel/mpl.h:
 
-/usr/include/CGAL/Quotient_fwd.h:
-
 /usr/include/CGAL/number_type_config.h:
-
-/usr/include/CGAL/exceptions.h:
 
 /usr/include/CGAL/enable_warnings.h:
 
@@ -10411,17 +10922,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/disable_warnings.h:
 
-/usr/include/CGAL/Distance_2/Triangle_2_Triangle_2.h:
-
-/usr/include/CGAL/Origin_impl.h:
-
 /usr/include/CGAL/Origin.h:
 
 /usr/include/CGAL/Kernel/Same_uncertainty.h:
 
 /usr/include/CGAL/Uncertain.h:
-
-/usr/include/CGAL/assertions.h:
 
 /usr/include/CGAL/license.h:
 
@@ -10438,8 +10943,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/CGAL/Intersections_3/Bbox_3_Plane_3.h:
 
 /usr/include/boost/predef/hardware/simd/x86_amd.h:
-
-/usr/include/boost/predef/hardware/simd/x86.h:
 
 /usr/include/boost/predef/hardware/simd.h:
 
@@ -10473,10 +10976,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/os/windows.h:
 
-/usr/include/boost/variant/detail/move.hpp:
-
-/usr/include/boost/predef/os/vms.h:
-
 /usr/include/boost/predef/os/unix.h:
 
 /usr/include/boost/predef/os/qnxnto.h:
@@ -10505,23 +11004,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/os/amigaos.h:
 
-/usr/include/boost/variant/recursive_wrapper.hpp:
-
-/usr/include/boost/predef/os.h:
-
 /usr/include/boost/predef/library/std/stlport.h:
 
 /usr/include/boost/predef/library/std/stdcpp3.h:
 
 /usr/include/boost/predef/library/std/sgi.h:
-
-/usr/include/boost/fusion/mpl/size.hpp:
-
-/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
-
-/usr/include/boost/predef/library/std/roguewave.h:
 
 /usr/include/boost/predef/library/std/msl.h:
 
@@ -10553,8 +11040,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/compiler/microtec.h:
 
-/usr/include/boost/predef/compiler/metrowerks.h:
-
 /usr/include/CGAL/Intersections_3/Point_3_Segment_3.h:
 
 /usr/include/boost/predef/compiler/metaware.h:
@@ -10562,8 +11047,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/predef/compiler/llvm.h:
 
 /usr/include/boost/predef/compiler/hp_acc.h:
-
-/usr/include/boost/predef/compiler/greenhills.h:
 
 /usr/include/boost/predef/detail/comp_detected.h:
 
@@ -10577,17 +11060,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/compiler/dignus.h:
 
-/usr/include/boost/predef/compiler/diab.h:
-
 /usr/include/boost/predef/compiler/compaq.h:
 
-/usr/include/boost/predef/compiler/clang.h:
-
-/usr/include/boost/predef/compiler/borland.h:
-
 /usr/include/boost/predef/compiler.h:
-
-/usr/include/boost/predef/architecture/z.h:
 
 /usr/include/boost/predef/architecture/sys370.h:
 
@@ -10600,8 +11075,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/predef/architecture/pyramid.h:
 
 /usr/include/boost/predef/architecture/ptx.h:
-
-/usr/include/boost/predef/architecture/ppc.h:
 
 /usr/include/boost/predef/architecture/parisc.h:
 
@@ -10621,13 +11094,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/predef/architecture.h:
 
-/usr/include/boost/predef/language/cuda.h:
-
 /usr/include/boost/predef/language/stdc.h:
 
 /usr/include/boost/predef/language.h:
-
-/usr/include/boost/predef.h:
 
 /usr/include/CGAL/functional.h:
 
@@ -10643,10 +11112,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h:
 
-/usr/include/CGAL/Homogeneous/DirectionH2.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
-
 /usr/include/CGAL/squared_distance_3.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h:
@@ -10661,10 +11126,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h:
 
-/usr/include/CGAL/memory.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
@@ -10674,8 +11135,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
 
 /usr/include/CGAL/STL_Extension/internal/info_check.h:
 
@@ -10693,21 +11152,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
 
-/usr/include/boost/type_traits/copy_reference.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
-
-/usr/include/boost/random/seed_seq.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h:
 
@@ -10741,28 +11188,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp:
 
-/usr/include/boost/math/policies/error_handling.hpp:
-
-/usr/include/boost/type_traits/is_destructible.hpp:
-
-/usr/include/boost/type_traits/is_constructible.hpp:
-
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_y_2.h:
-
-/usr/include/CGAL/Intersections_3/Plane_3_Ray_3.h:
-
-/usr/include/boost/math/tools/convert_from_string.hpp:
-
-/usr/include/boost/math/tools/precision.hpp:
-
-/usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp:
-
-/usr/include/CGAL/IO/io_tags.h:
-
-/usr/include/boost/math/tools/cxx03_warn.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
-
 /usr/include/gdal/ogr_srs_api.h:
 
 /usr/include/gdal/ogr_spatialref.h:
@@ -10783,23 +11208,1611 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/gdal/cpl_port.h:
 
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
-
-/usr/include/boost/math/constants/constants.hpp:
-
-/usr/include/gdal/ogr_geometry.h:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h:
-
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h:
 
 /usr/include/pcl-1.12/pcl/search/search.h:
 
-/usr/include/pcl-1.12/pcl/filters/filter_indices.h:
-
 /usr/include/pcl-1.12/pcl/filters/statistical_outlier_removal.h:
 
 /usr/include/pcl-1.12/pcl/filters/filter.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/inherit.hpp:
+
+/usr/include/boost/fusion/container/list/detail/begin_impl.hpp:
+
+/usr/include/boost/mpl/empty_base.hpp:
+
+/usr/include/CGAL/is_convertible.h:
+
+/usr/include/boost/mpl/inherit.hpp:
+
+/usr/include/pcl-1.12/pcl/io/ply/byte_order.h:
+
+/usr/include/boost/mpl/erase_key.hpp:
+
+/usr/include/pcl-1.12/pcl/io/ply/ply.h:
+
+/usr/include/pcl-1.12/pcl/io/ply_io.h:
+
+/usr/include/boost/geometry/geometries/multi_point.hpp:
+
+/usr/include/boost/geometry/geometries/linestring.hpp:
+
+/usr/include/boost/geometry/geometries/geometries.hpp:
+
+/usr/include/boost/geometry/io/svg/svg_mapper.hpp:
+
+/usr/include/boost/predef/compiler/diab.h:
+
+/usr/include/boost/geometry/srs/srs.hpp:
+
+/usr/include/boost/geometry/geometries/multi_polygon.hpp:
+
+/usr/include/boost/geometry/algorithms/union.hpp:
+
+/usr/include/boost/geometry/algorithms/remove_spikes.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relation/interface.hpp:
+
+/usr/include/CGAL/Cartesian/Circle_3.h:
+
+/usr/include/boost/geometry/algorithms/relation.hpp:
+
+/usr/include/boost/predef.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlaps/implementation.hpp:
+
+/usr/include/boost/fusion/adapted/boost_tuple.hpp:
+
+/usr/include/boost/geometry/algorithms/overlaps.hpp:
+
+/usr/include/boost/geometry/algorithms/num_geometries.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/multipolygon.hpp:
+
+/usr/include/c++/11/stack:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/polygon.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/pointlike.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/implementation.hpp:
+
+/usr/include/CGAL/Distance_3/Triangle_3_Triangle_3.h:
+
+/usr/include/boost/geometry/policies/is_valid/failure_type_policy.hpp:
+
+/usr/include/boost/type_traits/detail/mp_defer.hpp:
+
+/usr/include/boost/geometry/policies/is_valid/failing_reason_policy.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/multipoint.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/comparison.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/debug_print_turns.hpp:
+
+/usr/include/CGAL/Intersections_2/Bbox_2_Ray_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/linear.hpp:
+
+/usr/include/boost/fusion/view/joint_view/detail/deref_impl.hpp:
+
+/usr/include/CGAL/Weighted_point_3.h:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/has_duplicates.hpp:
+
+/usr/include/boost/geometry/algorithms/validity_failure_type.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/implementation.hpp:
+
+/usr/include/boost/geometry/algorithms/is_simple.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/intersection/areal_areal.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/intersection/implementation.hpp:
+
+/usr/include/boost/geometry/algorithms/intersection.hpp:
+
+/usr/include/boost/predef/compiler/greenhills.h:
+
+/usr/include/boost/geometry/algorithms/discrete_hausdorff_distance.hpp:
+
+/usr/include/CGAL/Hilbert_sort_median_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/pointlike_linear.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/pointlike_areal.hpp:
+
+/usr/include/boost/predef/language/cuda.h:
+
+/usr/include/boost/geometry/algorithms/detail/turns/debug_turn.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/linear_linear.hpp:
+
+/usr/include/boost/geometry/views/detail/boundary_view/implementation.hpp:
+
+/usr/include/boost/geometry/views/detail/boundary_view/interface.hpp:
+
+/usr/include/boost/geometry/views/detail/boundary_view.hpp:
+
+/usr/include/boost/geometry/views/segment_view.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/needs_self_turns.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/tupled_output.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/clip_linestring.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp:
+
+/usr/include/boost/predef/hardware/simd/x86.h:
+
+/usr/include/boost/geometry/algorithms/detail/intersection/interface.hpp:
+
+/usr/include/boost/fusion/sequence/intrinsic/has_key.hpp:
+
+/usr/include/boost/geometry/algorithms/densify.hpp:
+
+/usr/include/boost/geometry/algorithms/crosses.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/multi_modify.hpp:
+
+/usr/include/boost/geometry/algorithms/disjoint.hpp:
+
+/usr/include/boost/geometry/algorithms/correct_closure.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/as_range.hpp:
+
+/usr/include/boost/geometry/strategies/concepts/simplify_concept.hpp:
+
+/usr/include/boost/geometry/algorithms/simplify.hpp:
+
+/usr/include/boost/math/special_functions/powm1.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/line_line_intersection.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/traversal_switch_detector.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/traversal.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/traversal_ring_creator.hpp:
+
+/usr/include/boost/fusion/iterator/detail/segmented_iterator.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/select_rings.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/less_by_segment_ratio.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/enrich_intersection_points.hpp:
+
+/usr/include/CGAL/predicates/kernel_ftC3.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/range_in_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/assign_parents.hpp:
+
+/usr/include/boost/fusion/iterator/detail/segmented_equal_to.hpp:
+
+/usr/include/boost/range/algorithm/reverse.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/convert_ring.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/turn_in_original_visitor.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/turn_in_piece_visitor.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/turn_in_ring_winding.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/backward_compatibility.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/geometry_to_segment_or_box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/multipoint_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/point_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/linear_segment_or_box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/linear_areal.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/segment_as_subrange.hpp:
+
+/usr/include/CGAL/Quotient_fwd.h:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/implementation.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/intersects/implementation.hpp:
+
+/usr/include/boost/geometry/algorithms/intersects.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/linear_to_linear.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/closest_feature/range_to_range.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Static_filter_error.h:
+
+/usr/include/boost/geometry/iterators/has_one_element.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/range_to_geometry_rtree.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/comparable_distance/implementation.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/piece_border.hpp:
+
+/usr/include/boost/geometry/algorithms/length.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/backtrack_check_si.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/visit_info.hpp:
+
+/usr/include/boost/multiprecision/detail/default_ops.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/traversal_info.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_ring.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/enrichment_info.hpp:
+
+/usr/include/CGAL/ch_selected_extreme_points_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/copy_segment_point.hpp:
+
+/usr/include/boost/random/fisher_f_distribution.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/point_is_spike_or_equal.hpp:
+
+/usr/include/pcl-1.12/pcl/filters/filter_indices.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/append_no_duplicates.hpp:
+
+/usr/include/boost/geometry/algorithms/within.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/multi_point_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/follow_helpers.hpp:
+
+/usr/include/boost/geometry/policies/robustness/robust_type.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/sections/sectionalize.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/sections/range_by_section.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_helpers.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
+
+/usr/include/boost/geometry/algorithms/detail/sections/section_box_policies.hpp:
+
+/usr/include/boost/fusion/mpl/size.hpp:
+
+/usr/include/CGAL/Distance_2/Line_2_Triangle_2.h:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/divides.hpp:
+
+/usr/include/boost/predef/library/std/roguewave.h:
+
+/usr/include/boost/geometry/iterators/ever_circling_iterator.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turns.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/single_geometry.hpp:
+
+/usr/include/boost/geometry/util/has_non_finite_coordinate.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/sub_range.hpp:
+
+/usr/include/CGAL/IO/io.h:
+
+/usr/include/boost/geometry/algorithms/detail/relate/topology_check.hpp:
+
+/usr/include/CGAL/assertions.h:
+
+/usr/include/boost/geometry/algorithms/detail/relate/point_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/point_point.hpp:
+
+/usr/include/boost/geometry/index/detail/config_end.hpp:
+
+/usr/include/boost/scoped_ptr.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/iterators.hpp:
+
+/usr/include/boost/geometry/index/inserter.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/rstar/redistribute_elements.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/nth_element.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/intersection_content.hpp:
+
+/usr/include/CGAL/Cartesian/Weighted_point_3.h:
+
+/usr/include/boost/geometry/index/detail/rtree/rstar/choose_next_node.hpp:
+
+/usr/include/CGAL/Cartesian/point_constructions_3.h:
+
+/usr/include/boost/geometry/index/detail/rtree/rstar/insert.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/union_content.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/quadratic/redistribute_elements.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/linear/linear.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/children_box.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/count.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/copy.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/subtree_destroyer.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/content.hpp:
+
+/usr/include/boost/variant/recursive_wrapper.hpp:
+
+/usr/include/boost/predef/os.h:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/insert.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/bounds.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/is_leaf.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/destroy.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/expand.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/variant_dynamic.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_intersection.h:
+
+/usr/include/boost/mpl/aux_/iter_push_front.hpp:
+
+/usr/include/boost/mpl/aux_/joint_iter.hpp:
+
+/usr/include/boost/mpl/joint_view.hpp:
+
+/usr/include/boost/mpl/aux_/insert_range_impl.hpp:
+
+/usr/include/boost/mpl/aux_/empty_impl.hpp:
+
+/usr/include/boost/mpl/empty.hpp:
+
+/usr/include/boost/math/special_functions/lanczos.hpp:
+
+/usr/include/boost/type_traits/has_nothrow_assign.hpp:
+
+/usr/include/boost/type_traits/has_nothrow_constructor.hpp:
+
+/usr/include/boost/variant/detail/std_hash.hpp:
+
+/usr/include/boost/variant/detail/visitation_impl.hpp:
+
+/usr/include/boost/type_traits/has_nothrow_copy.hpp:
+
+/usr/include/boost/detail/reference_content.hpp:
+
+/usr/include/CGAL/license/Triangulation_2.h:
+
+/usr/include/boost/variant/detail/enable_recursive_fwd.hpp:
+
+/usr/include/boost/variant/detail/backup_holder.hpp:
+
+/usr/include/boost/variant/variant.hpp:
+
+/usr/include/boost/predef/os/vms.h:
+
+/usr/include/boost/variant/detail/move.hpp:
+
+/usr/include/boost/variant/recursive_wrapper_fwd.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/variant_visitor.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/node_elements.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/pairs.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/concept.hpp:
+
+/usr/include/boost/config/header_deprecated.hpp:
+
+/usr/include/boost/detail/no_exceptions_support.hpp:
+
+/usr/include/boost/type_traits/has_trivial_move_constructor.hpp:
+
+/usr/include/boost/type_traits/is_assignable.hpp:
+
+/usr/include/boost/type_traits/has_trivial_assign.hpp:
+
+/usr/include/boost/geometry/index/detail/varray_detail.hpp:
+
+/usr/include/boost/type_traits/type_with_alignment.hpp:
+
+/usr/include/boost/type_traits/aligned_storage.hpp:
+
+/usr/include/boost/geometry/index/detail/varray.hpp:
+
+/usr/include/boost/container_hash/extensions.hpp:
+
+/usr/include/boost/move/algo/unique.hpp:
+
+/usr/include/boost/move/algo/detail/is_sorted.hpp:
+
+/usr/include/boost/move/algo/detail/heap_sort.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/get_max_size.hpp:
+
+/usr/include/boost/move/algo/detail/insertion_sort.hpp:
+
+/usr/include/boost/move/algo/predicate.hpp:
+
+/usr/include/boost/move/detail/destruct_n.hpp:
+
+/usr/include/CGAL/Coercion_traits.h:
+
+/usr/include/boost/move/algo/detail/merge.hpp:
+
+/usr/include/boost/move/detail/reverse_iterator.hpp:
+
+/usr/include/boost/move/algo/detail/adaptive_sort_merge.hpp:
+
+/usr/include/boost/move/algo/adaptive_merge.hpp:
+
+/usr/include/boost/move/detail/move_helpers.hpp:
+
+/usr/include/boost/container/detail/value_functors.hpp:
+
+/usr/include/boost/container/detail/next_capacity.hpp:
+
+/usr/include/boost/container/detail/allocation_type.hpp:
+
+/usr/include/boost/container/detail/alloc_helpers.hpp:
+
+/usr/include/boost/fusion/iterator/deref.hpp:
+
+/usr/include/boost/intrusive/detail/algorithm.hpp:
+
+/usr/include/boost/container/detail/algorithm.hpp:
+
+/usr/include/boost/move/adl_move_swap.hpp:
+
+/usr/include/boost/intrusive/detail/reverse_iterator.hpp:
+
+/usr/include/boost/type_traits/negation.hpp:
+
+/usr/include/boost/container/detail/value_init.hpp:
+
+/usr/include/boost/container/detail/iterators.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/areal.hpp:
+
+/usr/include/boost/container/detail/construct_in_place.hpp:
+
+/usr/include/boost/intrusive/detail/std_fwd.hpp:
+
+/usr/include/boost/container/detail/iterator.hpp:
+
+/usr/include/fenv.h:
+
+/usr/include/boost/container/detail/copy_move_algo.hpp:
+
+/usr/include/boost/container/detail/advanced_insert_int.hpp:
+
+/usr/include/boost/fusion/adapted/boost_tuple/detail/at_impl.hpp:
+
+/usr/include/boost/intrusive/pack_options.hpp:
+
+/usr/include/boost/container/options.hpp:
+
+/usr/include/boost/move/detail/fwd_macros.hpp:
+
+/usr/include/boost/intrusive/pointer_rebind.hpp:
+
+/usr/include/boost/intrusive/detail/workaround.hpp:
+
+/usr/include/CGAL/Cartesian/function_objects.h:
+
+/usr/include/boost/container/detail/type_traits.hpp:
+
+/usr/include/CGAL/Cartesian/Triangle_2.h:
+
+/usr/include/boost/intrusive/detail/config_end.hpp:
+
+/usr/include/boost/intrusive/detail/mpl.hpp:
+
+/usr/include/boost/move/algo/detail/basic_op.hpp:
+
+/usr/include/boost/container/detail/mpl.hpp:
+
+/usr/include/boost/container/allocator_traits.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Point_3_Tetrahedron_3_do_intersect.h:
+
+/usr/include/boost/geometry/index/detail/rtree/adaptors.hpp:
+
+/usr/include/boost/fusion/view/single_view/detail/next_impl.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/segment_intersection.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/comparable_distance_centroid.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/diff_abs.hpp:
+
+/usr/include/CGAL/exceptions.h:
+
+/usr/include/boost/geometry/index/detail/rtree/node/variant_static.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/comparable_distance_far.hpp:
+
+/usr/include/boost/optional/bad_optional_access.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/sum_for_indexable.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/comparable_distance_near.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/ring_identifier.hpp:
+
+/usr/include/boost/geometry/index/detail/distance_predicates.hpp:
+
+/usr/include/boost/geometry/index/detail/tags.hpp:
+
+/usr/include/boost/fusion/adapted/mpl/detail/at_impl.hpp:
+
+/usr/include/CGAL/Cache.h:
+
+/usr/include/boost/geometry/index/detail/predicates.hpp:
+
+/usr/include/boost/geometry/index/detail/is_indexable.hpp:
+
+/usr/include/boost/geometry/index/indexable.hpp:
+
+/usr/include/boost/fusion/mpl/erase_key.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/options.hpp:
+
+/usr/include/boost/geometry/index/detail/assert.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/centroid/translating_transformer.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
+
+/usr/include/boost/geometry/strategies/concepts/centroid_concept.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/debug_complement_graph.hpp:
+
+/usr/include/boost/geometry/algorithms/centroid.hpp:
+
+/usr/include/boost/fusion/view/joint_view/detail/value_of_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/touches/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/intersects/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/sym_difference.hpp:
+
+/usr/include/boost/geometry/util/tuples.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/result.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/vector_c.hpp:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10_c.hpp:
+
+/usr/include/boost/mpl/vector/vector0_c.hpp:
+
+/usr/include/boost/geometry/iterators/base.hpp:
+
+/usr/include/boost/mpl/vector/vector10_c.hpp:
+
+/usr/include/boost/mpl/vector/vector20_c.hpp:
+
+/usr/include/CGAL/Vector_2.h:
+
+/usr/include/boost/mpl/vector_c.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/de9im.hpp:
+
+/usr/include/CGAL/Cartesian/Aff_transformation_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/relate/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/comparable_distance/interface.hpp:
+
+/usr/include/CGAL/Intersections_2/Line_2_Triangle_2.h:
+
+/usr/include/boost/move/algo/detail/set_difference.hpp:
+
+/usr/include/boost/move/detail/iterator_to_raw_pointer.hpp:
+
+/usr/include/boost/fusion/container/vector/detail/begin_impl.hpp:
+
+/usr/include/CGAL/Gmpzf.h:
+
+/usr/include/boost/move/algo/move.hpp:
+
+/usr/include/boost/move/iterator.hpp:
+
+/usr/include/boost/move/move.hpp:
+
+/usr/include/boost/type_traits/remove_extent.hpp:
+
+/usr/include/boost/container/detail/config_end.hpp:
+
+/usr/include/boost/container/detail/workaround.hpp:
+
+/usr/include/boost/container/detail/config_begin.hpp:
+
+/usr/include/boost/geometry/index/predicates.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand_by_epsilon.hpp:
+
+/usr/include/boost/geometry/algorithms/covered_by.hpp:
+
+/usr/include/boost/geometry/geometries/multi_linestring.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/direction_code.hpp:
+
+/usr/include/CGAL/Homogeneous/DirectionH2.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp:
+
+/usr/include/CGAL/Homogeneous/Homogeneous_base.h:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/buffer_box.hpp:
+
+/usr/include/boost/geometry/util/select_sequence_element.hpp:
+
+/usr/include/boost/geometry/strategies/area_result.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/calculate_sum.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/calculate_null.hpp:
+
+/usr/include/boost/random/xor_combine.hpp:
+
+/usr/include/boost/qvm/vec_mat_operations4.hpp:
+
+/usr/include/boost/fusion/algorithm/transformation/transform.hpp:
+
+/usr/include/boost/qvm/vec_mat_operations3.hpp:
+
+/usr/include/boost/qvm/gen/vec_mat_operations2.hpp:
+
+/usr/include/boost/predef/compiler/borland.h:
+
+/usr/include/boost/qvm/detail/transp_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relation/implementation.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/node/scoped_deallocator.hpp:
+
+/usr/include/boost/qvm/detail/cofactor_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/area.hpp:
+
+/usr/include/boost/qvm/detail/remove_const.hpp:
+
+/usr/include/boost/qvm/mat_traits_array.hpp:
+
+/usr/include/boost/qvm/gen/mat_operations4.hpp:
+
+/usr/include/boost/qvm/mat_operations4.hpp:
+
+/usr/include/boost/qvm/mat_operations3.hpp:
+
+/usr/include/boost/math/tools/tuple.hpp:
+
+/usr/include/boost/type_traits/same_traits.hpp:
+
+/usr/include/boost/qvm/throw_exception.hpp:
+
+/usr/include/boost/exception/error_info.hpp:
+
+/usr/include/CGAL/spatial_sort.h:
+
+/usr/include/boost/qvm/error.hpp:
+
+/usr/include/boost/geometry/policies/predicate_based_interrupt_policy.hpp:
+
+/usr/include/boost/qvm/quat_traits.hpp:
+
+/usr/include/boost/qvm/deduce_scalar.hpp:
+
+/usr/include/boost/qvm/deduce_mat.hpp:
+
+/usr/include/boost/qvm/vec_access.hpp:
+
+/usr/include/boost/qvm/mat_access.hpp:
+
+/usr/include/boost/qvm/gen/vec_assign4.hpp:
+
+/usr/include/boost/fusion/view/single_view/detail/deref_impl.hpp:
+
+/usr/include/boost/qvm/gen/vec_assign3.hpp:
+
+/usr/include/boost/qvm/gen/vec_assign2.hpp:
+
+/usr/include/boost/qvm/detail/vec_assign.hpp:
+
+/usr/include/boost/move/detail/placement_new.hpp:
+
+/usr/include/boost/qvm/assert.hpp:
+
+/usr/include/boost/qvm/gen/mat_assign4.hpp:
+
+/usr/include/boost/qvm/gen/mat_assign3.hpp:
+
+/usr/include/boost/qvm/inline.hpp:
+
+/usr/include/boost/qvm/enable_if.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Bbox_3_Iso_cuboid_3_do_intersect.h:
+
+/usr/include/boost/geometry/strategies/transform/matrix_transformers.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Segment_3_Tetrahedron_3_intersection.h:
+
+/usr/include/boost/geometry/strategies/agnostic/simplify_douglas_peucker.hpp:
+
+/usr/include/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp:
+
+/usr/include/boost/qvm/mat.hpp:
+
+/usr/include/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/for_each_range.hpp:
+
+/usr/include/boost/mpl/max_element.hpp:
+
+/usr/include/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp:
+
+/usr/include/CGAL/MP_Float_impl.h:
+
+/usr/include/boost/geometry/strategies/geographic/side_vincenty.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/distance_vincenty.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/distance_segment_box.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/distance_cross_track_box_box.hpp:
+
+/usr/include/boost/geometry/formulas/mean_radius.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/point_in_poly_winding.hpp:
+
+/usr/include/boost/detail/lightweight_mutex.hpp:
+
+/usr/include/boost/geometry/formulas/sjoberg_intersection.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/intersection.hpp:
+
+/usr/include/boost/algorithm/minmax.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/distance_cross_track.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/distance.hpp:
+
+/usr/include/boost/random/taus88.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/densify.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/buffer_point_circle.hpp:
+
+/usr/include/boost/math/tools/big_constant.hpp:
+
+/usr/include/boost/math/tools/detail/rational_horner3_20.hpp:
+
+/usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/overlay.hpp:
+
+/usr/include/boost/qvm/gen/vec_mat_operations4.hpp:
+
+/usr/include/boost/math/tools/series.hpp:
+
+/usr/include/boost/geometry/formulas/eccentricity_sqr.hpp:
+
+/usr/include/boost/geometry/strategies/concepts/distance_concept.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/distance_cross_track.hpp:
+
+/usr/include/boost/geometry/formulas/authalic_radius_sqr.hpp:
+
+/usr/include/boost/geometry/strategies/line_interpolate.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/line_interpolate.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp:
+
+/usr/include/boost/geometry/strategies/index.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/index.hpp:
+
+/usr/include/boost/geometry/util/has_nan_coordinate.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/segment_to_box.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/densify.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/disjoint_segment_box.hpp:
+
+/usr/include/boost/geometry/util/order_as_direction.hpp:
+
+/usr/include/boost/geometry/views/box_view.hpp:
+
+/usr/include/boost/geometry/views/detail/normalized_view.hpp:
+
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_size.hpp:
+
+/usr/include/CGAL/constructions/kernel_ftC3.h:
+
+/usr/include/boost/mpl/aux_/pop_front_impl.hpp:
+
+/usr/include/CGAL/iterator.h:
+
+/usr/include/boost/mpl/pop_front.hpp:
+
+/usr/include/boost/function_types/is_member_function_pointer.hpp:
+
+/usr/include/boost/type_traits/has_divides.hpp:
+
+/usr/include/boost/function_types/function_arity.hpp:
+
+/usr/include/boost/function_types/detail/components_as_mpl_sequence.hpp:
+
+/usr/include/boost/function_types/detail/components_impl/arity10_1.hpp:
+
+/usr/include/boost/qvm/math.hpp:
+
+/usr/include/boost/function_types/detail/components_impl/arity10_0.hpp:
+
+/usr/include/boost/function_types/detail/components_impl/arity20_0.hpp:
+
+/usr/include/boost/multiprecision/detail/et_ops.hpp:
+
+/usr/include/boost/function_types/detail/encoding/undef.hpp:
+
+/usr/include/boost/function_types/detail/encoding/aliases_undef.hpp:
+
+/usr/include/boost/function_types/detail/pp_cc_loop/preprocessed.hpp:
+
+/usr/include/boost/function_types/detail/encoding/aliases_def.hpp:
+
+/usr/include/boost/function_types/detail/encoding/def.hpp:
+
+/usr/include/boost/preprocessor/punctuation/paren.hpp:
+
+/usr/include/boost/function_types/detail/pp_loop.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/bitxor.hpp:
+
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector30.hpp:
+
+/usr/include/boost/function_types/config/cc_names.hpp:
+
+/usr/include/boost/function_types/config/config.hpp:
+
+/usr/include/boost/function_types/components.hpp:
+
+/usr/include/boost/function_types/is_callable_builtin.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/ring.hpp:
+
+/usr/include/boost/mpl/sizeof.hpp:
+
+/usr/include/boost/qvm/map_mat_mat.hpp:
+
+/usr/include/boost/function_types/detail/retag_default_cc.hpp:
+
+/usr/include/boost/type_traits/is_stateless.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_la.hpp:
+
+/usr/include/boost/type_traits/is_empty.hpp:
+
+/usr/include/boost/blank.hpp:
+
+/usr/include/boost/geometry/strategies/concepts/within_concept.hpp:
+
+/usr/include/boost/geometry/strategies/default_length_result.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/is_comparable.hpp:
+
+/usr/include/boost/type_traits/has_new_operator.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/closest_feature/geometry_to_range.hpp:
+
+/usr/include/boost/geometry/algorithms/dispatch/distance.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/default_strategies.hpp:
+
+/usr/include/boost/geometry/util/combine_if.hpp:
+
+/usr/include/boost/fusion/sequence/comparison/detail/equal_to.hpp:
+
+/usr/include/boost/mpl/transform.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/set.hpp:
+
+/usr/include/boost/mpl/set/aux_/preprocessed/plain/set20.hpp:
+
+/usr/include/boost/mpl/set/aux_/include_preprocessed.hpp:
+
+/usr/include/boost/mpl/has_key.hpp:
+
+/usr/include/boost/mpl/set/aux_/begin_end_impl.hpp:
+
+/usr/include/boost/mpl/set/aux_/value_type_impl.hpp:
+
+/usr/include/boost/mpl/set/aux_/key_type_impl.hpp:
+
+/usr/include/boost/random/detail/seed.hpp:
+
+/usr/include/boost/mpl/erase_key_fwd.hpp:
+
+/usr/include/CGAL/Get_arithmetic_kernel.h:
+
+/usr/include/boost/mpl/set/aux_/erase_impl.hpp:
+
+/usr/include/boost/mpl/insert_range_fwd.hpp:
+
+/usr/include/boost/mpl/base.hpp:
+
+/usr/include/boost/multiprecision/cpp_int/add.hpp:
+
+/usr/include/boost/mpl/set/aux_/item.hpp:
+
+/usr/include/boost/mpl/set/aux_/insert_impl.hpp:
+
+/usr/include/boost/mpl/set/aux_/size_impl.hpp:
+
+/usr/include/boost/mpl/aux_/config/operators.hpp:
+
+/usr/include/boost/mpl/aux_/erase_key_impl.hpp:
+
+/usr/include/boost/mpl/aux_/ptr_to_ref.hpp:
+
+/usr/include/boost/mpl/aux_/overload_names.hpp:
+
+/usr/include/boost/integer/common_factor_ct.hpp:
+
+/usr/include/boost/mpl/has_key_fwd.hpp:
+
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Power_side_of_oriented_power_sphere_3.h:
+
+/usr/include/boost/mpl/set/aux_/tag.hpp:
+
+/usr/include/boost/geometry/core/config.hpp:
+
+/usr/include/boost/mpl/set/set0.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Line_3_Tetrahedron_3_intersection.h:
+
+/usr/include/boost/mpl/limits/set.hpp:
+
+/usr/include/CGAL/Sphere_3.h:
+
+/usr/include/boost/mpl/set.hpp:
+
+/usr/include/CGAL/Distance_3/Point_3_Segment_3.h:
+
+/usr/include/boost/mpl/aux_/insert_impl.hpp:
+
+/usr/include/boost/core/nvp.hpp:
+
+/usr/include/boost/mpl/insert.hpp:
+
+/usr/include/boost/geometry/geometries/polygon.hpp:
+
+/usr/include/boost/geometry/util/compress_variant.hpp:
+
+/usr/include/boost/geometry/strategies/distance_result.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_join_round.hpp:
+
+/usr/include/boost/geometry/geometries/ring.hpp:
+
+/usr/include/boost/geometry/io/wkt/detail/prefix.hpp:
+
+/usr/include/boost/geometry/util/coordinate_cast.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/point_point.hpp:
+
+/usr/include/CGAL/Distance_2/internal/squared_distance_utils_2.h:
+
+/usr/include/boost/algorithm/string/erase.hpp:
+
+/usr/include/boost/math/special_functions/expm1.hpp:
+
+/usr/include/boost/algorithm/string/detail/formatter.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/side.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_format_all.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_format_store.hpp:
+
+/usr/include/boost/fusion/container/vector/detail/config.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/within/multi_point.hpp:
+
+/usr/include/boost/algorithm/string/detail/sequence.hpp:
+
+/usr/include/boost/algorithm/string/join.hpp:
+
+/usr/include/CGAL/Rational_traits.h:
+
+/usr/include/boost/function/detail/maybe_include.hpp:
+
+/usr/include/boost/config/no_tr1/memory.hpp:
+
+/usr/include/boost/fusion/view/joint_view/detail/value_of_data_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/num_distinct_consecutive_points.hpp:
+
+/usr/include/boost/function_equal.hpp:
+
+/usr/include/boost/type_traits/enable_if.hpp:
+
+/usr/include/boost/random/linear_feedback_shift.hpp:
+
+/usr/include/boost/type_traits/alignment_of.hpp:
+
+/usr/include/boost/type_traits/has_trivial_destructor.hpp:
+
+/usr/include/boost/type_traits/has_trivial_copy.hpp:
+
+/usr/include/boost/core/demangle.hpp:
+
+/usr/include/boost/container_hash/hash_fwd.hpp:
+
+/usr/include/boost/type_index.hpp:
+
+/usr/include/boost/algorithm/string/detail/find_iterator.hpp:
+
+/usr/include/boost/algorithm/string/find_iterator.hpp:
+
+/usr/include/boost/algorithm/string/concept.hpp:
+
+/usr/include/boost/algorithm/string/split.hpp:
+
+/usr/include/boost/algorithm/string/detail/case_conv.hpp:
+
+/usr/include/boost/geometry/strategies/transform/map_transformer.hpp:
+
+/usr/include/boost/preprocessor/slot/detail/shared.hpp:
+
+/usr/include/boost/preprocessor/iteration/detail/iter/forward1.hpp:
+
+/usr/include/boost/preprocessor/facilities/intercept.hpp:
+
+/usr/include/boost/preprocessor/slot/detail/def.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtGui/qfontdatabase.h:
+
+/usr/include/boost/geometry/strategies/geographic/index.hpp:
+
+/usr/include/boost/preprocessor/slot/slot.hpp:
+
+/usr/include/boost/random/uniform_real_distribution.hpp:
+
+/usr/include/boost/preprocessor/iteration/iterate.hpp:
+
+/usr/include/boost/utility/result_of.hpp:
+
+/usr/include/CGAL/Cartesian/Sphere_3.h:
+
+/usr/include/boost/iterator/transform_iterator.hpp:
+
+/usr/include/boost/algorithm/string/case_conv.hpp:
+
+/usr/include/boost/algorithm/string/std/slist_traits.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
+
+/usr/include/boost/algorithm/string/sequence_traits.hpp:
+
+/usr/include/boost/algorithm/string/yes_no_type.hpp:
+
+/usr/include/boost/algorithm/string/std_containers_traits.hpp:
+
+/usr/include/boost/geometry/index/distance_predicates.hpp:
+
+/usr/include/boost/algorithm/string.hpp:
+
+/usr/include/boost/tokenizer.hpp:
+
+/usr/include/boost/geometry/io/wkt/read.hpp:
+
+/usr/include/boost/geometry/io/wkt/wkt.hpp:
+
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end_impl.hpp:
+
+/usr/include/CGAL/Intersections_3/Iso_cuboid_3_Plane_3.h:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_end_flat.hpp:
+
+/usr/include/boost/fusion/view/joint_view/joint_view.hpp:
+
+/usr/include/boost/random/detail/config.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/box_in_box.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/azimuth.hpp:
+
+/usr/include/boost/geometry/policies/robustness/segment_ratio_type.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/ssf.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/point_in_poly_winding.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/linear_areal.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/point_in_point.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Segment_3_intersection.h:
+
+/usr/include/CGAL/Modular_arithmetic/Residue_type.h:
+
+/usr/include/boost/geometry/strategies/spherical/distance_haversine.hpp:
+
+/usr/include/boost/fusion/algorithm/iteration/detail/preprocessed/fold.hpp:
+
+/usr/include/boost/geometry/formulas/vertex_longitude.hpp:
+
+/usr/include/boost/mpl/vector/vector30.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/point.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/add_rings.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/envelope_point.hpp:
+
+/usr/include/boost/predef/compiler/clang.h:
+
+/usr/include/boost/geometry/strategies/default_distance_result.hpp:
+
+/usr/include/boost/algorithm/minmax_element.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/envelope_multipoint.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/multipoint.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/equals/interface.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/envelope.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/envelope.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/expand_segment.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/segment.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/expand_point.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/point.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/range.hpp:
+
+/usr/include/boost/geometry/iterators/dispatch/segment_iterator.hpp:
+
+/usr/include/boost/mpl/pop_back.hpp:
+
+/usr/include/boost/geometry/geometries/pointing_segment.hpp:
+
+/usr/include/CGAL/Compact_container.h:
+
+/usr/include/CGAL/Intersections_3/internal/Point_3_Triangle_3_intersection.h:
+
+/usr/include/boost/geometry/iterators/detail/point_iterator/value_type.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/turns/compare_turns.hpp:
+
+/usr/include/boost/geometry/iterators/detail/point_iterator/iterator_type.hpp:
+
+/usr/include/boost/geometry/iterators/point_iterator.hpp:
+
+/usr/include/boost/mpl/aux_/has_key_impl.hpp:
+
+/usr/include/boost/geometry/iterators/detail/segment_iterator/range_segment_iterator.hpp:
+
+/usr/include/boost/fusion/iterator/detail/segmented_next_impl.hpp:
+
+/usr/include/boost/random/beta_distribution.hpp:
+
+/usr/include/boost/geometry/iterators/concatenate_iterator.hpp:
+
+/usr/include/boost/geometry/iterators/detail/point_iterator/inner_range_type.hpp:
+
+/usr/include/boost/fusion/mpl.hpp:
+
+/usr/include/CGAL/Hilbert_sort_median_d.h:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_pythagoras_point_box.hpp:
+
+/usr/include/boost/geometry/iterators/segment_iterator.hpp:
+
+/usr/include/boost/predef/architecture/ppc.h:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/areal.hpp:
+
+/usr/include/CGAL/Hilbert_sort_middle_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/envelope.hpp:
+
+/usr/include/boost/geometry/formulas/vincenty_inverse.hpp:
+
+/usr/include/boost/geometry/formulas/vincenty_direct.hpp:
+
+/usr/include/boost/geometry/formulas/thomas_inverse.hpp:
+
+/usr/include/CGAL/Homogeneous/Weighted_point_2.h:
+
+/usr/include/boost/geometry/formulas/thomas_direct.hpp:
+
+/usr/include/CGAL/Kernel/global_functions_internal_2.h:
+
+/usr/include/boost/geometry/formulas/differential_quantities.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/cluster_info.hpp:
+
+/usr/include/boost/geometry/formulas/andoyer_inverse.hpp:
+
+/usr/include/boost/geometry/srs/spheroid.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/sweep.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_point_square.hpp:
+
+/usr/include/c++/11/bits/stl_queue.h:
+
+/usr/include/CGAL/Intersections_3/Line_3_Ray_3.h:
+
+/usr/include/boost/geometry/algorithms/detail/max_interval_gap.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/range_of_boxes.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/expand_box.hpp:
+
+/usr/include/boost/geometry/geometries/box.hpp:
+
+/usr/include/boost/geometry/util/condition.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/envelope_segment.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/box_box.hpp:
+
+/usr/include/boost/geometry/core/geometry_id.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/multirange_geometry.hpp:
+
+/usr/include/boost/geometry/algorithms/dispatch/disjoint.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/point_box.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/get_radius.hpp:
+
+/usr/include/boost/math/special_functions/hypot.hpp:
+
+/usr/include/boost/geometry/formulas/flattening.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/area.hpp:
+
+/usr/include/boost/geometry/formulas/result_direct.hpp:
+
+/usr/include/boost/geometry/arithmetic/normalize.hpp:
+
+/usr/include/boost/qvm/gen/vec_mat_operations3.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/intersection.hpp:
+
+/usr/include/boost/geometry/formulas/result_inverse.hpp:
+
+/usr/include/boost/geometry/policies/robustness/robust_point_type.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Point_3_Ray_3_do_intersect.h:
+
+/usr/include/boost/geometry/policies/robustness/rescale_policy_tags.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/side_by_triangle.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/point_in_poly_winding.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/point_in_point.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/expand_segment.hpp:
+
+/usr/include/boost/random/subtract_with_carry.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/expand_point.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/envelope_segment.hpp:
+
+/usr/include/boost/geometry/strategies/expand.hpp:
+
+/usr/include/boost/geometry/algorithms/dispatch/expand.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/indexed.hpp:
+
+/usr/include/boost/geometry/strategies/transform.hpp:
+
+/usr/include/CGAL/Distance_2/Triangle_2_Triangle_2.h:
+
+/usr/include/CGAL/Origin_impl.h:
+
+/usr/include/boost/geometry/views/identity_view.hpp:
+
+/usr/include/boost/geometry/iterators/closing_iterator.hpp:
+
+/usr/include/boost/function_types/detail/components_impl/arity20_1.hpp:
+
+/usr/include/boost/geometry/views/closeable_view.hpp:
+
+/usr/include/boost/fusion/view/iterator_range/detail/segmented_iterator_range.hpp:
+
+/usr/include/CGAL/Intersections_3/internal/Plane_3_Ray_3_intersection.h:
+
+/usr/include/boost/geometry/algorithms/detail/convert_indexed_to_indexed.hpp:
+
+/usr/include/CGAL/memory.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
+
+/usr/include/boost/mpl/set/aux_/empty_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/for_each.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/transform_units.hpp:
+
+/usr/include/boost/geometry/views/detail/indexed_point_view.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/initialize.hpp:
+
+/usr/include/boost/predef/architecture/z.h:
+
+/usr/include/boost/geometry/strategies/cartesian/disjoint_box_box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/sort_by_side.hpp:
+
+/usr/include/boost/mpl/begin.hpp:
+
+/usr/include/boost/geometry/util/promote_integral.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/iterator_selector.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/recalculate.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/equals/point_point.hpp:
+
+/usr/include/CGAL/Sqrt_extension.h:
+
+/usr/include/boost/geometry/strategies/cartesian/intersection.hpp:
+
+/usr/include/boost/geometry/strategies/side.hpp:
+
+/usr/include/CGAL/Intersections_2/Ray_2_Segment_2.h:
+
+/usr/include/boost/integer/common_factor_rt.hpp:
+
+/usr/include/boost/rational.hpp:
+
+/usr/include/boost/fusion/algorithm/iteration/fold.hpp:
+
+/usr/include/boost/geometry/policies/robustness/segment_ratio.hpp:
+
+/usr/include/boost/type_traits/remove_volatile.hpp:
+
+/usr/include/boost/tuple/tuple.hpp:
+
+/usr/include/boost/geometry/policies/relate/tupled.hpp:
+
+/usr/include/boost/predef/compiler/metrowerks.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/follow.hpp:
+
+/usr/include/boost/geometry/util/select_calculation_type.hpp:
+
+/usr/include/boost/geometry/policies/relate/direction.hpp:
+
+/usr/include/boost/geometry/algorithms/clear.hpp:
+
+/usr/include/boost/mpl/aux_/front_impl.hpp:
+
+/usr/include/boost/mpl/front.hpp:
+
+/usr/include/boost/geometry/core/assert.hpp:
+
+/usr/include/boost/geometry/util/range.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/counting.hpp:
+
+/usr/include/boost/geometry/algorithms/num_interior_rings.hpp:
+
+/usr/include/boost/variant/static_visitor.hpp:
+
+/usr/include/boost/variant/detail/apply_visitor_delayed.hpp:
+
+/usr/include/boost/multiprecision/traits/is_restricted_conversion.hpp:
+
+/usr/include/boost/variant/detail/apply_visitor_binary.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
+
+/usr/include/boost/type_traits/copy_reference.hpp:
+
+/usr/include/boost/type_traits/copy_cv.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/segment_box.hpp:
+
+/usr/include/boost/utility/swap.hpp:
+
+/usr/include/boost/range/sub_range.hpp:
+
+/usr/include/boost/geometry/algorithms/append.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/assign_values.hpp:
+
+/usr/include/CGAL/number_utils_classes.h:
+
+/usr/include/boost/geometry/geometries/concepts/segment_concept.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/ring_concept.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/polygon_concept.hpp:
+
+/usr/include/boost/range/pointer.hpp:
+
+/usr/include/boost/range/category.hpp:
+
+/usr/include/CGAL/utils_classes.h:
+
+/usr/include/boost/geometry/geometries/variant.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/multi_point_concept.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/linestring_concept.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/box_concept.hpp:
+
+/usr/include/boost/variant/detail/substitute_fwd.hpp:
+
+/usr/include/boost/function_types/detail/pp_variate_loop/preprocessed.hpp:
+
+/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+
+/usr/include/boost/preprocessor/enum_shifted_params.hpp:
+
+/usr/include/boost/preprocessor/enum_params.hpp:
+
+/usr/include/CGAL/kernel_assertions.h:
+
+/usr/include/boost/preprocessor/repetition/enum.hpp:
+
+/usr/include/boost/preprocessor/enum.hpp:
+
+/usr/include/boost/variant/variant_fwd.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h:
+
+/usr/include/boost/geometry/geometries/concepts/check.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/assign_indexed_point.hpp:
+
+/usr/include/CGAL/Aff_transformation_3.h:
+
+/usr/include/boost/geometry/geometries/segment.hpp:
+
+/usr/include/boost/geometry/strategies/intersection_strategies.hpp:
+
+/usr/include/boost/geometry/strategies/within.hpp:
+
+/usr/include/boost/geometry/strategies/intersection.hpp:
+
+/usr/include/boost/geometry/strategies/disjoint.hpp:
+
+/usr/include/boost/geometry/strategies/densify.hpp:
+
+/usr/include/CGAL/Sqrt_extension/Wang_traits.h:
+
+/usr/include/boost/geometry/strategies/covered_by.hpp:
+
+/usr/include/boost/geometry/strategies/convex_hull.hpp:
+
+/usr/include/boost/mpl/min_max.hpp:
+
+/usr/include/boost/fusion/mpl/clear.hpp:
+
+/usr/include/boost/qvm/detail/mat_assign.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/expand_segment.hpp:
+
+/usr/include/boost/mpl/min.hpp:
+
+/usr/include/boost/mpl/set/aux_/set0.hpp:
+
+/usr/include/boost/geometry/strategies/compare.hpp:
+
+/usr/include/boost/geometry/strategies/tags.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
+
+/usr/include/c++/11/ext/slist:
+
+/usr/include/boost/geometry/strategies/strategies.hpp:
+
+/usr/include/boost/geometry/util/for_each_coordinate.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/point_concept.hpp:
+
+/usr/include/boost/detail/call_traits.hpp:
+
+/usr/include/boost/call_traits.hpp:
+
+/usr/include/boost/geometry/core/radius.hpp:
+
+/usr/include/boost/math/policies/error_handling.hpp:
+
+/usr/include/boost/integer_fwd.hpp:
+
+/usr/include/CGAL/Alpha_shape_2.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/quadmath.h:
+
+/usr/include/boost/math/tools/real_cast.hpp:
+
+/usr/include/boost/math/special_functions/fpclassify.hpp:
+
+/usr/include/CGAL/intersections.h:
+
+/usr/include/boost/math/special_functions/detail/fp_traits.hpp:
+
+/usr/include/boost/config/no_tr1/complex.hpp:
+
+/usr/include/boost/math/tools/promotion.hpp:
+
+/usr/include/boost/math/special_functions/math_fwd.hpp:
+
+/usr/include/boost/type_traits/has_unary_minus.hpp:
+
+/usr/include/boost/math/special_functions/sign.hpp:
+
+/usr/include/CGAL/Needs_parens_as_product.h:
+
+/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
+
+/usr/include/boost/lexical_cast/detail/converter_lexical_streams.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/linear_linear.hpp:
 
 /usr/include/glib-2.0/glib/gdate.h:
 
@@ -10825,6 +12838,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/glib-2.0/glib/gerror.h:
 
+/usr/include/boost/geometry/util/add_const_if_c.hpp:
+
 /usr/include/glib-2.0/glib/gversionmacros.h:
 
 /usr/include/CGAL/Kernel/hash_functions.h:
@@ -10848,6 +12863,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
+
+/usr/include/boost/geometry/core/exception.hpp:
 
 /usr/include/glib-2.0/glib/galloca.h:
 
@@ -10879,6 +12896,10 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp:
 
+/usr/include/boost/geometry/index/detail/algorithms/is_valid.hpp:
+
+/usr/include/boost/mpl/set/aux_/at_impl.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__builder.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp:
@@ -10887,11 +12908,19 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Plane_3_do_intersect.h:
 
+/usr/include/boost/geometry/index/detail/bounded_view.hpp:
+
+/usr/include/boost/function_types/property_tags.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__struct.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp:
 
+/usr/include/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp:
+
+/usr/include/boost/function/detail/function_iterate.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
 
@@ -10907,6 +12936,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl/rcl/error_handling.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/self_turn_points.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_wait_set_mask.hpp:
 
 /usr/include/c++/11/bits/stl_numeric.h:
@@ -10919,6 +12950,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/hash_bytes.h:
 
+/usr/include/boost/mpl/size_t_fwd.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__type_support.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__builder.hpp:
@@ -10930,6 +12963,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/transform_stamped.hpp:
 
@@ -10972,6 +13007,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/node_options.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/distance_cross_track_box_box.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_waitables_interface.hpp:
 
@@ -11019,11 +13056,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/dynamic_storage.hpp:
 
+/usr/include/boost/geometry/strategies/default_comparable_distance_result.hpp:
+
 /usr/include/glib-2.0/glib/gdatetime.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__struct.hpp:
 
 /usr/include/boost/math/special_functions/next.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/boundary_checker.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/relate/relate_impl.hpp:
 
 /usr/include/c++/11/bits/concept_check.h:
 
@@ -11037,6 +13080,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
 
+/usr/include/boost/geometry/strategies/spherical/distance_segment_box.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/integer_range__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h:
@@ -11049,9 +13094,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/future_return_code.hpp:
 
+/usr/include/boost/algorithm/string/formatter.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/is_ros_compatible_type.hpp:
 
 /usr/include/CGAL/Sqrt_extension/Scalar_factor_traits.h:
+
+/usr/include/boost/geometry/index/detail/rtree/linear/redistribute_elements.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/util/ForwardDeclarations.h:
 
@@ -11062,6 +13111,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextformat.h:
+
+/usr/include/boost/integer.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_projected_point_ax.hpp:
 
 /opt/ros/humble/include/rcpputils/rcpputils/thread_safety_annotations.hpp:
 
@@ -11111,11 +13166,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/partition.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h:
+
+/usr/include/boost/algorithm/string/detail/util.hpp:
 
 /usr/include/c++/11/bits/stl_list.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__type_support.hpp:
+
+/usr/include/boost/geometry/algorithms/dispatch/is_simple.hpp:
 
 /usr/include/c++/11/tr1/bessel_function.tcc:
 
@@ -11135,11 +13196,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_payload.hpp:
 
+/usr/include/boost/geometry/algorithms/touches.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/synchronization_policy_common.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_options.hpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
+
+/usr/include/boost/geometry/index/equal_to.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp:
 
@@ -11155,9 +13220,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_content_filter_options.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/within/point_in_geometry.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp:
 
 /usr/include/boost/mpl/aux_/config/dtp.hpp:
 
@@ -11165,11 +13234,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/buffer_implementation_base.hpp:
 
+/usr/include/boost/geometry/strategies/spherical/envelope_multipoint.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process_base.hpp:
+
+/usr/include/boost/function_types/detail/pp_tags/cc_tag.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/intra_process_manager.hpp:
 
 /usr/include/boost/type_traits/add_pointer.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/index.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/serialized_message.hpp:
 
@@ -11209,7 +13284,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/network_flow_endpoint.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/turn_info.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess:
+
+/usr/include/boost/geometry/strategies/distance.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h:
 
@@ -11231,9 +13310,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
 
+/usr/include/boost/geometry/io/wkt/write.hpp:
+
 /usr/include/eigen3/Eigen/src/LU/InverseImpl.h:
 
+/usr/include/boost/geometry/algorithms/assign.hpp:
+
 /opt/ros/humble/include/rcl/rcl/logging_rosout.h:
+
+/usr/include/boost/geometry/algorithms/detail/relate/turns.hpp:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp:
 
@@ -11249,6 +13334,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__struct.hpp:
 
+/usr/include/boost/geometry/algorithms/convert.hpp:
+
 /usr/include/pcl-1.12/pcl/PCLPointField.h:
 
 /usr/include/c++/11/bits/locale_facets_nonio.tcc:
@@ -11263,6 +13350,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/shared_ptr_atomic.h:
 
+/usr/include/boost/function_types/detail/pp_arity_loop.hpp:
+
 /opt/ros/humble/include/rcutils/rcutils/visibility_control_macros.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp:
@@ -11275,15 +13364,23 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
+/usr/include/boost/geometry/iterators/dispatch/point_iterator.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/utilities.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/logging_macros.h:
+
+/usr/include/boost/geometry/policies/disjoint_interrupt_policy.hpp:
+
+/usr/include/boost/mpl/bitand.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_base_interface.hpp:
 
 /usr/include/CGAL/Cartesian/point_constructions_2.h:
 
 /opt/ros/humble/include/rcpputils/rcpputils/visibility_control.hpp:
+
+/usr/include/boost/geometry/policies/robustness/no_rescale_policy.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/function_traits.hpp:
 
@@ -11303,6 +13400,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Intersections_3/internal/Ray_3_Ray_3_intersection.h:
 
+/usr/include/boost/geometry/algorithms/comparable_distance.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
@@ -11310,6 +13409,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/gstreamer-1.0/gst/gstquery.h:
 
 /usr/include/CGAL/Cartesian/predicates_on_planes_3.h:
+
+/usr/include/boost/geometry/strategies/cartesian/envelope_point.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/MathFunctions.h:
 
@@ -11339,7 +13440,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/kdl/utilities/kdl-config.h:
 
+/usr/include/boost/geometry/algorithms/not_implemented.hpp:
+
 /usr/include/glib-2.0/glib/gnode.h:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/interface.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/buffered_piece_collection.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/contexts/default_context.hpp:
 
@@ -11356,6 +13463,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/macros.hpp:
 
 /usr/include/boost/mpl/push_back_fwd.hpp:
+
+/usr/include/boost/geometry/strategies/relate.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp:
 
@@ -11375,13 +13484,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/support/iterator_base.hpp:
 
+/usr/include/boost/geometry/formulas/interpolate_point_spherical.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h:
 
 /usr/include/c++/11/complex:
-
-/usr/include/boost/type_traits/has_unary_minus.hpp:
-
-/usr/include/boost/math/special_functions/sign.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp:
 
@@ -11400,6 +13507,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__type_support.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__type_support.hpp:
+
+/usr/include/boost/geometry/algorithms/num_points.hpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -11425,6 +13534,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/detail/generator_bits.hpp:
 
+/usr/include/boost/geometry/core/mutable_range.hpp:
+
 /opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
@@ -11447,17 +13558,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp:
 
+/usr/include/boost/geometry/index/detail/algorithms/path_intersection.hpp:
+
+/usr/include/boost/geometry/formulas/area_formulas.hpp:
+
 /opt/ros/humble/include/rmw/rmw/time.h:
 
 /usr/include/boost/functional/hash_fwd.hpp:
 
 /opt/ros/humble/include/rmw/rmw/serialized_message.h:
-
-/usr/include/gdal/cpl_json.h:
-
-/usr/include/gstreamer-1.0/gst/gstutils.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h:
 
 /usr/include/CGAL/Residue.h:
 
@@ -11487,6 +13596,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/handle_self_turns.hpp:
+
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/parser.h:
 
 /opt/ros/humble/include/rcutils/rcutils/types/string_array.h:
@@ -11496,6 +13607,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_enable_topic_statistics.hpp:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/boost/config/no_tr1/functional.hpp:
+
+/usr/include/boost/math/special_functions/detail/round_fwd.hpp:
+
+/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
 
 /usr/include/boost/predef/platform/mingw64.h:
 
@@ -11523,13 +13640,19 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/range/iterator_range.hpp:
 
+/usr/include/boost/intrusive/detail/has_member_function_callable_with.hpp:
+
 /usr/include/kdl/frames.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/point_to_geometry.hpp:
 
 /opt/ros/humble/include/rcl/rcl/types.h:
 
 /usr/include/gstreamer-1.0/gst/gstpreset.h:
 
 /usr/include/gdal/cpl_conv.h:
+
+/usr/include/boost/geometry/util/transform_variant.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
 
@@ -11557,13 +13680,23 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/pcl-1.12/pcl/io/file_io.h:
 
+/usr/include/boost/geometry/index/detail/rtree/node/node.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__type_support.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/moving_average.hpp:
 
+/usr/include/boost/function_types/detail/class_transform.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h:
 
 /usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
+
+/usr/include/boost/random/seed_seq.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h:
+
+/usr/include/boost/geometry/core/point_order.hpp:
 
 /opt/ros/humble/include/rmw/rmw/ret_types.h:
 
@@ -11615,9 +13748,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/container/detail/std_fwd.hpp:
 
+/usr/include/boost/geometry/formulas/meridian_inverse.hpp:
+
 /usr/include/c++/11/cwctype:
 
+/usr/include/boost/function/detail/prologue.hpp:
+
+/usr/include/boost/geometry/geometries/concepts/multi_polygon_concept.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h:
+
+/usr/include/boost/function_types/detail/pp_retag_default_cc/preprocessed.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
 
@@ -11649,6 +13790,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/is_valid/is_acceptable_turn.hpp:
+
 /opt/ros/humble/include/rcl/rcl/client.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__struct.hpp:
@@ -11660,6 +13803,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/equals/collect_vectors.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:
 
@@ -11685,6 +13830,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/unistd.h:
 
+/usr/include/boost/algorithm/string/find_format.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
 
 /usr/include/boost/predef/hardware/simd/x86_amd/versions.h:
@@ -11697,9 +13844,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/random/triangle_distribution.hpp:
 
+/usr/include/boost/mpl/set/aux_/clear_impl.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
+
+/usr/include/boost/geometry/formulas/vertex_latitude.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
 
@@ -11717,9 +13868,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
+/usr/include/boost/geometry/algorithms/perimeter.hpp:
 
-/usr/include/boost/math/tools/promotion.hpp:
+/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -11773,6 +13924,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox:
 
+/usr/include/boost/geometry/strategies/geographic/side_andoyer.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h:
 
 /usr/include/gstreamer-1.0/gst/video/gstvideofilter.h:
@@ -11801,6 +13954,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h:
 
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_begin_impl.hpp:
+
+/usr/include/boost/lexical_cast/detail/inf_nan.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/apply_fwd.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h:
 
 /usr/include/glib-2.0/glib/ghostutils.h:
@@ -11827,13 +13986,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/CGAL/Lazy_exact_nt.h:
 
+/usr/include/boost/move/detail/to_raw_pointer.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/parameter.hpp:
+
+/usr/include/boost/geometry/index/detail/algorithms/margin.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/rate.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_use_intra_process.hpp:
-
-/usr/include/boost/math/special_functions/fpclassify.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h:
 
@@ -11845,11 +14006,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/plugins/BlockMethods.h:
 
+/usr/include/boost/qvm/map_mat_vec.hpp:
+
 /usr/include/c++/11/bits/std_thread.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/is_self_turn.hpp:
 
 /usr/include/gstreamer-1.0/gst/gstversion.h:
 
 /usr/include/c++/11/optional:
+
+/usr/include/boost/geometry/algorithms/detail/interior_iterator.hpp:
 
 /usr/include/c++/11/future:
 
@@ -11878,6 +14045,10 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/boost/fusion/algorithm/transformation/pop_back.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h:
+
+/usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__traits.hpp:
 
@@ -11908,6 +14079,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h:
 
 /usr/include/glib-2.0/glib/gatomic.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_intersection_points.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h:
 
@@ -11943,11 +14116,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/fusion/view/joint_view/detail/next_impl.hpp:
 
+/usr/include/boost/qvm/gen/mat_assign2.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h:
 
 /usr/include/c++/11/bits/erase_if.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_side_straight.hpp:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/offered_deadline_missed.h:
 
@@ -11969,6 +14146,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
 
+/usr/include/boost/algorithm/string/detail/replace_storage.hpp:
+
 /usr/include/c++/11/random:
 
 /usr/include/boost/mpl/greater_equal.hpp:
@@ -11977,7 +14156,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/eigen3/Eigen/src/StlSupport/StdVector.h:
 
-/usr/include/boost/mpl/min_max.hpp:
+/usr/include/boost/geometry/algorithms/detail/signed_size_type.hpp:
+
+/usr/include/boost/detail/basic_pointerbuf.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h:
 
 /usr/include/CGAL/Simple_cartesian.h:
 
@@ -12037,6 +14220,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/glib-2.0/gobject/gboxed.h:
 
+/usr/include/boost/geometry/algorithms/detail/closest_feature/point_to_range.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/functors/TernaryFunctors.h:
 
 /usr/include/c++/11/bits/cpp_type_traits.h:
@@ -12057,7 +14242,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/c++/11/bits/random.tcc:
 
+/usr/include/boost/geometry/util/parameter_type_of.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/uio_lim.h:
+
+/usr/include/boost/geometry/algorithms/detail/distance/box_to_box.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/linear_or_areal_to_areal.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsizepolicy.h:
 
@@ -12069,13 +14260,19 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/type_traits/has_pre_increment.hpp:
 
+/usr/include/boost/smart_ptr/scoped_ptr.hpp:
+
 /usr/include/c++/11/bits/locale_facets.tcc:
 
 /usr/include/boost/type_traits/has_logical_and.hpp:
 
+/usr/include/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp:
+
 /usr/include/gstreamer-1.0/gst/gstdynamictypefactory.h:
 
 /usr/include/boost/predef/hardware/simd/x86/versions.h:
+
+/usr/include/boost/qvm/scalar_traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
 
@@ -12115,6 +14312,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /usr/include/boost/core/no_exceptions_support.hpp:
 
+/usr/include/boost/geometry/policies/compare.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/Select.h:
 
 /usr/include/c++/11/bits/locale_classes.h:
@@ -12123,9 +14322,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h:
 
+/usr/include/boost/geometry/strategies/geographic/distance_andoyer.hpp:
+
+/usr/include/boost/geometry/views/detail/points_view.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h:
+
+/usr/include/boost/geometry/algorithms/detail/covered_by/interface.hpp:
 
 /usr/include/boost/mpl/vector/aux_/O1_size.hpp:
 
@@ -12191,6 +14396,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
 
+/usr/include/boost/geometry/strategies/concepts/convex_hull_concept.hpp:
+
 /usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h:
@@ -12220,8 +14427,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/cstddef:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsettings.h:
-
-/usr/include/c++/11/bits/hashtable_policy.h:
 
 /usr/include/CGAL/Tools/chained_map.h:
 
@@ -12289,7 +14494,11 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/vector/aux_/clear.hpp:
 
+/usr/include/boost/geometry/strategies/spherical/densify.hpp:
+
 /usr/include/x86_64-linux-gnu/sys/types.h:
+
+/usr/include/boost/mpl/set/set20.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
@@ -12311,11 +14520,19 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/error_t.h:
 
+/usr/include/boost/geometry/algorithms/detail/relate/linear_linear.hpp:
+
+/usr/include/boost/mpl/set/aux_/erase_key_impl.hpp:
+
+/usr/include/boost/geometry/core/topological_dimension.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h:
 
 /usr/include/boost/fusion/iterator/value_of.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/equals/implementation.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcore-config.h:
 
@@ -12333,6 +14550,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/asm/posix_types_64.h:
 
+/usr/include/boost/function_types/config/compiler.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
 /usr/include/CGAL/Object.h:
@@ -12347,9 +14566,9 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl/rcl/event.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h:
+/usr/include/boost/geometry/policies/is_valid/default_policy.hpp:
 
-/usr/include/pcl-1.12/pcl/io/ply_io.h:
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h:
 
 /usr/include/CGAL/Dimension.h:
 
@@ -12369,6 +14588,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qprogressbar.h:
 
+/usr/include/boost/geometry/strategies/spherical/disjoint_box_box.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
@@ -12381,17 +14602,25 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
+/usr/include/boost/container/detail/destroyers.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/util/Meta.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h:
 
 /usr/include/CGAL/Distance_3/Segment_3_Line_3.h:
 
+/usr/include/boost/geometry/algorithms/dispatch/is_valid.hpp:
+
 /usr/include/c++/11/vector:
 
 /usr/include/boost/mpl/aux_/traits_lambda_spec.hpp:
 
 /usr/include/boost/fusion/container/list/detail/value_at_impl.hpp:
+
+/usr/include/boost/geometry/algorithms/unique.hpp:
+
+/usr/include/boost/intrusive/detail/iterator.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp:
 
@@ -12407,10 +14636,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon_stamped__traits.hpp:
 
-/usr/include/boost/type_traits/is_default_constructible.hpp:
-
-/usr/include/c++/11/typeinfo:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h:
 
 /opt/ros/humble/include/rcutils/rcutils/shared_library.h:
@@ -12424,6 +14649,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/bits/stl_uninitialized.h:
 
 /usr/include/CGAL/Triangle_2.h:
+
+/usr/include/boost/geometry/strategies/geographic/distance_cross_track_point_box.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h:
 
@@ -12439,7 +14666,11 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/config/user.hpp:
 
+/usr/include/boost/mpl/set/aux_/has_key_impl.hpp:
+
 /usr/include/boost/iterator/detail/config_def.hpp:
+
+/usr/include/boost/geometry/algorithms/discrete_frechet_distance.hpp:
 
 /usr/include/c++/11/bits/streambuf.tcc:
 
@@ -12470,6 +14701,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/integer/static_log2.hpp:
 
 bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
+
+/usr/include/boost/geometry/algorithms/detail/distance/implementation.hpp:
 
 /usr/include/stdc-predef.h:
 
@@ -12503,6 +14736,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication:
 
+/usr/include/boost/geometry/io/svg/write.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h:
@@ -12512,6 +14747,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/CGAL/Cartesian/Iso_rectangle_2.h:
 
 /usr/include/boost/move/detail/workaround.hpp:
+
+/usr/include/boost/geometry/strategies/comparable_distance_result.hpp:
 
 /usr/include/boost/preprocessor/variadic/size.hpp:
 
@@ -12529,7 +14766,11 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/CGAL/Hilbert_sort_3.h:
 
+/usr/include/boost/geometry/algorithms/detail/covered_by/implementation.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
+/usr/include/boost/geometry/arithmetic/cross_product.hpp:
 
 /usr/include/gstreamer-1.0/gst/gstmeta.h:
 
@@ -12543,11 +14784,19 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/CGAL/Plane_3.h:
 
+/usr/include/boost/geometry/arithmetic/infinite_line_functions.hpp:
+
+/usr/include/boost/qvm/mat_operations.hpp:
+
 /opt/ros/humble/include/rcl/rcl/graph.h:
 
 /usr/include/features.h:
 
+/usr/include/boost/qvm/vec_mat_operations.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/sigstack.h:
+
+/usr/include/boost/geometry/algorithms/difference.hpp:
 
 /usr/include/c++/11/ext/numeric_traits.h:
 
@@ -12587,8 +14836,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
-/usr/include/boost/math/tools/real_cast.hpp:
-
 /usr/include/boost/math/tools/toms748_solve.hpp:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
@@ -12598,6 +14845,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
 
 /usr/include/c++/11/debug/debug.h:
+
+/usr/include/boost/geometry/iterators/detail/segment_iterator/value_type.hpp:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h:
 
@@ -12613,7 +14862,11 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/CGAL/Point_3.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_for_endpoint.hpp:
+
 /usr/include/boost/preprocessor/list/detail/fold_right.hpp:
+
+/usr/include/boost/qvm/vec_mat_operations2.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:
 
@@ -12627,11 +14880,15 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/boost/preprocessor/seq/for_each.hpp:
 
+/usr/include/boost/geometry/strategies/cartesian/envelope.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Segment_3_do_intersect.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+
+/usr/include/boost/algorithm/string/detail/find_format.hpp:
 
 /usr/include/c++/11/ext/atomicity.h:
 
@@ -12644,6 +14901,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface_traits.hpp:
 
 /usr/include/boost/predef/compiler/iar.h:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/has_invalid_coordinate.hpp:
 
 /usr/include/boost/mpl/greater.hpp:
 
@@ -12677,6 +14936,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/c++/11/bits/functexcept.h:
 
+/usr/include/boost/geometry/geometries/point.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
 
 /usr/include/c++/11/array:
@@ -12690,6 +14951,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /usr/include/boost/integer/integer_mask.hpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_pythagoras.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList:
 
@@ -12715,8 +14978,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /opt/ros/humble/include/rmw/rmw/visibility_control.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox:
-
 /usr/include/boost/predef/hardware/simd/ppc/versions.h:
 
 /usr/include/c++/11/type_traits:
@@ -12737,9 +14998,13 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
 
+/usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector20_c.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h:
+
+/usr/include/boost/move/detail/iterator_traits.hpp:
 
 /usr/include/pthread.h:
 
@@ -12785,9 +15050,11 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/c++/11/bits/move.h:
 
-/usr/include/boost/mpl/insert_range.hpp:
-
 /usr/include/CGAL/basic.h:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/has_spikes.hpp:
+
+/usr/include/boost/mpl/insert_range.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h:
 
@@ -12831,11 +15098,15 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/CGAL/Intersections_3/Plane_3_Triangle_3.h:
 
+/usr/include/boost/geometry/strategies/geographic/envelope_segment.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qkeysequence.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h:
 
 /usr/include/eigen3/Eigen/src/Geometry/Transform.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_distance_measure.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_period.hpp:
 
@@ -12873,13 +15144,21 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/eigen3/Eigen/src/StlSupport/details.h:
 
+/usr/include/boost/bind/mem_fn_cc.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h:
 
 /usr/include/c++/11/bits/exception_ptr.h:
 
+/usr/include/boost/geometry/algorithms/detail/is_valid/linear.hpp:
+
+/usr/include/boost/range/reference.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject_impl.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
+
+/usr/include/boost/geometry/algorithms/convex_hull.hpp:
 
 bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
@@ -12900,6 +15179,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSpinBox:
+
+/usr/include/boost/geometry/algorithms/transform.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qinputmethod.h:
 
@@ -12937,9 +15218,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_base.hpp:
 
-/usr/include/boost/config/no_tr1/complex.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h:
+
+/usr/include/boost/qvm/detail/determinant_impl.hpp:
+
+/usr/include/boost/geometry/arithmetic/arithmetic.hpp:
 
 /usr/include/c++/11/bits/functional_hash.h:
 
@@ -12956,6 +15239,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
 
 /usr/include/boost/range/iterator_range_io.hpp:
+
+/usr/include/boost/geometry/strategies/azimuth.hpp:
 
 /usr/include/c++/11/bits/invoke.h:
 
@@ -12979,6 +15264,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qpushbutton.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/ring_properties.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h:
 
 /usr/include/boost/predef/platform/windows_uwp.h:
@@ -12992,6 +15279,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/type_traits/is_member_function_pointer.hpp:
 
 /usr/include/CGAL/Convex_hull_2/ch_bykat_impl.h:
+
+/usr/include/boost/geometry/strategies/spherical/line_interpolate.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgroupbox.h:
 
@@ -13057,11 +15346,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/integer/static_min_max.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/has_self_intersections.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/ReturnByValue.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
 
 /usr/include/signal.h:
+
+/usr/include/boost/geometry/algorithms/is_valid.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/guard_condition.hpp:
 
@@ -13089,6 +15382,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/Quaternion.h:
 
+/usr/include/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp:
+
 /usr/include/boost/mpl/comparison.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/set_parameters_atomically.hpp:
@@ -13105,11 +15400,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
+/usr/include/boost/geometry/index/detail/rtree/visitors/distance_query.hpp:
+
 /usr/include/boost/type_traits/add_cv.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h:
+
+/usr/include/boost/range.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
 
@@ -13173,11 +15472,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends:
 
+/usr/include/boost/geometry/geometries/point_xy.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/set_parameters_result.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h:
+
+/usr/include/boost/move/algo/detail/merge_sort.hpp:
 
 /usr/include/c++/11/bits/unordered_map.h:
 
@@ -13186,6 +15489,12 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/gstreamer-1.0/gst/video/gstvideotimecode.h:
 
 /usr/include/CGAL/Intersections_3/internal/Sphere_3_Sphere_3_do_intersect.h:
+
+/usr/include/boost/get_pointer.hpp:
+
+/usr/include/boost/algorithm/string/std/list_traits.hpp:
+
+/usr/include/boost/geometry/algorithms/is_empty.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h:
 
@@ -13215,6 +15524,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
 
+/usr/include/boost/geometry/algorithms/detail/is_valid/has_valid_self_turns.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qwindowdefs.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h:
@@ -13243,6 +15554,12 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayout.h:
 
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Compare_y_2.h:
+
+/usr/include/CGAL/Intersections_3/Plane_3_Ray_3.h:
+
+/usr/include/boost/math/tools/convert_from_string.hpp:
+
 /usr/include/CGAL/Intersections_3/Line_3_Plane_3.h:
 
 /usr/include/boost/random/poisson_distribution.hpp:
@@ -13250,6 +15567,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h:
 
 /usr/include/c++/11/tr1/exp_integral.tcc:
+
+/usr/include/boost/geometry/formulas/spherical.hpp:
 
 /usr/include/boost/mpl/limits/vector.hpp:
 
@@ -13262,6 +15581,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/inconsistent_turns_exception.hpp:
 
 /usr/include/boost/predef/library/c/gnu.h:
 
@@ -13305,6 +15626,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/predef/compiler/comeau.h:
 
+/usr/include/boost/geometry/views/detail/range_type.hpp:
+
 /usr/include/c++/11/bits/list.tcc:
 
 /usr/include/boost/type_traits/is_nothrow_move_assignable.hpp:
@@ -13317,6 +15640,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h:
 
+/usr/include/boost/function/function_template.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_graph_interface.hpp:
@@ -13324,6 +15649,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qrubberband.h:
 
 /usr/include/x86_64-linux-gnu/bits/xopen_lim.h:
+
+/usr/include/boost/geometry/index/detail/config_begin.hpp:
 
 /usr/include/boost/mpl/list/aux_/include_preprocessed.hpp:
 
@@ -13335,11 +15662,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h:
 
+/usr/include/boost/geometry/algorithms/detail/intersection/box_box.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/service.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/quadratic/quadratic.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h:
 
 /usr/include/CGAL/mpq_class.h:
+
+/usr/include/boost/geometry/algorithms/buffer.hpp:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
 
@@ -13349,9 +15682,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_value.hpp:
 
+/usr/include/boost/bind/mem_fn.hpp:
+
 /usr/include/boost/mpl/inserter.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp:
+
+/usr/include/boost/container/throw_exception.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/Array.h:
 
@@ -13375,7 +15712,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
 
+/usr/include/boost/geometry/algorithms/detail/distance/segment_to_segment.hpp:
+
 /usr/include/c++/11/bits/stl_tree.h:
+
+/usr/include/boost/token_iterator.hpp:
+
+/usr/include/boost/geometry/strategies/side_info.hpp:
 
 /usr/include/c++/11/bits/stl_map.h:
 
@@ -13401,7 +15744,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/predef/compiler/pgi.h:
 
+/usr/include/boost/geometry/core/access.hpp:
+
 /usr/include/glib-2.0/gobject/gparamspecs.h:
+
+/usr/include/boost/geometry/strategies/normalize.hpp:
 
 /opt/ros/humble/include/rmw/rmw/incompatible_qos_events_statuses.h:
 
@@ -13410,6 +15757,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/c++/11/bits/locale_facets.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h:
+
+/usr/include/boost/geometry/index/detail/rtree/query_iterators.hpp:
 
 /usr/include/boost/date_time/gregorian/greg_date.hpp:
 
@@ -13435,7 +15784,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Intersections_2/Iso_rectangle_2_Point_2.h:
 
+/usr/include/boost/container/detail/variadic_templates_tools.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h:
+
+/usr/include/boost/geometry/strategies/agnostic/point_in_point.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qcolor.h:
 
@@ -13444,6 +15797,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point32__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qrgb.h:
+
+/usr/include/boost/container/detail/min_max.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/ss_flags.h:
 
@@ -13467,6 +15822,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h:
 
+/usr/include/boost/geometry/geometries/concepts/multi_linestring_concept.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpen.h:
 
 /usr/include/CGAL/Bbox_3.h:
@@ -13476,6 +15833,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/rcl/rcl/node.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtransform.h:
+
+/usr/include/boost/geometry/policies/relate/intersection_points.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h:
 
@@ -13494,6 +15853,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/tracetools/tracetools/utils.hpp:
 
 /usr/include/pcl-1.12/pcl/for_each_type.h:
+
+/usr/include/boost/function_types/detail/pp_tags/preprocessed.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
 
@@ -13541,6 +15902,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qcursor.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/handle_colocations.hpp:
+
 /usr/include/boost/smart_ptr/detail/sp_nullptr_t.hpp:
 
 /opt/ros/humble/include/rmw/rmw/event_callback_type.h:
@@ -13569,11 +15932,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/operators.hpp:
 
+/usr/include/boost/geometry/util/select_coordinate_type.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h:
 
 /usr/include/boost/interprocess/detail/posix_time_types_wrk.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout:
+
+/usr/include/boost/core/pointer_traits.hpp:
 
 /usr/include/glib-2.0/glib/gslist.h:
 
@@ -13589,13 +15956,23 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStatusBar:
 
+/usr/include/boost/mpl/pair_view.hpp:
+
+/usr/include/boost/lexical_cast/detail/converter_numeric.hpp:
+
 /usr/include/CGAL/Intersections_3/Sphere_3_Sphere_3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLabel:
 
 /usr/include/boost/foreach.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/segment_identifier.hpp:
+
+/usr/include/boost/type_traits/is_constructible.hpp:
+
 /usr/include/boost/lexical_cast/detail/widest_char.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/append_no_dups_or_spikes.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h:
 
@@ -13610,6 +15987,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/concept_check.hpp:
 
 /usr/include/boost/fusion/iterator/advance.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/parameters.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h:
 
@@ -13653,6 +16032,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox:
 
+/usr/include/boost/geometry/algorithms/detail/make/make.hpp:
+
 /usr/include/boost/preprocessor/punctuation/comma.hpp:
 
 /usr/include/boost/math/special_functions/atanh.hpp:
@@ -13667,9 +16048,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/integral_c_fwd.hpp:
 
+/usr/include/boost/geometry/util/math.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h:
 
 /usr/include/pcl-1.12/pcl/common/copy_point.h:
+
+/usr/include/boost/range/detail/range_return.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/qos_overriding_options.hpp:
 
@@ -13715,6 +16100,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameters__struct.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/point_on_border.hpp:
+
+/usr/include/boost/geometry/views/reversible_view.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/minus.hpp:
@@ -13724,6 +16113,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h:
 
 /usr/include/boost/preprocessor/logical/bitand.hpp:
+
+/usr/include/boost/geometry/index/parameters.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
 
@@ -13739,6 +16130,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/preprocessor/identity.hpp:
 
+/usr/include/boost/geometry/geometries/infinite_line.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter:
 
 /usr/include/boost/fusion/sequence/intrinsic/empty.hpp:
@@ -13747,6 +16140,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_event__builder.hpp:
 
+/usr/include/boost/geometry/index/rtree.hpp:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
@@ -13754,6 +16149,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h:
+
+/usr/include/boost/geometry/srs/sphere.hpp:
 
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
 
@@ -13775,11 +16172,19 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/c++/11/bits/allocated_ptr.h:
 
+/usr/include/boost/geometry/core/tag.hpp:
+
 /usr/include/boost/static_assert.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent:
 
+/usr/include/boost/mpl/aux_/preprocessed/gcc/bitand.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h:
+
+/usr/include/boost/geometry/algorithms/detail/relate/areal_areal.hpp:
+
+/usr/include/boost/geometry/strategies/default_area_result.hpp:
 
 /usr/include/eigen3/Eigen/src/plugins/ReshapedMethods.h:
 
@@ -13795,6 +16200,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/vector/aux_/pop_back.hpp:
 
+/usr/include/boost/geometry/algorithms/equals.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h:
 
 /usr/include/c++/11/bits/nested_exception.h:
@@ -13804,6 +16211,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/tf2/tf2/LinearMath/Vector3.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_projected_point.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog:
 
@@ -13828,6 +16237,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/bits/dirent_ext.h:
 
 /usr/include/boost/fusion/container/list/cons_fwd.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/envelope_box.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/fcntl2.h:
 
@@ -13867,6 +16278,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/math/tools/rational.hpp:
 
+/usr/include/boost/geometry/strategies/default_strategy.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h:
@@ -13876,6 +16289,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h:
+
+/usr/include/boost/geometry/algorithms/detail/sections/section_functions.hpp:
 
 /usr/include/boost/mpl/pair.hpp:
 
@@ -13907,6 +16322,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h:
 
+/usr/include/boost/geometry/strategies/geographic/azimuth.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h:
 
 /usr/include/boost/move/utility.hpp:
@@ -13935,15 +16352,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_begin_impl.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/apply_fwd.hpp:
-
-/usr/include/boost/lexical_cast/detail/inf_nan.hpp:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h:
 
+/usr/include/boost/qvm/vec_traits.hpp:
+
 /usr/include/c++/11/locale:
+
+/usr/include/boost/geometry/algorithms/detail/is_simple/failure_policy.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h:
 
@@ -13958,6 +16373,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
+
+/usr/include/boost/geometry/util/normalize_spheroidal_coordinates.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__type_support.hpp:
 
@@ -13979,6 +16396,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/predef/architecture/x86/64.h:
 
+/usr/include/boost/mpl/set/aux_/preprocessed/plain/set10.hpp:
+
 /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp:
 
 /usr/include/boost/fusion/algorithm/transformation/erase_key.hpp:
@@ -13986,6 +16405,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/asm-generic/errno-base.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h:
+
+/usr/include/boost/geometry/io/dsv/write.hpp:
+
+/usr/include/boost/mpl/set/set10.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h:
 
@@ -13998,6 +16421,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/c++/11/bits/std_mutex.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h:
+
+/usr/include/boost/geometry/strategies/spherical/compare.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/centroid_average.hpp:
 
 /usr/include/boost/type_traits/detail/has_binary_operator.hpp:
 
@@ -14016,6 +16443,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/strings.h:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/pointlike_pointlike.hpp:
 
 /usr/include/boost/date_time/date_clock_device.hpp:
 
@@ -14049,6 +16478,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/vector/aux_/back.hpp:
 
+/usr/include/boost/geometry/core/reverse_dispatch.hpp:
+
 /usr/include/glib-2.0/glib/gdir.h:
 
 /usr/include/boost/multiprecision/detail/precision.hpp:
@@ -14061,11 +16492,7 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/c++/11/pstl/glue_memory_defs.h:
 
-/usr/include/boost/fusion/mpl/begin.hpp:
-
-/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h:
-
-/usr/include/boost/type_traits/is_base_and_derived.hpp:
+/usr/include/boost/geometry/policies/robustness/get_rescale_policy.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h:
 
@@ -14100,6 +16527,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/c++/11/bits/ostream.tcc:
 
 /usr/include/glib-2.0/glib/ggettext.h:
+
+/usr/include/boost/geometry/strategies/geographic/side_thomas.hpp:
 
 /usr/include/glib-2.0/glib/ghash.h:
 
@@ -14211,6 +16640,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/glib-2.0/glib/deprecated/gcompletion.h:
 
+/usr/include/boost/geometry/algorithms/detail/throw_on_empty_input.hpp:
+
 /usr/include/eigen3/Eigen/src/Geometry/OrthoMethods.h:
 
 /usr/include/boost/interprocess/permissions.hpp:
@@ -14241,6 +16672,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/glib-2.0/glib-object.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlaps/interface.hpp:
+
 /usr/include/glib-2.0/gobject/gbinding.h:
 
 /usr/include/CGAL/assertions_impl.h:
@@ -14249,15 +16682,19 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/predef/compiler/visualc.h:
 
+/usr/include/boost/mem_fn.hpp:
+
 /usr/include/glib-2.0/gobject/gobject.h:
 
 /usr/include/boost/type_traits/is_object.hpp:
 
 /usr/include/glib-2.0/gobject/gtype.h:
 
-/usr/include/boost/iterator/minimum_category.hpp:
-
 /usr/include/boost/type_traits/is_scoped_enum.hpp:
+
+/usr/include/boost/geometry/policies/robustness/rescale_policy.hpp:
+
+/usr/include/boost/iterator/minimum_category.hpp:
 
 /usr/include/pcl-1.12/pcl/point_struct_traits.h:
 
@@ -14277,6 +16714,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h:
 
+/usr/include/boost/intrusive/detail/config_begin.hpp:
+
 /usr/include/glib-2.0/gobject/gmarshal.h:
 
 /usr/include/glib-2.0/gobject/gtypeplugin.h:
@@ -14293,11 +16732,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/glib-2.0/gobject/gbindinggroup.h:
 
+/usr/include/boost/function/function_fwd.hpp:
+
 /usr/include/glib-2.0/gobject/genums.h:
 
 /usr/include/boost/type_traits/type_identity.hpp:
 
 /usr/include/CGAL/Hilbert_sort_median_3.h:
+
+/usr/include/boost/geometry/algorithms/detail/not.hpp:
 
 /usr/include/glib-2.0/gobject/glib-enumtypes.h:
 
@@ -14324,6 +16767,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h:
 
 /usr/include/gstreamer-1.0/gst/gstbin.h:
+
+/usr/include/boost/geometry/views/detail/two_dimensional_view.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__builder.hpp:
 
@@ -14427,10 +16872,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/gstcontext.h:
 
-/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
-
-/usr/include/boost/math/special_functions/detail/round_fwd.hpp:
-
 /usr/include/gstreamer-1.0/gst/gststreams.h:
 
 /usr/include/gstreamer-1.0/gst/gstdebugutils.h:
@@ -14438,6 +16879,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/preprocessor/detail/is_binary.hpp:
 
 /usr/include/boost/ref.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp:
+
+/usr/include/boost/geometry/strategies/geographic/area.hpp:
 
 /usr/include/gstreamer-1.0/gst/gststreamcollection.h:
 
@@ -14455,6 +16900,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Point_2.h:
 
+/usr/include/boost/geometry/index/detail/rtree/utilities/view.hpp:
+
 /usr/include/pcl-1.12/pcl/pcl_macros.h:
 
 /opt/ros/humble/include/rmw/rmw/network_flow_endpoint.h:
@@ -14463,21 +16910,21 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/gstelementfactory.h:
 
-/usr/include/CGAL/Needs_parens_as_product.h:
-
-/usr/include/boost/lexical_cast/detail/lcast_char_constants.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
 
 /usr/include/boost/core/enable_if.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Ray_3_Segment_3_intersection.h:
 
+/usr/include/boost/qvm/mat_operations2.hpp:
+
 /usr/include/boost/variant/detail/has_result_type.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h:
 
 /usr/include/gstreamer-1.0/gst/gsturi.h:
+
+/usr/include/boost/geometry/strategies/geographic/distance_thomas.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h:
 
@@ -14507,6 +16954,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__type_support.hpp:
 
+/usr/include/boost/fusion/iterator/iterator_adapter.hpp:
+
+/usr/include/boost/geometry/core/point_type.hpp:
+
 /usr/include/CGAL/Kernel/Type_mapper.h:
 
 /usr/include/gstreamer-1.0/gst/gstparamspecs.h:
@@ -14519,6 +16970,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/gstpipeline.h:
 
+/usr/include/boost/geometry/io/io.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp:
 
 /usr/include/gstreamer-1.0/gst/gstpromise.h:
@@ -14526,6 +16979,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolTip:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench__type_support.hpp:
+
+/usr/include/boost/geometry/index/detail/utilities.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point_stamped.hpp:
 
@@ -14535,13 +16990,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/gstparse.h:
 
-/usr/include/boost/mpl/aux_/joint_iter.hpp:
-
 /usr/include/gstreamer-1.0/gst/gstcompat.h:
 
 /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h:
 
 /usr/include/gstreamer-1.0/gst/base/gstbasesink.h:
+
+/usr/include/boost/geometry/strategies/envelope.hpp:
 
 /usr/include/gstreamer-1.0/gst/base/base-prelude.h:
 
@@ -14561,6 +17016,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/video/video.h:
 
+/usr/include/boost/mpl/set/aux_/insert_range_impl.hpp:
+
 /usr/include/gstreamer-1.0/gst/video/video-frame.h:
 
 /usr/include/boost/mpl/deref.hpp:
@@ -14578,6 +17035,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/predef/version_number.h:
 
 /usr/include/boost/fusion/container/list/cons_iterator.hpp:
+
+/usr/include/boost/geometry/algorithms/dispatch/envelope.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp:
 
@@ -14605,11 +17064,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/video/gstvideoutils.h:
 
+/usr/include/boost/geometry/algorithms/detail/envelope/implementation.hpp:
+
 /usr/include/gstreamer-1.0/gst/video/video-hdr.h:
+
+/usr/include/boost/geometry/util/is_inverse_spheroidal_coordinates.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpixelformat.h:
 
 /usr/include/gstreamer-1.0/gst/video/gstvideoencoder.h:
+
+/usr/include/boost/geometry/arithmetic/determinant.hpp:
 
 /usr/include/gstreamer-1.0/gst/base/gstbasetransform.h:
 
@@ -14627,9 +17092,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/range/size.hpp:
 
+/usr/include/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp:
+
 /usr/include/gstreamer-1.0/gst/video/navigation.h:
 
 /usr/include/boost/iterator/detail/enable_if.hpp:
+
+/usr/include/boost/geometry/algorithms/num_segments.hpp:
 
 /usr/include/gstreamer-1.0/gst/video/video-anc.h:
 
@@ -14653,10 +17122,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/gstreamer-1.0/gst/video/video-overlay-composition.h:
 
-/usr/include/CGAL/intersections.h:
-
-/usr/include/boost/math/special_functions/detail/fp_traits.hpp:
-
 ../include/coverage_pipeline.hpp:
 
 /usr/include/boost/math/special_functions/sqrt1pm1.hpp:
@@ -14664,6 +17129,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/gstreamer-1.0/gst/video/videodirection.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
+
+/usr/include/boost/geometry/formulas/unit_spheroid.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/util/Macros.h:
 
@@ -14701,6 +17168,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/c++/11/climits:
 
+/usr/include/boost/token_functions.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/polygon__struct.hpp:
@@ -14737,13 +17206,19 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/list/aux_/size.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/distance/multipoint_to_geometry.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
+
+/usr/include/boost/geometry/strategies/cartesian/area.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/signum-arch.h:
 
 /opt/ros/humble/include/rcl/rcl/guard_condition.h:
 
 /usr/include/eigen3/Eigen/src/Core/IO.h:
+
+/usr/include/boost/geometry/strategies/area.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:
 
@@ -14805,9 +17280,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/DiagonalProduct.h:
 
+/usr/include/boost/geometry/strategies/geographic/line_interpolate.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/Matrix.h:
 
 /usr/include/CGAL/Homogeneous/Iso_cuboidH3.h:
+
+/usr/include/boost/geometry/algorithms/detail/normalize.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h:
 
@@ -14825,6 +17304,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Map.h:
 
+/usr/include/c++/11/queue:
+
 /usr/include/boost/utility.hpp:
 
 /usr/include/gdal/cpl_error.h:
@@ -14836,6 +17317,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/eigen3/Eigen/src/Core/Transpose.h:
 
 /usr/include/boost/next_prior.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/convert_point_to_point.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h:
 
@@ -14851,11 +17334,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Homogeneous/Data_accessorH2.h:
 
+/usr/include/boost/algorithm/string/iter_find.hpp:
+
 /usr/include/boost/range/has_range_iterator.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/CommaInitializer.h:
 
+/usr/include/boost/geometry/geometry.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/GeneralProduct.h:
+
+/usr/include/boost/mpl/size_t.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/Solve.h:
 
@@ -14869,6 +17358,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/type_traits/has_minus.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/distance/interface.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/PermutationMatrix.h:
 
 /usr/include/boost/fusion/container/list/detail/at_impl.hpp:
@@ -14876,6 +17367,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/CGAL/Homogeneous/predicates_on_directionsH2.h:
 
 /usr/include/eigen3/Eigen/src/Core/Transpositions.h:
+
+/usr/include/boost/geometry/core/ring_type.hpp:
+
+/usr/include/boost/mpl/set/aux_/iterator.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/SelfAdjointView.h:
 
@@ -14901,7 +17396,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
 
+/usr/include/boost/bind/mem_fn_template.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h:
+
+/usr/include/boost/geometry/formulas/meridian_segment.hpp:
 
 /usr/include/boost/date_time/gregorian_calendar.hpp:
 
@@ -14941,6 +17440,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Reverse.h:
 
+/usr/include/boost/geometry/index/adaptors/query.hpp:
+
+/usr/include/boost/geometry/util/calculation_type.hpp:
+
 /usr/include/eigen3/Eigen/src/Core/ArrayWrapper.h:
 
 /usr/include/gstreamer-1.0/gst/gstsample.h:
@@ -14954,6 +17457,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/eigen3/Eigen/src/Core/GlobalFunctions.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile:
+
+/usr/include/boost/qvm/mat_traits.hpp:
 
 /usr/include/boost/move/detail/std_ns_begin.hpp:
 
@@ -14981,13 +17486,25 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Cholesky/LLT.h:
 
+/usr/include/boost/geometry/index/detail/rtree/pack_create.hpp:
+
 /opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_changed.h:
 
 /usr/include/boost/mpl/next_prior.hpp:
 
+/usr/include/boost/fusion/mpl/begin.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h:
+
+/usr/include/boost/type_traits/is_base_and_derived.hpp:
+
+/usr/include/boost/geometry/core/coordinate_type.hpp:
+
 /usr/include/eigen3/Eigen/src/Cholesky/LDLT.h:
 
 /usr/include/eigen3/Eigen/QR:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/interface.hpp:
 
 /usr/include/eigen3/Eigen/Householder:
 
@@ -15075,7 +17592,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp:
 
+/usr/include/boost/geometry/core/interior_type.hpp:
+
 /usr/include/eigen3/Eigen/src/Geometry/AlignedBox.h:
+
+/usr/include/boost/geometry/algorithms/reverse.hpp:
 
 /usr/include/boost/mpl/arg.hpp:
 
@@ -15093,9 +17614,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp:
 
+/usr/include/boost/geometry/iterators/flatten_iterator.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/disjoint_segment_box.hpp:
+
 /usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h:
+
+/usr/include/boost/type_traits/composite_traits.hpp:
 
 /usr/include/boost/mpl/sequence_tag.hpp:
 
@@ -15115,6 +17642,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/range/iterator.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/relate/implementation.hpp:
+
 /usr/include/pcl-1.12/pcl/PCLHeader.h:
 
 /usr/include/pcl-1.12/pcl/memory.h:
@@ -15132,6 +17661,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/range/value_type.hpp:
 
 /usr/include/boost/mpl/not.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/expand/implementation.hpp:
 
 /usr/include/boost/mpl/bool_fwd.hpp:
 
@@ -15153,6 +17684,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/c++/11/version:
 
+/usr/include/boost/geometry/algorithms/detail/within/interface.hpp:
+
 /usr/include/boost/smart_ptr/detail/yield_k.hpp:
 
 /usr/include/boost/config/detail/select_platform_config.hpp:
@@ -15173,6 +17706,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/fusion/view/single_view/detail/end_impl.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/distance/linear_to_box.hpp:
+
 /usr/include/boost/mpl/aux_/nttp_decl.hpp:
 
 /usr/include/boost/type_traits/is_convertible.hpp:
@@ -15184,6 +17719,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/tuple/detail/tuple_basic.hpp:
 
 /usr/include/boost/mpl/aux_/nested_type_wknd.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/buffer/buffer_policies.hpp:
 
 /usr/include/boost/mpl/aux_/na.hpp:
 
@@ -15203,7 +17740,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/lambda_arity_param.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/cluster_exits.hpp:
+
+/usr/include/boost/move/detail/pointer_element.hpp:
+
 /usr/include/boost/mpl/aux_/arity.hpp:
+
+/usr/include/boost/geometry/algorithms/line_interpolate.hpp:
 
 /usr/include/boost/variant/detail/apply_visitor_unary.hpp:
 
@@ -15259,6 +17802,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Homogeneous/PointH3.h:
 
+/usr/include/boost/geometry/algorithms/detail/assign_box_corners.hpp:
+
 /usr/include/c++/11/bits/range_access.h:
 
 /usr/include/boost/preprocessor/empty.hpp:
@@ -15266,6 +17811,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/preprocessor/arithmetic/add.hpp:
 
 /usr/include/boost/preprocessor/list/detail/fold_left.hpp:
+
+/usr/include/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp:
 
 /usr/include/boost/mpl/aux_/config/use_preprocessed.hpp:
 
@@ -15286,6 +17833,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/preprocessor/repetition/enum_trailing_params.hpp:
 
 /usr/include/boost/preprocessor/list/fold_right.hpp:
+
+/usr/include/boost/geometry/strategies/strategy_transform.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
 
@@ -15311,6 +17860,10 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/preprocessor/arithmetic/sub.hpp:
 
+/usr/include/boost/geometry/index/detail/is_bounding_geometry.hpp:
+
+/usr/include/boost/intrusive/pointer_traits.hpp:
+
 /usr/include/boost/mpl/aux_/config/eti.hpp:
 
 /usr/include/boost/mpl/aux_/config/overload_resolution.hpp:
@@ -15326,8 +17879,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/preprocessor/comparison/less.hpp:
 
 ../src/coverage_pipeline.cpp:
-
-/usr/include/boost/math/special_functions/math_fwd.hpp:
 
 /usr/include/boost/mpl/aux_/config/arrays.hpp:
 
@@ -15371,7 +17922,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/vector/aux_/front.hpp:
 
+/usr/include/CGAL/Intersections_3/Point_3_Point_3.h:
+
+/usr/include/pcl-1.12/pcl/io/ply/io_operators.h:
+
+/usr/include/boost/mpl/vector/aux_/push_front.hpp:
+
 /usr/include/boost/mpl/pop_front_fwd.hpp:
+
+/usr/include/boost/concept/requires.hpp:
 
 /usr/include/boost/mpl/vector/aux_/push_back.hpp:
 
@@ -15391,11 +17950,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/random/uniform_real.hpp:
 
+/usr/include/boost/geometry/iterators/detail/segment_iterator/iterator_type.hpp:
+
 /usr/include/glib-2.0/glib/glib-typeof.h:
 
 /usr/include/boost/range/rbegin.hpp:
 
-/usr/include/boost/mpl/joint_view.hpp:
+/usr/include/boost/algorithm/string/std/string_traits.hpp:
 
 /usr/include/boost/mpl/aux_/largest_int.hpp:
 
@@ -15429,11 +17990,23 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/preprocessor/array/data.hpp:
 
+/usr/include/boost/geometry/strategies/spherical/envelope_box.hpp:
+
 /opt/ros/humble/include/rcutils/rcutils/types/char_array.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings:
 
 /usr/include/x86_64-linux-gnu/bits/mman-linux.h:
+
+/usr/include/boost/fusion/support/segmented_fold_until.hpp:
+
+/usr/include/CGAL/Intersections_3/Plane_3_Plane_3_Plane_3.h:
+
+/usr/include/pcl-1.12/pcl/io/ply/ply_parser.h:
+
+/usr/include/glib-2.0/glib/gmain.h:
+
+/usr/include/boost/preprocessor/repetition/enum_params.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h:
 
@@ -15450,6 +18023,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/eigen3/Eigen/src/Core/TriangularMatrix.h:
 
 /usr/include/boost/mpl/eval_if.hpp:
+
+/usr/include/boost/mpl/bitxor.hpp:
 
 /usr/include/boost/type.hpp:
 
@@ -15469,13 +18044,21 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/stat.h:
 
+/usr/include/boost/container/detail/placement_new.hpp:
+
 /usr/include/boost/mpl/advance_fwd.hpp:
 
 /usr/include/boost/mpl/prior.hpp:
 
 /usr/include/boost/mpl/O1_size_fwd.hpp:
 
+/usr/include/boost/geometry/strategies/spherical/azimuth.hpp:
+
 /usr/include/boost/mpl/vector/aux_/size.hpp:
+
+/usr/include/boost/qvm/gen/mat_operations2.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_join_miter.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h:
 
@@ -15492,6 +18075,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qboxlayout.h:
 
 /usr/include/boost/type_traits/integral_constant.hpp:
+
+/usr/include/boost/geometry/geometries/helper_geometry.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
 
@@ -15511,7 +18096,11 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/pcl-1.12/pcl/pcl_config.h:
 
+/usr/include/boost/algorithm/string/replace.hpp:
+
 /usr/include/boost/preprocessor/comparison/equal.hpp:
+
+/usr/include/boost/function/function_base.hpp:
 
 /usr/include/boost/type_traits/detail/yes_no_type.hpp:
 
@@ -15539,11 +18128,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/pcl-1.12/pcl/register_point_struct.h:
 
+/usr/include/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp:
+
 /usr/include/boost/preprocessor/repetition/for.hpp:
 
 /usr/include/boost/type_traits/cv_traits.hpp:
 
 /usr/include/boost/date_time/year_month_day.hpp:
+
+/usr/include/boost/geometry/index/detail/rtree/rstar/rstar.hpp:
 
 /usr/include/boost/preprocessor/repetition/detail/for.hpp:
 
@@ -15585,9 +18178,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/placeholders.hpp:
 
+/usr/include/boost/geometry/algorithms/relate.hpp:
+
 /usr/include/x86_64-linux-gnu/sys/mman.h:
 
 /usr/include/boost/mpl/aux_/arity_spec.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_point_circle.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qfontinfo.h:
 
@@ -15599,11 +18196,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/config/bind.hpp:
 
+/usr/include/boost/geometry/algorithms/distance.hpp:
+
 /usr/include/boost/mpl/quote.hpp:
 
 /usr/include/CGAL/Intersections_3/Segment_3_Segment_3.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__traits.hpp:
+
+/usr/include/boost/function.hpp:
 
 /usr/include/boost/mpl/aux_/template_arity_fwd.hpp:
 
@@ -15629,11 +18230,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/or.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/do_reverse.hpp:
+
 /usr/include/asm-generic/bitsperlong.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h:
 
 /usr/include/boost/mpl/always.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_ll.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h:
 
@@ -15642,6 +18247,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/fusion/adapted/boost_tuple/detail/build_cons.hpp:
 
 /usr/include/boost/range/iterator_range_core.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/disjoint/areal_areal.hpp:
 
 /usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp:
 
@@ -15672,6 +18279,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_setting.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory:
+
+/usr/include/boost/geometry/strategies/spherical/disjoint_segment_box.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h:
 
@@ -15755,6 +18364,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/back_inserter.hpp:
 
+/usr/include/boost/qvm/deduce_vec.hpp:
+
 /usr/include/boost/mpl/front_inserter.hpp:
 
 /usr/include/boost/mpl/aux_/unwrap.hpp:
@@ -15771,10 +18382,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/range/config.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h:
-
-/usr/include/boost/detail/basic_pointerbuf.hpp:
-
 /usr/include/boost/date_time/compiler_config.hpp:
 
 /usr/include/boost/range/detail/sfinae.hpp:
@@ -15783,13 +18390,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Ray_3_intersection.h:
 
+/usr/include/boost/geometry/index/detail/translator.hpp:
+
 /usr/include/boost/smart_ptr/detail/sp_noexcept.hpp:
 
 /usr/include/boost/iterator/iterator_traits.hpp:
 
-/usr/include/boost/lexical_cast/detail/converter_lexical_streams.hpp:
-
 /usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/distance_segment_box.hpp:
 
 /usr/include/boost/mpl/aux_/config/integral.hpp:
 
@@ -15801,9 +18410,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Distance_2/Ray_2_Line_2.h:
 
+/usr/include/boost/move/algorithm.hpp:
+
 /usr/include/boost/iterator/reverse_iterator.hpp:
 
 /usr/include/boost/iterator/iterator_adaptor.hpp:
+
+/usr/include/boost/function_types/parameter_types.hpp:
 
 /usr/include/boost/type_traits/detail/config.hpp:
 
@@ -15815,9 +18428,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/type_traits/declval.hpp:
 
+/usr/include/boost/geometry/index/detail/rtree/visitors/spatial_query.hpp:
+
 /usr/include/boost/type_traits/add_rvalue_reference.hpp:
 
+/usr/include/boost/type_traits/is_destructible.hpp:
+
 /usr/include/CGAL/Filtered_kernel.h:
+
+/usr/include/boost/geometry/index/detail/exception.hpp:
 
 /usr/include/boost/type_traits/is_reference.hpp:
 
@@ -15829,11 +18448,15 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/type_traits/is_rvalue_reference.hpp:
 
+/usr/include/boost/geometry/strategies/concepts/area_concept.hpp:
+
 /usr/include/boost/type_traits/is_function.hpp:
 
 /usr/include/gstreamer-1.0/gst/gsttypefind.h:
 
 /usr/include/boost/smart_ptr/detail/sp_thread_sleep.hpp:
+
+/usr/include/boost/mpl/value_type_fwd.hpp:
 
 /usr/include/boost/mpl/aux_/config/forwarding.hpp:
 
@@ -15863,6 +18486,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/type_traits/is_pointer.hpp:
 
+/usr/include/boost/geometry/util/bare_type.hpp:
+
 /opt/ros/humble/include/rcl/rcl/subscription.h:
 
 /usr/include/boost/type_traits/is_class.hpp:
@@ -15876,6 +18501,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/mpl/aux_/arithmetic_op.hpp:
 
 /usr/include/boost/type_traits/is_member_pointer.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/within/implementation.hpp:
 
 /usr/include/boost/type_traits/remove_pointer.hpp:
 
@@ -15891,6 +18518,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp:
 
+/usr/include/boost/iterator/filter_iterator.hpp:
+
 /usr/include/boost/type_traits/is_scalar.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__type_support.hpp:
@@ -15900,6 +18529,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/c++/11/tr1/gamma.tcc:
 
 /usr/include/boost/numeric/conversion/cast.hpp:
+
+/usr/include/boost/geometry/core/is_areal.hpp:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp:
 
@@ -15923,6 +18554,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Profile_counter.h:
 
+/usr/include/boost/geometry/strategies/buffer.hpp:
+
 /usr/include/c++/11/bits/random.h:
 
 /usr/include/pcl-1.12/pcl/impl/point_types.hpp:
@@ -15939,9 +18572,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/multiplies.hpp:
 
+/usr/include/boost/geometry/core/radian_access.hpp:
+
 /usr/include/boost/mpl/aux_/preprocessed/gcc/times.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
+
+/usr/include/boost/geometry/algorithms/correct.hpp:
 
 /usr/include/boost/config/no_tr1/cmath.hpp:
 
@@ -15964,6 +18601,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp:
+
+/usr/include/boost/range/metafunctions.hpp:
 
 /usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp:
 
@@ -16009,6 +18648,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/fusion/container/vector/detail/advance_impl.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/intersection/multi.hpp:
+
 /usr/include/boost/mpl/aux_/iter_apply.hpp:
 
 /usr/include/boost/type_traits/make_unsigned.hpp:
@@ -16033,6 +18674,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/preprocessor/seq/cat.hpp:
 
+/usr/include/boost/geometry/strategies/cartesian/expand_box.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h:
 
 /usr/include/boost/mpl/aux_/push_back_impl.hpp:
@@ -16052,6 +18695,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/smart_ptr/detail/shared_count.hpp:
 
 /usr/include/boost/predef/os/aix.h:
+
+/usr/include/boost/geometry/util/select_most_precise.hpp:
 
 /usr/include/boost/range/distance.hpp:
 
@@ -16105,6 +18750,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/math/tools/roots.hpp:
 
+/usr/include/boost/container/detail/version_type.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/struct_stat.h:
 
 /usr/include/boost/mpl/inherit_linearly.hpp:
@@ -16135,9 +18782,13 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/x86_64-linux-gnu/asm/bitsperlong.h:
 
+/usr/include/boost/geometry/index/detail/meta.hpp:
+
 /usr/include/x86_64-linux-gnu/asm/posix_types.h:
 
 /usr/include/boost/random/discard_block.hpp:
+
+/usr/include/boost/geometry/strategies/transform/inverse_transformer.hpp:
 
 /usr/include/asm-generic/posix_types.h:
 
@@ -16171,9 +18822,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/fusion/view/transform_view/detail/at_impl.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/is_simple/interface.hpp:
+
 /usr/include/boost/smart_ptr/detail/spinlock_pool.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/multi_sum.hpp:
+
 /usr/include/boost/smart_ptr/detail/spinlock_gcc_atomic.hpp:
+
+/usr/include/boost/qvm/vec.hpp:
+
+/usr/include/boost/qvm/static_assert.hpp:
 
 /usr/include/boost/smart_ptr/detail/sp_thread_pause.hpp:
 
@@ -16188,8 +18847,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/date_time/posix_time/posix_time_system.hpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_config.hpp:
-
-/usr/include/boost/date_time/gregorian/gregorian_types.hpp:
 
 /usr/include/boost/date_time/gregorian/greg_calendar.hpp:
 
@@ -16219,6 +18876,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/date_time/adjust_functors.hpp:
 
+/usr/include/boost/qvm/gen/mat_operations3.hpp:
+
 /usr/include/boost/preprocessor/arithmetic/dec.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_with_covariance.hpp:
@@ -16238,6 +18897,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/boost/date_time/time_system_counted.hpp:
 
 /usr/include/boost/date_time/posix_time/posix_time_duration.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/overlay_type.hpp:
 
 /usr/include/boost/interprocess/sync/detail/common_algorithms.hpp:
 
@@ -16271,17 +18932,29 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/pcl-1.12/pcl/PointIndices.h:
 
+/usr/include/boost/mpl/key_type_fwd.hpp:
+
+/usr/include/boost/range/adaptor/reversed.hpp:
+
 /usr/include/pcl-1.12/pcl/Vertices.h:
 
 /usr/include/pcl-1.12/pcl/common/concatenate.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/copy_segments.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/mman.h:
+
+/usr/include/boost/geometry/index/detail/rtree/visitors/remove.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/mman-map-flags-generic.h:
 
 /usr/include/x86_64-linux-gnu/sys/fcntl.h:
 
 /opt/ros/humble/include/tf2/tf2/LinearMath/MinMax.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/buffer_end_round.hpp:
+
+/usr/include/boost/geometry/strategies/cartesian/point_in_box.hpp:
 
 /usr/include/boost/preprocessor/seq/enum.hpp:
 
@@ -16305,6 +18978,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__struct.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/is_valid/segment.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__builder.hpp:
 
 /usr/include/boost/mpl/aux_/begin_end_impl.hpp:
@@ -16314,6 +18989,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform__traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__struct.hpp:
+
+/usr/include/boost/container/new_allocator.hpp:
 
 /usr/include/boost/blank_fwd.hpp:
 
@@ -16328,6 +19005,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3_stamped__traits.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/point.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/check_iterator_range.hpp:
 
 /usr/include/boost/assert/source_location.hpp:
 
@@ -16345,11 +19024,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose_stamped.hpp:
 
+/usr/include/boost/geometry/core/tag_cast.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__struct.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__builder.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/buffer/get_piece_turns.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__traits.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/envelope/linear.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_stamped__type_support.hpp:
 
@@ -16381,13 +19066,23 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/predef/compiler/sgi_mipspro.h:
 
+/usr/include/boost/geometry/algorithms/make.hpp:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/intersection_box_box.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench_stamped.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__traits.hpp:
 
+/usr/include/boost/function_types/result_type.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/velocity_stamped__type_support.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Point_3_intersection.h:
+
+/usr/include/boost/geometry/strategies/centroid.hpp:
+
+/usr/include/boost/geometry/arithmetic/dot_product.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/wrench.hpp:
 
@@ -16417,61 +19112,63 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/CGAL/Distance_2/Point_2_Line_2.h:
 
+/usr/include/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp:
+
 /opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp:
 
-/usr/include/boost/fusion/support/segmented_fold_until.hpp:
+/usr/include/CGAL/Quotient.h:
 
-/usr/include/CGAL/Intersections_3/Plane_3_Plane_3_Plane_3.h:
+/usr/include/boost/geometry.hpp:
 
-/usr/include/glib-2.0/glib/gmain.h:
+/usr/include/boost/geometry/algorithms/detail/overlay/traverse.hpp:
 
-/usr/include/boost/preprocessor/repetition/enum_params.hpp:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox:
 
-/usr/include/pcl-1.12/pcl/io/ply/ply_parser.h:
+/usr/include/boost/geometry/core/closure.hpp:
 
-/usr/include/boost/mpl/erase_key.hpp:
+/usr/include/boost/type_traits/has_post_increment.hpp:
 
-/usr/include/pcl-1.12/pcl/io/ply/ply.h:
+/usr/include/boost/geometry/core/tags.hpp:
 
-/usr/include/pcl-1.12/pcl/io/ply/byte_order.h:
+../include/coverage_gui.hpp:
 
-/usr/include/CGAL/Intersections_3/Point_3_Point_3.h:
+/usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp:
 
-/usr/include/boost/mpl/vector/aux_/push_front.hpp:
+/usr/include/boost/container/vector.hpp:
 
-/usr/include/pcl-1.12/pcl/io/ply/io_operators.h:
+/usr/include/boost/date_time/gregorian/gregorian_types.hpp:
 
-/usr/include/boost/fusion/algorithm/transformation/push_back.hpp:
+/usr/include/boost/geometry/core/coordinate_dimension.hpp:
 
-/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Do_intersect_3.h:
+/usr/include/boost/geometry/strategies/intersection_result.hpp:
 
-/usr/include/boost/lexical_cast.hpp:
+/usr/include/boost/mpl/aux_/advance_forward.hpp:
 
-/usr/include/boost/predef/compiler/ekopath.h:
+/usr/include/boost/geometry/core/coordinate_system.hpp:
 
-/usr/include/boost/lexical_cast/try_lexical_convert.hpp:
+/usr/include/c++/11/bits/hashtable_policy.h:
 
-/usr/include/boost/lexical_cast/detail/is_character.hpp:
+/usr/include/boost/geometry/util/promote_floating_point.hpp:
 
-/opt/ros/humble/include/rcl/rcl/arguments.h:
+/usr/include/boost/geometry/core/cs.hpp:
 
-/usr/include/boost/type_traits/is_float.hpp:
+/usr/include/boost/core/ignore_unused.hpp:
 
-/usr/include/CGAL/Distance_3/Segment_3_Ray_3.h:
+/usr/include/gdal/cpl_json.h:
 
-/usr/include/boost/type_traits/has_right_shift.hpp:
+/usr/include/boost/geometry/index/detail/rtree/visitors/iterator.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp:
+/usr/include/gstreamer-1.0/gst/gstutils.h:
 
-/usr/include/eigen3/Eigen/src/Geometry/Quaternion.h:
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h:
 
-/usr/include/boost/integer_traits.hpp:
+/usr/include/boost/geometry/core/exterior_ring.hpp:
 
-/usr/include/boost/swap.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
 
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h:
+/usr/include/gdal/ogr_geometry.h:
 
-/usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp:
+/usr/include/boost/math/constants/constants.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Iso_cuboid_3_Point_3_intersection.h:
 
@@ -16479,9 +19176,17 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h:
 
+/usr/include/boost/geometry/algorithms/detail/envelope/segment.hpp:
+
 /usr/include/boost/math/tools/config.hpp:
 
 /usr/include/boost/predef/architecture/x86/32.h:
+
+/usr/include/boost/multiprecision/cpp_int/cpp_int_config.hpp:
+
+/usr/include/CGAL/IO/io_tags.h:
+
+/usr/include/boost/math/tools/cxx03_warn.hpp:
 
 /usr/include/CGAL/Intersections_2/Circle_2_Triangle_2.h:
 
@@ -16515,8 +19220,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/greater_equal.hpp:
 
-/usr/include/boost/mpl/aux_/advance_forward.hpp:
-
 /usr/include/CGAL/Enum_converter.h:
 
 /usr/include/boost/smart_ptr/detail/sp_typeinfo_.hpp:
@@ -16541,11 +19244,9 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/iter_fold_impl.hpp:
 
+/usr/include/boost/geometry/algorithms/detail/is_simple/always_simple.hpp:
+
 /usr/include/boost/mpl/not_equal_to.hpp:
-
-../include/coverage_gui.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/not_equal_to.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Line_3_Ray_3_do_intersect.h:
 
@@ -16553,32 +19254,40 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/less_equal.hpp:
 
-/usr/include/CGAL/Alpha_shape_2.h:
+/usr/include/boost/math/tools/precision.hpp:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/quadmath.h:
+/usr/include/c++/11/typeinfo:
 
-/usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
+/usr/include/boost/type_traits/is_default_constructible.hpp:
 
-/usr/include/boost/integer.hpp:
+/usr/include/boost/fusion/algorithm/transformation/push_back.hpp:
 
-/usr/include/boost/integer_fwd.hpp:
+/usr/include/CGAL/Filtered_kernel/internal/Static_filters/Do_intersect_3.h:
 
-/usr/include/CGAL/is_convertible.h:
+/usr/include/boost/geometry/core/interior_rings.hpp:
 
-/usr/include/boost/mpl/inherit.hpp:
+/usr/include/boost/lexical_cast.hpp:
 
-/usr/include/boost/fusion/container/list/detail/begin_impl.hpp:
+/usr/include/boost/predef/compiler/ekopath.h:
 
-/usr/include/boost/mpl/empty_base.hpp:
+/usr/include/boost/lexical_cast/try_lexical_convert.hpp:
 
-/usr/include/boost/type_traits/is_empty.hpp:
+/usr/include/boost/lexical_cast/detail/is_character.hpp:
 
-/usr/include/boost/mpl/aux_/preprocessed/gcc/inherit.hpp:
+/opt/ros/humble/include/rcl/rcl/arguments.h:
 
-/usr/include/boost/fusion/sequence/comparison/detail/equal_to.hpp:
+/usr/include/boost/type_traits/is_float.hpp:
 
-/usr/include/boost/mpl/transform.hpp:
+/usr/include/CGAL/Distance_3/Segment_3_Ray_3.h:
 
-/usr/include/boost/lexical_cast/detail/converter_numeric.hpp:
+/usr/include/boost/type_traits/has_right_shift.hpp:
 
-/usr/include/boost/mpl/pair_view.hpp:
+/usr/include/boost/geometry/algorithms/detail/touches/implementation.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/Quaternion.h:
+
+/usr/include/boost/integer_traits.hpp:
+
+/usr/include/boost/swap.hpp:

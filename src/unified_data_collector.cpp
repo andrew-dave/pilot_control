@@ -4,6 +4,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 #include <std_msgs/msg/string.hpp>
 
@@ -22,6 +23,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstdint>
 #include <cstring>
@@ -103,6 +105,18 @@ struct CameraFrame {
   std::string camera_label;
 };
 
+// GPS data structure
+struct GpsFrame {
+  uint64_t ts_ns = 0;           // ROS timestamp (ns)
+  double latitude = 0.0;        // degrees
+  double longitude = 0.0;       // degrees
+  double altitude = 0.0;        // meters (MSL)
+  double h_acc = 0.0;           // horizontal accuracy (m)
+  double v_acc = 0.0;           // vertical accuracy (m)
+  int8_t status = -1;           // -1=no data, 0=no fix, 1=fix, 2=SBAS/DGPS
+  bool valid = false;           // true if fix is valid
+};
+
 class FrameRing {
 public:
   explicit FrameRing(size_t cap) : cap_(cap) {}
@@ -146,12 +160,31 @@ public:
     }
     out = (*q)[best]; dt_abs_ns = bestdt; return true;
   }
+  
+  void push(GpsFrame&& f) {
+    std::lock_guard<std::mutex> lk(m_);
+    gps_q_.emplace_back(std::move(f));
+    while (gps_q_.size() > cap_) gps_q_.pop_front();
+  }
+  
+  bool nearest_gps(uint64_t target_ns, GpsFrame& out, uint64_t& dt_abs_ns) {
+    std::lock_guard<std::mutex> lk(m_);
+    if (gps_q_.empty()) return false;
+    size_t best = 0; uint64_t bestdt = UINT64_MAX;
+    for (size_t i = 0; i < gps_q_.size(); ++i) {
+      uint64_t a = gps_q_[i].ts_ns, b = target_ns;
+      uint64_t d = (a > b) ? (a - b) : (b - a);
+      if (d < bestdt) { bestdt = d; best = i; }
+    }
+    out = gps_q_[best]; dt_abs_ns = bestdt; return true;
+  }
 
 private:
   std::mutex m_;
   std::deque<ThermFrame> thermo_q_;
   std::deque<CameraFrame> left_q_;
   std::deque<CameraFrame> right_q_;
+  std::deque<GpsFrame> gps_q_;
   size_t cap_;
 };
 
@@ -253,12 +286,14 @@ static bool compress_opencv_to_jxl(const cv::Mat& image, std::vector<uint8_t>& c
 
 // ==================== Async writer ====================
 struct CsvJob {
-  uint64_t odom_ns{}, cam_ns{}, left_ns{}, right_ns{};
-  double dt_thermal_ms{}, dt_left_ms{}, dt_right_ms{};
+  uint64_t odom_ns{}, cam_ns{}, left_ns{}, right_ns{}, gps_ns{};
+  double dt_thermal_ms{}, dt_left_ms{}, dt_right_ms{}, dt_gps_ms{};
   // pose / orientation
   double px{},py{},pz{}, qx{},qy{},qz{},qw{};
   // twist
   double vx{},vy{},vz{}, wx{},wy{},wz{};
+  // GPS data
+  GpsFrame gps_frame;
   // data
   ThermFrame thermal_frame;
   CameraFrame left_frame;
@@ -351,13 +386,21 @@ private:
 
       auto& csv = *job.csv;
       csv << job.odom_ns << "," << job.cam_ns << "," << job.left_ns << "," << job.right_ns << ","
+          << job.gps_ns << ","
           << std::fixed << std::setprecision(3) << job.dt_thermal_ms << ","
           << std::fixed << std::setprecision(3) << job.dt_left_ms << ","
           << std::fixed << std::setprecision(3) << job.dt_right_ms << ","
+          << std::fixed << std::setprecision(3) << job.dt_gps_ms << ","
           << job.px << "," << job.py << "," << job.pz << ","
           << job.qx << "," << job.qy << "," << job.qz << "," << job.qw << ","
           << job.vx << "," << job.vy << "," << job.vz << ","
           << job.wx << "," << job.wy << "," << job.wz << ","
+          << std::fixed << std::setprecision(9) << job.gps_frame.latitude << ","
+          << std::fixed << std::setprecision(9) << job.gps_frame.longitude << ","
+          << std::fixed << std::setprecision(3) << job.gps_frame.altitude << ","
+          << std::fixed << std::setprecision(3) << job.gps_frame.h_acc << ","
+          << std::fixed << std::setprecision(3) << job.gps_frame.v_acc << ","
+          << (int)job.gps_frame.status << ","
           << thermo_bin << "," << thermal_color_png << ","
           << left_jxl << "," << right_jxl << ","
           << (job.camera_switching ? "1" : "0") << "," << job.streaming_camera << "\n";
@@ -418,6 +461,11 @@ public:
     auto qos = rclcpp::SensorDataQoS().keep_last(100);
     odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(cfg_.odom_topic, qos,
                  std::bind(&UnifiedDataCollector::onOdom, this, std::placeholders::_1));
+    
+    // GPS subscription (subscribes to filtered /gps/fix topic from gps_driver)
+    gps_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>("/gps/fix", qos,
+                 std::bind(&UnifiedDataCollector::onGps, this, std::placeholders::_1));
+    RCLCPP_INFO(get_logger(), "GPS subscription: /gps/fix (quality-gated)");
 
     // Initialize components
     initGStreamer();
@@ -507,6 +555,27 @@ private:
     this->get_parameter("raw_fps", cfg_.raw_fps);
   }
 
+  // ---------- GPS callback ----------
+  void onGps(const sensor_msgs::msg::NavSatFix::SharedPtr msg) {
+    GpsFrame f;
+    f.ts_ns = (uint64_t)msg->header.stamp.sec * 1000000000ULL
+            + (uint64_t)msg->header.stamp.nanosec;
+    f.latitude = msg->latitude;
+    f.longitude = msg->longitude;
+    f.altitude = msg->altitude;
+    
+    // Extract accuracy from covariance (diagonal elements are variances)
+    if (msg->position_covariance_type != sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN) {
+      f.h_acc = std::sqrt(msg->position_covariance[0]);  // sqrt of lat/lon variance
+      f.v_acc = std::sqrt(msg->position_covariance[8]);  // sqrt of alt variance
+    }
+    
+    f.status = msg->status.status;
+    f.valid = (msg->status.status >= sensor_msgs::msg::NavSatStatus::STATUS_FIX);
+    
+    ring_.push(std::move(f));
+  }
+
   // ---------- Odom -> enqueue one row ----------
   void onOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
     if (!recording_active_) return;
@@ -525,10 +594,14 @@ private:
     ThermFrame thermal_f; uint64_t dt_thermal=0;
     CameraFrame left_f; uint64_t dt_left=0;
     CameraFrame right_f; uint64_t dt_right=0;
+    GpsFrame gps_f; uint64_t dt_gps=0;
     
     if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) return;
     if (!ring_.nearest_camera(odom_ns, "left", left_f, dt_left)) return;
     if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) return;
+    
+    // GPS is optional - don't fail if no GPS data available
+    bool has_gps = ring_.nearest_gps(odom_ns, gps_f, dt_gps);
 
     CsvJob job;
     job.odom_ns = odom_ns;
@@ -538,6 +611,18 @@ private:
     job.dt_thermal_ms = (double)dt_thermal / 1e6;
     job.dt_left_ms = (double)dt_left / 1e6;
     job.dt_right_ms = (double)dt_right / 1e6;
+    
+    // GPS data (optional)
+    if (has_gps) {
+      job.gps_ns = gps_f.ts_ns;
+      job.dt_gps_ms = (double)dt_gps / 1e6;
+      job.gps_frame = std::move(gps_f);
+    } else {
+      job.gps_ns = 0;
+      job.dt_gps_ms = -1.0;  // Indicates no GPS data
+      job.gps_frame = GpsFrame{};  // Empty/invalid frame
+    }
+    
     job.thermal_frame = std::move(thermal_f);
     job.left_frame = std::move(left_f);
     job.right_frame = std::move(right_f);
@@ -748,10 +833,11 @@ private:
       }
       
       // Write CSV header
-      *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,"
-                      "dt_thermal_ms,dt_left_ms,dt_right_ms,"
+      *csv_stream_ << "odom_stamp_ns,thermal_stamp_ns,left_stamp_ns,right_stamp_ns,gps_stamp_ns,"
+                      "dt_thermal_ms,dt_left_ms,dt_right_ms,dt_gps_ms,"
                       "px,py,pz,qx,qy,qz,qw,"
                       "vx,vy,vz,wx,wy,wz,"
+                      "gps_lat,gps_lon,gps_alt,gps_h_acc,gps_v_acc,gps_status,"
                       "thermo_f32_bin,thermal_color_png,left_image_jxl,right_image_jxl,"
                       "camera_switching,streaming_camera\n";
       csv_stream_->flush();
@@ -1145,6 +1231,7 @@ private:
 
   // ROS
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_srv_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_select_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;

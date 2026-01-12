@@ -2394,6 +2394,21 @@ QWidget* CoverageGUI::buildF2CControls() {
     combo_path_planner_->addItem("Straight", "none");
     planner_layout->addWidget(combo_path_planner_);
     v->addLayout(planner_layout);
+
+    // Waypoint spacing (controller-friendly resampling)
+    QHBoxLayout* spacing_layout = new QHBoxLayout();
+    spacing_layout->addWidget(new QLabel("Waypoint spacing (m)"));
+    spin_waypoint_spacing_ = new QDoubleSpinBox();
+    spin_waypoint_spacing_->setRange(0.0, 2.0);
+    spin_waypoint_spacing_->setSingleStep(0.05);
+    spin_waypoint_spacing_->setValue(0.10);  // 10 cm default; set to 0 to disable
+    spin_waypoint_spacing_->setToolTip(
+        "If > 0, the generated path will be resampled to roughly this spacing.\n"
+        "This can reduce jitter from uneven spacing and makes controller tracking smoother.\n"
+        "Set to 0 to disable resampling."
+    );
+    spacing_layout->addWidget(spin_waypoint_spacing_);
+    v->addLayout(spacing_layout);
     
     // Axial turns
     chk_axial_turns_ = new QCheckBox("Use axial turns (zero radius)");
@@ -3109,6 +3124,7 @@ CoverageConfig CoverageGUI::currentConfig() const {
     cfg.use_decomposition = chk_decomposition_->isChecked();
     cfg.decomposition_type = combo_decomp_type_->currentData().toString().toStdString();
     cfg.use_axial_turns = chk_axial_turns_->isChecked();
+    cfg.waypoint_spacing = spin_waypoint_spacing_ ? spin_waypoint_spacing_->value() : 0.0;
     return cfg;
 }
 
@@ -3769,6 +3785,8 @@ void CoverageGUI::clearROI() {
     roi_polygon_.clear();
     plot_->clearROI();
     lbl_roi_->setText("ROI: none");
+    effective_area_m2_ = 0.0;
+    clearCoverage();
     setStatus("ROI cleared", 4000);
     refreshPlot();
 }
@@ -3792,6 +3810,8 @@ void CoverageGUI::clearObstacles() {
     obstacles_.clear();
     plot_->clearObstacles();
     lbl_obstacles_->setText("Obstacles: 0");
+    effective_area_m2_ = 0.0;
+    clearCoverage();
     setStatus("Obstacles cleared", 4000);
     refreshPlot();
 }
@@ -3808,6 +3828,8 @@ void CoverageGUI::onROISelected(const Polygon2D& roi) {
     roi_polygon_ = roi;
     btn_roi_->setChecked(false);
     lbl_roi_->setText(QString("ROI: %1 vertices").arg(roi.size()));
+    effective_area_m2_ = 0.0;
+    clearCoverage();
     setStatus("ROI selected", 4000);
     refreshPlot();
 }
@@ -3816,6 +3838,8 @@ void CoverageGUI::onObstacleSelected(const Polygon2D& obstacle) {
     obstacles_.push_back(obstacle);
     btn_obstacle_->setChecked(false);
     lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
+    effective_area_m2_ = 0.0;
+    clearCoverage();
     setStatus(QString("Obstacle added (total: %1)").arg(obstacles_.size()), 4000);
     refreshPlot();
 }
@@ -3849,17 +3873,20 @@ void CoverageGUI::generateSwaths() {
     
     try {
         CoverageConfig cfg = currentConfig();
+        const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
-        CoverageResult result = generateCoverage(effectivePolygon(), cfg, nullptr, obs_ptr);
+        CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
         } else {
             swaths_ = result.swaths;
+            effective_area_m2_ = result.effective_area_m2;
             route_.clear();
             path_.clear();
             refreshPlot();
+            updateCoverageStats();
             setStatus(QString("Generated %1 swaths").arg(swaths_.size()), 4000);
         }
     } catch (const std::exception& e) {
@@ -3880,17 +3907,20 @@ void CoverageGUI::generateRoute() {
     
     try {
         CoverageConfig cfg = currentConfig();
+        const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
-        CoverageResult result = generateCoverage(effectivePolygon(), cfg, nullptr, obs_ptr);
+        CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
         } else {
             swaths_ = result.swaths;
             route_ = result.route;
+            effective_area_m2_ = result.effective_area_m2;
             path_.clear();
             refreshPlot();
+            updateCoverageStats();
             setStatus(QString("Generated route with %1 waypoints").arg(route_.size()), 4000);
         }
     } catch (const std::exception& e) {
@@ -3911,9 +3941,10 @@ void CoverageGUI::generatePath() {
     
     try {
         CoverageConfig cfg = currentConfig();
+        const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
-        CoverageResult result = generateCoverage(effectivePolygon(), cfg, nullptr, obs_ptr);
+        CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
@@ -3921,6 +3952,7 @@ void CoverageGUI::generatePath() {
             swaths_ = result.swaths;
             route_ = result.route;
             path_ = result.path;
+            effective_area_m2_ = result.effective_area_m2;
             syncPlannedPathCache();
             refreshPlot();
             updateCoverageStats();  // Update statistics after path generation
@@ -4146,6 +4178,7 @@ void CoverageGUI::clearCoverage() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+    effective_area_m2_ = 0.0;
     plot_->clearSwaths();
     plot_->clearRoute();
     plot_->clearPath();
@@ -5355,9 +5388,14 @@ CoverageStats CoverageGUI::computeStats() const {
     stats.num_turns = std::max(0, stats.num_swaths - 1);
     
     // Compute polygon/ROI area
-    const Polygon2D& field_poly = roi_polygon_.empty() ? polygon_ : roi_polygon_;
-    if (!field_poly.empty()) {
-        stats.polygon_area_m2 = polygonArea(field_poly);
+    if (!isCustomModeActive() && effective_area_m2_ > 0.0) {
+        // Use backend-computed effective area: (boundary ∩ ROI) − obstacles
+        stats.polygon_area_m2 = effective_area_m2_;
+    } else {
+        const Polygon2D& field_poly = roi_polygon_.empty() ? polygon_ : roi_polygon_;
+        if (!field_poly.empty()) {
+            stats.polygon_area_m2 = polygonArea(field_poly);
+        }
     }
     
     // Estimate coverage area (swath width × path length)
@@ -5453,6 +5491,8 @@ void CoverageGUI::onRectangleCompleted(const Polygon2D& rect) {
     // Use rectangle as ROI
     roi_polygon_ = rect;
     plot_->setROI(roi_polygon_);
+    effective_area_m2_ = 0.0;
+    clearCoverage();
     
     if (btn_rectangle_) {
         btn_rectangle_->setChecked(false);

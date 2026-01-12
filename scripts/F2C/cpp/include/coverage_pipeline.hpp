@@ -69,6 +69,10 @@ struct CoverageConfig {
     bool use_decomposition = false;
     std::string decomposition_type = "boustrophedon";
     bool use_axial_turns = false;
+    // Optional controller-facing post-processing:
+    // If > 0, the returned path will be resampled to approximately this spacing (meters).
+    // This helps controllers that expect more uniform waypoint spacing.
+    double waypoint_spacing = 0.0;
     std::optional<Point2D> start_point;
     std::optional<Point2D> end_point;
 };
@@ -111,6 +115,7 @@ struct CoverageResult {
     SwathList swaths;
     PathStateList route;  // Ordered waypoints from route
     PathStateList path;   // Smooth path with all states
+    double effective_area_m2 = 0.0;  // Area of (boundary ∩ ROI) − obstacles
     bool success = false;
     std::string error_message;
 };

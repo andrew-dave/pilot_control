@@ -20,6 +20,7 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
@@ -128,6 +129,12 @@ add_executable(shutdown_service src/shutdown_service.cpp)
 ament_target_dependencies(shutdown_service rclcpp std_srvs)
 install(TARGETS shutdown_service DESTINATION lib/${PROJECT_NAME})
 
+# === GPS DRIVER (u-blox ZED-F9P) ===
+add_executable(gps_driver src/gps_driver.cpp)
+target_compile_features(gps_driver PUBLIC cxx_std_17)
+ament_target_dependencies(gps_driver rclcpp sensor_msgs geometry_msgs diagnostic_msgs)
+install(TARGETS gps_driver DESTINATION lib/${PROJECT_NAME})
+
 # === HOST TELEOP (SDL2-based) ===
 if(SDL2_FOUND)
   add_executable(host_teleop src/host_teleop.cpp)
@@ -174,7 +181,7 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
   
   add_executable(unified_data_collector src/unified_data_collector.cpp)
   target_compile_features(unified_data_collector PUBLIC cxx_std_17)
-  ament_target_dependencies(unified_data_collector rclcpp nav_msgs std_srvs)
+  ament_target_dependencies(unified_data_collector rclcpp nav_msgs std_srvs sensor_msgs std_msgs)
   target_include_directories(unified_data_collector PUBLIC 
     ${GSTREAMER_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
   target_link_libraries(unified_data_collector 

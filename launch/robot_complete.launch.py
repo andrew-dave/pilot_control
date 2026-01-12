@@ -292,6 +292,29 @@ def generate_launch_description():
         output='screen'
     )
 
+    # GPS Driver (u-blox ZED-F9P via USB)
+    gps_driver_node = Node(
+        package='pilot_control',
+        executable='gps_driver',
+        name='gps_driver',
+        output='screen',
+        parameters=[{
+            'device': '/dev/gps',  # Uses udev symlink (fallback: /dev/ttyACM0)
+            'baud_rate': 38400,
+            'frame_id': 'gps_link',
+            # Quality gating thresholds (for /gps/fix output)
+            'hacc_max_m': 5.0,           # Max horizontal accuracy (meters)
+            'min_sats': 8,               # Min satellites for valid fix
+            'pdop_max': 4.0,             # Max position DOP
+            'require_3d_fix': True,      # Require 3D fix (fixType >= 3)
+            'require_gnss_fix_ok': True, # Require gnssFixOK flag
+            # Receiver configuration
+            'configure_receiver': True,
+            'rate_hz': 5,                # 5Hz update rate
+            'dynamic_model': 3,          # 3 = Pedestrian (best for slow robot ~0.5 m/s)
+        }]
+    )
+
     # GPR Serial Bridge (Arduino connector)
     gpr_serial_bridge_node = Node(
         package='pilot_control',
@@ -458,6 +481,7 @@ def generate_launch_description():
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
                 unified_data_collector_node, # taskset -c 4,6
+                gps_driver_node,  # GPS receiver (u-blox ZED-F9P)
                 
                 gpr_serial_bridge_node,
                 gpr_scan_controller_node, # taskset -c 4,6 (includes rosbag recording)
