@@ -46,7 +46,6 @@ from std_srvs.srv import Trigger, Empty
 import numpy as np
 import math
 from typing import List, Tuple, Optional
-from collections import deque
 import time
 import os
 import signal
@@ -403,49 +402,8 @@ class AccelMPC:
         # Solver debug / verbosity
         self.solver_debug_enabled = bool(solver_debug_enabled)
 
-        # Two-parameter ramp delay model:
-        # alpha, beta: Position gain coefficients (average velocity effect during cycle)
-        # gamma_v, gamma_omega: Ramp completion coefficients (velocity achieved by end of cycle)
-        # For linear ramp: alpha ≈ 0.5 * gamma
-        self.alpha = 1.0
-        self.beta = 1.0
-        self.gamma_v = 1.0
-        self.gamma_omega = 1.0
-
         # Flag
         self.initialized = False
-
-    def set_velocity_gains(
-        self, 
-        alpha: float, 
-        beta: float,
-        gamma_v: float = None,
-        gamma_omega: float = None,
-    ) -> None:
-        """
-        Set velocity gain coefficients for two-parameter ramp delay modeling.
-        
-        Args:
-            alpha: Linear velocity position gain [0.2, 1.0]. Lower = more ramp delay effect on position.
-            beta: Angular velocity position gain [0.2, 1.0]. Lower = more ramp delay effect on yaw.
-            gamma_v: Linear velocity ramp completion [0.2, 1.0]. How much of Δv is achieved by end of cycle.
-                     If None, derived as min(1.0, 2*alpha).
-            gamma_omega: Angular velocity ramp completion [0.2, 1.0]. How much of Δω is achieved by end of cycle.
-                         If None, derived as min(1.0, 2*beta).
-        """
-        self.alpha = float(np.clip(alpha, 0.2, 1.0))
-        self.beta = float(np.clip(beta, 0.2, 1.0))
-        
-        # Derive gamma from alpha/beta if not provided (assumes linear ramp: gamma ≈ 2*alpha)
-        if gamma_v is None:
-            self.gamma_v = float(np.clip(2.0 * self.alpha, 0.2, 1.0))
-        else:
-            self.gamma_v = float(np.clip(gamma_v, 0.2, 1.0))
-            
-        if gamma_omega is None:
-            self.gamma_omega = float(np.clip(2.0 * self.beta, 0.2, 1.0))
-        else:
-            self.gamma_omega = float(np.clip(gamma_omega, 0.2, 1.0))
 
     def set_velocity_bound_scale(self, scale: float) -> None:
         """Scale the v bounds by a factor in [0, 1]."""
@@ -728,10 +686,6 @@ class AccelMPC:
         self,
         v_ref: float,
         omega_ref: float,
-        alpha: float = 1.0,
-        beta: float = 1.0,
-        gamma_v: float = 1.0,
-        gamma_omega: float = 1.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Build augmented A and B for a given reference velocity.
@@ -749,18 +703,6 @@ class AccelMPC:
                       [ 0,  0],
                       [ 0, -1]]
         B_err      = Ts * B_err_cont
-        
-        Two-parameter ramp delay model:
-            - alpha, beta: Position gain coefficients
-              Position change uses effective velocity: v_eff = v_prev + alpha * Δv
-              alpha < 1 means velocity doesn't fully contribute to position within timestep.
-            
-            - gamma_v, gamma_omega: Velocity ramp completion coefficients
-              By end of cycle, velocity reaches: v_end = v_prev + gamma_v * Δv
-              gamma < 1 means velocity hasn't fully ramped to commanded value.
-              
-            For linear ramp: alpha ≈ 0.5 * gamma (average = half of final)
-            Typically: alpha < gamma ≤ 1.0
         """
         Ts = self.Ts
 
@@ -772,13 +714,11 @@ class AccelMPC:
             ]
         )
 
-        # B_err scaled by alpha/beta to model position effect of ramp delay
-        # Position changes use effective (average) velocity during cycle
         B_err = Ts * np.array(
             [
-                [-alpha, 0.0],    # xe affected by alpha-scaled Δv
+                [-1.0, 0.0],
                 [0.0, 0.0],
-                [0.0, -beta],     # θe affected by beta-scaled Δω
+                [0.0, -1.0],
             ]
         )
 
@@ -789,12 +729,12 @@ class AccelMPC:
         # Bottom-right already identity for [v, ω]
 
         # Augmented B (5x2): Δv, Δω affect both error states (via B_err) and [v, ω]
-        # Position effect is scaled by alpha/beta (average velocity during cycle)
-        # Velocity state is scaled by gamma (ramp completion by end of cycle)
+        # This models "immediate effect" discretization where Δu takes effect at
+        # the start of the interval, giving the solver more flexibility.
         B_aug = np.zeros((self.nx, self.nu))
-        B_aug[0:3, :] = B_err        # Scaled effect on [xe, ye, θe]
-        B_aug[3, 0] = gamma_v        # v_{k+1} = v_k + gamma_v * Δv_k
-        B_aug[4, 1] = gamma_omega    # ω_{k+1} = ω_k + gamma_omega * Δω_k
+        B_aug[0:3, :] = B_err        # Immediate effect on [xe, ye, θe]
+        B_aug[3, 0] = 1.0            # v_{k+1} = v_k + Δv_k
+        B_aug[4, 1] = 1.0            # ω_{k+1} = ω_k + Δω_k
 
         return A_aug, B_aug
 
@@ -824,11 +764,7 @@ class AccelMPC:
             v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
             omega_ref = float(wp[5])
 
-            # Use velocity gain coefficients to model ramp delay
-            # alpha, beta: position effect; gamma_v, gamma_omega: velocity ramp completion
-            A_aug, B_aug = self._build_A_aug_and_B_aug(
-                v_ref, omega_ref, self.alpha, self.beta, self.gamma_v, self.gamma_omega
-            )
+            A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref)
 
             # -A_aug x_k terms (k>0)
             if k > 0 and k in self.A_indices:
@@ -866,17 +802,13 @@ class AccelMPC:
         Solve the MPC problem.
 
         Args:
-            current_error:  [xe, ye, θe]^T
-            current_v:      current linear velocity state for MPC (commanded velocity)
-            current_omega:  current angular velocity state for MPC (commanded velocity)
-            ref_traj:       list of waypoints [x, y, yaw, vx, vy, vyaw]
+            current_error: [xe, ye, θe]^T
+            current_v:     current linear velocity (v)
+            current_omega: current angular velocity (ω)
+            ref_traj:      list of waypoints [x, y, yaw, vx, vy, vyaw]
 
         Returns:
             (Δu0_opt, solve_time_ms, solution)
-        
-        Note:
-            Ramp delay is modeled via velocity gain coefficients (alpha, beta) in
-            the dynamics matrices, not via measured velocity feedback.
         """
         if not self.initialized:
             if not self.setup():
@@ -906,13 +838,7 @@ class AccelMPC:
             v_ref0 = 0.0
             omega_ref0 = 0.0
 
-        # Use velocity gain coefficients to model ramp delay
-        # alpha, beta: position effect; gamma_v, gamma_omega: velocity ramp completion
-        A_aug0, _ = self._build_A_aug_and_B_aug(
-            v_ref0, omega_ref0, self.alpha, self.beta, self.gamma_v, self.gamma_omega
-        )
-        
-        # Compute initial state propagation (rhs for first dynamics constraint)
+        A_aug0, _ = self._build_A_aug_and_B_aug(v_ref0, omega_ref0)
         rhs0 = A_aug0 @ x0
 
         # First nx dynamics rows (k=0): equality constraint to rhs0
@@ -1079,39 +1005,13 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
-        # Two-parameter ramp delay model:
-        # alpha, beta: Position gain (average velocity effect during cycle)
-        # gamma_v, gamma_omega: Ramp completion (velocity achieved by end of cycle)
-        # For linear ramp: alpha ≈ 0.5 * gamma
-        self.declare_parameter("velocity_gain_estimation_enabled", False)
-        self.declare_parameter("velocity_gain_alpha_init", 0.4)  # Initial alpha (position gain)
-        self.declare_parameter("velocity_gain_beta_init", 0.4)   # Initial beta (position gain)
-        self.declare_parameter("velocity_gain_gamma_v_init", 0.8)  # Initial gamma_v (ramp completion)
-        self.declare_parameter("velocity_gain_gamma_omega_init", 0.8)  # Initial gamma_omega (ramp completion)
-        self.declare_parameter("velocity_gain_n_samples", 20)    # Sliding window size
-        self.declare_parameter("velocity_gain_min", 0.2)  # Minimum allowed gain
-        self.declare_parameter("velocity_gain_max", 1.0)  # Maximum allowed gain
-        self.declare_parameter("velocity_gain_outlier_iqr_scale", 1.5)  # IQR scale for outlier rejection
-        self.declare_parameter("velocity_gain_derive_gamma", True)  # Derive gamma from alpha (gamma = 2*alpha)
-
-        # Wheel ramp compensation parameters (DISABLED)
+        # Wheel ramp compensation parameters
+        # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
+        # delay_time: Pure transport delay (CAN latency + processing) in seconds
+        # Set ramp_compensation_enabled=True and input_mode to VEL_RAMP for best results
         self.declare_parameter("ramp_compensation_enabled", False)
-        self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (unused when disabled)
-        self.declare_parameter("wheel_delay_time", 0.03)  # seconds (unused when disabled)
-        
-        # Yaw offset estimation parameters
-        # Estimates constant yaw offset between LiDAR frame and chassis frame
-        # When robot moves, measured vy should be ~0 if aligned; non-zero vy indicates offset
-        self.declare_parameter("yaw_offset_estimation_enabled", True)
-        self.declare_parameter("yaw_offset_init", 0.0)  # Initial offset estimate (rad)
-        self.declare_parameter("yaw_offset_v_threshold", 0.05)  # Min |v_cmd| for estimation (m/s)
-        self.declare_parameter("yaw_offset_omega_threshold", 0.1)  # Max |ω_cmd| for "straight" (rad/s)
-        self.declare_parameter("yaw_offset_filter_alpha", 0.05)  # EMA filter (lower = slower adaptation)
-        self.declare_parameter("yaw_offset_max", 0.4)  # Max offset magnitude (rad, ~22.5°)
-        self.declare_parameter("yaw_offset_n_samples", 200 )  # Sliding window for robust estimation
-
-        # Velocity feedback parameter (unused in hybrid mode, kept for compatibility)
-        self.declare_parameter("velocity_feedback_alpha", 0.0)
+        self.declare_parameter("wheel_ramp_rate", 20.0)  # turn/s² (from ODrive config)
+        self.declare_parameter("wheel_delay_time", 0.01)  # seconds (~10ms typical CAN delay)
 
         # Get parameters
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
@@ -1171,76 +1071,12 @@ class MPCAccelController(Node):
             self.get_parameter("target_reached_threshold").value
         )
 
-        # Velocity gain estimation parameters (two-parameter model)
-        self.velocity_gain_estimation_enabled = bool(
-            self.get_parameter("velocity_gain_estimation_enabled").value
-        )
-        self.velocity_gain_alpha = float(
-            self.get_parameter("velocity_gain_alpha_init").value
-        )
-        self.velocity_gain_beta = float(
-            self.get_parameter("velocity_gain_beta_init").value
-        )
-        self.velocity_gain_gamma_v = float(
-            self.get_parameter("velocity_gain_gamma_v_init").value
-        )
-        self.velocity_gain_gamma_omega = float(
-            self.get_parameter("velocity_gain_gamma_omega_init").value
-        )
-        self.velocity_gain_n_samples = int(
-            self.get_parameter("velocity_gain_n_samples").value
-        )
-        self.velocity_gain_min = float(
-            self.get_parameter("velocity_gain_min").value
-        )
-        self.velocity_gain_max = float(
-            self.get_parameter("velocity_gain_max").value
-        )
-        self.velocity_gain_outlier_iqr_scale = float(
-            self.get_parameter("velocity_gain_outlier_iqr_scale").value
-        )
-        self.velocity_gain_derive_gamma = bool(
-            self.get_parameter("velocity_gain_derive_gamma").value
-        )
-        
-        # Sliding window buffers for robust estimation
-        self.alpha_samples: deque = deque(maxlen=self.velocity_gain_n_samples)
-        self.beta_samples: deque = deque(maxlen=self.velocity_gain_n_samples)
-
-        # Wheel ramp compensation (DISABLED - using velocity gain model instead)
+        # Wheel ramp compensation
         self.ramp_compensation_enabled = bool(
             self.get_parameter("ramp_compensation_enabled").value
         )
         self.wheel_ramp_rate = float(self.get_parameter("wheel_ramp_rate").value)
         self.wheel_delay_time = float(self.get_parameter("wheel_delay_time").value)
-        
-        # Yaw offset estimation parameters
-        self.yaw_offset_estimation_enabled = bool(
-            self.get_parameter("yaw_offset_estimation_enabled").value
-        )
-        self.yaw_offset = float(
-            self.get_parameter("yaw_offset_init").value
-        )
-        self.yaw_offset_v_threshold = float(
-            self.get_parameter("yaw_offset_v_threshold").value
-        )
-        self.yaw_offset_omega_threshold = float(
-            self.get_parameter("yaw_offset_omega_threshold").value
-        )
-        self.yaw_offset_filter_alpha = float(
-            self.get_parameter("yaw_offset_filter_alpha").value
-        )
-        self.yaw_offset_max = float(
-            self.get_parameter("yaw_offset_max").value
-        )
-        self.yaw_offset_n_samples = int(
-            self.get_parameter("yaw_offset_n_samples").value
-        )
-        
-        # Sliding window for yaw offset estimation
-        self.yaw_offset_samples: deque = deque(maxlen=self.yaw_offset_n_samples)
-        self.yaw_offset_raw = 0.0  # Raw (unfiltered) estimate for diagnostics
-        self.yaw_offset_instantaneous = 0.0  # Single-sample estimate for plotting
 
         # State
         self.current_x = 0.0
@@ -1248,26 +1084,12 @@ class MPCAccelController(Node):
         self.current_yaw = 0.0
         self.pose_initialized = False
 
-        # Measured velocity from odometry (tilt-corrected body frame from FAST-LIO)
-        # These are in LiDAR frame, which may have yaw offset from chassis
-        self.measured_vx = 0.0  # Forward velocity in LiDAR frame
-        self.measured_vy = 0.0  # Lateral velocity in LiDAR frame (should be ~0 if aligned)
-        self.measured_v = 0.0   # Magnitude (for compatibility)
-        self.measured_omega = 0.0
+        # Note: Velocity feedback is NOT used. Instead, we use commanded velocity
+        # (v_cmd, omega_cmd) as the MPC state. This avoids noisy velocity estimates.
 
         # Commanded velocities (v, ω) that we integrate Δu into
         self.v_cmd = 0.0
         self.omega_cmd = 0.0
-        
-        # Previous state for velocity gain estimation
-        self.prev_x = 0.0
-        self.prev_y = 0.0
-        self.prev_yaw = 0.0
-        self.prev_v_cmd = 0.0
-        self.prev_omega_cmd = 0.0
-        self.prev_dv = 0.0
-        self.prev_domega = 0.0
-        self.last_control_time = None
 
         # Target pose and path state
         self.target_x = 0.0
@@ -1340,38 +1162,6 @@ class MPCAccelController(Node):
             self.get_logger().info(
                 "Wheel ramp compensation DISABLED (using direct velocity commands)"
             )
-        
-        # Log velocity gain estimation mode (two-parameter model)
-        if self.velocity_gain_estimation_enabled:
-            self.get_logger().info(
-                f"✓ Two-parameter ramp model ENABLED: "
-                f"α_init={self.velocity_gain_alpha:.2f}, β_init={self.velocity_gain_beta:.2f}, "
-                f"γv_init={self.velocity_gain_gamma_v:.2f}, γω_init={self.velocity_gain_gamma_omega:.2f}"
-            )
-            self.get_logger().info(
-                f"  Estimation: n_samples={self.velocity_gain_n_samples}, "
-                f"derive_gamma={self.velocity_gain_derive_gamma}"
-            )
-        else:
-            self.get_logger().info(
-                f"Two-parameter ramp model (FIXED): "
-                f"α={self.velocity_gain_alpha:.2f}, β={self.velocity_gain_beta:.2f}, "
-                f"γv={self.velocity_gain_gamma_v:.2f}, γω={self.velocity_gain_gamma_omega:.2f}"
-            )
-        
-        # Log yaw offset estimation mode
-        if self.yaw_offset_estimation_enabled:
-            self.get_logger().info(
-                f"✓ Yaw offset estimation ENABLED: "
-                f"v_thresh={self.yaw_offset_v_threshold:.2f}m/s, "
-                f"ω_thresh={self.yaw_offset_omega_threshold:.2f}rad/s, "
-                f"max={math.degrees(self.yaw_offset_max):.1f}°"
-            )
-        else:
-            self.get_logger().info(
-                f"Yaw offset estimation DISABLED: "
-                f"offset={math.degrees(self.yaw_offset):.2f}° (fixed)"
-            )
 
         # Subscribers
         self.create_subscription(
@@ -1427,12 +1217,6 @@ class MPCAccelController(Node):
         self.delta_cmd_pub = self.create_publisher(
             Float64MultiArray, "/mpc_accel/delta_cmd", 10
         )
-        self.velocity_gains_pub = self.create_publisher(
-            Float64MultiArray, "/mpc_accel/velocity_gains", 10
-        )
-        self.yaw_offset_pub = self.create_publisher(
-            Float64MultiArray, "/mpc_accel/yaw_offset", 10
-        )
 
         # ODrive axis state / clear error clients for arming/disarming
         self.left_axis_client = self.create_client(
@@ -1482,39 +1266,16 @@ class MPCAccelController(Node):
     # -----------------------------
     def odometry_callback(self, msg: Odometry) -> None:
         """
-        Process odometry for position AND velocity.
-        Velocity is in tilt-corrected body frame from FAST-LIO (via odom_tilt_corrector).
-        
-        Note: If LiDAR has yaw offset from chassis, velocities are in LiDAR frame.
-        We estimate and correct for this offset.
+        Process odometry for POSITION only.
+        Velocity is not needed - we use commanded velocity (v_cmd, omega_cmd) as the MPC state.
         """
-        # Position (global tilt-corrected frame)
         self.current_x = float(msg.pose.pose.position.x)
         self.current_y = float(msg.pose.pose.position.y)
         qx = float(msg.pose.pose.orientation.x)
         qy = float(msg.pose.pose.orientation.y)
         qz = float(msg.pose.pose.orientation.z)
         qw = float(msg.pose.pose.orientation.w)
-        raw_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
-        
-        # Apply yaw offset correction (LiDAR frame to chassis frame)
-        self.current_yaw = self.normalize_angle(raw_yaw - self.yaw_offset)
-
-        # Velocity in LiDAR frame (tilt-corrected)
-        # linear.x = forward, linear.y = lateral, angular.z = yaw rate
-        self.measured_vx = float(msg.twist.twist.linear.x)
-        self.measured_vy = float(msg.twist.twist.linear.y)
-        self.measured_omega = float(msg.twist.twist.angular.z)
-        
-        # Transform velocity from LiDAR frame to chassis frame
-        # v_chassis = R(-yaw_offset) @ v_lidar
-        cos_offset = math.cos(self.yaw_offset)
-        sin_offset = math.sin(self.yaw_offset)
-        vx_chassis = self.measured_vx * cos_offset + self.measured_vy * sin_offset
-        vy_chassis = -self.measured_vx * sin_offset + self.measured_vy * cos_offset
-        
-        # For MPC, we use chassis frame velocity
-        self.measured_v = vx_chassis  # Forward velocity in chassis frame
+        self.current_yaw = self.quaternion_to_yaw(qx, qy, qz, qw)
 
         if not self.pose_initialized:
             self.pose_initialized = True
@@ -1663,217 +1424,6 @@ class MPCAccelController(Node):
             )
 
         return waypoints
-
-    def _update_velocity_gains(self) -> None:
-        """
-        Online estimation of velocity gain coefficients (alpha, beta).
-        
-        These model the ramp delay: when commanding Δv, the effective velocity
-        for position change is v_prev + alpha * Δv (where alpha < 1 if there's delay).
-        
-        Robust estimation approach:
-        1. Compute actual position change since last cycle
-        2. Estimate instantaneous alpha/beta from position changes
-        3. Add to sliding window buffer
-        4. Compute robust estimate using median with IQR outlier rejection
-        """
-        # Compute actual position change
-        dx = self.current_x - self.prev_x
-        dy = self.current_y - self.prev_y
-        dyaw = self.normalize_angle(self.current_yaw - self.prev_yaw)
-        
-        # Transform to body frame (at previous pose)
-        cy = math.cos(self.prev_yaw)
-        sy = math.sin(self.prev_yaw)
-        dx_body = cy * dx + sy * dy  # Forward displacement
-        
-        # Compute dt
-        dt = self.mpc_dt  # Use MPC timestep as reference
-        
-        # Estimate alpha (linear velocity gain)
-        # Expected: position_change = (v_prev + alpha * dv) * dt
-        # Solve: alpha = (dx_body / dt - v_prev) / dv
-        # Use absolute values to get magnitude of gain regardless of direction
-        if abs(self.prev_dv) > 0.001:  # Only update if there was a significant velocity change
-            v_effective = dx_body / dt if dt > 0.001 else 0.0
-            delta_v_observed = v_effective - self.prev_v_cmd
-            
-            # Use absolute values: alpha = |delta_v_observed| / |prev_dv|
-            # But preserve sign consistency: if signs match, gain is positive
-            if abs(self.prev_dv) > 1e-6:
-                alpha_raw = abs(delta_v_observed) / abs(self.prev_dv)
-                # Check sign consistency (response in same direction as command)
-                signs_match = (delta_v_observed * self.prev_dv) >= 0
-                if not signs_match:
-                    alpha_raw = -alpha_raw  # Negative gain means opposite response
-            else:
-                alpha_raw = 0.0
-            
-            # Only add to buffer if estimate is in a reasonable range (initial filter)
-            if self.velocity_gain_min - 0.5 <= alpha_raw <= self.velocity_gain_max + 0.5:
-                self.alpha_samples.append(alpha_raw)
-        
-        # Estimate beta (angular velocity gain)
-        # Expected: yaw_change = (omega_prev + beta * domega) * dt
-        # Use absolute values to get magnitude of gain regardless of direction
-        if abs(self.prev_domega) > 0.001:  # Only update if there was a significant angular velocity change
-            omega_effective = dyaw / dt if dt > 0.001 else 0.0
-            delta_omega_observed = omega_effective - self.prev_omega_cmd
-            
-            # Use absolute values: beta = |delta_omega_observed| / |prev_domega|
-            # But preserve sign consistency: if signs match, gain is positive
-            if abs(self.prev_domega) > 1e-6:
-                beta_raw = abs(delta_omega_observed) / abs(self.prev_domega)
-                # Check sign consistency (response in same direction as command)
-                signs_match = (delta_omega_observed * self.prev_domega) >= 0
-                if not signs_match:
-                    beta_raw = -beta_raw  # Negative gain means opposite response
-            else:
-                beta_raw = 0.0
-            
-            # Log raw estimate for diagnostics (debug level - enable if needed)
-            self.get_logger().debug(
-                f"β_raw={beta_raw:.3f} | ω_eff={omega_effective:.4f}, ω_cmd={self.prev_omega_cmd:.4f}, "
-                f"Δω_cmd={self.prev_domega:.4f}, Δω_obs={delta_omega_observed:.4f}"
-            )
-            
-            # Only add to buffer if estimate is in a reasonable range (initial filter)
-            if self.velocity_gain_min - 0.5 <= beta_raw <= self.velocity_gain_max + 0.5:
-                self.beta_samples.append(beta_raw)
-        
-        # Update alpha using robust estimation
-        if len(self.alpha_samples) >= 3:
-            self.velocity_gain_alpha = self._robust_estimate(
-                list(self.alpha_samples),
-                self.velocity_gain_min,
-                self.velocity_gain_max
-            )
-        
-        # Update beta using robust estimation
-        if len(self.beta_samples) >= 3:
-            self.velocity_gain_beta = self._robust_estimate(
-                list(self.beta_samples),
-                self.velocity_gain_min,
-                self.velocity_gain_max
-            )
-    
-    def _robust_estimate(self, samples: List[float], min_val: float, max_val: float) -> float:
-        """
-        Compute robust estimate from samples using median with IQR outlier rejection.
-        
-        Args:
-            samples: List of sample values
-            min_val: Minimum allowed output value
-            max_val: Maximum allowed output value
-            
-        Returns:
-            Robust estimate (median of inliers, clamped to [min_val, max_val])
-        """
-        if len(samples) < 3:
-            # Not enough samples for robust estimation
-            return np.clip(np.median(samples), min_val, max_val)
-        
-        arr = np.array(samples)
-        
-        # Compute quartiles
-        q1 = np.percentile(arr, 25)
-        q3 = np.percentile(arr, 75)
-        iqr = q3 - q1
-        
-        # Define outlier bounds
-        iqr_scale = self.velocity_gain_outlier_iqr_scale
-        lower_bound = q1 - iqr_scale * iqr
-        upper_bound = q3 + iqr_scale * iqr
-        
-        # Filter outliers
-        inliers = arr[(arr >= lower_bound) & (arr <= upper_bound)]
-        
-        if len(inliers) == 0:
-            # All samples are outliers - use median of original
-            inliers = arr
-        
-        # Compute median of inliers
-        estimate = float(np.median(inliers))
-        
-        # Clamp to valid range
-        return float(np.clip(estimate, min_val, max_val))
-
-    def _update_yaw_offset(self) -> None:
-        """
-        Online estimation of yaw offset between LiDAR frame and chassis frame.
-        
-        When the robot moves forward (v_cmd > threshold, |ω_cmd| < threshold),
-        the measured lateral velocity (vy) should be ~0 if LiDAR is aligned.
-        Non-zero vy indicates yaw offset: θ_offset ≈ atan2(vy, vx)
-        
-        This method uses:
-        1. Velocity ratio: θ_offset = atan2(vy_measured, vx_measured) when going "straight"
-        2. Sliding window with IQR outlier rejection for robustness
-        """
-        # Only estimate when robot is moving forward and not turning much
-        if abs(self.v_cmd) < self.yaw_offset_v_threshold:
-            return  # Not moving fast enough
-        if abs(self.omega_cmd) > self.yaw_offset_omega_threshold:
-            return  # Turning too much
-        
-        # Also check measured velocity magnitude
-        vx = self.measured_vx
-        vy = self.measured_vy
-        v_mag = math.sqrt(vx*vx + vy*vy)
-        
-        if v_mag < self.yaw_offset_v_threshold:
-            return  # Measured velocity too low
-        
-        # Estimate offset from velocity direction
-        # When robot goes straight, velocity should be in chassis forward direction
-        # If LiDAR has offset, velocity appears rotated
-        offset_estimate = math.atan2(vy, vx)
-        
-        # Store instantaneous estimate for plotting
-        self.yaw_offset_instantaneous = offset_estimate
-        
-        # Sign convention: positive offset means LiDAR is rotated CCW from chassis
-        # If vy > 0 when vx > 0 (going forward), LiDAR is rotated CCW
-        
-        # Only add to buffer if estimate is reasonable
-        if abs(offset_estimate) <= self.yaw_offset_max * 1.5:
-            self.yaw_offset_samples.append(offset_estimate)
-        
-        # Update offset using robust estimation (median with IQR outlier rejection)
-        if len(self.yaw_offset_samples) >= 5:
-            arr = np.array(self.yaw_offset_samples)
-            
-            # IQR outlier rejection
-            q1 = np.percentile(arr, 25)
-            q3 = np.percentile(arr, 75)
-            iqr = q3 - q1
-            lower_bound = q1 - 1.5 * iqr
-            upper_bound = q3 + 1.5 * iqr
-            inliers = arr[(arr >= lower_bound) & (arr <= upper_bound)]
-            
-            if len(inliers) > 0:
-                new_offset = float(np.median(inliers))
-            else:
-                new_offset = float(np.median(arr))
-            
-            # Clamp to max offset
-            new_offset = float(np.clip(new_offset, -self.yaw_offset_max, self.yaw_offset_max))
-            
-            # Store raw (median) estimate before EMA filtering
-            self.yaw_offset_raw = new_offset
-            
-            # Apply EMA filter for smooth adaptation
-            alpha = self.yaw_offset_filter_alpha
-            old_offset = self.yaw_offset
-            self.yaw_offset = alpha * new_offset + (1.0 - alpha) * self.yaw_offset
-            
-            # Log periodically when offset changes significantly or buffer fills
-            if len(self.yaw_offset_samples) == self.yaw_offset_n_samples:
-                self.get_logger().info(
-                    f"Yaw offset: {math.degrees(self.yaw_offset):.2f}° "
-                    f"(raw={math.degrees(new_offset):.2f}°, n={len(inliers)}/{len(arr)} inliers, "
-                    f"vx={vx:.3f}, vy={vy:.3f})"
-                )
 
     def compute_error_state(self, ref_wp: np.ndarray) -> np.ndarray:
         """
@@ -2300,46 +1850,18 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
-        # Online yaw offset estimation (LiDAR to chassis frame)
-        if self.yaw_offset_estimation_enabled:
-            self._update_yaw_offset()
-        
-        # Online velocity gain estimation (alpha, beta) - DISABLED by default
-        # These model how much of the commanded velocity change is achieved in one timestep
-        if self.velocity_gain_estimation_enabled and self.last_control_time is not None:
-            self._update_velocity_gains()
-        
-        # Derive gamma from alpha if enabled (assumes linear ramp: gamma ≈ 2*alpha)
-        if self.velocity_gain_derive_gamma:
-            self.velocity_gain_gamma_v = float(np.clip(2.0 * self.velocity_gain_alpha, 
-                                                        self.velocity_gain_min, self.velocity_gain_max))
-            self.velocity_gain_gamma_omega = float(np.clip(2.0 * self.velocity_gain_beta, 
-                                                            self.velocity_gain_min, self.velocity_gain_max))
-        
-        # Update MPC's velocity gain coefficients (two-parameter model)
-        self.mpc.set_velocity_gains(
-            self.velocity_gain_alpha, 
-            self.velocity_gain_beta,
-            self.velocity_gain_gamma_v,
-            self.velocity_gain_gamma_omega
-        )
-        
-        # MPC velocity state: use COMMANDED velocity
+        # Use COMMANDED velocity as the MPC state instead of measured velocity.
+        # This assumes the low-level ODrive velocity controller tracks well (which it does).
+        # Benefits:
+        #   - No noisy velocity measurements needed
+        #   - Commanded velocity is inherently smooth (output of MPC itself)
+        #   - Position errors are still corrected via error states (xe, ye, θe)
+        # This is "open-loop on velocity, closed-loop on position" - common in cascaded control.
         v_body = self.v_cmd
         omega_body = self.omega_cmd
 
-        # Solve MPC for Δu (no measured velocity pass - using gain model instead)
+        # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
-
-        # Store previous state for next estimation cycle
-        self.prev_x = self.current_x
-        self.prev_y = self.current_y
-        self.prev_yaw = self.current_yaw
-        self.prev_v_cmd = self.v_cmd
-        self.prev_omega_cmd = self.omega_cmd
-        self.prev_dv = float(du0[0])
-        self.prev_domega = float(du0[1])
-        self.last_control_time = self.get_clock().now()
 
         # Integrate Δu into command velocities (MPC's internal state)
         dv = float(du0[0])
@@ -2378,8 +1900,7 @@ class MPCAccelController(Node):
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
         
-        # Debug logging (uncomment for troubleshooting)
-        # self.get_logger().debug(f"Wheel cmd: L={left_rps_eff:.3f}, R={right_rps_eff:.3f} rev/s")
+        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
@@ -2420,43 +1941,6 @@ class MPCAccelController(Node):
                     float(wp0[5]),
                 ]
                 self.ref_traj_pub.publish(ref_msg)
-            
-            # Velocity gains [alpha, beta, gamma_v, gamma_omega, n_alpha_samples, n_beta_samples]
-            # Two-parameter ramp delay model
-            gains_msg = Float64MultiArray()
-            gains_msg.data = [
-                self.velocity_gain_alpha,
-                self.velocity_gain_beta,
-                self.velocity_gain_gamma_v,
-                self.velocity_gain_gamma_omega,
-                float(len(self.alpha_samples)),
-                float(len(self.beta_samples))
-            ]
-            self.velocity_gains_pub.publish(gains_msg)
-            
-            # Yaw offset diagnostics:
-            # [0] offset_filtered_rad - EMA filtered estimate (used for correction)
-            # [1] offset_filtered_deg - Same in degrees
-            # [2] offset_raw_rad - Median estimate before EMA (from sliding window)
-            # [3] offset_raw_deg - Same in degrees
-            # [4] offset_instant_rad - Single-sample instantaneous estimate
-            # [5] offset_instant_deg - Same in degrees
-            # [6] n_samples - Number of samples in sliding window
-            # [7] vx - Measured forward velocity (LiDAR frame)
-            # [8] vy - Measured lateral velocity (LiDAR frame)
-            yaw_offset_msg = Float64MultiArray()
-            yaw_offset_msg.data = [
-                self.yaw_offset,                              # [0] filtered (rad)
-                math.degrees(self.yaw_offset),                # [1] filtered (deg)
-                self.yaw_offset_raw,                          # [2] raw median (rad)
-                math.degrees(self.yaw_offset_raw),            # [3] raw median (deg)
-                self.yaw_offset_instantaneous,                # [4] instantaneous (rad)
-                math.degrees(self.yaw_offset_instantaneous),  # [5] instantaneous (deg)
-                float(len(self.yaw_offset_samples)),          # [6] n_samples
-                self.measured_vx,                             # [7] vx
-                self.measured_vy                              # [8] vy
-            ]
-            self.yaw_offset_pub.publish(yaw_offset_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
 
@@ -2644,5 +2128,4 @@ def main(args=None) -> None:
 
 if __name__ == "__main__":
     main()
-
 
