@@ -1445,18 +1445,16 @@ class MPCAccelController(Node):
         else:
             v_scale_ref = 1.0
 
-        # In reverse mode, velocity is negative (robot moves backward along path)
+        # Velocity reference magnitude (always positive in world frame direction)
         v_ref = cruising_speed * v_scale_ref
-        if self.reverse_mode:
-            v_ref = -v_ref
 
         for k in range(self.mpc_horizon):
             wx, wy, wyaw = waypoint_positions[k]
-            # Velocity reference is in the direction the robot is facing (wyaw)
-            # In forward mode: facing toward target, positive v moves toward target
-            # In reverse mode: facing away from target, negative v moves toward target
-            vx_ref = v_ref * math.cos(wyaw)
-            vy_ref = v_ref * math.sin(wyaw)
+            # Velocity reference should point TOWARD the target in world frame
+            # Use forward_heading (direction to target), not wyaw (robot facing direction)
+            # The MPC error dynamics will handle the sign of body-frame velocity
+            vx_ref = v_ref * math.cos(forward_heading)
+            vy_ref = v_ref * math.sin(forward_heading)
             vyaw_ref = 0.0
             waypoints.append(
                 np.array([wx, wy, wyaw, vx_ref, vy_ref, vyaw_ref], dtype=float)
@@ -1879,16 +1877,23 @@ class MPCAccelController(Node):
 
                 ref_x = self.path_start_x + t_ref * path_dx
                 ref_y = self.path_start_y + t_ref * path_dy
-                path_heading = math.atan2(path_dy, path_dx)
+                
+                # Use appropriate heading based on reverse mode
+                forward_path_heading = math.atan2(path_dy, path_dx)
+                if self.reverse_mode:
+                    ref_heading = self.normalize_angle(forward_path_heading + math.pi)
+                else:
+                    ref_heading = forward_path_heading
 
                 cruising_speed = min(0.5, self.max_linear_vel)
+                # Velocity reference points toward target (forward_path_heading direction)
                 ref_waypoint = np.array(
                     [
                         ref_x,
                         ref_y,
-                        path_heading,
-                        cruising_speed * math.cos(path_heading),
-                        cruising_speed * math.sin(path_heading),
+                        ref_heading,
+                        cruising_speed * math.cos(forward_path_heading),
+                        cruising_speed * math.sin(forward_path_heading),
                         0.0,
                     ]
                 )
@@ -1952,7 +1957,13 @@ class MPCAccelController(Node):
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
         
-        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
+        self.get_logger().info(
+            f"[{'REV' if self.reverse_mode else 'FWD'}] "
+            f"err=[{err[0]:.3f}, {err[1]:.3f}, {math.degrees(err[2]):.1f}°] "
+            f"v_cmd={self.v_cmd:.3f} ω_cmd={self.omega_cmd:.3f} "
+            f"Δv={dv:.4f} Δω={domega:.4f} "
+            f"wheels=[{left_rps_eff:.3f}, {right_rps_eff:.3f}]"
+        )
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
