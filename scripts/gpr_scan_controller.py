@@ -23,7 +23,7 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from odrive_can.msg import ControlMessage, ControllerStatus
 from odrive_can.srv import AxisState
-from std_srvs.srv import Trigger, Empty
+from std_srvs.srv import Trigger
 import os
 import time
 from datetime import datetime
@@ -184,17 +184,12 @@ class GPRScanController(Node):
 
         # ODrive Axis arming service client (GPR only)
         self.gpr_axis_client = self.create_client(AxisState, f'/{self.gpr_ns}/request_axis_state')
-        # Clear errors client (required before arming if there are latent errors)
-        self.gpr_clear_client = self.create_client(Empty, f'/{self.gpr_ns}/clear_errors')
 
         # One-shot arming timer
         if self.auto_arm_on_start:
             self.arm_timer = self.create_timer(0.2, self._arm_once)
         else:
             self.arm_timer = None
-        
-        # Track if motor is armed
-        self.motor_armed = False
         
         # Service servers
         self.toggle_service = self.create_service(
@@ -243,15 +238,9 @@ class GPRScanController(Node):
             if not self.gpr_axis_client.wait_for_service(timeout_sec=0.1):
                 return
 
-            # Clear errors first (important if there are latent errors from previous runs)
-            if self.gpr_clear_client.wait_for_service(timeout_sec=0.1):
-                self.gpr_clear_client.call_async(Empty.Request())
-                self.get_logger().info('Cleared GPR errors before arming')
-
             req = AxisState.Request()
             req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
             self.gpr_axis_client.call_async(req)
-            self.motor_armed = True
 
             if self.arm_timer is not None:
                 self.arm_timer.cancel()
@@ -259,39 +248,6 @@ class GPRScanController(Node):
             self.get_logger().info('Sent CLOSED_LOOP arming to /gpr axis')
         except Exception as exc:
             self.get_logger().warn(f"Arming failed: {exc}")
-    
-    def _arm_motor_for_scan(self):
-        """Re-arm GPR motor before starting a scan. Clears errors and requests CLOSED_LOOP_CONTROL."""
-        try:
-            # Clear any existing errors first
-            if self.gpr_clear_client.wait_for_service(timeout_sec=1.0):
-                self.gpr_clear_client.call_async(Empty.Request())
-                self.get_logger().info('✓ Cleared GPR errors')
-            else:
-                self.get_logger().warn('⚠️  GPR clear_errors service not available')
-            
-            # Small delay to let error clear complete
-            time.sleep(0.1)
-            
-            # Request CLOSED_LOOP_CONTROL
-            if self.gpr_axis_client.wait_for_service(timeout_sec=1.0):
-                req = AxisState.Request()
-                req.axis_requested_state = 8  # CLOSED_LOOP_CONTROL
-                future = self.gpr_axis_client.call_async(req)
-                rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-                if future.result():
-                    self.motor_armed = True
-                    self.get_logger().info(f'✓ GPR motor armed (state: {future.result().axis_state})')
-                    return True
-                else:
-                    self.get_logger().error('✗ GPR arming call returned None')
-                    return False
-            else:
-                self.get_logger().error('✗ GPR axis_state service not available')
-                return False
-        except Exception as e:
-            self.get_logger().error(f'✗ Error arming GPR motor: {e}')
-            return False
     
     def gpr_status_callback(self, msg):
         """Store latest GPR motor status"""
@@ -512,13 +468,6 @@ class GPRScanController(Node):
         self.get_logger().info('STARTING GPR SCAN')
         self.get_logger().info('='*70)
         
-        # Step 0: Re-arm the GPR motor (clear errors and enter CLOSED_LOOP_CONTROL)
-        # This ensures the motor is ready even if there were errors from previous runs
-        self.get_logger().info('⏳ Arming GPR motor...')
-        if not self._arm_motor_for_scan():
-            self.get_logger().error('✗ Failed to arm GPR motor - aborting scan')
-            return False
-        
         # Step 1: Create log file (CSV format for better performance)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.current_log_file = os.path.join(self.log_dir, f'gpr_scan_{timestamp}.csv')
@@ -642,13 +591,13 @@ class GPRScanController(Node):
         msg = ControlMessage()
         msg.control_mode = 2  # VELOCITY_CONTROL
         msg.input_mode = 2    # VEL_RAMP
-        msg.input_vel = -motor_turns_per_sec  # Negated for correct rotation direction
+        msg.input_vel = motor_turns_per_sec
         msg.input_torque = 0.0
         msg.input_pos = 0.0
         
         self.gpr_motor_pub.publish(msg)
         self.gpr_motor_started = True
-        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({-motor_turns_per_sec:.3f} turns/s)')
+        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({motor_turns_per_sec:.3f} turns/s)')
         self.get_logger().info('✓ Full scanning active - 50Hz logging continues')
     
     def stop_scan(self):
@@ -757,13 +706,13 @@ class GPRScanController(Node):
             msg = ControlMessage()
             msg.control_mode = 2  # VELOCITY_CONTROL
             msg.input_mode = 2    # VEL_RAMP
-            msg.input_vel = -motor_turns_per_sec  # Negated for correct rotation direction (consistent with delayed_gpr_motor_start)
+            msg.input_vel = -motor_turns_per_sec
             msg.input_torque = 0.0
             msg.input_pos = 0.0
             
             self.gpr_motor_pub.publish(msg)
-        elif self.stopping:
-            # During stop sequence, send zero velocity to ensure motor stops
+        else:
+            # Send zero velocity when not scanning
             msg = ControlMessage()
             msg.control_mode = 2  # VELOCITY_CONTROL
             msg.input_mode = 1    # PASSTHROUGH
@@ -772,8 +721,6 @@ class GPRScanController(Node):
             msg.input_pos = 0.0
             
             self.gpr_motor_pub.publish(msg)
-        # else: Don't send commands when not scanning - avoids continuous 20Hz commands
-        # that could interfere with arming or cause issues with the ODrive
     
     def fastlio_callback(self, msg):
         """On each odometry message, cache pose data (already tilt-corrected by diff_drive_controller)."""
