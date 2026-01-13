@@ -458,12 +458,15 @@ public:
     publishStreamStatus();
 
     // ROS wiring
-    auto qos = rclcpp::SensorDataQoS().keep_last(100);
-    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(cfg_.odom_topic, qos,
+    // Use default QoS (reliable) for odometry - matches odom_tilt_corrector.py publisher QoS
+    // SensorDataQoS (best-effort) was causing QoS mismatch with the reliable publisher
+    auto odom_qos = rclcpp::QoS(100).reliable();
+    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(cfg_.odom_topic, odom_qos,
                  std::bind(&UnifiedDataCollector::onOdom, this, std::placeholders::_1));
     
-    // GPS subscription (subscribes to filtered /gps/fix topic from gps_driver)
-    gps_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>("/gps/fix", qos,
+    // GPS uses SensorDataQoS since gps_driver publishes with sensor data QoS
+    auto sensor_qos = rclcpp::SensorDataQoS().keep_last(100);
+    gps_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>("/gps/fix", sensor_qos,
                  std::bind(&UnifiedDataCollector::onGps, this, std::placeholders::_1));
     RCLCPP_INFO(get_logger(), "GPS subscription: /gps/fix (quality-gated)");
 

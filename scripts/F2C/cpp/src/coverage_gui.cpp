@@ -202,22 +202,27 @@ void VideoStreamWidget::startStream(int port) {
 }
 
 void VideoStreamWidget::stopStream() {
-    if (pipeline_) {
-        gst_element_set_state(pipeline_, GST_STATE_NULL);
-        playing_ = false;
-        emit streamStopped();
-        std::cout << "[VideoStream] Stream stopped" << std::endl;
-    }
+    // Fully destroy the pipeline to release all resources (including UDP socket)
+    // This ensures clean restart when switching cameras
+    destroyPipeline();
+    emit streamStopped();
+    std::cout << "[VideoStream] Stream stopped" << std::endl;
 }
 
 void VideoStreamWidget::destroyPipeline() {
-    // Stop the bus polling timer
+    // Stop the bus polling timer first
     if (bus_poll_timer_) {
         bus_poll_timer_->stop();
     }
     
     if (pipeline_) {
+        // Set pipeline to NULL state
         gst_element_set_state(pipeline_, GST_STATE_NULL);
+        
+        // Wait for the state change to complete (with 1 second timeout)
+        // This ensures resources like UDP sockets are fully released
+        gst_element_get_state(pipeline_, nullptr, nullptr, GST_SECOND);
+        
         gst_object_unref(pipeline_);
         pipeline_ = nullptr;
         playing_ = false;
@@ -4253,9 +4258,11 @@ void CoverageGUI::setupRobotTrackingSubscription() {
         return;
     }
     
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(50)).best_effort();
+    // Use reliable QoS to match odom_tilt_corrector.py publisher (default QoS = reliable)
+    // best_effort() was causing QoS mismatch - subscriber couldn't receive from reliable publisher
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
     std::string topic = topic_qt.toStdString();
-    std::cout << "[Coverage Planner] Subscribing to robot odom topic: " << topic << std::endl;
+    std::cout << "[Coverage Planner] Subscribing to robot odom topic: " << topic << " (reliable QoS)" << std::endl;
     fastlio_sub_ = ros_node_->create_subscription<nav_msgs::msg::Odometry>(
         topic, qos,
         [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
