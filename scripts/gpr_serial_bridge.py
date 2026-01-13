@@ -73,19 +73,26 @@ class GPRSerialBridge(Node):
             return False
     
     def line_start_callback(self, request, response):
-        """Service callback for line start (send 'L')"""
-        if self.send_command('L'):
-            response.success = True
-            response.message = 'Line start command sent to Arduino'
-            self.scan_active = True
+        """Service callback for line start (send 'K' twice with 1 second delay)"""
+        first_success = self.send_command('K')
+        if first_success:
+            time.sleep(1)
+            second_success = self.send_command('K')
+            if second_success:
+                response.success = True
+                response.message = 'Line start commands (K, K) sent to Arduino'
+                self.scan_active = True
+            else:
+                response.success = False
+                response.message = 'Failed to send second K command'
         else:
             response.success = False
-            response.message = 'Failed to send line start command'
+            response.message = 'Failed to send first K command'
         return response
     
     def line_stop_callback(self, request, response):
-        """Service callback for line stop (send 'K')"""
-        if self.send_command('K'):
+        """Service callback for line stop (send 'L')"""
+        if self.send_command('L'):
             response.success = True
             response.message = 'Line stop command sent to Arduino'
             self.scan_active = False
