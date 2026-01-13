@@ -591,13 +591,13 @@ class GPRScanController(Node):
         msg = ControlMessage()
         msg.control_mode = 2  # VELOCITY_CONTROL
         msg.input_mode = 2    # VEL_RAMP
-        msg.input_vel = motor_turns_per_sec
+        msg.input_vel = -motor_turns_per_sec  # Negated for correct rotation direction
         msg.input_torque = 0.0
         msg.input_pos = 0.0
         
         self.gpr_motor_pub.publish(msg)
         self.gpr_motor_started = True
-        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({motor_turns_per_sec:.3f} turns/s)')
+        self.get_logger().info(f'✓ GPR motor started at {self.gpr_scan_velocity:.3f} m/s ({-motor_turns_per_sec:.3f} turns/s)')
         self.get_logger().info('✓ Full scanning active - 50Hz logging continues')
     
     def stop_scan(self):
@@ -706,7 +706,7 @@ class GPRScanController(Node):
             msg = ControlMessage()
             msg.control_mode = 2  # VELOCITY_CONTROL
             msg.input_mode = 2    # VEL_RAMP
-            msg.input_vel = motor_turns_per_sec  # Fixed: removed extra negation that conflicted with delayed_gpr_motor_start()
+            msg.input_vel = -motor_turns_per_sec  # Negated for correct rotation direction (consistent with delayed_gpr_motor_start)
             msg.input_torque = 0.0
             msg.input_pos = 0.0
             
