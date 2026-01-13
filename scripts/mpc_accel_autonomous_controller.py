@@ -761,8 +761,10 @@ class AccelMPC:
             else:
                 wp = np.zeros(6)
 
-            v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
-            omega_ref = float(wp[5])
+            # wp[5] (vyaw_ref) now carries the SIGNED body-frame velocity reference
+            # This is crucial for correct error dynamics in reverse mode
+            v_ref = float(wp[5])  # Signed v_ref (negative when reversing)
+            omega_ref = 0.0  # Angular velocity reference (typically 0 for straight lines)
 
             A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref)
 
@@ -832,8 +834,9 @@ class AccelMPC:
         # Build A_aug_0 for initial constraint RHS
         if len(ref_traj) > 0:
             wp0 = ref_traj[0]
-            v_ref0 = math.sqrt(float(wp0[3]) ** 2 + float(wp0[4]) ** 2)
-            omega_ref0 = float(wp0[5])
+            # wp0[5] now carries the SIGNED body-frame velocity reference
+            v_ref0 = float(wp0[5])
+            omega_ref0 = 0.0
         else:
             v_ref0 = 0.0
             omega_ref0 = 0.0
@@ -1105,7 +1108,7 @@ class MPCAccelController(Node):
         
         # Reverse mode flag: True if robot should drive backwards to reach target
         # (chosen when reversing requires less yaw change than going forward)
-        self.reverse_mode = True
+        self.reverse_mode = False
 
         # Waypoint sequence state (CSV / F2C waypoints)
         self.waypoints: List[Tuple[float, float]] = []
@@ -1445,17 +1448,21 @@ class MPCAccelController(Node):
         else:
             v_scale_ref = 1.0
 
-        # Velocity reference magnitude (always positive in world frame direction)
+        # Velocity reference: positive for forward, negative for reverse
+        # This sign is crucial for the MPC error dynamics (ye_dot = v_ref * θe)
         v_ref = cruising_speed * v_scale_ref
+        if self.reverse_mode:
+            v_ref = -v_ref  # Negative body-frame velocity when reversing
 
         for k in range(self.mpc_horizon):
             wx, wy, wyaw = waypoint_positions[k]
-            # Velocity reference should point TOWARD the target in world frame
-            # Use forward_heading (direction to target), not wyaw (robot facing direction)
-            # The MPC error dynamics will handle the sign of body-frame velocity
-            vx_ref = v_ref * math.cos(forward_heading)
-            vy_ref = v_ref * math.sin(forward_heading)
-            vyaw_ref = 0.0
+            # Store velocity reference in the direction the robot is FACING (wyaw)
+            # This encodes the signed body-frame velocity for MPC dynamics
+            vx_ref = abs(v_ref) * math.cos(wyaw)  # World-frame velocity component
+            vy_ref = abs(v_ref) * math.sin(wyaw)  # World-frame velocity component
+            # Store the SIGNED v_ref in a way the MPC can extract it
+            # We use the sign of the dot product with robot heading
+            vyaw_ref = v_ref  # Hijack vyaw_ref to pass signed v_ref to MPC
             waypoints.append(
                 np.array([wx, wy, wyaw, vx_ref, vy_ref, vyaw_ref], dtype=float)
             )
@@ -1886,15 +1893,17 @@ class MPCAccelController(Node):
                     ref_heading = forward_path_heading
 
                 cruising_speed = min(0.5, self.max_linear_vel)
-                # Velocity reference points toward target (forward_path_heading direction)
+                # Signed velocity reference (negative when reversing)
+                signed_v_ref = -cruising_speed if self.reverse_mode else cruising_speed
+                
                 ref_waypoint = np.array(
                     [
                         ref_x,
                         ref_y,
                         ref_heading,
-                        cruising_speed * math.cos(forward_path_heading),
-                        cruising_speed * math.sin(forward_path_heading),
-                        0.0,
+                        abs(cruising_speed) * math.cos(ref_heading),  # vx in world frame
+                        abs(cruising_speed) * math.sin(ref_heading),  # vy in world frame
+                        signed_v_ref,  # Signed body-frame v_ref for MPC dynamics
                     ]
                 )
                 err = self.compute_error_state(ref_waypoint)
