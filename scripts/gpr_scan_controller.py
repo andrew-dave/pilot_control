@@ -706,7 +706,7 @@ class GPRScanController(Node):
             msg = ControlMessage()
             msg.control_mode = 2  # VELOCITY_CONTROL
             msg.input_mode = 2    # VEL_RAMP
-            msg.input_vel = -motor_turns_per_sec
+            msg.input_vel = motor_turns_per_sec  # Fixed: removed extra negation that conflicted with delayed_gpr_motor_start()
             msg.input_torque = 0.0
             msg.input_pos = 0.0
             
