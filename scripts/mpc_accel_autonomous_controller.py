@@ -1102,6 +1102,10 @@ class MPCAccelController(Node):
         self.path_start_y = 0.0
         self.path_start_yaw = 0.0
         self.path_initialized = False
+        
+        # Reverse mode flag: True if robot should drive backwards to reach target
+        # (chosen when reversing requires less yaw change than going forward)
+        self.reverse_mode = True
 
         # Waypoint sequence state (CSV / F2C waypoints)
         self.waypoints: List[Tuple[float, float]] = []
@@ -1299,7 +1303,28 @@ class MPCAccelController(Node):
 
         self.target_x = float(data[0])
         self.target_y = float(data[1])
-        self.target_yaw = float(data[3])
+        
+        # Compute heading from current position to target
+        dx = self.target_x - self.current_x
+        dy = self.target_y - self.current_y
+        forward_heading = math.atan2(dy, dx)
+        
+        # Compute reverse heading (180° offset)
+        reverse_heading = self.normalize_angle(forward_heading + math.pi)
+        
+        # Choose the heading that requires minimum yaw change from current yaw
+        forward_yaw_error = abs(self.normalize_angle(forward_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(reverse_heading - self.current_yaw))
+        
+        if reverse_yaw_error < forward_yaw_error:
+            # Reversing requires less turning - use reverse mode
+            self.target_yaw = reverse_heading
+            self.reverse_mode = True
+        else:
+            # Forward motion requires less or equal turning
+            self.target_yaw = forward_heading
+            self.reverse_mode = False
+        
         self.has_target = True
 
         # Initialize straight-line path from current pose to target
@@ -1308,9 +1333,10 @@ class MPCAccelController(Node):
         self.path_start_yaw = self.current_yaw
         self.path_initialized = True
 
+        mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
         self.get_logger().info(
             f"🎯 New MPC acceleration target: x={self.target_x:.2f}, "
-            f"y={self.target_y:.2f}, yaw={math.degrees(self.target_yaw):.1f}°"
+            f"y={self.target_y:.2f}, yaw={math.degrees(self.target_yaw):.1f}° [{mode_str}]"
         )
 
     # -----------------------------
@@ -1371,6 +1397,14 @@ class MPCAccelController(Node):
         proximity_threshold = 0.5  # [m]
         min_spacing = 0.04  # [m]
 
+        # Compute heading: forward or reverse based on reverse_mode flag
+        forward_heading = math.atan2(path_dy, path_dx)
+        if self.reverse_mode:
+            # In reverse mode, the robot faces opposite to the path direction
+            heading_to_target = self.normalize_angle(forward_heading + math.pi)
+        else:
+            heading_to_target = forward_heading
+
         if distance_to_target_along_path > proximity_threshold:
             # FAR region: fixed waypoint spacing along the path
             adjusted_spacing = waypoint_spacing
@@ -1381,8 +1415,7 @@ class MPCAccelController(Node):
 
                 wx = self.path_start_x + t_waypoint * path_dx
                 wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
+                wyaw = heading_to_target
                 waypoint_positions.append((wx, wy, wyaw))
         else:
             # NEAR region: compress horizon within remaining distance, enforcing min spacing
@@ -1397,12 +1430,11 @@ class MPCAccelController(Node):
 
                 wx = self.path_start_x + t_waypoint * path_dx
                 wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
+                wyaw = heading_to_target
                 waypoint_positions.append((wx, wy, wyaw))
 
         # v_ref shaping near the start of the line (same gating idea as original MPC)
-        path_heading = math.atan2(path_dy, path_dx)
+        # Use forward_heading for velocity direction (path direction in world frame)
         d_gate_v = float(self.error_ref_gate_distance)
         s_closest = float(t_closest * path_length)
 
@@ -1413,11 +1445,18 @@ class MPCAccelController(Node):
         else:
             v_scale_ref = 1.0
 
+        # In reverse mode, velocity is negative (robot moves backward along path)
         v_ref = cruising_speed * v_scale_ref
+        if self.reverse_mode:
+            v_ref = -v_ref
+
         for k in range(self.mpc_horizon):
             wx, wy, wyaw = waypoint_positions[k]
-            vx_ref = v_ref * math.cos(path_heading)
-            vy_ref = v_ref * math.sin(path_heading)
+            # Velocity reference is in the direction the robot is facing (wyaw)
+            # In forward mode: facing toward target, positive v moves toward target
+            # In reverse mode: facing away from target, negative v moves toward target
+            vx_ref = v_ref * math.cos(wyaw)
+            vy_ref = v_ref * math.sin(wyaw)
             vyaw_ref = 0.0
             waypoints.append(
                 np.array([wx, wy, wyaw, vx_ref, vy_ref, vyaw_ref], dtype=float)
@@ -1491,8 +1530,8 @@ class MPCAccelController(Node):
 
         Behavior:
         - target_x, target_y: current waypoint coordinates.
-        - target_yaw: heading from previous waypoint to current waypoint
-          (or current yaw for the very first waypoint).
+        - target_yaw: heading chosen to minimize yaw change from current heading.
+          This allows the robot to reverse if it's more convenient than turning around.
         - Path start is set to the robot's current pose so we generate a
           straight-line path segment from the current position to the waypoint.
         """
@@ -1507,14 +1546,26 @@ class MPCAccelController(Node):
         self.target_x = float(wp_x)
         self.target_y = float(wp_y)
 
-        # Compute target yaw based on previous waypoint if available
-        if self.previous_waypoint is not None:
-            dx = self.target_x - self.previous_waypoint[0]
-            dy = self.target_y - self.previous_waypoint[1]
-            self.target_yaw = math.atan2(dy, dx)
+        # Compute heading from current position to target
+        dx = self.target_x - self.current_x
+        dy = self.target_y - self.current_y
+        forward_heading = math.atan2(dy, dx)
+        
+        # Compute reverse heading (180° offset)
+        reverse_heading = self.normalize_angle(forward_heading + math.pi)
+        
+        # Choose the heading that requires minimum yaw change from current yaw
+        forward_yaw_error = abs(self.normalize_angle(forward_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(reverse_heading - self.current_yaw))
+        
+        if reverse_yaw_error < forward_yaw_error:
+            # Reversing requires less turning - use reverse mode
+            self.target_yaw = reverse_heading
+            self.reverse_mode = True
         else:
-            # First waypoint: use current yaw as target yaw
-            self.target_yaw = self.current_yaw
+            # Forward motion requires less or equal turning
+            self.target_yaw = forward_heading
+            self.reverse_mode = False
 
         # Initialize path start at current pose for straight-line control
         self.path_start_x = self.current_x
@@ -1525,10 +1576,11 @@ class MPCAccelController(Node):
         self.has_target = True
         self.target_reached = False
 
+        mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
         self.get_logger().info(
             f"🎯 New waypoint target {self.current_waypoint_index + 1}/"
             f"{len(self.waypoints)}: x={self.target_x:.2f}, y={self.target_y:.2f}, "
-            f"yaw_target={math.degrees(self.target_yaw):.1f}°"
+            f"yaw_target={math.degrees(self.target_yaw):.1f}° [{mode_str}]"
         )
 
     def start_waypoint_navigation_callback(self, msg: String) -> None:
