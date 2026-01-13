@@ -150,6 +150,13 @@ else
     echo "CycloneDDS will use auto-discovery (may not work on all networks)"
 fi
 
+# CRITICAL: Set RMW implementation to CycloneDDS (required for communication)
+# Without this, ROS2 defaults to FastRTPS which cannot communicate with CycloneDDS nodes
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Set ROS domain ID (default 0, matches most robot configurations)
+export ROS_DOMAIN_ID=0
+
 # Add bundled library path first (highest priority)
 export LD_LIBRARY_PATH="/usr/lib/bdr-coverage-planner:$LD_LIBRARY_PATH"
 
