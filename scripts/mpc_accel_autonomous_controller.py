@@ -313,6 +313,11 @@ class PathFollower:
     - Uneven waypoint spacing
     - Path self-intersections (by tracking monotonic arc-length progress)
     - Smooth interpolation along curves
+    
+    Key robustness features for overlapping/intersecting paths:
+    - Strictly monotonic progress (never goes backward)
+    - Small forward-only search window to prevent jumping
+    - Lateral distance weighting to prefer staying on current segment
     """
     
     def __init__(self, waypoints: List[Tuple[float, float]], logger=None):
@@ -334,7 +339,15 @@ class PathFollower:
         # Track the robot's monotonic progress along the path (arc length)
         # This prevents jumping backwards on self-intersecting paths
         self.current_arc_length: float = 0.0
-        self.arc_length_search_window: float = 0.5  # Only search ±0.5m from current position
+        
+        # Search window parameters - tuned for robustness on overlapping paths
+        # Forward window: how far ahead to search (should cover several control cycles)
+        # Default 0.5m works well for speeds up to 0.5 m/s at 20Hz
+        self.forward_search_window: float = 0.5  # meters
+        # Backward tolerance: small amount to handle noise/overshoot
+        self.backward_tolerance: float = 0.02  # meters
+        # Maximum lateral distance to consider a point valid
+        self.max_lateral_distance: float = 0.5  # meters
         
     def _compute_cumulative_distance(self) -> List[float]:
         """Compute cumulative arc length at each waypoint."""
@@ -354,6 +367,10 @@ class PathFollower:
         """Reset arc-length progress to start of path."""
         self.current_arc_length = 0.0
     
+    def set_progress(self, arc_length: float) -> None:
+        """Set arc-length progress to a specific value."""
+        self.current_arc_length = max(0.0, min(arc_length, self.total_length))
+    
     def find_closest_arc_length(
         self, 
         robot_x: float, 
@@ -362,6 +379,11 @@ class PathFollower:
     ) -> float:
         """
         Find the arc length of the closest point on the path to the robot.
+        
+        Uses a strictly forward-biased search to handle overlapping/intersecting paths:
+        1. Only searches within a small window ahead of current progress
+        2. Prefers points that are further along the path (forward bias)
+        3. Never allows backward jumps beyond a small tolerance
         
         Args:
             robot_x, robot_y: Robot position in world frame
@@ -376,22 +398,63 @@ class PathFollower:
         
         # Determine search range based on monotonic constraint
         if use_monotonic_constraint:
-            # Search from current position to a window ahead
-            min_s = max(0.0, self.current_arc_length - 0.1)  # Small backward tolerance
-            max_s = min(self.total_length, self.current_arc_length + self.arc_length_search_window)
+            # Strictly forward search with small backward tolerance
+            min_s = max(0.0, self.current_arc_length - self.backward_tolerance)
+            max_s = min(self.total_length, self.current_arc_length + self.forward_search_window)
         else:
             min_s = 0.0
             max_s = self.total_length
         
-        # Find segments within the search range
-        min_dist_sq = float('inf')
+        # Find the best matching point within the search window
+        best_s, best_score = self._search_in_range(
+            robot_x, robot_y, min_s, max_s
+        )
+        
+        # If no valid point found in normal window, expand search progressively
+        # This handles cases where robot drifts off path
+        if best_score == float('inf') and use_monotonic_constraint:
+            # Try expanding forward window
+            expanded_max_s = min(self.total_length, self.current_arc_length + 2.0)
+            best_s, best_score = self._search_in_range(
+                robot_x, robot_y, min_s, expanded_max_s
+            )
+            
+            if best_score == float('inf') and self.logger:
+                self.logger.warn(
+                    f"PathFollower: No valid point found near arc_length={self.current_arc_length:.3f}m"
+                )
+        
+        # Update tracked progress (strictly monotonic with small tolerance)
+        if best_s >= self.current_arc_length - self.backward_tolerance:
+            self.current_arc_length = max(self.current_arc_length, best_s)
+        
+        return self.current_arc_length
+    
+    def _search_in_range(
+        self,
+        robot_x: float,
+        robot_y: float,
+        min_s: float,
+        max_s: float
+    ) -> Tuple[float, float]:
+        """
+        Search for the best matching arc length within a given range.
+        
+        Args:
+            robot_x, robot_y: Robot position
+            min_s, max_s: Arc length search range
+            
+        Returns:
+            Tuple of (best_arc_length, best_score)
+        """
         best_s = self.current_arc_length
+        best_score = float('inf')
         
         for i in range(len(self.waypoints) - 1):
             seg_start_s = self.cumulative_distance[i]
             seg_end_s = self.cumulative_distance[i + 1]
             
-            # Skip segments outside search range
+            # Skip segments entirely outside search range
             if seg_end_s < min_s or seg_start_s > max_s:
                 continue
             
@@ -409,33 +472,40 @@ class PathFollower:
                 t = ((robot_x - p1[0])*dx + (robot_y - p1[1])*dy) / seg_len_sq
                 t = max(0.0, min(1.0, t))
             
-            # Arc length at this point
+            # Arc length at this projected point
             seg_length = seg_end_s - seg_start_s
             candidate_s = seg_start_s + t * seg_length
             
-            # Apply search range constraint
+            # Clamp to search range
             candidate_s = max(min_s, min(max_s, candidate_s))
             
-            # Compute distance to closest point
-            # Re-compute t based on clamped arc length
+            # Compute actual closest point on segment (respecting search range)
             if seg_length > 1e-12:
                 t_clamped = (candidate_s - seg_start_s) / seg_length
             else:
                 t_clamped = 0.0
+            t_clamped = max(0.0, min(1.0, t_clamped))
             
             closest_x = p1[0] + t_clamped * dx
             closest_y = p1[1] + t_clamped * dy
-            dist_sq = (robot_x - closest_x)**2 + (robot_y - closest_y)**2
+            lateral_dist = math.sqrt((robot_x - closest_x)**2 + (robot_y - closest_y)**2)
             
-            if dist_sq < min_dist_sq:
-                min_dist_sq = dist_sq
+            # Skip if too far laterally (robot not on this part of path)
+            if lateral_dist > self.max_lateral_distance:
+                continue
+            
+            # Score: prefer small lateral distance, but also prefer forward progress
+            # This prevents jumping to an overlapping segment that's further back
+            # Score = lateral_distance - small_bonus_for_forward_progress
+            forward_progress = candidate_s - self.current_arc_length
+            forward_bonus = 0.1 * max(0.0, forward_progress)  # Small bonus for moving forward
+            score = lateral_dist - forward_bonus
+            
+            if score < best_score:
+                best_score = score
                 best_s = candidate_s
         
-        # Update tracked progress (only move forward, with small tolerance for noise)
-        if best_s >= self.current_arc_length - 0.05:
-            self.current_arc_length = best_s
-        
-        return best_s
+        return best_s, best_score
     
     def sample_at_arc_length(self, s: float) -> Tuple[float, float, float, float]:
         """
@@ -1370,6 +1440,15 @@ class MPCAccelController(Node):
         self.path_follower: Optional[PathFollower] = None
         self.path_navigation_active: bool = False  # True when using PathFollower
         self.cruising_speed = 0.5  # Will be set based on max_linear_vel
+        
+        # Phase tracking for path navigation:
+        # Phase 1: "reach_first_point" - Navigate to first waypoint using straight-line
+        # Phase 2: "follow_path" - Follow the dense path using arc-length sampling
+        self.path_navigation_phase: str = "idle"  # "idle", "reach_first_point", "follow_path"
+        
+        # Debug logging counter for path following (throttled)
+        self._path_log_counter: int = 0
+        self._path_log_interval: int = 20  # Log every N control cycles (~1 second at 20Hz)
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -1821,6 +1900,49 @@ class MPCAccelController(Node):
     # -----------------------------
     # Waypoint helpers (CSV + F2C)
     # -----------------------------
+    
+    def _reset_navigation_state(self) -> None:
+        """
+        Reset all navigation state for a fresh start.
+        
+        Called when new waypoints are received to ensure clean state.
+        This prevents stale state from previous navigation affecting new navigation.
+        """
+        # Reset target state
+        self.has_target = False
+        self.target_reached = False
+        self.target_x = 0.0
+        self.target_y = 0.0
+        self.target_yaw = 0.0
+        
+        # Reset path state
+        self.path_start_x = self.current_x
+        self.path_start_y = self.current_y
+        self.path_start_yaw = self.current_yaw
+        self.path_initialized = False
+        
+        # Reset navigation mode flags
+        self.waypoint_navigation_active = False
+        self.path_navigation_active = False
+        self.path_navigation_phase = "idle"
+        self.reverse_mode = False
+        
+        # Reset waypoint tracking
+        self.current_waypoint_index = 0
+        self.previous_waypoint = None
+        
+        # Reset path follower
+        self.path_follower = None
+        
+        # Reset MPC command state (important for clean start)
+        self.v_cmd = 0.0
+        self.omega_cmd = 0.0
+        
+        # Reset wheel compensator state
+        if hasattr(self, 'wheel_compensator'):
+            self.wheel_compensator.reset()
+        
+        self.get_logger().info("🔄 Navigation state reset")
 
     def _load_waypoints_from_csv(self, csv_file_path: str) -> List[Tuple[float, float]]:
         """
@@ -2010,6 +2132,12 @@ class MPCAccelController(Node):
                 self.get_logger().error("Parsed zero waypoints from /f2c_waypoints")
                 return
 
+            # If navigation is currently active, stop it first
+            if self.path_navigation_active or self.waypoint_navigation_active or self.has_target:
+                self.get_logger().info("⚠️  Stopping current navigation for new waypoints")
+                self._reset_navigation_state()
+                self.send_zero_velocity()
+            
             # Store waypoints as pending (don't start navigation yet)
             self.pending_waypoints = waypoints_xy
 
@@ -2062,6 +2190,10 @@ class MPCAccelController(Node):
             )
             return
 
+        # === RESET ALL NAVIGATION STATE ===
+        # This ensures clean state when new waypoints arrive
+        self._reset_navigation_state()
+        
         # Transfer pending waypoints to active navigation
         self.waypoints = self.pending_waypoints.copy()
         self.pending_waypoints = []  # Clear pending
@@ -2075,24 +2207,66 @@ class MPCAccelController(Node):
         # Set cruising speed
         self.cruising_speed = min(0.5, self.max_linear_vel)
         
-        # Set target as the final waypoint (global end point)
-        end_point = self.path_follower.get_end_point()
-        self.target_x = end_point[0]
-        self.target_y = end_point[1]
+        # === PHASE 1: REACH FIRST POINT ===
+        # Before following the path, navigate to the first waypoint
+        # This ensures the robot starts ON the path
+        start_point = self.path_follower.get_start_point()
+        dist_to_start = math.sqrt(
+            (start_point[0] - self.current_x)**2 + 
+            (start_point[1] - self.current_y)**2
+        )
+        
+        # Threshold for "already at start" - skip reach_first_point phase
+        start_threshold = 0.15  # 15cm
+        
+        if dist_to_start > start_threshold:
+            # Need to reach first point before path following
+            self.path_navigation_phase = "reach_first_point"
+            self.target_x = start_point[0]
+            self.target_y = start_point[1]
+            
+            # Compute heading to first point (with reverse mode selection)
+            dx = self.target_x - self.current_x
+            dy = self.target_y - self.current_y
+            forward_heading = math.atan2(dy, dx)
+            reverse_heading = self.normalize_angle(forward_heading + math.pi)
+            
+            forward_yaw_error = abs(self.normalize_angle(forward_heading - self.current_yaw))
+            reverse_yaw_error = abs(self.normalize_angle(reverse_heading - self.current_yaw))
+            
+            if reverse_yaw_error < forward_yaw_error:
+                self.reverse_mode = True
+                self.target_yaw = reverse_heading
+            else:
+                self.reverse_mode = False
+                self.target_yaw = forward_heading
+            
+            phase_msg = f"PHASE 1: Reaching first point ({start_point[0]:.2f}, {start_point[1]:.2f})"
+        else:
+            # Already at start - go directly to path following
+            self.path_navigation_phase = "follow_path"
+            
+            # Set target as the final waypoint (global end point)
+            end_point = self.path_follower.get_end_point()
+            self.target_x = end_point[0]
+            self.target_y = end_point[1]
+            
+            # Determine initial reverse mode based on path tangent at start
+            _, _, start_heading, _ = self.path_follower.sample_at_arc_length(0.0)
+            forward_yaw_error = abs(self.normalize_angle(start_heading - self.current_yaw))
+            reverse_yaw_error = abs(self.normalize_angle(start_heading + math.pi - self.current_yaw))
+            
+            if reverse_yaw_error < forward_yaw_error:
+                self.reverse_mode = True
+                self.target_yaw = self.normalize_angle(start_heading + math.pi)
+            else:
+                self.reverse_mode = False
+                self.target_yaw = start_heading
+            
+            phase_msg = "PHASE 2: Following path (already at start)"
+        
         self.has_target = True
         self.target_reached = False
-        
-        # Determine initial reverse mode based on path tangent at start
-        start_x, start_y, start_heading, _ = self.path_follower.sample_at_arc_length(0.0)
-        forward_yaw_error = abs(self.normalize_angle(start_heading - self.current_yaw))
-        reverse_yaw_error = abs(self.normalize_angle(start_heading + math.pi - self.current_yaw))
-        
-        if reverse_yaw_error < forward_yaw_error:
-            self.reverse_mode = True
-            self.target_yaw = self.normalize_angle(start_heading + math.pi)
-        else:
-            self.reverse_mode = False
-            self.target_yaw = start_heading
         
         # Initialize path state for compatibility
         self.path_start_x = self.current_x
@@ -2112,7 +2286,11 @@ class MPCAccelController(Node):
             f"║  📏 Total path length: {self.path_follower.total_length:.2f} m"
         )
         self.get_logger().info(
-            f"║  🎯 Target: ({self.target_x:.2f}, {self.target_y:.2f}) [{mode_str}]"
+            f"║  📍 {phase_msg}"
+        )
+        self.get_logger().info(
+            f"║  🎯 Final target: ({self.path_follower.get_end_point()[0]:.2f}, "
+            f"{self.path_follower.get_end_point()[1]:.2f}) [{mode_str}]"
         )
         if self.autonomy_enabled:
             self.get_logger().info(
@@ -2153,8 +2331,19 @@ class MPCAccelController(Node):
         # PATH-BASED NAVIGATION (arc-length parameterized dense/curved paths)
         # =====================================================================
         if self.path_navigation_active and self.path_follower is not None:
-            self._control_loop_path_following()
-            return
+            if self.path_navigation_phase == "reach_first_point":
+                # Phase 1: Navigate to first waypoint using straight-line MPC
+                self._control_loop_reach_first_point()
+                return
+            elif self.path_navigation_phase == "follow_path":
+                # Phase 2: Follow the dense path using arc-length sampling
+                self._control_loop_path_following()
+                return
+            else:
+                # Unknown phase - shouldn't happen
+                self.get_logger().error(f"Unknown path_navigation_phase: {self.path_navigation_phase}")
+                self.send_zero_velocity()
+                return
 
         # =====================================================================
         # LEGACY: Index-based waypoint navigation (straight-line segments)
@@ -2300,6 +2489,90 @@ class MPCAccelController(Node):
         # Execute MPC and publish commands
         self._execute_mpc_and_publish(err, ref_traj)
 
+    def _control_loop_reach_first_point(self) -> None:
+        """
+        Control loop for Phase 1: Reaching the first waypoint.
+        
+        Uses straight-line MPC to navigate from current position to the first
+        waypoint in the path. Once reached, transitions to Phase 2 (follow_path).
+        
+        This ensures the robot starts ON the path before following it.
+        """
+        if self.path_follower is None:
+            self.send_zero_velocity()
+            return
+        
+        start_point = self.path_follower.get_start_point()
+        
+        # Check if we've reached the first point
+        dist_to_start = math.sqrt(
+            (start_point[0] - self.current_x)**2 + 
+            (start_point[1] - self.current_y)**2
+        )
+        
+        if dist_to_start <= self.target_reached_threshold:
+            # First point reached! Transition to path following
+            self.get_logger().info(
+                f"✅ First waypoint reached at ({self.current_x:.3f}, {self.current_y:.3f})"
+            )
+            self.get_logger().info(
+                f"   Transitioning to PHASE 2: Path following"
+            )
+            
+            # Transition to path following phase
+            self.path_navigation_phase = "follow_path"
+            
+            # Reset path follower progress to start (we're now at arc length = 0)
+            self.path_follower.reset_progress()
+            
+            # Update target to final waypoint
+            end_point = self.path_follower.get_end_point()
+            self.target_x = end_point[0]
+            self.target_y = end_point[1]
+            
+            # Determine reverse mode based on path tangent at start
+            _, _, start_heading, _ = self.path_follower.sample_at_arc_length(0.0)
+            forward_yaw_error = abs(self.normalize_angle(start_heading - self.current_yaw))
+            reverse_yaw_error = abs(self.normalize_angle(start_heading + math.pi - self.current_yaw))
+            
+            if reverse_yaw_error < forward_yaw_error:
+                self.reverse_mode = True
+                self.target_yaw = self.normalize_angle(start_heading + math.pi)
+            else:
+                self.reverse_mode = False
+                self.target_yaw = start_heading
+            
+            # Reset path start for new segment
+            self.path_start_x = self.current_x
+            self.path_start_y = self.current_y
+            self.path_start_yaw = self.current_yaw
+            
+            # Reset MPC command state for smooth transition
+            self.v_cmd = 0.0
+            self.omega_cmd = 0.0
+            
+            mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
+            self.get_logger().info(
+                f"   Path following mode: {mode_str}, target_yaw: {math.degrees(self.target_yaw):.1f}°"
+            )
+            
+            # Will start path following on next control loop iteration
+            return
+        
+        # Still navigating to first point - use straight-line reference trajectory
+        ref_traj = self.generate_reference_trajectory()
+        
+        if len(ref_traj) == 0:
+            self.send_zero_velocity()
+            return
+        
+        # Compute error state
+        ref_wp0 = ref_traj[0]
+        err = self.compute_error_state(ref_wp0)
+        
+        # Execute MPC and publish commands
+        self._execute_mpc_and_publish(err, ref_traj)
+    
     def _control_loop_path_following(self) -> None:
         """
         Control loop for arc-length based path following.
@@ -2323,6 +2596,7 @@ class MPCAccelController(Node):
         if remaining_distance <= self.target_reached_threshold:
             # Path complete!
             self.path_navigation_active = False
+            self.path_navigation_phase = "idle"
             self.has_target = False
             self.target_reached = True
             self.send_zero_velocity()
@@ -2344,6 +2618,19 @@ class MPCAccelController(Node):
         # The waypoint format is [x, y, yaw, vx, vy, v_ref, omega_ref]
         ref_wp0 = ref_traj[0]
         err = self.compute_error_state(ref_wp0)
+        
+        # Periodic debug logging for path following progress
+        self._path_log_counter += 1
+        if self._path_log_counter >= self._path_log_interval:
+            self._path_log_counter = 0
+            mode_str = "REV" if self.reverse_mode else "FWD"
+            progress_pct = 100.0 * current_s / self.path_follower.total_length if self.path_follower.total_length > 0 else 0.0
+            self.get_logger().info(
+                f"[PATH {mode_str}] s={current_s:.2f}m ({progress_pct:.1f}%) | "
+                f"err=[{err[0]:.3f}, {err[1]:.3f}, {math.degrees(err[2]):.1f}°] | "
+                f"remain={remaining_distance:.2f}m | "
+                f"v_cmd={self.v_cmd:.2f}"
+            )
         
         # Pass 7-element waypoints directly to MPC
         # MPC now handles both 6-element and 7-element formats
