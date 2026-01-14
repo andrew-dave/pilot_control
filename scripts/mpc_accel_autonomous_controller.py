@@ -300,6 +300,249 @@ class WheelRampCompensator:
         self._right_vel_at_cycle_end = float(right_vel)
 
 
+class PathFollower:
+    """
+    Arc-length parameterized path for smooth trajectory following.
+    
+    Stores a dense path of waypoints and provides methods for:
+    - Finding the closest point on the path (by arc length)
+    - Sampling points at specific arc lengths
+    - Computing path tangent (heading) and curvature
+    
+    The arc-length parameterization handles:
+    - Uneven waypoint spacing
+    - Path self-intersections (by tracking monotonic arc-length progress)
+    - Smooth interpolation along curves
+    """
+    
+    def __init__(self, waypoints: List[Tuple[float, float]], logger=None):
+        """
+        Initialize path follower with waypoints.
+        
+        Args:
+            waypoints: List of (x, y) tuples defining the path
+            logger: Optional ROS logger for debug output
+        """
+        self.waypoints = list(waypoints)
+        self.logger = logger
+        self.num_points = len(self.waypoints)
+        
+        # Pre-compute cumulative arc length at each waypoint
+        self.cumulative_distance: List[float] = self._compute_cumulative_distance()
+        self.total_length = self.cumulative_distance[-1] if self.cumulative_distance else 0.0
+        
+        # Track the robot's monotonic progress along the path (arc length)
+        # This prevents jumping backwards on self-intersecting paths
+        self.current_arc_length: float = 0.0
+        self.arc_length_search_window: float = 0.5  # Only search ±0.5m from current position
+        
+    def _compute_cumulative_distance(self) -> List[float]:
+        """Compute cumulative arc length at each waypoint."""
+        if not self.waypoints:
+            return []
+        
+        distances = [0.0]
+        for i in range(1, len(self.waypoints)):
+            dx = self.waypoints[i][0] - self.waypoints[i-1][0]
+            dy = self.waypoints[i][1] - self.waypoints[i-1][1]
+            segment_length = math.sqrt(dx*dx + dy*dy)
+            distances.append(distances[-1] + segment_length)
+        
+        return distances
+    
+    def reset_progress(self) -> None:
+        """Reset arc-length progress to start of path."""
+        self.current_arc_length = 0.0
+    
+    def find_closest_arc_length(
+        self, 
+        robot_x: float, 
+        robot_y: float,
+        use_monotonic_constraint: bool = True
+    ) -> float:
+        """
+        Find the arc length of the closest point on the path to the robot.
+        
+        Args:
+            robot_x, robot_y: Robot position in world frame
+            use_monotonic_constraint: If True, only search forward from current progress
+                                      (prevents jumping back on self-intersecting paths)
+        
+        Returns:
+            Arc length s of the closest point on the path
+        """
+        if len(self.waypoints) < 2:
+            return 0.0
+        
+        # Determine search range based on monotonic constraint
+        if use_monotonic_constraint:
+            # Search from current position to a window ahead
+            min_s = max(0.0, self.current_arc_length - 0.1)  # Small backward tolerance
+            max_s = min(self.total_length, self.current_arc_length + self.arc_length_search_window)
+        else:
+            min_s = 0.0
+            max_s = self.total_length
+        
+        # Find segments within the search range
+        min_dist_sq = float('inf')
+        best_s = self.current_arc_length
+        
+        for i in range(len(self.waypoints) - 1):
+            seg_start_s = self.cumulative_distance[i]
+            seg_end_s = self.cumulative_distance[i + 1]
+            
+            # Skip segments outside search range
+            if seg_end_s < min_s or seg_start_s > max_s:
+                continue
+            
+            p1 = self.waypoints[i]
+            p2 = self.waypoints[i + 1]
+            
+            # Project robot onto line segment
+            dx = p2[0] - p1[0]
+            dy = p2[1] - p1[1]
+            seg_len_sq = dx*dx + dy*dy
+            
+            if seg_len_sq < 1e-12:
+                t = 0.0
+            else:
+                t = ((robot_x - p1[0])*dx + (robot_y - p1[1])*dy) / seg_len_sq
+                t = max(0.0, min(1.0, t))
+            
+            # Arc length at this point
+            seg_length = seg_end_s - seg_start_s
+            candidate_s = seg_start_s + t * seg_length
+            
+            # Apply search range constraint
+            candidate_s = max(min_s, min(max_s, candidate_s))
+            
+            # Compute distance to closest point
+            # Re-compute t based on clamped arc length
+            if seg_length > 1e-12:
+                t_clamped = (candidate_s - seg_start_s) / seg_length
+            else:
+                t_clamped = 0.0
+            
+            closest_x = p1[0] + t_clamped * dx
+            closest_y = p1[1] + t_clamped * dy
+            dist_sq = (robot_x - closest_x)**2 + (robot_y - closest_y)**2
+            
+            if dist_sq < min_dist_sq:
+                min_dist_sq = dist_sq
+                best_s = candidate_s
+        
+        # Update tracked progress (only move forward, with small tolerance for noise)
+        if best_s >= self.current_arc_length - 0.05:
+            self.current_arc_length = best_s
+        
+        return best_s
+    
+    def sample_at_arc_length(self, s: float) -> Tuple[float, float, float, float]:
+        """
+        Sample the path at a given arc length.
+        
+        Args:
+            s: Arc length from start of path
+            
+        Returns:
+            (x, y, heading, curvature) at the sampled point
+        """
+        if len(self.waypoints) < 2:
+            if self.waypoints:
+                return self.waypoints[0][0], self.waypoints[0][1], 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0
+        
+        # Clamp s to valid range
+        s = max(0.0, min(s, self.total_length))
+        
+        # Find segment containing arc length s
+        for i in range(len(self.cumulative_distance) - 1):
+            if self.cumulative_distance[i + 1] >= s:
+                seg_start_s = self.cumulative_distance[i]
+                seg_end_s = self.cumulative_distance[i + 1]
+                seg_length = seg_end_s - seg_start_s
+                
+                if seg_length < 1e-12:
+                    t = 0.0
+                else:
+                    t = (s - seg_start_s) / seg_length
+                
+                p1 = self.waypoints[i]
+                p2 = self.waypoints[i + 1]
+                
+                x = p1[0] + t * (p2[0] - p1[0])
+                y = p1[1] + t * (p2[1] - p1[1])
+                heading = math.atan2(p2[1] - p1[1], p2[0] - p1[0])
+                curvature = self._estimate_curvature(i, t)
+                
+                return x, y, heading, curvature
+        
+        # At end of path
+        if len(self.waypoints) >= 2:
+            p1, p2 = self.waypoints[-2], self.waypoints[-1]
+            heading = math.atan2(p2[1] - p1[1], p2[0] - p1[0])
+            return p2[0], p2[1], heading, 0.0
+        
+        return self.waypoints[-1][0], self.waypoints[-1][1], 0.0, 0.0
+    
+    def _estimate_curvature(self, segment_idx: int, t: float) -> float:
+        """
+        Estimate curvature at a point using the Menger curvature formula.
+        
+        Uses three points: previous waypoint, current interpolated point, next waypoint.
+        """
+        # Get three points for curvature estimation
+        if segment_idx <= 0:
+            idx_prev = 0
+            idx_curr = 1
+            idx_next = min(2, len(self.waypoints) - 1)
+        elif segment_idx >= len(self.waypoints) - 2:
+            idx_prev = max(0, len(self.waypoints) - 3)
+            idx_curr = len(self.waypoints) - 2
+            idx_next = len(self.waypoints) - 1
+        else:
+            idx_prev = segment_idx
+            idx_curr = segment_idx + 1
+            idx_next = min(segment_idx + 2, len(self.waypoints) - 1)
+        
+        if idx_prev == idx_curr or idx_curr == idx_next:
+            return 0.0
+        
+        p0 = self.waypoints[idx_prev]
+        p1 = self.waypoints[idx_curr]
+        p2 = self.waypoints[idx_next]
+        
+        # Menger curvature: κ = 4*Area / (|a|*|b|*|c|)
+        a = math.sqrt((p1[0]-p0[0])**2 + (p1[1]-p0[1])**2)
+        b = math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
+        c = math.sqrt((p2[0]-p0[0])**2 + (p2[1]-p0[1])**2)
+        
+        # Signed area (positive = left turn, negative = right turn)
+        area = 0.5 * ((p1[0]-p0[0])*(p2[1]-p0[1]) - (p2[0]-p0[0])*(p1[1]-p0[1]))
+        
+        denom = a * b * c
+        if denom < 1e-12:
+            return 0.0
+        
+        return 4.0 * area / denom
+    
+    def get_remaining_distance(self, current_s: float) -> float:
+        """Get remaining distance to end of path."""
+        return max(0.0, self.total_length - current_s)
+    
+    def get_start_point(self) -> Tuple[float, float]:
+        """Get the first waypoint (global start)."""
+        if self.waypoints:
+            return self.waypoints[0]
+        return (0.0, 0.0)
+    
+    def get_end_point(self) -> Tuple[float, float]:
+        """Get the last waypoint (global end/target)."""
+        if self.waypoints:
+            return self.waypoints[-1]
+        return (0.0, 0.0)
+
+
 class AccelMPC:
     """
     LTV MPC with augmented state and delta-input control.
@@ -759,10 +1002,15 @@ class AccelMPC:
             elif len(ref_traj) > 0:
                 wp = ref_traj[-1]
             else:
-                wp = np.zeros(6)
+                wp = np.zeros(7)
 
-            v_ref = math.sqrt(float(wp[3]) ** 2 + float(wp[4]) ** 2)
-            omega_ref = float(wp[5])
+            # wp[5] carries the SIGNED body-frame velocity reference
+            # This is crucial for correct error dynamics in reverse mode
+            v_ref = float(wp[5]) if len(wp) > 5 else 0.0
+            
+            # wp[6] (if present) carries omega_ref from path curvature
+            # omega_ref = v * curvature for curved paths
+            omega_ref = float(wp[6]) if len(wp) > 6 else 0.0
 
             A_aug, B_aug = self._build_A_aug_and_B_aug(v_ref, omega_ref)
 
@@ -832,8 +1080,10 @@ class AccelMPC:
         # Build A_aug_0 for initial constraint RHS
         if len(ref_traj) > 0:
             wp0 = ref_traj[0]
-            v_ref0 = math.sqrt(float(wp0[3]) ** 2 + float(wp0[4]) ** 2)
-            omega_ref0 = float(wp0[5])
+            # wp0[5] carries the SIGNED body-frame velocity reference
+            v_ref0 = float(wp0[5]) if len(wp0) > 5 else 0.0
+            # wp0[6] (if present) carries omega_ref from path curvature
+            omega_ref0 = float(wp0[6]) if len(wp0) > 6 else 0.0
         else:
             v_ref0 = 0.0
             omega_ref0 = 0.0
@@ -1102,6 +1352,10 @@ class MPCAccelController(Node):
         self.path_start_y = 0.0
         self.path_start_yaw = 0.0
         self.path_initialized = False
+        
+        # Reverse mode flag: True if robot should drive backwards to reach target
+        # (chosen when reversing requires less yaw change than going forward)
+        self.reverse_mode = False
 
         # Waypoint sequence state (CSV / F2C waypoints)
         self.waypoints: List[Tuple[float, float]] = []
@@ -1111,6 +1365,11 @@ class MPCAccelController(Node):
 
         # Pending waypoints received from F2C GUI (until "Start Navigation" pressed)
         self.pending_waypoints: List[Tuple[float, float]] = []
+        
+        # Arc-length based path following (for dense/curved paths)
+        self.path_follower: Optional[PathFollower] = None
+        self.path_navigation_active: bool = False  # True when using PathFollower
+        self.cruising_speed = 0.5  # Will be set based on max_linear_vel
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -1299,7 +1558,28 @@ class MPCAccelController(Node):
 
         self.target_x = float(data[0])
         self.target_y = float(data[1])
-        self.target_yaw = float(data[3])
+        
+        # Compute heading from current position to target
+        dx = self.target_x - self.current_x
+        dy = self.target_y - self.current_y
+        forward_heading = math.atan2(dy, dx)
+        
+        # Compute reverse heading (180° offset)
+        reverse_heading = self.normalize_angle(forward_heading + math.pi)
+        
+        # Choose the heading that requires minimum yaw change from current yaw
+        forward_yaw_error = abs(self.normalize_angle(forward_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(reverse_heading - self.current_yaw))
+        
+        if reverse_yaw_error < forward_yaw_error:
+            # Reversing requires less turning - use reverse mode
+            self.target_yaw = reverse_heading
+            self.reverse_mode = True
+        else:
+            # Forward motion requires less or equal turning
+            self.target_yaw = forward_heading
+            self.reverse_mode = False
+        
         self.has_target = True
 
         # Initialize straight-line path from current pose to target
@@ -1308,9 +1588,10 @@ class MPCAccelController(Node):
         self.path_start_yaw = self.current_yaw
         self.path_initialized = True
 
+        mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
         self.get_logger().info(
             f"🎯 New MPC acceleration target: x={self.target_x:.2f}, "
-            f"y={self.target_y:.2f}, yaw={math.degrees(self.target_yaw):.1f}°"
+            f"y={self.target_y:.2f}, yaw={math.degrees(self.target_yaw):.1f}° [{mode_str}]"
         )
 
     # -----------------------------
@@ -1371,6 +1652,14 @@ class MPCAccelController(Node):
         proximity_threshold = 0.5  # [m]
         min_spacing = 0.04  # [m]
 
+        # Compute heading: forward or reverse based on reverse_mode flag
+        forward_heading = math.atan2(path_dy, path_dx)
+        if self.reverse_mode:
+            # In reverse mode, the robot faces opposite to the path direction
+            heading_to_target = self.normalize_angle(forward_heading + math.pi)
+        else:
+            heading_to_target = forward_heading
+
         if distance_to_target_along_path > proximity_threshold:
             # FAR region: fixed waypoint spacing along the path
             adjusted_spacing = waypoint_spacing
@@ -1381,8 +1670,7 @@ class MPCAccelController(Node):
 
                 wx = self.path_start_x + t_waypoint * path_dx
                 wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
+                wyaw = heading_to_target
                 waypoint_positions.append((wx, wy, wyaw))
         else:
             # NEAR region: compress horizon within remaining distance, enforcing min spacing
@@ -1397,12 +1685,11 @@ class MPCAccelController(Node):
 
                 wx = self.path_start_x + t_waypoint * path_dx
                 wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
+                wyaw = heading_to_target
                 waypoint_positions.append((wx, wy, wyaw))
 
         # v_ref shaping near the start of the line (same gating idea as original MPC)
-        path_heading = math.atan2(path_dy, path_dx)
+        # Use forward_heading for velocity direction (path direction in world frame)
         d_gate_v = float(self.error_ref_gate_distance)
         s_closest = float(t_closest * path_length)
 
@@ -1413,17 +1700,107 @@ class MPCAccelController(Node):
         else:
             v_scale_ref = 1.0
 
+        # Velocity reference: positive for forward, negative for reverse
+        # This sign is crucial for the MPC error dynamics (ye_dot = v_ref * θe)
         v_ref = cruising_speed * v_scale_ref
+        if self.reverse_mode:
+            v_ref = -v_ref  # Negative body-frame velocity when reversing
+
         for k in range(self.mpc_horizon):
             wx, wy, wyaw = waypoint_positions[k]
-            vx_ref = v_ref * math.cos(path_heading)
-            vy_ref = v_ref * math.sin(path_heading)
-            vyaw_ref = 0.0
+            # Store velocity reference in the direction the robot is FACING (wyaw)
+            # This encodes the signed body-frame velocity for MPC dynamics
+            vx_ref = abs(v_ref) * math.cos(wyaw)  # World-frame velocity component
+            vy_ref = abs(v_ref) * math.sin(wyaw)  # World-frame velocity component
+            # Store the SIGNED v_ref in a way the MPC can extract it
+            # We use the sign of the dot product with robot heading
+            vyaw_ref = v_ref  # Hijack vyaw_ref to pass signed v_ref to MPC
             waypoints.append(
                 np.array([wx, wy, wyaw, vx_ref, vy_ref, vyaw_ref], dtype=float)
             )
 
         return waypoints
+
+    def generate_path_reference_trajectory(self) -> Tuple[List[np.ndarray], float]:
+        """
+        Generate reference trajectory by sampling along the arc-length parameterized path.
+        
+        This method is used when path_navigation_active is True (dense/curved paths).
+        It samples waypoints ahead of the robot's current position on the path.
+        
+        Returns:
+            Tuple of (waypoints list, current arc length on path)
+            Each waypoint is [x, y, yaw, vx, vy, signed_v_ref]
+        """
+        if self.path_follower is None or not self.pose_initialized:
+            return [], 0.0
+        
+        # Find robot's current position on the path (arc length)
+        current_s = self.path_follower.find_closest_arc_length(
+            self.current_x, self.current_y,
+            use_monotonic_constraint=True
+        )
+        
+        remaining_distance = self.path_follower.get_remaining_distance(current_s)
+        
+        # Update reverse mode based on current path tangent
+        # (allows dynamic switching if path curves back)
+        _, _, current_heading, _ = self.path_follower.sample_at_arc_length(current_s)
+        forward_yaw_error = abs(self.normalize_angle(current_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(current_heading + math.pi - self.current_yaw))
+        
+        # Only switch modes if the difference is significant (hysteresis)
+        mode_switch_threshold = math.radians(30)  # 30 degrees
+        if self.reverse_mode:
+            # Currently reversing - switch to forward only if forward is much better
+            if forward_yaw_error < reverse_yaw_error - mode_switch_threshold:
+                self.reverse_mode = False
+        else:
+            # Currently forward - switch to reverse only if reverse is much better
+            if reverse_yaw_error < forward_yaw_error - mode_switch_threshold:
+                self.reverse_mode = True
+        
+        # Generate waypoints along the path
+        waypoints: List[np.ndarray] = []
+        
+        # Lookahead spacing based on cruising speed
+        lookahead_spacing = self.cruising_speed * self.mpc_dt
+        
+        for k in range(self.mpc_horizon):
+            # Arc length for this horizon step
+            lookahead_s = current_s + lookahead_spacing * (k + 1)
+            
+            # Clamp to path end
+            lookahead_s = min(lookahead_s, self.path_follower.total_length)
+            
+            # Sample path at this arc length
+            wx, wy, path_heading, curvature = self.path_follower.sample_at_arc_length(lookahead_s)
+            
+            # Adjust heading for reverse mode
+            if self.reverse_mode:
+                wyaw = self.normalize_angle(path_heading + math.pi)
+            else:
+                wyaw = path_heading
+            
+            # Signed velocity reference (negative when reversing)
+            v_ref = self.cruising_speed
+            if self.reverse_mode:
+                v_ref = -v_ref
+            
+            # World-frame velocity components (for compatibility)
+            vx_ref = abs(v_ref) * math.cos(wyaw)
+            vy_ref = abs(v_ref) * math.sin(wyaw)
+            
+            # Store signed v_ref in vyaw_ref slot for MPC dynamics
+            # Also encode omega_ref from curvature: ω = v * κ
+            # We'll pass this through the waypoint structure
+            omega_ref = v_ref * curvature  # Signed angular velocity reference
+            
+            waypoints.append(
+                np.array([wx, wy, wyaw, vx_ref, vy_ref, v_ref, omega_ref], dtype=float)
+            )
+        
+        return waypoints, current_s
 
     def compute_error_state(self, ref_wp: np.ndarray) -> np.ndarray:
         """
@@ -1491,8 +1868,8 @@ class MPCAccelController(Node):
 
         Behavior:
         - target_x, target_y: current waypoint coordinates.
-        - target_yaw: heading from previous waypoint to current waypoint
-          (or current yaw for the very first waypoint).
+        - target_yaw: heading chosen to minimize yaw change from current heading.
+          This allows the robot to reverse if it's more convenient than turning around.
         - Path start is set to the robot's current pose so we generate a
           straight-line path segment from the current position to the waypoint.
         """
@@ -1507,14 +1884,26 @@ class MPCAccelController(Node):
         self.target_x = float(wp_x)
         self.target_y = float(wp_y)
 
-        # Compute target yaw based on previous waypoint if available
-        if self.previous_waypoint is not None:
-            dx = self.target_x - self.previous_waypoint[0]
-            dy = self.target_y - self.previous_waypoint[1]
-            self.target_yaw = math.atan2(dy, dx)
+        # Compute heading from current position to target
+        dx = self.target_x - self.current_x
+        dy = self.target_y - self.current_y
+        forward_heading = math.atan2(dy, dx)
+        
+        # Compute reverse heading (180° offset)
+        reverse_heading = self.normalize_angle(forward_heading + math.pi)
+        
+        # Choose the heading that requires minimum yaw change from current yaw
+        forward_yaw_error = abs(self.normalize_angle(forward_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(reverse_heading - self.current_yaw))
+        
+        if reverse_yaw_error < forward_yaw_error:
+            # Reversing requires less turning - use reverse mode
+            self.target_yaw = reverse_heading
+            self.reverse_mode = True
         else:
-            # First waypoint: use current yaw as target yaw
-            self.target_yaw = self.current_yaw
+            # Forward motion requires less or equal turning
+            self.target_yaw = forward_heading
+            self.reverse_mode = False
 
         # Initialize path start at current pose for straight-line control
         self.path_start_x = self.current_x
@@ -1525,10 +1914,11 @@ class MPCAccelController(Node):
         self.has_target = True
         self.target_reached = False
 
+        mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
         self.get_logger().info(
             f"🎯 New waypoint target {self.current_waypoint_index + 1}/"
             f"{len(self.waypoints)}: x={self.target_x:.2f}, y={self.target_y:.2f}, "
-            f"yaw_target={math.degrees(self.target_yaw):.1f}°"
+            f"yaw_target={math.degrees(self.target_yaw):.1f}° [{mode_str}]"
         )
 
     def start_waypoint_navigation_callback(self, msg: String) -> None:
@@ -1656,6 +2046,9 @@ class MPCAccelController(Node):
         """
         Start navigation with previously received pending waypoints.
         Called when "Start Navigation" button is pressed in F2C GUI (sends [0.0] signal).
+        
+        Uses arc-length based PathFollower for smooth curved trajectory following.
+        The first and last waypoints are treated as global start/end points.
         """
         if not self.pending_waypoints:
             self.get_logger().warn(
@@ -1672,19 +2065,54 @@ class MPCAccelController(Node):
         # Transfer pending waypoints to active navigation
         self.waypoints = self.pending_waypoints.copy()
         self.pending_waypoints = []  # Clear pending
-        self.current_waypoint_index = 0
-        self.waypoint_navigation_active = True
-        self.previous_waypoint = (self.current_x, self.current_y)
+        
+        # Initialize arc-length based path follower
+        self.path_follower = PathFollower(self.waypoints, logger=self.get_logger())
+        self.path_follower.reset_progress()
+        self.path_navigation_active = True
+        self.waypoint_navigation_active = False  # Disable old index-based navigation
+        
+        # Set cruising speed
+        self.cruising_speed = min(0.5, self.max_linear_vel)
+        
+        # Set target as the final waypoint (global end point)
+        end_point = self.path_follower.get_end_point()
+        self.target_x = end_point[0]
+        self.target_y = end_point[1]
+        self.has_target = True
+        self.target_reached = False
+        
+        # Determine initial reverse mode based on path tangent at start
+        start_x, start_y, start_heading, _ = self.path_follower.sample_at_arc_length(0.0)
+        forward_yaw_error = abs(self.normalize_angle(start_heading - self.current_yaw))
+        reverse_yaw_error = abs(self.normalize_angle(start_heading + math.pi - self.current_yaw))
+        
+        if reverse_yaw_error < forward_yaw_error:
+            self.reverse_mode = True
+            self.target_yaw = self.normalize_angle(start_heading + math.pi)
+        else:
+            self.reverse_mode = False
+            self.target_yaw = start_heading
+        
+        # Initialize path state for compatibility
+        self.path_start_x = self.current_x
+        self.path_start_y = self.current_y
+        self.path_start_yaw = self.current_yaw
+        self.path_initialized = True
 
-        # Start navigation to first waypoint
-        self._set_next_waypoint_target()
-
+        mode_str = "REVERSE" if self.reverse_mode else "FORWARD"
         self.get_logger().info("")
         self.get_logger().info(
             "╔═══════════════════════════════════════════════════════╗"
         )
         self.get_logger().info(
-            f"║  🚀 NAVIGATION STARTED: {len(self.waypoints)} waypoints"
+            f"║  🚀 PATH NAVIGATION STARTED: {len(self.waypoints)} waypoints"
+        )
+        self.get_logger().info(
+            f"║  📏 Total path length: {self.path_follower.total_length:.2f} m"
+        )
+        self.get_logger().info(
+            f"║  🎯 Target: ({self.target_x:.2f}, {self.target_y:.2f}) [{mode_str}]"
         )
         if self.autonomy_enabled:
             self.get_logger().info(
@@ -1721,6 +2149,16 @@ class MPCAccelController(Node):
             self.send_zero_velocity()
             return
 
+        # =====================================================================
+        # PATH-BASED NAVIGATION (arc-length parameterized dense/curved paths)
+        # =====================================================================
+        if self.path_navigation_active and self.path_follower is not None:
+            self._control_loop_path_following()
+            return
+
+        # =====================================================================
+        # LEGACY: Index-based waypoint navigation (straight-line segments)
+        # =====================================================================
         # If using CSV/F2C waypoint navigation and we don't currently have a target,
         # set the next waypoint as the current target (once pose is initialized).
         if self.waypoint_navigation_active and not self.has_target:
@@ -1827,17 +2265,26 @@ class MPCAccelController(Node):
 
                 ref_x = self.path_start_x + t_ref * path_dx
                 ref_y = self.path_start_y + t_ref * path_dy
-                path_heading = math.atan2(path_dy, path_dx)
+                
+                # Use appropriate heading based on reverse mode
+                forward_path_heading = math.atan2(path_dy, path_dx)
+                if self.reverse_mode:
+                    ref_heading = self.normalize_angle(forward_path_heading + math.pi)
+                else:
+                    ref_heading = forward_path_heading
 
                 cruising_speed = min(0.5, self.max_linear_vel)
+                # Signed velocity reference (negative when reversing)
+                signed_v_ref = -cruising_speed if self.reverse_mode else cruising_speed
+                
                 ref_waypoint = np.array(
                     [
                         ref_x,
                         ref_y,
-                        path_heading,
-                        cruising_speed * math.cos(path_heading),
-                        cruising_speed * math.sin(path_heading),
-                        0.0,
+                        ref_heading,
+                        abs(cruising_speed) * math.cos(ref_heading),  # vx in world frame
+                        abs(cruising_speed) * math.sin(ref_heading),  # vy in world frame
+                        signed_v_ref,  # Signed body-frame v_ref for MPC dynamics
                     ]
                 )
                 err = self.compute_error_state(ref_waypoint)
@@ -1850,6 +2297,73 @@ class MPCAccelController(Node):
             ref_wp0 = ref_traj[0]
             err = self.compute_error_state(ref_wp0)
 
+        # Execute MPC and publish commands
+        self._execute_mpc_and_publish(err, ref_traj)
+
+    def _control_loop_path_following(self) -> None:
+        """
+        Control loop for arc-length based path following.
+        
+        Uses PathFollower to:
+        1. Find current position on path (arc length)
+        2. Check if path end is reached
+        3. Generate reference trajectory by sampling ahead
+        4. Compute error state and run MPC
+        """
+        # Generate reference trajectory using arc-length sampling
+        ref_traj, current_s = self.generate_path_reference_trajectory()
+        
+        if len(ref_traj) == 0:
+            self.send_zero_velocity()
+            return
+        
+        # Check if we've reached the end of the path
+        remaining_distance = self.path_follower.get_remaining_distance(current_s)
+        
+        if remaining_distance <= self.target_reached_threshold:
+            # Path complete!
+            self.path_navigation_active = False
+            self.has_target = False
+            self.target_reached = True
+            self.send_zero_velocity()
+            
+            end_point = self.path_follower.get_end_point()
+            self.get_logger().info(
+                f"✅ PATH COMPLETE! Reached end point ({end_point[0]:.2f}, {end_point[1]:.2f})"
+            )
+            self.get_logger().info(
+                f"   Final position: ({self.current_x:.3f}, {self.current_y:.3f})"
+            )
+            self.get_logger().info(
+                f"   Remaining distance: {remaining_distance:.3f} m "
+                f"(threshold: {self.target_reached_threshold:.3f} m)"
+            )
+            return
+        
+        # Compute error state relative to first reference waypoint
+        # The waypoint format is [x, y, yaw, vx, vy, v_ref, omega_ref]
+        ref_wp0 = ref_traj[0]
+        err = self.compute_error_state(ref_wp0)
+        
+        # Pass 7-element waypoints directly to MPC
+        # MPC now handles both 6-element and 7-element formats
+        # 7-element: [x, y, yaw, vx, vy, signed_v_ref, omega_ref]
+        
+        # Execute MPC and publish commands
+        self._execute_mpc_and_publish(err, ref_traj, current_s, remaining_distance)
+
+    def _execute_mpc_and_publish(
+        self, 
+        err: np.ndarray, 
+        ref_traj: List[np.ndarray],
+        current_s: Optional[float] = None,
+        remaining_distance: Optional[float] = None
+    ) -> None:
+        """
+        Execute MPC solver and publish wheel velocity commands.
+        
+        Shared by both straight-line and path-following control modes.
+        """
         # Use COMMANDED velocity as the MPC state instead of measured velocity.
         # This assumes the low-level ODrive velocity controller tracks well (which it does).
         # Benefits:
@@ -1900,7 +2414,19 @@ class MPCAccelController(Node):
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
         
-        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
+        # Build log message with path progress if available
+        if current_s is not None and remaining_distance is not None:
+            progress_str = f"s={current_s:.2f}m rem={remaining_distance:.2f}m "
+        else:
+            progress_str = ""
+        
+        self.get_logger().info(
+            f"[{'REV' if self.reverse_mode else 'FWD'}] {progress_str}"
+            f"err=[{err[0]:.3f}, {err[1]:.3f}, {math.degrees(err[2]):.1f}°] "
+            f"v_cmd={self.v_cmd:.3f} ω_cmd={self.omega_cmd:.3f} "
+            f"Δv={dv:.4f} Δω={domega:.4f} "
+            f"wheels=[{left_rps_eff:.3f}, {right_rps_eff:.3f}]"
+        )
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
