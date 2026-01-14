@@ -79,9 +79,9 @@ class GPRSerialBridge(Node):
             time.sleep(1)
             second_success = self.send_command('K')
             if second_success:
-            response.success = True
+                response.success = True
                 response.message = 'Line start commands (K, K) sent to Arduino'
-            self.scan_active = True
+                self.scan_active = True
             else:
                 response.success = False
                 response.message = 'Failed to send second K command'
@@ -116,4 +116,4 @@ def main(args=None):
         rclpy.shutdown()
 
 if __name__ == '__main__':
-    main() 
+    main()
