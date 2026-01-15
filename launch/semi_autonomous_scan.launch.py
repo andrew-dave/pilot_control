@@ -180,8 +180,8 @@ def generate_launch_description():
             # Streaming settings
             'stream_host': '172.16.15.61', # TODO: change to 172.16.14.195 (R) / 172.16.15.61 (A)
             'stream_port': 5600, # TODO: change to 5602 (R) / 5600 (A)
-            'stream_bitrate_kbps': 1000,  # Conservative: leaves headroom for maps/teleop
-            'rtp_mtu': 1300,  # Moderate MTU for reliability
+            'stream_bitrate_kbps': 800,   # FPV optimized at 480x360@25fps
+            'rtp_mtu': 1400,  # Larger MTU for efficiency
             
             # Video capture settings
             'use_mjpeg_pipeline': True,

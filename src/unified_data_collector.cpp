@@ -79,8 +79,8 @@ struct Config {
   std::string right_device    = "/dev/v4l/by-id/See3CAM_Right-video-index0";
   std::string stream_host     = "172.16.10.121";
   int stream_port            = 5600;
-  int stream_bitrate_kbps    = 1000;  // Conservative: leaves headroom for maps/teleop on RF link
-  int rtp_mtu               = 1300;  // Moderate MTU: balance between efficiency and reliability
+  int stream_bitrate_kbps    = 800;   // Conservative for FPV at 480x360@25fps
+  int rtp_mtu               = 1400;  // Larger MTU for efficiency
   bool use_mjpeg_pipeline    = true;
   int cap_w                 = 1920;
   int cap_h                 = 1080;
@@ -997,17 +997,18 @@ private:
 
     // LEFT stream branch (only if streaming left)
     if (!stream_right) {
-    // Low-latency streaming branch optimized for motion quality
-    // - superfast: better motion estimation than ultrafast, still very fast
-    // - vbv-maxrate/bufsize: allows temporary bitrate spikes for motion scenes
-    // - subme=4: better subpixel motion estimation for smoother motion
-    // - me=hex: good balance of speed and quality for motion estimation
-    oss << " T_left. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=15/1 "
-        << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
-        << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << cfg_.stream_bitrate_kbps 
-        << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au "
+    // FPV-optimized low-latency streaming using Intel Quick Sync (VA-API)
+    // - vaapih264enc: Hardware encoder on LattePanda Sigma (Intel i5-1340P)
+    // - 480x360@25fps: Lower res + higher fps = smoother FPV driving
+    // - rate-control=cbr: Constant bitrate for predictable bandwidth
+    // - keyframe-period=25: 1 second keyframe interval
+    // - tune=low-power: Fastest hardware encoding mode
+    oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
+        << "! videorate ! video/x-raw,framerate=25/1 "
+        << "! videoscale ! video/x-raw,width=480,height=360,format=I420 "
+        << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
+        << " keyframe-period=25 tune=low-power quality-level=7 "
+        << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
         << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
         << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
@@ -1034,14 +1035,14 @@ private:
     // RIGHT stream branch (only if streaming right)
     // Note: Right camera is mounted upside down, so we rotate 180 degrees for streaming
     if (stream_right) {
-      // Low-latency streaming branch optimized for motion quality (right camera rotated)
-      oss << " T_right. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=15/1 "
-          << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
+      // FPV-optimized low-latency streaming using Intel Quick Sync (right camera rotated)
+      oss << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
+          << "! videorate ! video/x-raw,framerate=25/1 "
+          << "! videoscale ! video/x-raw,width=480,height=360,format=I420 "
           << "! videoflip method=rotate-180 "  // Rotate 180° for upside-down camera
-          << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << cfg_.stream_bitrate_kbps 
-          << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
-          << "! video/x-h264,stream-format=byte-stream,alignment=au "
+          << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
+          << " keyframe-period=25 tune=low-power quality-level=7 "
+          << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
           << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }

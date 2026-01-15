@@ -65,19 +65,18 @@ VideoStreamWidget::~VideoStreamWidget() {
 void VideoStreamWidget::setupPipeline(int port) {
     destroyPipeline();
     
-    // Build low-latency pipeline optimized for Microhard PMDDL2450 RF link
-    // Key optimizations:
-    // - rtpjitterbuffer latency=0: No buffering delay (PMDDL2450 has stable latency)
-    // - drop-on-latency=true: Drop late packets instead of delaying stream
-    // - No videorate/videoscale: Sender already outputs 640x480@15fps
-    // - buffer-size=212992: Larger kernel buffer to handle bursts
+    // FPV-optimized ultra-low-latency receiver pipeline
+    // - Receives 480x360@25fps from robot (Intel Quick Sync encoded)
+    // - rtpjitterbuffer latency=0: Zero buffering
+    // - drop-on-latency=true: Drop late packets, never delay
+    // - avdec_h264: Fast software decode (hardware decode can add latency)
     QString pipelineStr = QString(
-        "udpsrc port=%1 buffer-size=212992 "
+        "udpsrc port=%1 buffer-size=131072 "
         "caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96, clock-rate=90000\" "
         "! rtpjitterbuffer latency=0 drop-on-latency=true "
         "! rtph264depay "
         "! h264parse "
-        "! avdec_h264 max-threads=2 "
+        "! avdec_h264 "
         "! videoconvert "
         "! xvimagesink sync=false name=videosink"
     ).arg(port);

@@ -47,8 +47,8 @@ public:
     // Streaming
     this->declare_parameter<std::string>("stream_host", "172.16.10.121");
     this->declare_parameter<int>("stream_port", 5600);
-    this->declare_parameter<int>("stream_bitrate_kbps", 1000);  // Conservative: leaves headroom for maps/teleop
-    this->declare_parameter<int>("rtp_mtu", 1300);  // Moderate MTU: balance between efficiency and reliability
+    this->declare_parameter<int>("stream_bitrate_kbps", 800);   // Conservative for FPV at 480x360@25fps
+    this->declare_parameter<int>("rtp_mtu", 1400);  // Larger MTU for efficiency
 
     if (this->get_parameter("enable_record_service").as_bool()) {
       record_srv_ = this->create_service<std_srvs::srv::SetBool>(
@@ -154,16 +154,15 @@ private:
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
 
-    // Stream branch (leaky) — low-latency optimized for motion quality
-    // - superfast: better motion estimation than ultrafast
-    // - vbv-buf-capacity: allows temporary bitrate flexibility for motion
-    // - subme=4, me=hex: better subpixel motion estimation
-    oss << " T. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=15/1 "
-        << "! videoscale ! video/x-raw,width=640,height=480 "
-        << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << stream_bitrate 
-        << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au "
+    // FPV-optimized low-latency streaming using Intel Quick Sync (VA-API)
+    // - vaapih264enc: Hardware encoder on LattePanda Sigma
+    // - 480x360@25fps: Lower res + higher fps for smooth FPV
+    oss << " T. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
+        << "! videorate ! video/x-raw,framerate=25/1 "
+        << "! videoscale ! video/x-raw,width=480,height=360 "
+        << "! vaapih264enc rate-control=cbr bitrate=" << stream_bitrate 
+        << " keyframe-period=25 tune=low-power quality-level=7 "
+        << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
         << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false ";
 
