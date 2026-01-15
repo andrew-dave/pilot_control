@@ -65,20 +65,19 @@ VideoStreamWidget::~VideoStreamWidget() {
 void VideoStreamWidget::setupPipeline(int port) {
     destroyPipeline();
     
-    // FPV-optimized ultra-low-latency receiver pipeline
-    // - Receives 480x360@25fps from robot (Intel Quick Sync encoded)
-    // - rtpjitterbuffer latency=0: Zero buffering
-    // - drop-on-latency=true: Drop late packets, never delay
-    // - avdec_h264: Fast software decode (hardware decode can add latency)
+    // FPV-optimized low-latency receiver pipeline
+    // - rtpjitterbuffer latency=20: Minimal 20ms buffer for stability
+    // - do-lost=true: Handle packet loss gracefully
+    // - Works with both old (640x480@15fps) and new (480x360@25fps) sender configs
     QString pipelineStr = QString(
-        "udpsrc port=%1 buffer-size=131072 "
+        "udpsrc port=%1 buffer-size=212992 "
         "caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96, clock-rate=90000\" "
-        "! rtpjitterbuffer latency=0 drop-on-latency=true "
+        "! rtpjitterbuffer latency=20 do-lost=true "
         "! rtph264depay "
         "! h264parse "
         "! avdec_h264 "
         "! videoconvert "
-        "! xvimagesink sync=false name=videosink"
+        "! autovideosink sync=false name=videosink"
     ).arg(port);
     
     GError* error = nullptr;
