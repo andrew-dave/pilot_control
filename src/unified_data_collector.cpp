@@ -998,12 +998,12 @@ private:
     // LEFT stream branch (only if streaming left)
     if (!stream_right) {
     // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
-    // - vaapih264enc: Hardware encoder on LattePanda Sigma
+    // - vaapih264enc requires NV12 format (VA-API preferred format)
     // - 480x360@20fps: Lower res for smooth FPV driving
-    // - No profile filter (let encoder choose)
     oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
         << "! videorate ! video/x-raw,framerate=20/1 "
         << "! videoscale ! video/x-raw,width=480,height=360 "
+        << "! videoconvert ! video/x-raw,format=NV12 "
         << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
         << " keyframe-period=20 tune=low-power "
         << "! h264parse config-interval=1 "
@@ -1038,6 +1038,7 @@ private:
           << "! videorate ! video/x-raw,framerate=20/1 "
           << "! videoscale ! video/x-raw,width=480,height=360 "
           << "! videoflip method=rotate-180 "  // Rotate 180° for upside-down camera
+          << "! videoconvert ! video/x-raw,format=NV12 "
           << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
           << " keyframe-period=20 tune=low-power "
           << "! h264parse config-interval=1 "

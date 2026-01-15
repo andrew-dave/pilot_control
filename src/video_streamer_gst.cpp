@@ -158,6 +158,7 @@ private:
     oss << " T. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
         << "! videorate ! video/x-raw,framerate=20/1 "
         << "! videoscale ! video/x-raw,width=480,height=360 "
+        << "! videoconvert ! video/x-raw,format=NV12 "
         << "! vaapih264enc rate-control=cbr bitrate=" << stream_bitrate 
         << " keyframe-period=20 tune=low-power "
         << "! h264parse config-interval=1 "
