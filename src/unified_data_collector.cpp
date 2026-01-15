@@ -997,19 +997,17 @@ private:
 
     // LEFT stream branch (only if streaming left)
     if (!stream_right) {
-    // FPV-optimized low-latency streaming using Intel Quick Sync (VA-API)
-    // - vaapih264enc: Hardware encoder on LattePanda Sigma (Intel i5-1340P)
-    // - 480x360@25fps: Lower res + higher fps = smoother FPV driving
-    // - rate-control=cbr: Constant bitrate for predictable bandwidth
-    // - keyframe-period=25: 1 second keyframe interval
-    // - tune=low-power: Fastest hardware encoding mode
+    // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
+    // - vaapih264enc: Hardware encoder on LattePanda Sigma
+    // - 480x360@20fps: Lower res for smooth FPV driving
+    // - No profile filter (let encoder choose)
     oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=25/1 "
-        << "! videoscale ! video/x-raw,width=480,height=360,format=I420 "
+        << "! videorate ! video/x-raw,framerate=20/1 "
+        << "! videoscale ! video/x-raw,width=480,height=360 "
         << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
-        << " keyframe-period=25 tune=low-power quality-level=7 "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
-        << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
+        << " keyframe-period=20 tune=low-power "
+        << "! h264parse config-interval=1 "
+        << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
         << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
 
@@ -1035,15 +1033,15 @@ private:
     // RIGHT stream branch (only if streaming right)
     // Note: Right camera is mounted upside down, so we rotate 180 degrees for streaming
     if (stream_right) {
-      // FPV-optimized low-latency streaming using Intel Quick Sync (right camera rotated)
+      // FPV-optimized low-latency streaming (right camera rotated)
       oss << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=25/1 "
-          << "! videoscale ! video/x-raw,width=480,height=360,format=I420 "
+          << "! videorate ! video/x-raw,framerate=20/1 "
+          << "! videoscale ! video/x-raw,width=480,height=360 "
           << "! videoflip method=rotate-180 "  // Rotate 180° for upside-down camera
           << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
-          << " keyframe-period=25 tune=low-power quality-level=7 "
-          << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
-          << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
+          << " keyframe-period=20 tune=low-power "
+          << "! h264parse config-interval=1 "
+          << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
     

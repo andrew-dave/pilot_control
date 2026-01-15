@@ -154,16 +154,14 @@ private:
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
 
-    // FPV-optimized low-latency streaming using Intel Quick Sync (VA-API)
-    // - vaapih264enc: Hardware encoder on LattePanda Sigma
-    // - 480x360@25fps: Lower res + higher fps for smooth FPV
+    // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
     oss << " T. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=25/1 "
+        << "! videorate ! video/x-raw,framerate=20/1 "
         << "! videoscale ! video/x-raw,width=480,height=360 "
         << "! vaapih264enc rate-control=cbr bitrate=" << stream_bitrate 
-        << " keyframe-period=25 tune=low-power quality-level=7 "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline "
-        << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
+        << " keyframe-period=20 tune=low-power "
+        << "! h264parse config-interval=1 "
+        << "! rtph264pay pt=96 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false ";
 
     // ---- RIGHT camera (record only) ----
