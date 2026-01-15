@@ -65,16 +65,19 @@ VideoStreamWidget::~VideoStreamWidget() {
 void VideoStreamWidget::setupPipeline(int port) {
     destroyPipeline();
     
-    // Build pipeline string matching the user's command
+    // Build low-latency pipeline optimized for Microhard PMDDL2450 RF link
+    // Key optimizations:
+    // - rtpjitterbuffer latency=0: No buffering delay (PMDDL2450 has stable latency)
+    // - drop-on-latency=true: Drop late packets instead of delaying stream
+    // - No videorate/videoscale: Sender already outputs 640x480@15fps
+    // - buffer-size=212992: Larger kernel buffer to handle bursts
     QString pipelineStr = QString(
-        "udpsrc port=%1 caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96, clock-rate=90000\" "
-        "! rtpjitterbuffer latency=200 "
-        "! queue max-size-buffers=1 leaky=downstream "
+        "udpsrc port=%1 buffer-size=212992 "
+        "caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96, clock-rate=90000\" "
+        "! rtpjitterbuffer latency=0 drop-on-latency=true "
         "! rtph264depay "
-        "! h264parse disable-passthrough=true config-interval=-1 "
-        "! avdec_h264 "
-        "! videorate ! video/x-raw,framerate=15/1 "
-        "! videoscale ! video/x-raw,width=640,height=480 "
+        "! h264parse "
+        "! avdec_h264 max-threads=2 "
         "! videoconvert "
         "! xvimagesink sync=false name=videosink"
     ).arg(port);
@@ -205,8 +208,8 @@ void VideoStreamWidget::stopStream() {
     // Fully destroy the pipeline to release all resources (including UDP socket)
     // This ensures clean restart when switching cameras
     destroyPipeline();
-    emit streamStopped();
-    std::cout << "[VideoStream] Stream stopped" << std::endl;
+        emit streamStopped();
+        std::cout << "[VideoStream] Stream stopped" << std::endl;
 }
 
 void VideoStreamWidget::destroyPipeline() {
@@ -1434,8 +1437,9 @@ void CoverageGUI::setupUI() {
     QScrollArea* controls_scroll = new QScrollArea();
     controls_scroll->setWidgetResizable(true);
     controls_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    controls_scroll->setMinimumWidth(300);
+    controls_scroll->setMinimumWidth(390);
     controls_scroll->setMaximumWidth(420);
+    controls_scroll->setFixedWidth(390);  // Fixed width to prevent layout issues
     
     QWidget* controls_container = new QWidget();
     QVBoxLayout* controls_layout = new QVBoxLayout(controls_container);
@@ -1634,8 +1638,8 @@ void CoverageGUI::toggleLeftPane() {
     if (!main_splitter_ || !left_stack_) return;
     QList<int> sizes = main_splitter_->sizes();
     if (!left_collapsed_) {
-        left_saved_width_ = sizes.value(0, left_saved_width_);
-        left_saved_width_ = std::max(left_saved_width_, 240);
+        // Collapsing: save current width (always use fixed 390 for full panel)
+        left_saved_width_ = 390;
         left_collapsed_ = true;
         left_stack_->setCurrentWidget(left_mini_);
         sizes[0] = 60;
@@ -1643,9 +1647,10 @@ void CoverageGUI::toggleLeftPane() {
             sizes[1] = std::max(200, sizes[1] + left_saved_width_ - 60);
         }
     } else {
+        // Expanding: restore to fixed width
         left_collapsed_ = false;
         left_stack_->setCurrentWidget(left_full_);
-        int restore = std::max(left_saved_width_, 280);
+        int restore = 390;  // Fixed width for left panel
         if (sizes.size() >= 3) {
             int center = sizes[1];
             int delta = restore - sizes[0];
@@ -5399,9 +5404,9 @@ CoverageStats CoverageGUI::computeStats() const {
         // Use backend-computed effective area: (boundary ∩ ROI) − obstacles
         stats.polygon_area_m2 = effective_area_m2_;
     } else {
-        const Polygon2D& field_poly = roi_polygon_.empty() ? polygon_ : roi_polygon_;
-        if (!field_poly.empty()) {
-            stats.polygon_area_m2 = polygonArea(field_poly);
+    const Polygon2D& field_poly = roi_polygon_.empty() ? polygon_ : roi_polygon_;
+    if (!field_poly.empty()) {
+        stats.polygon_area_m2 = polygonArea(field_poly);
         }
     }
     

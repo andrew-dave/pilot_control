@@ -116,8 +116,8 @@ def generate_launch_description():
             # Streaming settings
             'stream_host': '192.168.168.100', # TODO: change to 10.105.41.180 (R), 192.168.168.102 (R) / 10.105.41.193 (A), 192.168.168.100 (A)
             'stream_port': 5600, # TODO: change to 5602 (R) / 5600 (A)
-            'stream_bitrate_kbps': 800,
-            'rtp_mtu': 1200,
+            'stream_bitrate_kbps': 1000,  # Conservative: leaves headroom for maps/teleop
+            'rtp_mtu': 1300,  # Moderate MTU for reliability
             
             # Video capture settings
             'use_mjpeg_pipeline': True,

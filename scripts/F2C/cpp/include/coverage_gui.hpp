@@ -643,7 +643,7 @@ private:
     QWidget* right_mini_ = nullptr;
     QToolButton* btn_collapse_left_ = nullptr;
     QToolButton* btn_collapse_right_ = nullptr;
-    int left_saved_width_ = 320;
+    int left_saved_width_ = 390;
     int right_saved_width_ = 260;
     bool left_collapsed_ = false;
     bool right_collapsed_ = false;
