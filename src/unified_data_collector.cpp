@@ -997,12 +997,16 @@ private:
 
     // LEFT stream branch (only if streaming left)
     if (!stream_right) {
-    // Low-latency streaming branch with error resilience for RF links
+    // Low-latency streaming branch optimized for motion quality
+    // - superfast: better motion estimation than ultrafast, still very fast
+    // - vbv-maxrate/bufsize: allows temporary bitrate spikes for motion scenes
+    // - subme=4: better subpixel motion estimation for smoother motion
+    // - me=hex: good balance of speed and quality for motion estimation
     oss << " T_left. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
         << "! videorate ! video/x-raw,framerate=15/1 "
         << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
-        << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps 
-        << " key-int-max=15 bframes=0 sliced-threads=true intra-refresh=true "
+        << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << cfg_.stream_bitrate_kbps 
+        << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
         << "! video/x-h264,stream-format=byte-stream,alignment=au "
         << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
         << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
@@ -1030,13 +1034,13 @@ private:
     // RIGHT stream branch (only if streaming right)
     // Note: Right camera is mounted upside down, so we rotate 180 degrees for streaming
     if (stream_right) {
-      // Low-latency streaming branch with error resilience for RF links (right camera rotated)
+      // Low-latency streaming branch optimized for motion quality (right camera rotated)
       oss << " T_right. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=15/1 "
           << "! videoscale ! video/x-raw,width=640,height=480,format=I420 "
           << "! videoflip method=rotate-180 "  // Rotate 180° for upside-down camera
-          << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps 
-          << " key-int-max=15 bframes=0 sliced-threads=true intra-refresh=true "
+          << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << cfg_.stream_bitrate_kbps 
+          << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
           << "! video/x-h264,stream-format=byte-stream,alignment=au "
           << "! rtph264pay pt=96 config-interval=1 mtu=" << cfg_.rtp_mtu << " "
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";

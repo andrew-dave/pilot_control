@@ -154,12 +154,15 @@ private:
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
 
-    // Stream branch (leaky) — low-latency with error resilience for RF links
+    // Stream branch (leaky) — low-latency optimized for motion quality
+    // - superfast: better motion estimation than ultrafast
+    // - vbv-buf-capacity: allows temporary bitrate flexibility for motion
+    // - subme=4, me=hex: better subpixel motion estimation
     oss << " T. ! queue leaky=downstream max-size-buffers=60 max-size-bytes=0 max-size-time=0 "
         << "! videorate ! video/x-raw,framerate=15/1 "
         << "! videoscale ! video/x-raw,width=640,height=480 "
-        << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << stream_bitrate 
-        << " key-int-max=15 bframes=0 sliced-threads=true intra-refresh=true "
+        << "! x264enc tune=zerolatency speed-preset=superfast bitrate=" << stream_bitrate 
+        << " vbv-buf-capacity=500 key-int-max=15 bframes=0 subme=4 me=hex "
         << "! video/x-h264,stream-format=byte-stream,alignment=au "
         << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false ";
