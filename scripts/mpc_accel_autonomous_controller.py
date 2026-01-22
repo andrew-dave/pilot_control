@@ -343,7 +343,7 @@ class PathFollower:
         # Search window parameters - tuned for robustness on overlapping paths
         # Forward window: how far ahead to search (should cover several control cycles)
         # Default 0.5m works well for speeds up to 0.5 m/s at 20Hz
-        self.forward_search_window: float = 0.5  # meters
+        self.forward_search_window: float = 0.2  # meters
         # Backward tolerance: small amount to handle noise/overshoot
         self.backward_tolerance: float = 0.02  # meters
         # Maximum lateral distance to consider a point valid
