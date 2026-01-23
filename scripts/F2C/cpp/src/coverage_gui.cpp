@@ -599,8 +599,9 @@ void PlotWidget::updateDataBounds() {
     }
     
     if (data_min_x_ > data_max_x_) {
-        data_min_x_ = 0; data_max_x_ = 1;
-        data_min_y_ = 0; data_max_y_ = 1;
+        // Default to a 10m x 10m view centered at origin when no data
+        data_min_x_ = -5; data_max_x_ = 5;
+        data_min_y_ = -5; data_max_y_ = 5;
     }
     
     // Add margin
