@@ -961,26 +961,26 @@ class MPCAccelController(Node):
         self.declare_parameter("invert_right", True)
 
         self.declare_parameter("control_frequency", 10.0)
-        self.declare_parameter("max_linear_velocity", 0.5)
-        self.declare_parameter("max_angular_velocity", 1.0)
+        self.declare_parameter("max_linear_velocity", 0.4)
+        self.declare_parameter("max_angular_velocity", 2.0)
 
-        self.declare_parameter("mpc_horizon", 40)
+        self.declare_parameter("mpc_horizon", 50)
         self.declare_parameter("mpc_dt", 0.1)
 
-        self.declare_parameter("mpc_Q_xe", 20.0)
-        self.declare_parameter("mpc_Q_ye", 15.0)
-        self.declare_parameter("mpc_Q_yaw", 2.0)  # Lower = less aggressive heading correction
+        self.declare_parameter("mpc_Q_xe", 50.0) #625
+        self.declare_parameter("mpc_Q_ye", 20.0)  #2500
+        self.declare_parameter("mpc_Q_yaw", 10.0)  # # Lower = less aggressive heading correction
         # Separate Δ-costs for linear and angular velocity
         # Higher R values = smoother motion, less oscillation
-        self.declare_parameter("mpc_R_delta_v", 0.1)
-        self.declare_parameter("mpc_R_delta_omega", 0.8)  # High value to prevent squiggly motion
+        self.declare_parameter("mpc_R_delta_v", 0.00001)
+        self.declare_parameter("mpc_R_delta_omega", 0.00001)  # High value to prevent squiggly motion
         # Rate limits on Δv and Δω per step
-        self.declare_parameter("mpc_dv_max", 0.05)      # m/s per control step
-        self.declare_parameter("mpc_domega_max", 0.08)  # rad/s per control step
+        self.declare_parameter("mpc_dv_max", 0.5)      # m/s per control step
+        self.declare_parameter("mpc_domega_max", 0.8)  # rad/s per control step
         # Optional time-varying weight scaling (set to 0 for stability)
-        self.declare_parameter("mpc_weight_increase_xe", 0.0)
-        self.declare_parameter("mpc_weight_increase_ye", 0.0)
-        self.declare_parameter("mpc_weight_increase_yaw", 0.0)
+        self.declare_parameter("mpc_weight_increase_xe", 0.20)
+        self.declare_parameter("mpc_weight_increase_ye", 0.10)
+        self.declare_parameter("mpc_weight_increase_yaw", 0.20)
         # Compatibility parameters with MPCAutonomousController (even if unused)
         self.declare_parameter("slip_history_length", 100)
         self.declare_parameter("slip_estimation_window", 1.0)
@@ -1323,7 +1323,7 @@ class MPCAccelController(Node):
         of MPCAutonomousController.generate_local_waypoints).
 
         Returns:
-            List of waypoints [x, y, yaw, vx, vy, vyaw] for the MPC horizon.
+            List of waypoints [x, y, yaw, vx, vy, vyaw] for the MPC h30orizon.
         """
         if (
             not self.path_initialized
