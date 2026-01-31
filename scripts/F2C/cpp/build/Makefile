@@ -319,6 +319,30 @@ src/coverage_pipeline.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.s
 .PHONY : src/coverage_pipeline.cpp.s
 
+src/data_transfer_dialog.o: src/data_transfer_dialog.cpp.o
+.PHONY : src/data_transfer_dialog.o
+
+# target to build an object file
+src/data_transfer_dialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o
+.PHONY : src/data_transfer_dialog.cpp.o
+
+src/data_transfer_dialog.i: src/data_transfer_dialog.cpp.i
+.PHONY : src/data_transfer_dialog.i
+
+# target to preprocess a source file
+src/data_transfer_dialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.i
+.PHONY : src/data_transfer_dialog.cpp.i
+
+src/data_transfer_dialog.s: src/data_transfer_dialog.cpp.s
+.PHONY : src/data_transfer_dialog.s
+
+# target to generate assembly for a file
+src/data_transfer_dialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.s
+.PHONY : src/data_transfer_dialog.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -342,6 +366,30 @@ src/main.s: src/main.cpp.s
 src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
+
+src/transfer_manager.o: src/transfer_manager.cpp.o
+.PHONY : src/transfer_manager.o
+
+# target to build an object file
+src/transfer_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o
+.PHONY : src/transfer_manager.cpp.o
+
+src/transfer_manager.i: src/transfer_manager.cpp.i
+.PHONY : src/transfer_manager.i
+
+# target to preprocess a source file
+src/transfer_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.i
+.PHONY : src/transfer_manager.cpp.i
+
+src/transfer_manager.s: src/transfer_manager.cpp.s
+.PHONY : src/transfer_manager.s
+
+# target to generate assembly for a file
+src/transfer_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.s
+.PHONY : src/transfer_manager.cpp.s
 
 # Help Target
 help:
@@ -372,9 +420,15 @@ help:
 	@echo "... src/coverage_pipeline.o"
 	@echo "... src/coverage_pipeline.i"
 	@echo "... src/coverage_pipeline.s"
+	@echo "... src/data_transfer_dialog.o"
+	@echo "... src/data_transfer_dialog.i"
+	@echo "... src/data_transfer_dialog.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/transfer_manager.o"
+	@echo "... src/transfer_manager.i"
+	@echo "... src/transfer_manager.s"
 .PHONY : help
 
 

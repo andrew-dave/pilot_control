@@ -458,6 +458,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: \
  /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
  /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
  /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+ /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -1812,4 +1813,23 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: \
  /usr/include/boost/mpl/aux_/O1_size_impl.hpp \
  /usr/include/boost/mpl/aux_/has_size.hpp \
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
- /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp
+ /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet /usr/include/c++/11/deque \
+ /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreeview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidgetitemiterator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidgetItem \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcalendarwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h

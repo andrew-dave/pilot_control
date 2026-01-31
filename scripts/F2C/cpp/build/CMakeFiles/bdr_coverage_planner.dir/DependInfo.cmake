@@ -12,7 +12,9 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp" "CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o.d"
   "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp" "CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o.d"
   "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp" "CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o.d"
+  "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp" "CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o.d"
   "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp" "CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o.d"
+  "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp" "CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o" "gcc" "CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o.d"
   )
 
 # Targets to which this target links.

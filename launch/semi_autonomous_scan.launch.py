@@ -377,7 +377,7 @@ def generate_launch_description():
         name='gpr_serial_bridge',
         output='screen',
         parameters=[{
-            'serial_port': '/dev/ttyACM1',  # adjust if different on LattePanda
+            'serial_port': '/dev/arduino',  # stable udev symlink (see config/99-arduino.rules)
             'baud_rate': 9600
         }]
     )

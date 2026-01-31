@@ -1,6 +1,8 @@
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp: /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_gui.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/moc_predefs.h \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__struct.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp \
@@ -209,6 +211,7 @@
   /opt/ros/humble/include/rclcpp/rclcpp/network_flow_endpoint.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/node.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/node_impl.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_base_interface.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_timers_interface.hpp \
@@ -607,6 +610,7 @@
   /usr/include/c++/11/bits/cpp_type_traits.h \
   /usr/include/c++/11/bits/cxxabi_forced.h \
   /usr/include/c++/11/bits/cxxabi_init_exception.h \
+  /usr/include/c++/11/bits/deque.tcc \
   /usr/include/c++/11/bits/enable_special_members.h \
   /usr/include/c++/11/bits/erase_if.h \
   /usr/include/c++/11/bits/exception.h \
@@ -660,6 +664,7 @@
   /usr/include/c++/11/bits/stl_algobase.h \
   /usr/include/c++/11/bits/stl_bvector.h \
   /usr/include/c++/11/bits/stl_construct.h \
+  /usr/include/c++/11/bits/stl_deque.h \
   /usr/include/c++/11/bits/stl_function.h \
   /usr/include/c++/11/bits/stl_heap.h \
   /usr/include/c++/11/bits/stl_iterator.h \
@@ -713,6 +718,7 @@
   /usr/include/c++/11/cxxabi.h \
   /usr/include/c++/11/debug/assertions.h \
   /usr/include/c++/11/debug/debug.h \
+  /usr/include/c++/11/deque \
   /usr/include/c++/11/exception \
   /usr/include/c++/11/ext/aligned_buffer.h \
   /usr/include/c++/11/ext/alloc_traits.h \
@@ -1352,11 +1358,14 @@
   /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
   /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDate \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDir \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
@@ -1598,10 +1607,13 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLabel \
@@ -1620,6 +1632,8 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStatusBar \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolButton \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidgetItem \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractbutton.h \
@@ -1632,6 +1646,7 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qboxlayout.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcalendarwidget.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcheckbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
@@ -1665,6 +1680,9 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreeview.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidget.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidgetitemiterator.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgets-config.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h \

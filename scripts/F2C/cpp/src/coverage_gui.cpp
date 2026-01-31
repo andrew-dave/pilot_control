@@ -4,8 +4,11 @@
  */
 
 #include "coverage_gui.hpp"
+#include "transfer_manager.hpp"
+#include "data_transfer_dialog.hpp"
 
 #include <QApplication>
+#include <QGridLayout>
 #include <QStyle>
 #include <QFont>
 #include <QPen>
@@ -1988,6 +1991,85 @@ void CoverageGUI::onStreamStatusReceived(const std_msgs::msg::String::SharedPtr 
     }, Qt::QueuedConnection);
 }
 
+// =============================================================================
+// Data Transfer Implementation
+// =============================================================================
+
+void CoverageGUI::openDataTransferDialog() {
+    qDebug() << "[CoverageGUI] openDataTransferDialog() called";
+    qDebug() << "[CoverageGUI] robot_host_:" << robot_host_;
+    qDebug() << "[CoverageGUI] robot_user_:" << robot_user_;
+    qDebug() << "[CoverageGUI] robot_data_path_:" << robot_data_path_;
+    
+    // Create dialog lazily
+    if (!data_transfer_dialog_) {
+        qDebug() << "[CoverageGUI] Creating new DataTransferDialog";
+        data_transfer_dialog_ = new DataTransferDialog(this);
+        
+        // Configure with robot connection settings
+        data_transfer_dialog_->setRobotHost(robot_host_);
+        data_transfer_dialog_->setRobotUser(robot_user_);
+        data_transfer_dialog_->setDataPath(robot_data_path_);
+        
+        // Connect signals for main window progress updates
+        connect(data_transfer_dialog_, &DataTransferDialog::transferActive,
+                this, &CoverageGUI::onTransferActive);
+        connect(data_transfer_dialog_, &DataTransferDialog::transferProgress,
+                this, &CoverageGUI::onTransferProgress);
+    }
+    
+    // Update robot host in case it changed (in case user changed IP in settings)
+    if (txt_robot_ip_) {
+        robot_host_ = txt_robot_ip_->text();
+    }
+    data_transfer_dialog_->setRobotHost(robot_host_);
+    
+    qDebug() << "[CoverageGUI] Showing dialog with host:" << robot_host_;
+    
+    // Show and bring to front
+    data_transfer_dialog_->bringToFront();
+}
+
+void CoverageGUI::onTransferActive(bool active) {
+    // Show/hide the progress widget in the main window
+    if (transfer_progress_widget_) {
+        transfer_progress_widget_->setVisible(active);
+    }
+    
+    if (!active) {
+        // Transfer completed - reset progress
+        if (transfer_progress_widget_) {
+            transfer_progress_widget_->setProgress(0, 0.0, 0, 0, "");
+        }
+    }
+}
+
+void CoverageGUI::onTransferProgress(int percent, double speedMBps) {
+    if (transfer_progress_widget_) {
+        auto job = TransferManager::instance().currentJob();
+        QString sectionName;
+        qint64 bytesTransferred = 0;
+        qint64 totalBytes = 0;
+        
+        if (job) {
+            sectionName = job->sectionName;
+            bytesTransferred = job->transferredBytes;
+            totalBytes = job->totalBytes;
+        }
+        
+        transfer_progress_widget_->setProgress(percent, speedMBps, bytesTransferred, totalBytes, sectionName);
+    }
+}
+
+void CoverageGUI::onShowTransferDialogRequested() {
+    // Re-open the data transfer dialog
+    openDataTransferDialog();
+}
+
+void CoverageGUI::onCancelTransferRequested() {
+    TransferManager::instance().cancelCurrentJob();
+}
+
 QGroupBox* CoverageGUI::buildFileControls() {
     QGroupBox* box = new QGroupBox("Point Cloud & Network");
     QVBoxLayout* v = new QVBoxLayout(box);
@@ -2749,17 +2831,50 @@ QWidget* CoverageGUI::buildRightFullPane() {
     v->setContentsMargins(6, 6, 6, 6);
     v->setSpacing(6);
     
+    // Layers panel (compact 2-column layout)
     QWidget* layers = buildLayerPanel();
     v->addWidget(layers);
     
+    // Scan planner panel
     QGroupBox* scan_panel = buildScanPlannerPanel();
     v->addWidget(scan_panel);
     
+    // Video panel
     video_panel_widget_ = buildVideoPanelWidget();
     v->addWidget(video_panel_widget_);
     
+    // Data transfer panel
+    data_transfer_panel_ = buildDataTransferPanel();
+    v->addWidget(data_transfer_panel_);
+    
     v->addStretch();
     return pane;
+}
+
+QWidget* CoverageGUI::buildDataTransferPanel() {
+    QGroupBox* box = new QGroupBox("Data Transfer");
+    QVBoxLayout* layout = new QVBoxLayout(box);
+    layout->setContentsMargins(6, 6, 6, 6);
+    layout->setSpacing(4);
+    
+    // Main download button
+    btn_open_transfer_dialog_ = new QPushButton("📥 Download Data");
+    btn_open_transfer_dialog_->setMinimumHeight(32);
+    btn_open_transfer_dialog_->setToolTip("Download data from robot to this computer");
+    connect(btn_open_transfer_dialog_, &QPushButton::clicked, 
+            this, &CoverageGUI::openDataTransferDialog);
+    layout->addWidget(btn_open_transfer_dialog_);
+    
+    // Progress widget (hidden by default)
+    transfer_progress_widget_ = new TransferProgressWidget();
+    transfer_progress_widget_->setVisible(false);
+    connect(transfer_progress_widget_, &TransferProgressWidget::showDialogRequested,
+            this, &CoverageGUI::onShowTransferDialogRequested);
+    connect(transfer_progress_widget_, &TransferProgressWidget::cancelRequested,
+            this, &CoverageGUI::onCancelTransferRequested);
+    layout->addWidget(transfer_progress_widget_);
+    
+    return box;
 }
 
 // =============================================================================
@@ -2902,37 +3017,57 @@ void CoverageGUI::onWorkflowStepClicked(int step) {
 
 QWidget* CoverageGUI::buildLayerPanel() {
     QWidget* box = new QWidget();
-    box->setFixedWidth(150);
+    box->setFixedWidth(180);  // Slightly wider for 2 columns
     box->setObjectName("layerPanel");
     
-    QVBoxLayout* layout = new QVBoxLayout(box);
-    layout->setSpacing(4);
+    QVBoxLayout* mainLayout = new QVBoxLayout(box);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+    mainLayout->setSpacing(2);
     
-    auto addLayerCheckbox = [&](const QString& label, QCheckBox*& checkbox, bool defaultChecked = true) {
+    // Grid layout for 2-column checkboxes
+    QGridLayout* grid = new QGridLayout();
+    grid->setSpacing(2);
+    grid->setContentsMargins(0, 0, 0, 0);
+    
+    int row = 0;
+    auto addLayerCheckbox = [&](int r, int c, const QString& label, QCheckBox*& checkbox, bool defaultChecked = true) {
         checkbox = new QCheckBox(label);
         checkbox->setChecked(defaultChecked);
+        checkbox->setStyleSheet("font-size: 10px;");
         connect(checkbox, &QCheckBox::toggled, this, &CoverageGUI::updateLayerVisibility);
-        layout->addWidget(checkbox);
+        grid->addWidget(checkbox, r, c);
     };
     
-    addLayerCheckbox("☁️ Points", chk_layer_points_, true);
-    addLayerCheckbox("⬡ Polygon", chk_layer_polygon_, true);
-    addLayerCheckbox("🟩 ROI", chk_layer_roi_, true);
-    addLayerCheckbox("⚠️ Obstacles", chk_layer_obstacles_, true);
-    addLayerCheckbox("═ Swaths", chk_layer_swaths_, true);
-    addLayerCheckbox("➜ Path", chk_layer_path_, true);
-    addLayerCheckbox("📍 Trail", chk_layer_trail_, true);
-    addLayerCheckbox("🤖 Robot", chk_layer_robot_, true);
-    addLayerCheckbox("🛰 Scan segments", chk_layer_scan_segments_, true);
+    // Row 0
+    addLayerCheckbox(0, 0, "☁️ Points", chk_layer_points_, true);
+    addLayerCheckbox(0, 1, "➜ Path", chk_layer_path_, true);
     
-    layout->addStretch();
+    // Row 1
+    addLayerCheckbox(1, 0, "⬡ Polygon", chk_layer_polygon_, true);
+    addLayerCheckbox(1, 1, "📍 Trail", chk_layer_trail_, true);
+    
+    // Row 2
+    addLayerCheckbox(2, 0, "🟩 ROI", chk_layer_roi_, true);
+    addLayerCheckbox(2, 1, "🤖 Robot", chk_layer_robot_, true);
+    
+    // Row 3
+    addLayerCheckbox(3, 0, "⚠️ Obstacles", chk_layer_obstacles_, true);
+    addLayerCheckbox(3, 1, "🛰 Segments", chk_layer_scan_segments_, true);
+    
+    // Row 4 - Swaths spans or single
+    addLayerCheckbox(4, 0, "═ Swaths", chk_layer_swaths_, true);
+    
+    mainLayout->addLayout(grid);
     
     // All on/off buttons
     QHBoxLayout* btn_layout = new QHBoxLayout();
+    btn_layout->setSpacing(4);
     QPushButton* btn_all_on = new QPushButton("All");
     QPushButton* btn_all_off = new QPushButton("None");
-    btn_all_on->setFixedHeight(24);
-    btn_all_off->setFixedHeight(24);
+    btn_all_on->setFixedHeight(22);
+    btn_all_off->setFixedHeight(22);
+    btn_all_on->setStyleSheet("font-size: 10px;");
+    btn_all_off->setStyleSheet("font-size: 10px;");
     
     connect(btn_all_on, &QPushButton::clicked, this, [this]() {
         chk_layer_points_->setChecked(true);
@@ -2943,6 +3078,7 @@ QWidget* CoverageGUI::buildLayerPanel() {
         chk_layer_path_->setChecked(true);
         chk_layer_trail_->setChecked(true);
         chk_layer_robot_->setChecked(true);
+        chk_layer_scan_segments_->setChecked(true);
     });
     
     connect(btn_all_off, &QPushButton::clicked, this, [this]() {
@@ -2954,11 +3090,12 @@ QWidget* CoverageGUI::buildLayerPanel() {
         chk_layer_path_->setChecked(false);
         chk_layer_trail_->setChecked(false);
         chk_layer_robot_->setChecked(false);
+        chk_layer_scan_segments_->setChecked(false);
     });
     
     btn_layout->addWidget(btn_all_on);
     btn_layout->addWidget(btn_all_off);
-    layout->addLayout(btn_layout);
+    mainLayout->addLayout(btn_layout);
     
     return box;
 }

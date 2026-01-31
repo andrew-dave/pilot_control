@@ -69,6 +69,8 @@ endif()
 set(HEADERS
     include/coverage_pipeline.hpp
     include/coverage_gui.hpp
+    include/transfer_manager.hpp
+    include/data_transfer_dialog.hpp
 )
 
 # Source files
@@ -78,6 +80,8 @@ set(PIPELINE_SOURCES
 
 set(GUI_SOURCES
     src/coverage_gui.cpp
+    src/transfer_manager.cpp
+    src/data_transfer_dialog.cpp
     src/main.cpp
     resources.qrc
 )

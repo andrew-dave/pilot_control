@@ -62,6 +62,8 @@
 #include <gst/video/videooverlay.h>
 
 #include "coverage_pipeline.hpp"
+#include "transfer_manager.hpp"
+#include "data_transfer_dialog.hpp"
 
 namespace f2c_cpp {
 
@@ -377,6 +379,13 @@ private slots:
     void playVideoStream();
     void stopVideoStream();
     void onCameraStatusReceived(const std_msgs::msg::String::SharedPtr msg);
+    
+    // Data transfer
+    void openDataTransferDialog();
+    void onTransferActive(bool active);
+    void onTransferProgress(int percent, double speedMBps);
+    void onShowTransferDialogRequested();
+    void onCancelTransferRequested();
 
 private:
     struct LiveStatsSnapshot;
@@ -402,6 +411,7 @@ private:
     QWidget* buildLayerPanel();
     QWidget* buildQuickActionsBar();
     QGroupBox* buildScanPlannerPanel();
+    QWidget* buildDataTransferPanel();
     
     // Async point cloud loading
     void loadPointCloudAsync(const QString& path);
@@ -720,6 +730,12 @@ private:
     QPushButton* btn_video_play_ = nullptr;
     QPushButton* btn_video_stop_ = nullptr;
     QLabel* lbl_video_status_ = nullptr;
+    
+    // Data transfer panel
+    QWidget* data_transfer_panel_ = nullptr;
+    QPushButton* btn_open_transfer_dialog_ = nullptr;
+    TransferProgressWidget* transfer_progress_widget_ = nullptr;
+    DataTransferDialog* data_transfer_dialog_ = nullptr;
     
     // ROS2 camera selection publisher
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_select_pub_;
