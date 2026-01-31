@@ -39,6 +39,8 @@ public:
         gpr_line_stop_client_  = create_client<std_srvs::srv::Trigger>("/gpr_line_stop");
         // GPR scan controller service
         gpr_scan_toggle_client_ = create_client<std_srvs::srv::Trigger>("/gpr_scan/toggle");
+        // GPR power off service
+        gpr_power_off_client_ = create_client<std_srvs::srv::Trigger>("/gpr_power_off");
         // Rosbag recording toggle service
         rosbag_toggle_client_ = create_client<std_srvs::srv::Trigger>("/rosbag/toggle");
         
@@ -65,6 +67,7 @@ public:
         RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
         RCLCPP_INFO(get_logger(), "  G - Toggle GPR scan (line + motor + logging)");
+        RCLCPP_INFO(get_logger(), "  O - GPR power off");
         RCLCPP_INFO(get_logger(), "  M - Save map checkpoint (Fast-LIO2 continues running)");
         RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
         RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
@@ -124,6 +127,12 @@ public:
             RCLCPP_INFO(get_logger(), "✓ gpr_scan/toggle service is available (G key)");
         } else {
             RCLCPP_WARN(get_logger(), "⚠ gpr_scan/toggle service is NOT available (G key will do nothing)");
+        }
+
+        if (gpr_power_off_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_INFO(get_logger(), "✓ gpr_power_off service is available (O key)");
+        } else {
+            RCLCPP_WARN(get_logger(), "⚠ gpr_power_off service is NOT available (O key will do nothing)");
         }
 
         if (rosbag_toggle_client_->wait_for_service(std::chrono::seconds(1))) {
@@ -292,6 +301,23 @@ public:
         (void)future;
     }
 
+    void trigger_gpr_power_off() {
+        if (!gpr_power_off_client_->wait_for_service(std::chrono::seconds(1))) {
+            RCLCPP_WARN(get_logger(), "gpr_power_off service not available");
+            return;
+        }
+        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = gpr_power_off_client_->async_send_request(req,
+            [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture resp) {
+                if (resp.get()->success) {
+                    RCLCPP_INFO(this->get_logger(), "✓ GPR Power Off: %s", resp.get()->message.c_str());
+                } else {
+                    RCLCPP_WARN(this->get_logger(), "✗ GPR power off failed: %s", resp.get()->message.c_str());
+                }
+            });
+        (void)future;
+    }
+
     void trigger_rosbag_toggle() {
         if (!rosbag_toggle_client_->wait_for_service(std::chrono::seconds(1))) {
             RCLCPP_WARN(get_logger(), "rosbag/toggle service not available");
@@ -408,6 +434,9 @@ private:
                 } else if (event.key.keysym.sym == SDLK_g) {
                     RCLCPP_INFO(get_logger(), "G key pressed - Toggle GPR Scan");
                     trigger_gpr_scan_toggle();
+                } else if (event.key.keysym.sym == SDLK_o) {
+                    RCLCPP_INFO(get_logger(), "O key pressed - GPR Power Off");
+                    trigger_gpr_power_off();
                 } else if (event.key.keysym.sym == SDLK_r) {
                     RCLCPP_INFO(get_logger(), "R key pressed - Start recording (both cams)");
                     send_video_record_set(true);
@@ -490,6 +519,7 @@ private:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_start_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_line_stop_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_scan_toggle_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_power_off_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr rosbag_toggle_client_;
     rclcpp::TimerBase::SharedPtr timer_;
     SDL_Window* window_;

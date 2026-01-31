@@ -39,10 +39,17 @@ class GPRSerialBridge(Node):
             self.line_stop_callback
         )
         
+        self.power_off_service = self.create_service(
+            Trigger, 
+            'gpr_power_off', 
+            self.power_off_callback
+        )
+        
         self.get_logger().info(f'GPR Serial Bridge started on {self.serial_port}')
         self.get_logger().info('Services available:')
-        self.get_logger().info('  /gpr_line_start - Send "L" to Arduino')
-        self.get_logger().info('  /gpr_line_stop  - Send "K" to Arduino')
+        self.get_logger().info('  /gpr_line_start - Send "K" twice to Arduino')
+        self.get_logger().info('  /gpr_line_stop  - Send "L" to Arduino')
+        self.get_logger().info('  /gpr_power_off  - Send "O" to Arduino')
     
     def connect_serial(self):
         """Connect to Arduino serial port"""
@@ -99,6 +106,17 @@ class GPRSerialBridge(Node):
         else:
             response.success = False
             response.message = 'Failed to send line stop command'
+        return response
+    
+    def power_off_callback(self, request, response):
+        """Service callback for GPR power off (send 'O')"""
+        if self.send_command('O'):
+            response.success = True
+            response.message = 'GPR power off command sent to Arduino'
+            self.scan_active = False
+        else:
+            response.success = False
+            response.message = 'Failed to send GPR power off command'
         return response
 
 def main(args=None):

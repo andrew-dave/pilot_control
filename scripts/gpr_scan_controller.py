@@ -181,6 +181,7 @@ class GPRScanController(Node):
         # Service clients (Arduino control)
         self.line_start_client = self.create_client(Trigger, '/gpr_line_start')
         self.line_stop_client = self.create_client(Trigger, '/gpr_line_stop')
+        self.power_off_client = self.create_client(Trigger, '/gpr_power_off')
 
         # ODrive Axis arming service client (GPR only)
         self.gpr_axis_client = self.create_client(AxisState, f'/{self.gpr_ns}/request_axis_state')
@@ -196,6 +197,8 @@ class GPRScanController(Node):
             Trigger, '/gpr_scan/toggle', self.toggle_scan_callback)
         self.rosbag_toggle_service = self.create_service(
             Trigger, '/rosbag/toggle', self.rosbag_toggle_callback)
+        self.power_off_service = self.create_service(
+            Trigger, '/gpr_scan/power_off', self.power_off_callback)
         
         # Timer for motor control (20 Hz)
         self.motor_timer = self.create_timer(0.05, self.update_gpr_motor)
@@ -215,6 +218,7 @@ class GPRScanController(Node):
         self.get_logger().info(f'Rosbag final destination: {self.rosbag_dir_final}')
         self.get_logger().info(f'Services available:')
         self.get_logger().info(f'  - /gpr_scan/toggle')
+        self.get_logger().info(f'  - /gpr_scan/power_off')
         self.get_logger().info(f'  - /rosbag/toggle')
         self.get_logger().info('')
         self.get_logger().info('💡 Press G in teleop to start/stop GPR scanning')
@@ -343,6 +347,26 @@ class GPRScanController(Node):
                 response.success = True
                 response.message = f'GPR scan stopped. Logged {self.log_count} samples'
         
+        return response
+    
+    def power_off_callback(self, request, response):
+        """Power off GPR via Arduino"""
+        self.get_logger().info('Sending GPR power off command...')
+        if self.power_off_client.wait_for_service(timeout_sec=1.0):
+            future = self.power_off_client.call_async(Trigger.Request())
+            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+            if future.result() and future.result().success:
+                response.success = True
+                response.message = 'GPR power off command sent'
+                self.get_logger().info('✓ GPR power off command sent')
+            else:
+                response.success = False
+                response.message = 'GPR power off service call failed'
+                self.get_logger().warn('⚠️  GPR power off service call failed')
+        else:
+            response.success = False
+            response.message = 'GPR power off service not available'
+            self.get_logger().warn('⚠️  GPR power off service not available')
         return response
     
     def rosbag_toggle_callback(self, request, response):
