@@ -403,9 +403,7 @@ void DataTransferDialog::setupUI() {
     btnDownload_->setEnabled(false);
     actionLayout->addWidget(btnDownload_);
     
-    btnClose_ = new QPushButton("Close");
-    btnClose_->setMinimumWidth(80);
-    actionLayout->addWidget(btnClose_);
+    // (Close button removed - dialog is now a tab in the Data Transfer window)
     
     mainLayout->addLayout(actionLayout);
 }
@@ -420,7 +418,7 @@ void DataTransferDialog::setupConnections() {
     connect(btnBrowse_, &QPushButton::clicked, this, &DataTransferDialog::onBrowseDestination);
     connect(btnDownload_, &QPushButton::clicked, this, &DataTransferDialog::onDownloadClicked);
     connect(btnCancel_, &QPushButton::clicked, this, &DataTransferDialog::onCancelClicked);
-    connect(btnClose_, &QPushButton::clicked, this, &QDialog::close);
+    // (Close button removed - dialog is now a tab)
     
     connect(treeWidget_, &QTreeWidget::itemChanged, this, &DataTransferDialog::onItemChanged);
     connect(treeWidget_, &QTreeWidget::itemExpanded, this, &DataTransferDialog::onItemExpanded);

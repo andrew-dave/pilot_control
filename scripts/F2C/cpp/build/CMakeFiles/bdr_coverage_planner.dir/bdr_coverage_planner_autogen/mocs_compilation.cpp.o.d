@@ -1,7 +1,7 @@
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o: \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp \
  /usr/include/stdc-predef.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_dialog.cpp \
  /usr/include/c++/11/memory /usr/include/c++/11/bits/stl_algobase.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -118,9 +118,9 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/c++/11/backward/auto_ptr.h \
  /usr/include/c++/11/pstl/glue_memory_defs.h \
  /usr/include/c++/11/pstl/execution_defs.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/coverage_gui.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/cloud_upload_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qtguiglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
@@ -286,10 +286,50 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsizepolicy.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qcursor.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qkeysequence.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreeview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
+ /usr/include/c++/11/variant \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyleoption.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractspinbox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qicon.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyle.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qrubberband.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidgetitemiterator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidgetItem \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QProgressBar \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qprogressbar.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLabel \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qpushbutton.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractbutton.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLineEdit \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlineedit.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextcursor.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextformat.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qpen.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextoption.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgroupbox.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QVBoxLayout \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qboxlayout.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayout.h \
@@ -297,395 +337,98 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qboxlayout.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgroupbox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QPushButton \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qpushbutton.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractbutton.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLabel \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLineEdit \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlineedit.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextcursor.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextformat.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
- /usr/include/c++/11/variant \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qpen.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qtextoption.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractspinbox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSpinBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemdelegate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyleoption.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyle.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qrubberband.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcheckbox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QProgressBar \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qprogressbar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStatusBar \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstatusbar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractscrollarea.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsplitter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMessageBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocess.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QDir \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QDate \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsettings.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimer.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSpinBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qspinbox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QThread \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+ /usr/include/c++/11/future /usr/include/c++/11/mutex \
+ /usr/include/c++/11/bits/std_mutex.h \
+ /usr/include/c++/11/bits/unique_lock.h \
+ /usr/include/c++/11/condition_variable \
+ /usr/include/c++/11/bits/atomic_futex.h \
+ /usr/include/c++/11/bits/std_thread.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/cloud_upload_manager.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocess.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsettings.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonObject \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatetime.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainerfwd.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
- /usr/include/c++/11/mutex /usr/include/c++/11/bits/std_mutex.h \
- /usr/include/c++/11/bits/unique_lock.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qhashfunctions.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h \
- /usr/include/c++/11/cmath /usr/include/math.h \
- /usr/include/x86_64-linux-gnu/bits/math-vector.h \
- /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
- /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
- /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
- /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
- /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
- /usr/include/c++/11/bits/specfun.h /usr/include/c++/11/tr1/gamma.tcc \
- /usr/include/c++/11/tr1/special_function_util.h \
- /usr/include/c++/11/tr1/bessel_function.tcc \
- /usr/include/c++/11/tr1/beta_function.tcc \
- /usr/include/c++/11/tr1/ell_integral.tcc \
- /usr/include/c++/11/tr1/exp_integral.tcc \
- /usr/include/c++/11/tr1/hypergeometric.tcc \
- /usr/include/c++/11/tr1/legendre_function.tcc \
- /usr/include/c++/11/tr1/modified_bessel_func.tcc \
- /usr/include/c++/11/tr1/poly_hermite.tcc \
- /usr/include/c++/11/tr1/poly_laguerre.tcc \
- /usr/include/c++/11/tr1/riemann_zeta.tcc \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h \
- /usr/include/c++/11/random /usr/include/c++/11/bits/random.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
- /usr/include/c++/11/bits/random.tcc \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstring.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
- /usr/include/c++/11/future /usr/include/c++/11/condition_variable \
- /usr/include/c++/11/bits/atomic_futex.h \
- /usr/include/c++/11/bits/std_thread.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
- /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
- /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface \
- /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonArray \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonarray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkaccessmanager.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetworkglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetwork-config.h \
- /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h \
- /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qabstractsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QSharedDataPointer \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStackedWidget \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstackedwidget.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolButton \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QUrl \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qurl.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QVariant \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariant.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QVector \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvector.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslConfiguration \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslconfiguration.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtcpsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qabstractsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslerror.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslcertificate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qssl.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QFlags \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qflags.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslPreSharedKeyAuthenticator \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslpresharedkeyauthenticator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMetaType \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetatype.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkReply \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkreply.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QIODevice \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qiodevice.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkRequest \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
+ /usr/include/c++/11/deque /usr/include/c++/11/bits/stl_deque.h \
+ /usr/include/c++/11/bits/deque.tcc /usr/include/c++/11/optional \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/network_monitor.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlist.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/scan_session_tracker.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMap \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h \
  /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
  /usr/include/c++/11/csignal /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
@@ -823,8 +566,7 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
- /usr/include/c++/11/optional /usr/include/c++/11/sstream \
- /usr/include/c++/11/bits/sstream.tcc \
+ /usr/include/c++/11/sstream /usr/include/c++/11/bits/sstream.tcc \
  /opt/ros/humble/include/rcl/rcl/error_handling.h \
  /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp \
@@ -952,6 +694,28 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp \
+ /usr/include/c++/11/cmath /usr/include/math.h \
+ /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+ /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+ /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+ /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+ /usr/include/c++/11/bits/specfun.h /usr/include/c++/11/tr1/gamma.tcc \
+ /usr/include/c++/11/tr1/special_function_util.h \
+ /usr/include/c++/11/tr1/bessel_function.tcc \
+ /usr/include/c++/11/tr1/beta_function.tcc \
+ /usr/include/c++/11/tr1/ell_integral.tcc \
+ /usr/include/c++/11/tr1/exp_integral.tcc \
+ /usr/include/c++/11/tr1/hypergeometric.tcc \
+ /usr/include/c++/11/tr1/legendre_function.tcc \
+ /usr/include/c++/11/tr1/modified_bessel_func.tcc \
+ /usr/include/c++/11/tr1/poly_hermite.tcc \
+ /usr/include/c++/11/tr1/poly_laguerre.tcc \
+ /usr/include/c++/11/tr1/riemann_zeta.tcc \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
@@ -1094,6 +858,304 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/write_preferring_read_write_lock.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/nav_sat_fix.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__struct.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__struct.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__builder.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__traits.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__traits.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__type_support.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_manager.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/coverage_gui.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcheckbox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qradiobutton.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStatusBar \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstatusbar.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollarea.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlistview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsplitter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMessageBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmessagebox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QDir \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdir.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QDate \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qpainter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qevent.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qtouchdevice.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAction \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qactiongroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qaction.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qshortcut.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrent \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/QtConcurrentDepends \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracteventdispatcher.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractitemmodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractnativeeventfilter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qalgorithms.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydata.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydatapointer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qarraydataops.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qatomic.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbitarray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbuffer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraymatcher.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcache.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcalendar.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborarray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborcommon.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcbormap.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstream.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfloat16.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamreader.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborstreamwriter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcborvalue.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qchar.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcollator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcompilerdetection.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontainerfwd.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcontiguouscache.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreevent.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qcryptographichash.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdeadlinetimer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdebug.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qelapsedtimer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qendian.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventloop.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qeventtransition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstracttransition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfactoryinterface.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfile.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfiledevice.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileselector.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfilesystemwatcher.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfinalstate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractstate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmutex.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qexception.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfutureinterface.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturesynchronizer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuture.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qfuturewatcher.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qgenericatomic.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobalstatic.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qhash.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qhashfunctions.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qhistorystate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qidentityproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qisenum.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qitemselectionmodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qiterator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsondocument.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonvalue.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibraryinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qline.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlocale.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlockfile.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qloggingcategory.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmargins.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmath.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmessageauthenticationcode.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedata.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimedatabase.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmimetype.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qnamespace.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qnumeric.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectcleanuphandler.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qobjectdefs.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpair.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qparallelanimationgroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qanimationgroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpauseanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qjsonobject.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpluginloader.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qlibrary.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qplugin.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpoint.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpointer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qprocessordetection.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qpropertyanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qeasingcurve.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qqueue.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qrandom.h \
+ /usr/include/c++/11/random /usr/include/c++/11/bits/random.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
+ /usr/include/c++/11/bits/random.tcc \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qreadwritelock.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qrect.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qrefcount.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qregexp.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qresource.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qresultstore.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qrunnable.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsavefile.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedpointer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopedvaluerollback.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qscopeguard.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsequentialanimationgroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedmemory.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsharedpointer.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignalmapper.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsignaltransition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qmetaobject.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsize.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsocketnotifier.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsortfilterproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstack.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstandardpaths.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstatemachine.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstorageinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringalgorithms.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringbuilder.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlistmodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringliteral.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringmatcher.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringview.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsysinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemdetection.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporarydir.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtemporaryfile.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextcodec.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextstream.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qthread.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadstorage.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimeline.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtimezone.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtranslator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypeinfo.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtypetraits.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qurlquery.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/quuid.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvariantanimation.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qvarlengtharray.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qtcoreversion.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrent_global.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentexception.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qthreadpool.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/qsemaphore.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentcompilertest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfunctionwrappers.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentiteratekernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmap.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmapkernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentmedian.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentreducekernel.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrun.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentrunbase.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentstoredfunctioncall.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentversion.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolBox \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbox.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QButtonGroup \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qbuttongroup.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStackedWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstackedwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QToolButton \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -1111,7 +1173,6 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__type_support.hpp \
  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/odometry.hpp \
  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__struct.hpp \
- /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
@@ -1121,7 +1182,6 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__builder.hpp \
  /opt/ros/humble/include/nav_msgs/nav_msgs/msg/detail/odometry__traits.hpp \
- /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
@@ -1804,24 +1864,50 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/transfer_manager.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet /usr/include/c++/11/deque \
- /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/data_transfer_dialog.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidget.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreeview.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidgetitemiterator.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidgetItem \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcalendarwidget.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/preset_manager.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/preset_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QInputDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qinputdialog.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlineedit.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/teleop_widget.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QKeyEvent \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__traits.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__type_support.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/set_bool.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__struct.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__builder.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__traits.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__type_support.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_data_transfer_dialog.cpp \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_preset_dialog.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/preset_dialog.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_preset_manager.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/preset_manager.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/teleop_widget.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp

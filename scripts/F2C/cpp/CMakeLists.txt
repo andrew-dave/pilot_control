@@ -71,6 +71,13 @@ set(HEADERS
     include/coverage_gui.hpp
     include/transfer_manager.hpp
     include/data_transfer_dialog.hpp
+    include/preset_manager.hpp
+    include/preset_dialog.hpp
+    include/teleop_widget.hpp
+    include/network_monitor.hpp
+    include/cloud_upload_manager.hpp
+    include/scan_session_tracker.hpp
+    include/cloud_upload_dialog.hpp
 )
 
 # Source files
@@ -82,6 +89,13 @@ set(GUI_SOURCES
     src/coverage_gui.cpp
     src/transfer_manager.cpp
     src/data_transfer_dialog.cpp
+    src/preset_manager.cpp
+    src/preset_dialog.cpp
+    src/teleop_widget.cpp
+    src/network_monitor.cpp
+    src/cloud_upload_manager.cpp
+    src/scan_session_tracker.cpp
+    src/cloud_upload_dialog.cpp
     src/main.cpp
     resources.qrc
 )
@@ -149,6 +163,9 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -156,7 +173,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 # Add ROS2 includes and libraries
 include_directories(${rclcpp_INCLUDE_DIRS})
 target_link_libraries(bdr_coverage_planner ${rclcpp_LIBRARIES})
-ament_target_dependencies(bdr_coverage_planner rclcpp std_msgs nav_msgs tf2 tf2_geometry_msgs)
+ament_target_dependencies(bdr_coverage_planner rclcpp std_msgs std_srvs geometry_msgs sensor_msgs nav_msgs tf2 tf2_geometry_msgs)
 
 # Install
 install(TARGETS bdr_coverage_planner

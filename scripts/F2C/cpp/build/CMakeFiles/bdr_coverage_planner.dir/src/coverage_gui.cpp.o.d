@@ -1820,6 +1820,81 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcalendarwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonObject \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QInputDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qinputdialog.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlineedit.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/teleop_widget.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QKeyEvent \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+ /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__traits.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__type_support.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/set_bool.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__struct.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__builder.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__traits.hpp \
+ /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__type_support.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QThread \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_manager.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonArray \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkaccessmanager.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QSharedDataPointer \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QUrl \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QVariant \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QVector \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslConfiguration \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslconfiguration.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtcpsocket.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslerror.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslcertificate.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qssl.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QFlags \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslPreSharedKeyAuthenticator \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslpresharedkeyauthenticator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMetaType \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkReply \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkreply.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QIODevice \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkRequest \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/network_monitor.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QMap \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/nav_sat_fix.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__struct.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__struct.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__builder.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__traits.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__traits.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__type_support.hpp \
+ /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QApplication \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qapplication.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qguiapplication.h \
@@ -1836,8 +1911,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h \
@@ -2203,7 +2278,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__builder.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point_stamped__type_support.hpp \
- /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/quaternion_stamped.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion_stamped__builder.hpp \

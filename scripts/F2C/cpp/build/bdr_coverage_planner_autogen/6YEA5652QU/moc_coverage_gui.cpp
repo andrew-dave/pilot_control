@@ -365,8 +365,8 @@ void f2c_cpp::PlotWidget::rectangleCompleted(const Polygon2D & _t1)
     QMetaObject::activate(this, &staticMetaObject, 4, _a);
 }
 struct qt_meta_stringdata_f2c_cpp__CoverageGUI_t {
-    QByteArrayData data[69];
-    char stringdata0[1103];
+    QByteArrayData data[88];
+    char stringdata0[1381];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -443,7 +443,26 @@ QT_MOC_LITERAL(64, 1010, 18), // "onTransferProgress"
 QT_MOC_LITERAL(65, 1029, 7), // "percent"
 QT_MOC_LITERAL(66, 1037, 9), // "speedMBps"
 QT_MOC_LITERAL(67, 1047, 29), // "onShowTransferDialogRequested"
-QT_MOC_LITERAL(68, 1077, 25) // "onCancelTransferRequested"
+QT_MOC_LITERAL(68, 1077, 25), // "onCancelTransferRequested"
+QT_MOC_LITERAL(69, 1103, 16), // "onPresetSelected"
+QT_MOC_LITERAL(70, 1120, 5), // "index"
+QT_MOC_LITERAL(71, 1126, 17), // "saveCurrentPreset"
+QT_MOC_LITERAL(72, 1144, 15), // "createNewPreset"
+QT_MOC_LITERAL(73, 1160, 17), // "openPresetManager"
+QT_MOC_LITERAL(74, 1178, 10), // "loadPreset"
+QT_MOC_LITERAL(75, 1189, 4), // "name"
+QT_MOC_LITERAL(76, 1194, 17), // "refreshPresetList"
+QT_MOC_LITERAL(77, 1212, 21), // "gatherCurrentSettings"
+QT_MOC_LITERAL(78, 1234, 14), // "PlanningPreset"
+QT_MOC_LITERAL(79, 1249, 11), // "applyPreset"
+QT_MOC_LITERAL(80, 1261, 6), // "preset"
+QT_MOC_LITERAL(81, 1268, 18), // "toggleTeleopWidget"
+QT_MOC_LITERAL(82, 1287, 21), // "onTeleopStatusMessage"
+QT_MOC_LITERAL(83, 1309, 7), // "message"
+QT_MOC_LITERAL(84, 1317, 19), // "onCloudUploadActive"
+QT_MOC_LITERAL(85, 1337, 16), // "startScanSession"
+QT_MOC_LITERAL(86, 1354, 11), // "sectionName"
+QT_MOC_LITERAL(87, 1366, 14) // "endScanSession"
 
     },
     "f2c_cpp::CoverageGUI\0loadPointCloud\0"
@@ -476,7 +495,15 @@ QT_MOC_LITERAL(68, 1077, 25) // "onCancelTransferRequested"
     "openDataTransferDialog\0onTransferActive\0"
     "active\0onTransferProgress\0percent\0"
     "speedMBps\0onShowTransferDialogRequested\0"
-    "onCancelTransferRequested"
+    "onCancelTransferRequested\0onPresetSelected\0"
+    "index\0saveCurrentPreset\0createNewPreset\0"
+    "openPresetManager\0loadPreset\0name\0"
+    "refreshPresetList\0gatherCurrentSettings\0"
+    "PlanningPreset\0applyPreset\0preset\0"
+    "toggleTeleopWidget\0onTeleopStatusMessage\0"
+    "message\0onCloudUploadActive\0"
+    "startScanSession\0sectionName\0"
+    "endScanSession"
 };
 #undef QT_MOC_LITERAL
 
@@ -486,7 +513,7 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      52,   14, // methods
+      65,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -494,58 +521,71 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,  274,    2, 0x08 /* Private */,
-       3,    0,  275,    2, 0x08 /* Private */,
-       4,    1,  276,    2, 0x08 /* Private */,
-       6,    0,  279,    2, 0x08 /* Private */,
-       7,    0,  280,    2, 0x08 /* Private */,
-       8,    0,  281,    2, 0x08 /* Private */,
-       9,    0,  282,    2, 0x08 /* Private */,
-      10,    0,  283,    2, 0x08 /* Private */,
-      11,    0,  284,    2, 0x08 /* Private */,
-      12,    0,  285,    2, 0x08 /* Private */,
-      13,    0,  286,    2, 0x08 /* Private */,
-      14,    0,  287,    2, 0x08 /* Private */,
-      15,    0,  288,    2, 0x08 /* Private */,
-      16,    0,  289,    2, 0x08 /* Private */,
-      17,    0,  290,    2, 0x08 /* Private */,
-      18,    0,  291,    2, 0x08 /* Private */,
-      19,    0,  292,    2, 0x08 /* Private */,
-      20,    0,  293,    2, 0x08 /* Private */,
-      21,    0,  294,    2, 0x08 /* Private */,
-      22,    0,  295,    2, 0x08 /* Private */,
-      23,    0,  296,    2, 0x08 /* Private */,
-      24,    0,  297,    2, 0x08 /* Private */,
-      25,    0,  298,    2, 0x08 /* Private */,
-      26,    0,  299,    2, 0x08 /* Private */,
-      27,    1,  300,    2, 0x08 /* Private */,
-      30,    1,  303,    2, 0x08 /* Private */,
-      32,    0,  306,    2, 0x08 /* Private */,
-      33,    1,  307,    2, 0x08 /* Private */,
-      35,    0,  310,    2, 0x08 /* Private */,
-      36,    0,  311,    2, 0x08 /* Private */,
-      37,    0,  312,    2, 0x08 /* Private */,
-      38,    0,  313,    2, 0x08 /* Private */,
-      39,    0,  314,    2, 0x08 /* Private */,
-      40,    1,  315,    2, 0x08 /* Private */,
-      42,    0,  318,    2, 0x08 /* Private */,
-      43,    0,  319,    2, 0x08 /* Private */,
-      44,    0,  320,    2, 0x08 /* Private */,
-      45,    0,  321,    2, 0x08 /* Private */,
-      47,    0,  322,    2, 0x08 /* Private */,
-      48,    1,  323,    2, 0x08 /* Private */,
-      50,    0,  326,    2, 0x08 /* Private */,
-      51,    0,  327,    2, 0x08 /* Private */,
-      53,    0,  328,    2, 0x08 /* Private */,
-      54,    1,  329,    2, 0x08 /* Private */,
-      56,    0,  332,    2, 0x08 /* Private */,
-      57,    0,  333,    2, 0x08 /* Private */,
-      58,    1,  334,    2, 0x08 /* Private */,
-      61,    0,  337,    2, 0x08 /* Private */,
-      62,    1,  338,    2, 0x08 /* Private */,
-      64,    2,  341,    2, 0x08 /* Private */,
-      67,    0,  346,    2, 0x08 /* Private */,
-      68,    0,  347,    2, 0x08 /* Private */,
+       1,    0,  339,    2, 0x08 /* Private */,
+       3,    0,  340,    2, 0x08 /* Private */,
+       4,    1,  341,    2, 0x08 /* Private */,
+       6,    0,  344,    2, 0x08 /* Private */,
+       7,    0,  345,    2, 0x08 /* Private */,
+       8,    0,  346,    2, 0x08 /* Private */,
+       9,    0,  347,    2, 0x08 /* Private */,
+      10,    0,  348,    2, 0x08 /* Private */,
+      11,    0,  349,    2, 0x08 /* Private */,
+      12,    0,  350,    2, 0x08 /* Private */,
+      13,    0,  351,    2, 0x08 /* Private */,
+      14,    0,  352,    2, 0x08 /* Private */,
+      15,    0,  353,    2, 0x08 /* Private */,
+      16,    0,  354,    2, 0x08 /* Private */,
+      17,    0,  355,    2, 0x08 /* Private */,
+      18,    0,  356,    2, 0x08 /* Private */,
+      19,    0,  357,    2, 0x08 /* Private */,
+      20,    0,  358,    2, 0x08 /* Private */,
+      21,    0,  359,    2, 0x08 /* Private */,
+      22,    0,  360,    2, 0x08 /* Private */,
+      23,    0,  361,    2, 0x08 /* Private */,
+      24,    0,  362,    2, 0x08 /* Private */,
+      25,    0,  363,    2, 0x08 /* Private */,
+      26,    0,  364,    2, 0x08 /* Private */,
+      27,    1,  365,    2, 0x08 /* Private */,
+      30,    1,  368,    2, 0x08 /* Private */,
+      32,    0,  371,    2, 0x08 /* Private */,
+      33,    1,  372,    2, 0x08 /* Private */,
+      35,    0,  375,    2, 0x08 /* Private */,
+      36,    0,  376,    2, 0x08 /* Private */,
+      37,    0,  377,    2, 0x08 /* Private */,
+      38,    0,  378,    2, 0x08 /* Private */,
+      39,    0,  379,    2, 0x08 /* Private */,
+      40,    1,  380,    2, 0x08 /* Private */,
+      42,    0,  383,    2, 0x08 /* Private */,
+      43,    0,  384,    2, 0x08 /* Private */,
+      44,    0,  385,    2, 0x08 /* Private */,
+      45,    0,  386,    2, 0x08 /* Private */,
+      47,    0,  387,    2, 0x08 /* Private */,
+      48,    1,  388,    2, 0x08 /* Private */,
+      50,    0,  391,    2, 0x08 /* Private */,
+      51,    0,  392,    2, 0x08 /* Private */,
+      53,    0,  393,    2, 0x08 /* Private */,
+      54,    1,  394,    2, 0x08 /* Private */,
+      56,    0,  397,    2, 0x08 /* Private */,
+      57,    0,  398,    2, 0x08 /* Private */,
+      58,    1,  399,    2, 0x08 /* Private */,
+      61,    0,  402,    2, 0x08 /* Private */,
+      62,    1,  403,    2, 0x08 /* Private */,
+      64,    2,  406,    2, 0x08 /* Private */,
+      67,    0,  411,    2, 0x08 /* Private */,
+      68,    0,  412,    2, 0x08 /* Private */,
+      69,    1,  413,    2, 0x08 /* Private */,
+      71,    0,  416,    2, 0x08 /* Private */,
+      72,    0,  417,    2, 0x08 /* Private */,
+      73,    0,  418,    2, 0x08 /* Private */,
+      74,    1,  419,    2, 0x08 /* Private */,
+      76,    0,  422,    2, 0x08 /* Private */,
+      77,    0,  423,    2, 0x08 /* Private */,
+      79,    1,  424,    2, 0x08 /* Private */,
+      81,    0,  427,    2, 0x08 /* Private */,
+      82,    1,  428,    2, 0x08 /* Private */,
+      84,    1,  431,    2, 0x08 /* Private */,
+      85,    1,  434,    2, 0x08 /* Private */,
+      87,    0,  437,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void,
@@ -599,6 +639,19 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
     QMetaType::Void, QMetaType::Bool,   63,
     QMetaType::Void, QMetaType::Int, QMetaType::Double,   65,   66,
     QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::Int,   70,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,   75,
+    QMetaType::Void,
+    0x80000000 | 78,
+    QMetaType::Void, 0x80000000 | 78,   80,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,   83,
+    QMetaType::Void, QMetaType::Bool,   63,
+    QMetaType::Void, QMetaType::QString,   86,
     QMetaType::Void,
 
        0        // eod
@@ -664,6 +717,20 @@ void f2c_cpp::CoverageGUI::qt_static_metacall(QObject *_o, QMetaObject::Call _c,
         case 49: _t->onTransferProgress((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< double(*)>(_a[2]))); break;
         case 50: _t->onShowTransferDialogRequested(); break;
         case 51: _t->onCancelTransferRequested(); break;
+        case 52: _t->onPresetSelected((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 53: _t->saveCurrentPreset(); break;
+        case 54: _t->createNewPreset(); break;
+        case 55: _t->openPresetManager(); break;
+        case 56: _t->loadPreset((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 57: _t->refreshPresetList(); break;
+        case 58: { PlanningPreset _r = _t->gatherCurrentSettings();
+            if (_a[0]) *reinterpret_cast< PlanningPreset*>(_a[0]) = std::move(_r); }  break;
+        case 59: _t->applyPreset((*reinterpret_cast< const PlanningPreset(*)>(_a[1]))); break;
+        case 60: _t->toggleTeleopWidget(); break;
+        case 61: _t->onTeleopStatusMessage((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 62: _t->onCloudUploadActive((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 63: _t->startScanSession((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 64: _t->endScanSession(); break;
         default: ;
         }
     }
@@ -698,13 +765,13 @@ int f2c_cpp::CoverageGUI::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 52)
+        if (_id < 65)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 52;
+        _id -= 65;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 52)
+        if (_id < 65)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 52;
+        _id -= 65;
     }
     return _id;
 }

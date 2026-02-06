@@ -64,6 +64,11 @@
 #include "coverage_pipeline.hpp"
 #include "transfer_manager.hpp"
 #include "data_transfer_dialog.hpp"
+#include "preset_manager.hpp"
+#include "preset_dialog.hpp"
+#include "teleop_widget.hpp"
+#include "cloud_upload_dialog.hpp"
+#include "scan_session_tracker.hpp"
 
 namespace f2c_cpp {
 
@@ -380,12 +385,33 @@ private slots:
     void stopVideoStream();
     void onCameraStatusReceived(const std_msgs::msg::String::SharedPtr msg);
     
-    // Data transfer
+    // Data transfer (tabbed: download + upload)
     void openDataTransferDialog();
     void onTransferActive(bool active);
     void onTransferProgress(int percent, double speedMBps);
     void onShowTransferDialogRequested();
     void onCancelTransferRequested();
+    
+    // Preset management
+    void onPresetSelected(int index);
+    void saveCurrentPreset();
+    void createNewPreset();
+    void openPresetManager();
+    void loadPreset(const QString& name);
+    void refreshPresetList();
+    PlanningPreset gatherCurrentSettings() const;
+    void applyPreset(const PlanningPreset& preset);
+    
+    // Teleop widget
+    void toggleTeleopWidget();
+    void onTeleopStatusMessage(const QString& message);
+    
+    // Cloud upload (integrated in tabbed dialog)
+    void onCloudUploadActive(bool active);
+    
+    // Scan session tracking
+    void startScanSession(const QString& sectionName);
+    void endScanSession();
 
 private:
     struct LiveStatsSnapshot;
@@ -401,6 +427,7 @@ private:
     QGroupBox* buildHullControls();
     QGroupBox* buildSimplifyControls();
     QGroupBox* buildCoverageControls();
+    QWidget* buildPresetControls();
     QGroupBox* buildExportControls();
     QGroupBox* buildRobotTrackingControls();
     QGroupBox* buildPathPlanningControls();
@@ -562,6 +589,13 @@ private:
     QComboBox* combo_decomp_type_;
     QCheckBox* chk_axial_turns_;
     QDoubleSpinBox* spin_waypoint_spacing_ = nullptr;
+    
+    // Preset controls
+    PresetManager* preset_manager_ = nullptr;
+    QComboBox* combo_preset_ = nullptr;
+    QPushButton* btn_save_preset_ = nullptr;
+    QPushButton* btn_new_preset_ = nullptr;
+    QPushButton* btn_manage_presets_ = nullptr;
     
     // ROI controls
     QPushButton* btn_roi_;
@@ -736,6 +770,16 @@ private:
     QPushButton* btn_open_transfer_dialog_ = nullptr;
     TransferProgressWidget* transfer_progress_widget_ = nullptr;
     DataTransferDialog* data_transfer_dialog_ = nullptr;
+    CloudUploadDialog* cloud_upload_dialog_ = nullptr;
+    QDialog* data_transfer_window_ = nullptr;     // Tabbed window (download + upload)
+    QTabWidget* data_transfer_tabs_ = nullptr;
+    
+    // Teleop widget (floating/dockable)
+    TeleopDockWidget* teleop_dock_ = nullptr;
+    QAction* action_show_teleop_ = nullptr;
+    
+    // Scan session tracker (GPS + stats persistence)
+    ScanSessionTracker* scan_session_tracker_ = nullptr;
     
     // ROS2 camera selection publisher
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_select_pub_;

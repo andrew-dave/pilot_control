@@ -1,7 +1,14 @@
 /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp: /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_gui.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/moc_predefs.h \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_dialog.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_manager.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/network_monitor.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/teleop_widget.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__struct.hpp \
@@ -22,12 +29,16 @@
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist_with_covariance__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/collector.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/metric_details_interface.hpp \
@@ -355,6 +366,14 @@
   /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp \
   /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/service_type_support.hpp \
   /opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__builder.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__struct.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__traits.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__type_support.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__struct.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_status__traits.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/nav_sat_fix.hpp \
+  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp \
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__struct.hpp \
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__traits.hpp \
@@ -363,6 +382,11 @@
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp \
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/metrics_message.hpp \
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__builder.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__traits.hpp \
@@ -380,6 +404,17 @@
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__builder.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__struct.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__traits.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/set_bool__type_support.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__traits.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__type_support.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/set_bool.hpp \
+  /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
   /opt/ros/humble/include/tracetools/tracetools/config.h \
   /opt/ros/humble/include/tracetools/tracetools/tracetools.h \
   /opt/ros/humble/include/tracetools/tracetools/utils.hpp \
@@ -1361,15 +1396,27 @@
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDeadlineTimer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QDir \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFlags \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFutureWatcher \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QIODevice \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonArray \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonObject \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QMap \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QMetaType \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSharedDataPointer \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QThread \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QTimer \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QUrl \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QVariant \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QVector \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCore \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QtCoreDepends \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qabstractanimation.h \
@@ -1564,6 +1611,7 @@
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtGui/QKeyEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QWheelEvent \
@@ -1598,10 +1646,25 @@
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qvector2d.h \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/qwindowdefs.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkReply \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkRequest \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslConfiguration \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QSslPreSharedKeyAuthenticator \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qabstractsocket.h \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qhostaddress.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkaccessmanager.h \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkreply.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qssl.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslcertificate.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslconfiguration.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslerror.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslpresharedkeyauthenticator.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qsslsocket.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtcpsocket.h \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetwork-config.h \
   /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qtnetworkglobal.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
@@ -1611,11 +1674,14 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCheckBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QComboBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDockWidget \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFileDialog \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFrame \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QHBoxLayout \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QInputDialog \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLabel \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QLineEdit \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QListWidget \
@@ -1626,6 +1692,7 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QRadioButton \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QScrollArea \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QShortcut \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSpinBox \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSplitter \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStackedWidget \
@@ -1650,10 +1717,12 @@
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcheckbox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qcombobox.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdockwidget.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qfiledialog.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qframe.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgroupbox.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qinputdialog.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlabel.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayout.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qlayoutitem.h \

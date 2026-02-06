@@ -271,6 +271,54 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s
 .PHONY : bdr_coverage_planner_autogen/mocs_compilation.cpp.s
 
+src/cloud_upload_dialog.o: src/cloud_upload_dialog.cpp.o
+.PHONY : src/cloud_upload_dialog.o
+
+# target to build an object file
+src/cloud_upload_dialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o
+.PHONY : src/cloud_upload_dialog.cpp.o
+
+src/cloud_upload_dialog.i: src/cloud_upload_dialog.cpp.i
+.PHONY : src/cloud_upload_dialog.i
+
+# target to preprocess a source file
+src/cloud_upload_dialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.i
+.PHONY : src/cloud_upload_dialog.cpp.i
+
+src/cloud_upload_dialog.s: src/cloud_upload_dialog.cpp.s
+.PHONY : src/cloud_upload_dialog.s
+
+# target to generate assembly for a file
+src/cloud_upload_dialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.s
+.PHONY : src/cloud_upload_dialog.cpp.s
+
+src/cloud_upload_manager.o: src/cloud_upload_manager.cpp.o
+.PHONY : src/cloud_upload_manager.o
+
+# target to build an object file
+src/cloud_upload_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o
+.PHONY : src/cloud_upload_manager.cpp.o
+
+src/cloud_upload_manager.i: src/cloud_upload_manager.cpp.i
+.PHONY : src/cloud_upload_manager.i
+
+# target to preprocess a source file
+src/cloud_upload_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.i
+.PHONY : src/cloud_upload_manager.cpp.i
+
+src/cloud_upload_manager.s: src/cloud_upload_manager.cpp.s
+.PHONY : src/cloud_upload_manager.s
+
+# target to generate assembly for a file
+src/cloud_upload_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.s
+.PHONY : src/cloud_upload_manager.cpp.s
+
 src/coverage_gui.o: src/coverage_gui.cpp.o
 .PHONY : src/coverage_gui.o
 
@@ -367,6 +415,126 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/network_monitor.o: src/network_monitor.cpp.o
+.PHONY : src/network_monitor.o
+
+# target to build an object file
+src/network_monitor.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o
+.PHONY : src/network_monitor.cpp.o
+
+src/network_monitor.i: src/network_monitor.cpp.i
+.PHONY : src/network_monitor.i
+
+# target to preprocess a source file
+src/network_monitor.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.i
+.PHONY : src/network_monitor.cpp.i
+
+src/network_monitor.s: src/network_monitor.cpp.s
+.PHONY : src/network_monitor.s
+
+# target to generate assembly for a file
+src/network_monitor.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s
+.PHONY : src/network_monitor.cpp.s
+
+src/preset_dialog.o: src/preset_dialog.cpp.o
+.PHONY : src/preset_dialog.o
+
+# target to build an object file
+src/preset_dialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o
+.PHONY : src/preset_dialog.cpp.o
+
+src/preset_dialog.i: src/preset_dialog.cpp.i
+.PHONY : src/preset_dialog.i
+
+# target to preprocess a source file
+src/preset_dialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.i
+.PHONY : src/preset_dialog.cpp.i
+
+src/preset_dialog.s: src/preset_dialog.cpp.s
+.PHONY : src/preset_dialog.s
+
+# target to generate assembly for a file
+src/preset_dialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.s
+.PHONY : src/preset_dialog.cpp.s
+
+src/preset_manager.o: src/preset_manager.cpp.o
+.PHONY : src/preset_manager.o
+
+# target to build an object file
+src/preset_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o
+.PHONY : src/preset_manager.cpp.o
+
+src/preset_manager.i: src/preset_manager.cpp.i
+.PHONY : src/preset_manager.i
+
+# target to preprocess a source file
+src/preset_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.i
+.PHONY : src/preset_manager.cpp.i
+
+src/preset_manager.s: src/preset_manager.cpp.s
+.PHONY : src/preset_manager.s
+
+# target to generate assembly for a file
+src/preset_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s
+.PHONY : src/preset_manager.cpp.s
+
+src/scan_session_tracker.o: src/scan_session_tracker.cpp.o
+.PHONY : src/scan_session_tracker.o
+
+# target to build an object file
+src/scan_session_tracker.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o
+.PHONY : src/scan_session_tracker.cpp.o
+
+src/scan_session_tracker.i: src/scan_session_tracker.cpp.i
+.PHONY : src/scan_session_tracker.i
+
+# target to preprocess a source file
+src/scan_session_tracker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.i
+.PHONY : src/scan_session_tracker.cpp.i
+
+src/scan_session_tracker.s: src/scan_session_tracker.cpp.s
+.PHONY : src/scan_session_tracker.s
+
+# target to generate assembly for a file
+src/scan_session_tracker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s
+.PHONY : src/scan_session_tracker.cpp.s
+
+src/teleop_widget.o: src/teleop_widget.cpp.o
+.PHONY : src/teleop_widget.o
+
+# target to build an object file
+src/teleop_widget.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o
+.PHONY : src/teleop_widget.cpp.o
+
+src/teleop_widget.i: src/teleop_widget.cpp.i
+.PHONY : src/teleop_widget.i
+
+# target to preprocess a source file
+src/teleop_widget.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.i
+.PHONY : src/teleop_widget.cpp.i
+
+src/teleop_widget.s: src/teleop_widget.cpp.s
+.PHONY : src/teleop_widget.s
+
+# target to generate assembly for a file
+src/teleop_widget.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.s
+.PHONY : src/teleop_widget.cpp.s
+
 src/transfer_manager.o: src/transfer_manager.cpp.o
 .PHONY : src/transfer_manager.o
 
@@ -414,6 +582,12 @@ help:
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.o"
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.i"
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.s"
+	@echo "... src/cloud_upload_dialog.o"
+	@echo "... src/cloud_upload_dialog.i"
+	@echo "... src/cloud_upload_dialog.s"
+	@echo "... src/cloud_upload_manager.o"
+	@echo "... src/cloud_upload_manager.i"
+	@echo "... src/cloud_upload_manager.s"
 	@echo "... src/coverage_gui.o"
 	@echo "... src/coverage_gui.i"
 	@echo "... src/coverage_gui.s"
@@ -426,6 +600,21 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/network_monitor.o"
+	@echo "... src/network_monitor.i"
+	@echo "... src/network_monitor.s"
+	@echo "... src/preset_dialog.o"
+	@echo "... src/preset_dialog.i"
+	@echo "... src/preset_dialog.s"
+	@echo "... src/preset_manager.o"
+	@echo "... src/preset_manager.i"
+	@echo "... src/preset_manager.s"
+	@echo "... src/scan_session_tracker.o"
+	@echo "... src/scan_session_tracker.i"
+	@echo "... src/scan_session_tracker.s"
+	@echo "... src/teleop_widget.o"
+	@echo "... src/teleop_widget.i"
+	@echo "... src/teleop_widget.s"
 	@echo "... src/transfer_manager.o"
 	@echo "... src/transfer_manager.i"
 	@echo "... src/transfer_manager.s"

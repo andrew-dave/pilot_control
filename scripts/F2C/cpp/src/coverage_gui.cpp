@@ -17,6 +17,8 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QFrame>
+#include <QDir>
+#include <QTabWidget>
 #include <QSignalBlocker>
 #include <QtConcurrent>
 #include <QFutureWatcher>
@@ -1393,6 +1395,17 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         });
         ros_initialized_ = true;
         setStatus(QString("Ready (ROS2 connected via %1)").arg(dds_profile_.toUpper()));
+        
+        // Create teleop dock widget now that ros_node_ is available
+        teleop_dock_ = new TeleopDockWidget(ros_node_, this);
+        teleop_dock_->setFloating(true);
+        teleop_dock_->hide();  // Hidden by default
+        addDockWidget(Qt::RightDockWidgetArea, teleop_dock_);
+        connect(teleop_dock_->teleopWidget(), &TeleopWidget::statusMessage,
+                this, &CoverageGUI::onTeleopStatusMessage);
+        
+        // Create scan session tracker with GPS subscription
+        scan_session_tracker_ = new ScanSessionTracker(ros_node_, this);
     } catch (const std::exception& e) {
         std::cerr << "[Coverage Planner] Warning: ROS2 initialization failed: " << e.what() << std::endl;
         std::cerr << "[Coverage Planner] Starting background reconnection timer..." << std::endl;
@@ -1543,7 +1556,7 @@ void CoverageGUI::setupUI() {
     collapse_bar->addWidget(btn_collapse_right_, 0, Qt::AlignRight);
     
     root_layout->addLayout(collapse_bar);
-    root_layout->addWidget(main_splitter_);
+    root_layout->addWidget(main_splitter_, 1);
     
     setCentralWidget(central);
     
@@ -1555,6 +1568,9 @@ void CoverageGUI::setupUI() {
     progress_bar_->setVisible(false);
     progress_bar_->setMaximumWidth(200);
     status_bar_->addPermanentWidget(progress_bar_);
+    
+    // Note: Teleop dock is created later after ROS2 node is initialized
+    // See end of constructor where ros_node_ is created
     
     toggleVideoPanel();
     updateCollapseButtons();
@@ -1997,37 +2013,73 @@ void CoverageGUI::onStreamStatusReceived(const std_msgs::msg::String::SharedPtr 
 
 void CoverageGUI::openDataTransferDialog() {
     qDebug() << "[CoverageGUI] openDataTransferDialog() called";
-    qDebug() << "[CoverageGUI] robot_host_:" << robot_host_;
-    qDebug() << "[CoverageGUI] robot_user_:" << robot_user_;
-    qDebug() << "[CoverageGUI] robot_data_path_:" << robot_data_path_;
     
-    // Create dialog lazily
-    if (!data_transfer_dialog_) {
-        qDebug() << "[CoverageGUI] Creating new DataTransferDialog";
-        data_transfer_dialog_ = new DataTransferDialog(this);
+    // Create the tabbed window lazily
+    if (!data_transfer_window_) {
+        data_transfer_window_ = new QDialog(this);
+        data_transfer_window_->setWindowTitle("Data Transfer");
+        data_transfer_window_->setMinimumSize(700, 750);
+        data_transfer_window_->setWindowFlags(
+            data_transfer_window_->windowFlags() | Qt::WindowMinimizeButtonHint);
         
-        // Configure with robot connection settings
+        QVBoxLayout* layout = new QVBoxLayout(data_transfer_window_);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(0);
+        
+        data_transfer_tabs_ = new QTabWidget();
+        data_transfer_tabs_->setDocumentMode(true);
+        data_transfer_tabs_->setStyleSheet(
+            "QTabBar::tab { min-height: 36px; min-width: 160px; font-size: 13px; font-weight: bold; }"
+            "QTabBar::tab:selected { color: #1976D2; }");
+        
+        // Tab 1: Robot → Laptop (existing download dialog)
+        data_transfer_dialog_ = new DataTransferDialog();
         data_transfer_dialog_->setRobotHost(robot_host_);
         data_transfer_dialog_->setRobotUser(robot_user_);
         data_transfer_dialog_->setDataPath(robot_data_path_);
         
-        // Connect signals for main window progress updates
         connect(data_transfer_dialog_, &DataTransferDialog::transferActive,
                 this, &CoverageGUI::onTransferActive);
         connect(data_transfer_dialog_, &DataTransferDialog::transferProgress,
                 this, &CoverageGUI::onTransferProgress);
+        
+        data_transfer_tabs_->addTab(data_transfer_dialog_, "📥 Robot → Laptop");
+        
+        // Tab 2: Laptop → Cloud (cloud upload dialog)
+        cloud_upload_dialog_ = new CloudUploadDialog(scan_session_tracker_);
+        
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
+        QString dataPath = settings.value("data_transfer/default_destination",
+            QDir::homePath() + "/robot_data").toString();
+        cloud_upload_dialog_->setLocalDataPath(dataPath);
+        
+        connect(cloud_upload_dialog_, &CloudUploadDialog::uploadActive,
+                this, &CoverageGUI::onCloudUploadActive);
+        
+        data_transfer_tabs_->addTab(cloud_upload_dialog_, "☁ Laptop → Cloud");
+        
+        // Activate cloud upload when its tab is selected
+        connect(data_transfer_tabs_, &QTabWidget::currentChanged, this, [this](int index) {
+            if (index == 1 && cloud_upload_dialog_) {
+                cloud_upload_dialog_->activate();
+            }
+        });
+        
+        layout->addWidget(data_transfer_tabs_);
     }
     
-    // Update robot host in case it changed (in case user changed IP in settings)
+    // Update robot host in case it changed
     if (txt_robot_ip_) {
         robot_host_ = txt_robot_ip_->text();
     }
-    data_transfer_dialog_->setRobotHost(robot_host_);
-    
-    qDebug() << "[CoverageGUI] Showing dialog with host:" << robot_host_;
+    if (data_transfer_dialog_) {
+        data_transfer_dialog_->setRobotHost(robot_host_);
+    }
     
     // Show and bring to front
-    data_transfer_dialog_->bringToFront();
+    data_transfer_window_->show();
+    data_transfer_window_->raise();
+    data_transfer_window_->activateWindow();
 }
 
 void CoverageGUI::onTransferActive(bool active) {
@@ -2574,6 +2626,21 @@ QWidget* CoverageGUI::buildF2CControls() {
     lbl_obstacles_ = new QLabel("Obstacles: 0");
     v->addWidget(lbl_obstacles_);
     
+    // Separator
+    QFrame* sep = new QFrame();
+    sep->setFrameShape(QFrame::HLine);
+    sep->setFrameShadow(QFrame::Sunken);
+    v->addWidget(sep);
+    
+    // Preset controls
+    v->addWidget(buildPresetControls());
+    
+    // Separator before generation
+    QFrame* sep2 = new QFrame();
+    sep2->setFrameShape(QFrame::HLine);
+    sep2->setFrameShadow(QFrame::Sunken);
+    v->addWidget(sep2);
+    
     // Generation buttons
     QPushButton* btn_swaths = new QPushButton("Generate Swaths");
     btn_swaths->setIcon(style()->standardIcon(QStyle::SP_ArrowForward));
@@ -2857,15 +2924,17 @@ QWidget* CoverageGUI::buildDataTransferPanel() {
     layout->setContentsMargins(6, 6, 6, 6);
     layout->setSpacing(4);
     
-    // Main download button
-    btn_open_transfer_dialog_ = new QPushButton("📥 Download Data");
+    // Single button opens tabbed dialog (download + upload)
+    btn_open_transfer_dialog_ = new QPushButton("📥 Data Transfer");
     btn_open_transfer_dialog_->setMinimumHeight(32);
-    btn_open_transfer_dialog_->setToolTip("Download data from robot to this computer");
+    btn_open_transfer_dialog_->setToolTip("Download from robot / Upload to AWS S3");
+    btn_open_transfer_dialog_->setStyleSheet(
+        "QPushButton { font-weight: bold; }");
     connect(btn_open_transfer_dialog_, &QPushButton::clicked, 
             this, &CoverageGUI::openDataTransferDialog);
     layout->addWidget(btn_open_transfer_dialog_);
     
-    // Progress widget (hidden by default)
+    // Progress widget (hidden by default, shows during active transfers)
     transfer_progress_widget_ = new TransferProgressWidget();
     transfer_progress_widget_->setVisible(false);
     connect(transfer_progress_widget_, &TransferProgressWidget::showDialogRequested,
@@ -3189,6 +3258,15 @@ QWidget* CoverageGUI::buildQuickActionsBar() {
     btn_quick_start_->setEnabled(false);
     connect(btn_quick_start_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
     layout->addWidget(btn_quick_start_);
+    
+    // Teleop button
+    QPushButton* btn_teleop = new QPushButton("🎮 Teleop");
+    btn_teleop->setObjectName("btn_teleop");
+    btn_teleop->setMinimumWidth(90);
+    btn_teleop->setMinimumHeight(36);
+    btn_teleop->setToolTip("Open robot teleop controls (keyboard + buttons)");
+    connect(btn_teleop, &QPushButton::clicked, this, &CoverageGUI::toggleTeleopWidget);
+    layout->addWidget(btn_teleop);
     
     // Style the bar
     bar->setStyleSheet(R"(
@@ -4754,6 +4832,11 @@ void CoverageGUI::startNavigation() {
 
     setStatus("🚀 Navigation started!", 3000);
     std::cout << "[Coverage Planner] Sent navigation start signal" << std::endl;
+    
+    // Start scan session tracking (GPS accumulation + stats recording)
+    QString sectionName = QString("Section_%1")
+        .arg(QDateTime::currentDateTime().toString("HHmmss"));
+    startScanSession(sectionName);
 }
 
 // Helper: find closest point on a line segment to a given point
@@ -5790,6 +5873,387 @@ void CoverageGUI::reinitializeROS2() {
         std::cerr << "[Coverage Planner] ROS2 reinit failed: " << e.what() << std::endl;
         setStatus(QString("ROS2 unavailable on %1 - retrying...").arg(dds_profile_.toUpper()));
         ros_reconnect_timer_->start();
+    }
+}
+
+// =============================================================================
+// Preset Management
+// =============================================================================
+
+QWidget* CoverageGUI::buildPresetControls() {
+    QWidget* widget = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(4);
+    
+    QLabel* title = new QLabel("Presets");
+    title->setStyleSheet("font-weight: bold;");
+    layout->addWidget(title);
+    
+    // Initialize preset manager if needed
+    if (!preset_manager_) {
+        preset_manager_ = new PresetManager(this);
+        connect(preset_manager_, &PresetManager::presetsChanged, this, &CoverageGUI::refreshPresetList);
+        connect(preset_manager_, &PresetManager::error, this, [this](const QString& msg) {
+            QMessageBox::warning(this, "Preset Error", msg);
+        });
+    }
+    
+    // Preset dropdown
+    QHBoxLayout* comboLayout = new QHBoxLayout();
+    combo_preset_ = new QComboBox();
+    combo_preset_->setMinimumWidth(120);
+    combo_preset_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(combo_preset_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &CoverageGUI::onPresetSelected);
+    comboLayout->addWidget(combo_preset_);
+    
+    // Save button
+    btn_save_preset_ = new QPushButton("💾");
+    btn_save_preset_->setFixedSize(28, 28);
+    btn_save_preset_->setToolTip("Save current settings to selected preset");
+    connect(btn_save_preset_, &QPushButton::clicked, this, &CoverageGUI::saveCurrentPreset);
+    comboLayout->addWidget(btn_save_preset_);
+    
+    layout->addLayout(comboLayout);
+    
+    // Action buttons
+    QHBoxLayout* btnLayout = new QHBoxLayout();
+    btnLayout->setSpacing(4);
+    
+    btn_new_preset_ = new QPushButton("+ New");
+    btn_new_preset_->setToolTip("Create a new preset with current settings");
+    connect(btn_new_preset_, &QPushButton::clicked, this, &CoverageGUI::createNewPreset);
+    btnLayout->addWidget(btn_new_preset_);
+    
+    btn_manage_presets_ = new QPushButton("⚙ Manage");
+    btn_manage_presets_->setToolTip("Open preset manager (rename, delete, import/export)");
+    connect(btn_manage_presets_, &QPushButton::clicked, this, &CoverageGUI::openPresetManager);
+    btnLayout->addWidget(btn_manage_presets_);
+    
+    layout->addLayout(btnLayout);
+    
+    // Populate preset list
+    refreshPresetList();
+    
+    return widget;
+}
+
+void CoverageGUI::refreshPresetList() {
+    if (!combo_preset_ || !preset_manager_) return;
+    
+    QString current = combo_preset_->currentText();
+    
+    combo_preset_->blockSignals(true);
+    combo_preset_->clear();
+    
+    // Add "Default" as first item
+    combo_preset_->addItem("(Default)", "");
+    
+    // Add saved presets
+    QStringList presets = preset_manager_->availablePresets();
+    for (const QString& name : presets) {
+        combo_preset_->addItem(name, name);
+    }
+    
+    // Restore selection
+    int idx = combo_preset_->findText(current);
+    if (idx >= 0) {
+        combo_preset_->setCurrentIndex(idx);
+    }
+    
+    combo_preset_->blockSignals(false);
+    
+    // Enable/disable save button based on selection
+    bool hasSelection = combo_preset_->currentIndex() > 0;
+    btn_save_preset_->setEnabled(hasSelection);
+}
+
+void CoverageGUI::onPresetSelected(int index) {
+    if (index <= 0) {
+        // Default selected - don't load anything, just enable "New" only
+        btn_save_preset_->setEnabled(false);
+        return;
+    }
+    
+    btn_save_preset_->setEnabled(true);
+    
+    QString name = combo_preset_->currentData().toString();
+    if (!name.isEmpty()) {
+        loadPreset(name);
+    }
+}
+
+void CoverageGUI::loadPreset(const QString& name) {
+    if (!preset_manager_) return;
+    
+    PlanningPreset preset = preset_manager_->loadPreset(name);
+    if (preset.isValid()) {
+        applyPreset(preset);
+        setStatus(QString("Loaded preset: %1").arg(name));
+    }
+}
+
+void CoverageGUI::saveCurrentPreset() {
+    if (!preset_manager_ || !combo_preset_) return;
+    
+    QString name = combo_preset_->currentData().toString();
+    if (name.isEmpty()) {
+        // No preset selected, prompt for new
+        createNewPreset();
+        return;
+    }
+    
+    // Confirm overwrite
+    int result = QMessageBox::question(this, "Save Preset",
+        QString("Overwrite preset '%1' with current settings?").arg(name),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    
+    if (result != QMessageBox::Yes) return;
+    
+    PlanningPreset preset = gatherCurrentSettings();
+    preset.name = name;
+    
+    // Preserve original creation date
+    PlanningPreset existing = preset_manager_->loadPreset(name);
+    if (existing.isValid()) {
+        preset.created = existing.created;
+    }
+    
+    if (preset_manager_->savePreset(preset)) {
+        setStatus(QString("Saved preset: %1").arg(name));
+    }
+}
+
+void CoverageGUI::createNewPreset() {
+    if (!preset_manager_) return;
+    
+    QStringList existing = preset_manager_->availablePresets();
+    NewPresetDialog dialog(existing, this);
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = dialog.presetName();
+        
+        PlanningPreset preset = gatherCurrentSettings();
+        preset.name = name;
+        preset.created = QDateTime::currentDateTime();
+        
+        if (preset_manager_->savePreset(preset)) {
+            // Select the new preset
+            int idx = combo_preset_->findText(name);
+            if (idx >= 0) {
+                combo_preset_->setCurrentIndex(idx);
+            }
+            setStatus(QString("Created preset: %1").arg(name));
+        }
+    }
+}
+
+void CoverageGUI::openPresetManager() {
+    if (!preset_manager_) return;
+    
+    PresetManagerDialog dialog(preset_manager_, this);
+    connect(&dialog, &PresetManagerDialog::presetLoadRequested,
+            this, &CoverageGUI::loadPreset);
+    
+    dialog.exec();
+    
+    // Refresh combo in case presets were deleted/renamed
+    refreshPresetList();
+}
+
+PlanningPreset CoverageGUI::gatherCurrentSettings() const {
+    PlanningPreset preset;
+    
+    // Filtering
+    if (spin_z_min_) preset.z_min = spin_z_min_->value();
+    if (spin_z_max_) preset.z_max = spin_z_max_->value();
+    if (combo_downsample_) preset.downsample_method = combo_downsample_->currentText().toLower();
+    if (spin_max_points_) preset.max_points = spin_max_points_->value();
+    if (spin_voxel_) preset.voxel_size = spin_voxel_->value();
+    if (spin_mean_k_) preset.mean_k = spin_mean_k_->value();
+    if (spin_std_ratio_) preset.std_ratio = spin_std_ratio_->value();
+    
+    // Hull
+    if (combo_hull_method_) preset.hull_method = combo_hull_method_->currentData().toString();
+    if (spin_alpha_) preset.alpha = spin_alpha_->value();
+    if (spin_simplify_) preset.simplify_tolerance = spin_simplify_->value();
+    
+    // Coverage
+    if (spin_swath_) preset.swath_width = spin_swath_->value();
+    if (spin_headland_) preset.headland_width = spin_headland_->value();
+    if (spin_turn_) preset.turn_radius = spin_turn_->value();
+    if (chk_auto_align_) preset.auto_align = chk_auto_align_->isChecked();
+    if (radio_long_) preset.direction = radio_long_->isChecked() ? "longest" : "perpendicular";
+    if (combo_route_pattern_) preset.route_pattern = combo_route_pattern_->currentData().toString();
+    if (combo_path_planner_) preset.path_planner = combo_path_planner_->currentData().toString();
+    if (chk_decomposition_) preset.decomposition = chk_decomposition_->isChecked();
+    if (combo_decomp_type_) preset.decomp_type = combo_decomp_type_->currentData().toString();
+    if (chk_axial_turns_) preset.axial_turns = chk_axial_turns_->isChecked();
+    if (spin_waypoint_spacing_) preset.waypoint_spacing = spin_waypoint_spacing_->value();
+    
+    // Execution
+    if (spin_robot_speed_) preset.robot_speed = spin_robot_speed_->value();
+    
+    return preset;
+}
+
+void CoverageGUI::toggleTeleopWidget() {
+    // Create teleop dock lazily if it doesn't exist yet
+    if (!teleop_dock_) {
+        teleop_dock_ = new TeleopDockWidget(ros_node_, this);
+        teleop_dock_->setFloating(true);
+        addDockWidget(Qt::RightDockWidgetArea, teleop_dock_);
+        connect(teleop_dock_->teleopWidget(), &TeleopWidget::statusMessage,
+                this, &CoverageGUI::onTeleopStatusMessage);
+    }
+    
+    if (teleop_dock_->isVisible()) {
+        teleop_dock_->hide();
+    } else {
+        teleop_dock_->show();
+        teleop_dock_->raise();
+        teleop_dock_->teleopWidget()->setFocus();
+    }
+}
+
+void CoverageGUI::onTeleopStatusMessage(const QString& message) {
+    setStatus(message);
+}
+
+// =============================================================================
+// Cloud Upload
+// =============================================================================
+
+void CoverageGUI::onCloudUploadActive(bool active) {
+    if (active) {
+        setStatus("Cloud upload in progress...");
+        if (btn_open_transfer_dialog_) {
+            btn_open_transfer_dialog_->setText("📥 Data Transfer (uploading...)");
+        }
+    } else {
+        setStatus("Cloud upload completed");
+        if (btn_open_transfer_dialog_) {
+            btn_open_transfer_dialog_->setText("📥 Data Transfer");
+        }
+    }
+}
+
+// =============================================================================
+// Scan Session Tracking
+// =============================================================================
+
+void CoverageGUI::startScanSession(const QString& sectionName) {
+    if (!scan_session_tracker_) return;
+    
+    double swathWidth = spin_swath_ ? spin_swath_->value() : 1.0;
+    
+    // Determine pattern type from UI
+    QString patternType = "boustrophedon";
+    if (combo_route_pattern_) {
+        patternType = combo_route_pattern_->currentText();
+    }
+    
+    scan_session_tracker_->startSession(sectionName, current_stats_, swathWidth, patternType);
+}
+
+void CoverageGUI::endScanSession() {
+    if (!scan_session_tracker_ || !scan_session_tracker_->isSessionActive()) return;
+    
+    // Gather actual execution stats
+    double durationSec = 0.0;
+    double avgSpeed = 0.0;
+    double totalTraveled = 0.0;
+    
+    if (mission_start_time_ != std::chrono::steady_clock::time_point{}) {
+        auto now = std::chrono::steady_clock::now();
+        durationSec = std::chrono::duration<double>(now - mission_start_time_).count();
+    }
+    
+    totalTraveled = live_traveled_m_;
+    
+    if (durationSec > 0) {
+        avgSpeed = totalTraveled / durationSec;
+    }
+    
+    scan_session_tracker_->endSession(durationSec, avgSpeed, totalTraveled);
+}
+
+void CoverageGUI::applyPreset(const PlanningPreset& preset) {
+    // Block signals during bulk update
+    QList<QWidget*> widgets = {
+        spin_z_min_, spin_z_max_, combo_downsample_, spin_max_points_,
+        spin_voxel_, spin_mean_k_, spin_std_ratio_, combo_hull_method_,
+        spin_alpha_, spin_simplify_, spin_swath_, spin_headland_,
+        spin_turn_, chk_auto_align_, radio_long_, radio_perp_,
+        combo_route_pattern_, combo_path_planner_, chk_decomposition_,
+        combo_decomp_type_, chk_axial_turns_, spin_waypoint_spacing_,
+        spin_robot_speed_
+    };
+    
+    for (QWidget* w : widgets) {
+        if (w) w->blockSignals(true);
+    }
+    
+    // Filtering
+    if (spin_z_min_) spin_z_min_->setValue(preset.z_min);
+    if (spin_z_max_) spin_z_max_->setValue(preset.z_max);
+    if (combo_downsample_) {
+        int idx = combo_downsample_->findText(preset.downsample_method, Qt::MatchFixedString);
+        if (idx >= 0) combo_downsample_->setCurrentIndex(idx);
+    }
+    if (spin_max_points_) spin_max_points_->setValue(preset.max_points);
+    if (spin_voxel_) spin_voxel_->setValue(preset.voxel_size);
+    if (spin_mean_k_) spin_mean_k_->setValue(preset.mean_k);
+    if (spin_std_ratio_) spin_std_ratio_->setValue(preset.std_ratio);
+    
+    // Hull
+    if (combo_hull_method_) {
+        int idx = combo_hull_method_->findData(preset.hull_method);
+        if (idx >= 0) combo_hull_method_->setCurrentIndex(idx);
+    }
+    if (spin_alpha_) spin_alpha_->setValue(preset.alpha);
+    if (spin_simplify_) spin_simplify_->setValue(preset.simplify_tolerance);
+    
+    // Coverage
+    if (spin_swath_) spin_swath_->setValue(preset.swath_width);
+    if (spin_headland_) spin_headland_->setValue(preset.headland_width);
+    if (spin_turn_) spin_turn_->setValue(preset.turn_radius);
+    if (chk_auto_align_) chk_auto_align_->setChecked(preset.auto_align);
+    if (radio_long_ && radio_perp_) {
+        if (preset.direction == "longest") {
+            radio_long_->setChecked(true);
+        } else {
+            radio_perp_->setChecked(true);
+        }
+    }
+    if (combo_route_pattern_) {
+        int idx = combo_route_pattern_->findData(preset.route_pattern);
+        if (idx >= 0) combo_route_pattern_->setCurrentIndex(idx);
+    }
+    if (combo_path_planner_) {
+        int idx = combo_path_planner_->findData(preset.path_planner);
+        if (idx >= 0) combo_path_planner_->setCurrentIndex(idx);
+    }
+    if (chk_decomposition_) chk_decomposition_->setChecked(preset.decomposition);
+    if (combo_decomp_type_) {
+        int idx = combo_decomp_type_->findData(preset.decomp_type);
+        if (idx >= 0) combo_decomp_type_->setCurrentIndex(idx);
+    }
+    if (chk_axial_turns_) chk_axial_turns_->setChecked(preset.axial_turns);
+    if (spin_waypoint_spacing_) spin_waypoint_spacing_->setValue(preset.waypoint_spacing);
+    
+    // Execution
+    if (spin_robot_speed_) spin_robot_speed_->setValue(preset.robot_speed);
+    
+    // Unblock signals
+    for (QWidget* w : widgets) {
+        if (w) w->blockSignals(false);
+    }
+    
+    // Update UI that depends on these values
+    if (combo_downsample_) {
+        updateDownsampleUI(combo_downsample_->currentText());
     }
 }
 
