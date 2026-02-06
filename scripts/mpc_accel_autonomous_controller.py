@@ -37,7 +37,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64MultiArray, String, Bool
+from std_msgs.msg import Float64MultiArray, String, Bool, Empty as EmptyMsg
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
@@ -1005,6 +1005,12 @@ class MPCAccelController(Node):
         # Stopping criterion (same semantics as MPCAutonomousController)
         self.declare_parameter("target_reached_threshold", 0.01)
 
+        # Heartbeat safety parameters
+        # heartbeat_timeout: Time in seconds without heartbeat before triggering safety stop
+        # heartbeat_enabled: Enable/disable heartbeat monitoring (useful for debugging without laptop)
+        self.declare_parameter("heartbeat_timeout", 1.0)  # 1 second timeout
+        self.declare_parameter("heartbeat_enabled", True)
+
         # Wheel ramp compensation parameters
         # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
         # delay_time: Pure transport delay (CAN latency + processing) in seconds
@@ -1071,6 +1077,10 @@ class MPCAccelController(Node):
             self.get_parameter("target_reached_threshold").value
         )
 
+        # Heartbeat safety parameters
+        self.heartbeat_timeout = float(self.get_parameter("heartbeat_timeout").value)
+        self.heartbeat_enabled = bool(self.get_parameter("heartbeat_enabled").value)
+
         # Wheel ramp compensation
         self.ramp_compensation_enabled = bool(
             self.get_parameter("ramp_compensation_enabled").value
@@ -1111,6 +1121,12 @@ class MPCAccelController(Node):
 
         # Pending waypoints received from F2C GUI (until "Start Navigation" pressed)
         self.pending_waypoints: List[Tuple[float, float]] = []
+
+        # Heartbeat safety state
+        # Tracks the last time we received a heartbeat from host_teleop (Zenoh bridge connection)
+        self.last_heartbeat_time: Optional[float] = None
+        self.heartbeat_lost: bool = False
+        self._heartbeat_lost_logged: bool = False  # Prevent log spam
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -1203,6 +1219,23 @@ class MPCAccelController(Node):
             10,
         )
 
+        # Heartbeat subscriber for safety monitoring (from host_teleop via Zenoh bridge)
+        if self.heartbeat_enabled:
+            self.heartbeat_sub = self.create_subscription(
+                EmptyMsg,
+                "/host_teleop/heartbeat",
+                self.heartbeat_callback,
+                10,
+            )
+            self.get_logger().info(
+                f"✓ Heartbeat safety monitoring ENABLED (timeout: {self.heartbeat_timeout:.1f}s)"
+            )
+        else:
+            self.heartbeat_sub = None
+            self.get_logger().warn(
+                "⚠️  Heartbeat safety monitoring DISABLED - robot will operate without connection check"
+            )
+
         # Publishers
         self.left_pub = self.create_publisher(ControlMessage, left_ctrl_topic, 10)
         self.right_pub = self.create_publisher(ControlMessage, right_ctrl_topic, 10)
@@ -1259,6 +1292,10 @@ class MPCAccelController(Node):
         self.get_logger().info("Acceleration-based MPC Controller started")
         self.get_logger().info(f"Horizon: {self.mpc_horizon}, dt: {self.mpc_dt:.3f} s")
         self.get_logger().info(f"Max v: {self.max_linear_vel:.2f} m/s, Max ω: {self.max_angular_vel:.2f} rad/s")
+        if self.heartbeat_enabled:
+            self.get_logger().info(f"Safety: Heartbeat monitoring ENABLED (timeout: {self.heartbeat_timeout:.1f}s)")
+        else:
+            self.get_logger().info("Safety: Heartbeat monitoring DISABLED")
         self.get_logger().info("=" * 60)
 
     # -----------------------------
@@ -1709,12 +1746,73 @@ class MPCAccelController(Node):
         state = "ENABLED" if self.autonomy_enabled else "DISABLED"
         self.get_logger().info(f"MPC autonomy {state} via /mpc_autonomy_enable")
 
+    def heartbeat_callback(self, msg: EmptyMsg) -> None:
+        """
+        Heartbeat callback from host_teleop via Zenoh bridge.
+        Updates the last heartbeat timestamp to indicate connection is alive.
+        """
+        del msg  # unused
+        current_time = time.time()
+        self.last_heartbeat_time = current_time
+        
+        # If heartbeat was previously lost, log recovery
+        if self.heartbeat_lost:
+            self.heartbeat_lost = False
+            self._heartbeat_lost_logged = False
+            self.get_logger().info(
+                "✓ Heartbeat RECOVERED - Zenoh bridge connection restored"
+            )
+
     # -----------------------------
     # Control loop
     # -----------------------------
+    def _check_heartbeat_safety(self) -> bool:
+        """
+        Check if heartbeat is within timeout.
+        
+        Returns:
+            True if safe to operate (heartbeat OK or monitoring disabled)
+            False if heartbeat lost (should stop robot)
+        """
+        if not self.heartbeat_enabled:
+            return True  # Safety monitoring disabled
+        
+        current_time = time.time()
+        
+        # If we've never received a heartbeat, wait for first one
+        if self.last_heartbeat_time is None:
+            if not self._heartbeat_lost_logged:
+                self.get_logger().warn(
+                    "⏳ Waiting for first heartbeat from host_teleop..."
+                )
+                self._heartbeat_lost_logged = True
+            return False
+        
+        # Check if heartbeat has timed out
+        time_since_heartbeat = current_time - self.last_heartbeat_time
+        if time_since_heartbeat > self.heartbeat_timeout:
+            if not self.heartbeat_lost:
+                self.heartbeat_lost = True
+                self.get_logger().error(
+                    f"🚨 HEARTBEAT LOST - No heartbeat for {time_since_heartbeat:.2f}s "
+                    f"(timeout: {self.heartbeat_timeout:.1f}s)"
+                )
+                self.get_logger().error(
+                    "🛑 SAFETY STOP: Sending zero velocities until heartbeat recovers"
+                )
+            return False
+        
+        return True
+
     def control_loop(self) -> None:
         # When autonomy is disabled, remain completely silent (teleop controls motors)
         if not self.autonomy_enabled:
+            return
+
+        # SAFETY CHECK: Verify heartbeat from host_teleop (Zenoh bridge connection)
+        # If heartbeat is lost, send zero velocities and skip MPC control
+        if not self._check_heartbeat_safety():
+            self.send_zero_velocity()
             return
 
         if not self.pose_initialized:

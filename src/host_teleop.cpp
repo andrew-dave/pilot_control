@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/empty.hpp>
 #include <odrive_can/srv/axis_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <std_srvs/srv/set_bool.hpp>
@@ -27,6 +28,14 @@ public:
         ang_mag_ = std::min(1.0, std::max(0.0, max_angular_velocity_));
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         mpc_autonomy_pub_ = create_publisher<std_msgs::msg::Bool>("/mpc_autonomy_enable", 10);
+        
+        // Heartbeat publisher for safety monitoring
+        // The MPC controller on the robot monitors this to detect Zenoh bridge disconnection
+        heartbeat_pub_ = create_publisher<std_msgs::msg::Empty>("/host_teleop/heartbeat", 10);
+        heartbeat_timer_ = create_wall_timer(
+            std::chrono::milliseconds(100),  // 10 Hz heartbeat
+            std::bind(&TeleopNode::publish_heartbeat, this)
+        );
         left_axis_client_ = create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
         gpr_axis_client_ = create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
@@ -143,6 +152,12 @@ public:
         
         RCLCPP_INFO(get_logger(), "✓ Teleop ready for robot control");
         RCLCPP_INFO(get_logger(), "✓ Press E to arm motors, Q to disarm, M to save map, G for GPR scan, B for rosbag");
+        RCLCPP_INFO(get_logger(), "✓ Heartbeat publishing at 10Hz on /host_teleop/heartbeat");
+    }
+    
+    void publish_heartbeat() {
+        auto msg = std_msgs::msg::Empty();
+        heartbeat_pub_->publish(msg);
     }
 
     ~TeleopNode() {
@@ -509,6 +524,8 @@ private:
 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_pub_;
+    rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr heartbeat_pub_;
+    rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr right_axis_client_;
     rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr gpr_axis_client_;
