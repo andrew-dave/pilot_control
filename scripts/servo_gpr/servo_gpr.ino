@@ -93,6 +93,11 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     char inputChar = Serial.read();
+    
+    if (inputChar == 'O') {
+      gprPower();
+      // power off gpr
+    }      
 
     if (inputChar == 'L') {
       linestart();

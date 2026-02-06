@@ -24,6 +24,14 @@ else:
 from setup_data_folders import setup_data_folders
 
 def generate_launch_description():
+    # Start Zenoh bridge DDS daemon for Microhard communication
+    # This must be running before ROS nodes launch for cross-network DDS communication
+    zenoh_bridge = ExecuteProcess(
+        cmd=['zenohd', '-c', os.path.expanduser('~/zenohd_robot.json5')],
+        output='screen',
+        name='zenoh_bridge_dds'
+    )
+    
     # Declare launch arguments
     declare_wheel_radius_arg = DeclareLaunchArgument(
         'wheel_radius',
@@ -411,9 +419,9 @@ def generate_launch_description():
             # MPC parameters (Accel controller)
             'mpc_horizon': 50,
             'mpc_dt': 0.1,
-            'mpc_Q_xe': 50.0, #625 - 0.4m/s
-            'mpc_Q_ye': 20.0, #625 - 4cm
-            'mpc_Q_yaw': 10.0, #131 - 5deg, 625 - 2.29deg, 
+            'mpc_Q_xe':25.0, #625 - 0.4m/s
+            'mpc_Q_ye': 10.0, #625 - 4cm
+            'mpc_Q_yaw':100.0, #131 - 5deg, 625 - 2.29deg, 
             'mpc_R_delta_v': 0.00001, #
             'mpc_R_delta_omega': 0.00001,
             'mpc_weight_increase_xe': 0.20,
@@ -454,10 +462,12 @@ def generate_launch_description():
         declare_turn_speed_multiplier_arg,
         declare_base_data_directory_arg,
         
+        # Zenoh bridge DDS (must start first for Microhard communication)
+        zenoh_bridge,
         
-        # CAN setup (with delay to ensure it's ready)
+        # CAN setup (with delay to ensure Zenoh and CAN are ready)
         TimerAction(
-            period=1.0,
+            period=2.0,
             actions=[can_setup]
         ),
         
