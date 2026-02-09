@@ -266,6 +266,13 @@ install(
   RENAME odom_tilt_corrector
 )
 
+# Install tilt_calibration script
+install(
+  PROGRAMS scripts/tilt_calibration.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME tilt_calibration
+)
+
 # === Lint/Tests ===
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

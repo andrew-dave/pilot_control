@@ -49,11 +49,13 @@ public:
         this->declare_parameter("auto_save_enabled", false);
         this->declare_parameter("auto_save_interval_sec", 30.0);
         
-        // NEW: Tilt correction parameters
+        // Tilt correction parameters
         this->declare_parameter("apply_tilt_correction", true);
         this->declare_parameter("save_raw_backup", false);
+        this->declare_parameter("calibration_file", "");  // Path to tilt_correction_matrices.npz
+        this->declare_parameter("lidar_pitch_deg", 15.0);  // Fallback pitch angle
         
-        // NEW: Save format parameter for wireless transfer optimization
+        // Save format parameter for wireless transfer optimization
         this->declare_parameter("save_format", "compressed"); // "binary", "compressed", "ascii"
         
         // Get parameters
@@ -64,6 +66,8 @@ public:
         auto_save_interval_ = this->get_parameter("auto_save_interval_sec").as_double();
         apply_tilt_correction_ = this->get_parameter("apply_tilt_correction").as_bool();
         save_raw_backup_ = this->get_parameter("save_raw_backup").as_bool();
+        calibration_file_ = this->get_parameter("calibration_file").as_string();
+        lidar_pitch_deg_ = this->get_parameter("lidar_pitch_deg").as_double();
         save_format_ = this->get_parameter("save_format").as_string();
         
         // Create save directory
@@ -97,6 +101,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "Service available at: /save_raw_map");
         RCLCPP_INFO(this->get_logger(), "Auto-save: %s", auto_save_enabled_ ? "ENABLED" : "DISABLED");
         RCLCPP_INFO(this->get_logger(), "Tilt correction: %s", apply_tilt_correction_ ? "ENABLED" : "DISABLED");
+        if (apply_tilt_correction_) {
+            if (!calibration_file_.empty()) {
+                RCLCPP_INFO(this->get_logger(), "Calibration file: %s", calibration_file_.c_str());
+            } else {
+                RCLCPP_INFO(this->get_logger(), "Fallback pitch: %.1f°", lidar_pitch_deg_);
+            }
+        }
         RCLCPP_INFO(this->get_logger(), "Save format: %s", save_format_.c_str());
         if (save_raw_backup_) {
             RCLCPP_INFO(this->get_logger(), "Raw backup: ENABLED");
@@ -135,19 +146,21 @@ private:
         return "";
     }
     
-    // NEW: Load transformation matrices from .npz file
-    // We'll call a Python helper script to extract the matrices
-    bool load_tilt_correction_matrices(Eigen::Matrix3d& R_map, Eigen::Vector3d& p0_world)
+    // Build fixed pitch rotation matrix (rotation around Y-axis)
+    Eigen::Matrix3d build_pitch_rotation(double pitch_rad)
     {
-        std::string npz_file = find_npz_file(save_directory_);
-        
-        if (npz_file.empty()) {
-            RCLCPP_WARN(this->get_logger(), 
-                       "No tilt correction matrices found in %s", 
-                       save_directory_.c_str());
-            return false;
-        }
-        
+        double cp = std::cos(pitch_rad);
+        double sp = std::sin(pitch_rad);
+        Eigen::Matrix3d R;
+        R << cp,  0.0, sp,
+             0.0, 1.0, 0.0,
+            -sp,  0.0, cp;
+        return R;
+    }
+    
+    // Load transformation matrices from .npz file using Python helper
+    bool load_npz_matrices(const std::string& npz_file, Eigen::Matrix3d& R_map, Eigen::Vector3d& p0_world)
+    {
         RCLCPP_INFO(this->get_logger(), "Loading tilt correction from: %s", npz_file.c_str());
         
         // Extract matrices using Python (simplest approach since numpy is already available)
@@ -203,6 +216,40 @@ private:
         RCLCPP_INFO(this->get_logger(), "✓ Tilt correction matrices loaded successfully");
         RCLCPP_INFO(this->get_logger(), "  p0_world: [%.3f, %.3f, %.3f]", 
                    p0_world(0), p0_world(1), p0_world(2));
+        
+        return true;
+    }
+    
+    // Load transformation matrices - tries calibration file, then session folder, then fixed pitch
+    bool load_tilt_correction_matrices(Eigen::Matrix3d& R_map, Eigen::Vector3d& p0_world)
+    {
+        // Priority 1: Use calibration file parameter if provided
+        if (!calibration_file_.empty() && std::filesystem::exists(calibration_file_)) {
+            RCLCPP_INFO(this->get_logger(), "Using calibration file: %s", calibration_file_.c_str());
+            if (load_npz_matrices(calibration_file_, R_map, p0_world)) {
+                return true;
+            }
+            RCLCPP_WARN(this->get_logger(), "Failed to load calibration file, trying session folder...");
+        }
+        
+        // Priority 2: Look for session-specific .npz file in save_directory
+        std::string session_npz = find_npz_file(save_directory_);
+        if (!session_npz.empty()) {
+            RCLCPP_INFO(this->get_logger(), "Using session transformation file");
+            if (load_npz_matrices(session_npz, R_map, p0_world)) {
+                return true;
+            }
+        }
+        
+        // Priority 3: Fall back to fixed pitch rotation
+        RCLCPP_WARN(this->get_logger(), 
+                   "No calibration file found, using fixed %.1f° pitch correction", 
+                   lidar_pitch_deg_);
+        
+        // Build fixed pitch rotation (LiDAR is pitched forward, so rotate by -pitch)
+        double pitch_rad = lidar_pitch_deg_ * M_PI / 180.0;
+        R_map = build_pitch_rotation(-pitch_rad);
+        p0_world = Eigen::Vector3d::Zero();  // No origin offset for fixed correction
         
         return true;
     }
@@ -439,11 +486,13 @@ private:
     bool auto_save_enabled_;
     double auto_save_interval_;
     
-    // NEW: Tilt correction parameters
+    // Tilt correction parameters
     bool apply_tilt_correction_;
     bool save_raw_backup_;
+    std::string calibration_file_;
+    double lidar_pitch_deg_;
     
-    // NEW: Save format parameter for wireless transfer optimization
+    // Save format parameter for wireless transfer optimization
     std::string save_format_;
 };
 
