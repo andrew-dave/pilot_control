@@ -1339,25 +1339,27 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     // Initialize robot map fetch settings (user-agnostic)
     local_map_base_ = QDir::homePath() + "/Roofus_maps";
     
-    // Initialize CycloneDDS config paths (user-agnostic)
-    dds_rf_config_path_ = QDir::homePath() + "/rf_cyclonedds.xml";
-    dds_wifi_config_path_ = QDir::homePath() + "/wifi_cyclonedds.xml";
+    // Initialize CycloneDDS config path (loopback-only for local node communication)
+    // Cross-network communication is handled by Zenoh bridge DDS (managed by laptop_teleop.launch.py)
+    dds_config_path_ = QDir::homePath() + "/cyclone_loopback.xml";
 
     // Load persisted settings
     QSettings settings("PilotControl", "BDRCoveragePlanner");
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
-    dds_profile_ = settings.value("dds_profile", "rf").toString();  // Default to RF
     robot_odom_topic_ = settings.value("robot_odom_topic", robot_odom_topic_).toString();
     robot_marker_size_m_ = settings.value("robot_marker_size_m", robot_marker_size_m_).toDouble();
     
-    // Set CYCLONEDDS_URI environment variable based on saved profile
-    QString dds_config = currentDdsConfigPath();
-    if (QFile::exists(dds_config)) {
-        qputenv("CYCLONEDDS_URI", dds_config.toUtf8());
-        std::cout << "[Coverage Planner] Using CycloneDDS config: " << dds_config.toStdString() << std::endl;
+    // Set CYCLONEDDS_URI environment variable (loopback-only config)
+    if (QFile::exists(dds_config_path_)) {
+        qputenv("CYCLONEDDS_URI", dds_config_path_.toUtf8());
+        std::cout << "[Coverage Planner] Using CycloneDDS config (loopback): " << dds_config_path_.toStdString() << std::endl;
     } else {
-        std::cerr << "[Coverage Planner] Warning: DDS config not found: " << dds_config.toStdString() << std::endl;
+        std::cerr << "[Coverage Planner] Warning: CycloneDDS config not found: " << dds_config_path_.toStdString() << std::endl;
+        std::cerr << "[Coverage Planner] Local node communication may not work correctly." << std::endl;
     }
+    
+    // Initialize Zenoh bridge status
+    zenoh_bridge_detected_ = false;
     
     fit_view_pending_ = true;
     last_live_ui_update_ = std::chrono::steady_clock::now();
@@ -1379,6 +1381,12 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     ros_reconnect_timer_ = new QTimer(this);
     ros_reconnect_timer_->setInterval(5000);  // Try every 5 seconds
     connect(ros_reconnect_timer_, &QTimer::timeout, this, &CoverageGUI::tryReconnectROS2);
+    
+    // Initialize Zenoh bridge status check timer (periodic monitoring)
+    // The Zenoh bridge is managed by laptop_teleop.launch.py; we only monitor it here
+    zenoh_check_timer_ = new QTimer(this);
+    zenoh_check_timer_->setInterval(5000);  // Check every 5 seconds
+    connect(zenoh_check_timer_, &QTimer::timeout, this, &CoverageGUI::checkZenohBridgeStatus);
 
     // Initialize ROS2 (with error handling so GUI works even if ROS2 fails)
     waypoints_published_ = false;
@@ -1394,7 +1402,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
             rclcpp::spin(ros_node_);
         });
         ros_initialized_ = true;
-        setStatus(QString("Ready (ROS2 connected via %1)").arg(dds_profile_.toUpper()));
+        setStatus("Ready (ROS2 local, checking Zenoh bridge...)");
         
         // Create teleop dock widget now that ros_node_ is available
         teleop_dock_ = new TeleopDockWidget(ros_node_, this);
@@ -1414,12 +1422,19 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         // Start the reconnection timer
         ros_reconnect_timer_->start();
     }
+    
+    // Start Zenoh bridge monitoring (runs regardless of ROS2 status)
+    checkZenohBridgeStatus();  // Initial check
+    zenoh_check_timer_->start();
 }
 
 CoverageGUI::~CoverageGUI() {
-    // Stop reconnection timer
+    // Stop timers
     if (ros_reconnect_timer_) {
         ros_reconnect_timer_->stop();
+    }
+    if (zenoh_check_timer_) {
+        zenoh_check_timer_->stop();
     }
     
     // Clean up ROS2 resources
@@ -2126,41 +2141,29 @@ QGroupBox* CoverageGUI::buildFileControls() {
     QGroupBox* box = new QGroupBox("Point Cloud & Network");
     QVBoxLayout* v = new QVBoxLayout(box);
     
-    // CycloneDDS profile selection (RF vs WiFi)
-    QHBoxLayout* dds_layout = new QHBoxLayout();
-    dds_layout->addWidget(new QLabel("Network:"));
-    radio_dds_rf_ = new QRadioButton("RF (Microhard)");
-    radio_dds_wifi_ = new QRadioButton("WiFi");
-    radio_dds_rf_->setToolTip("Use RF CycloneDDS config (~/" + QFileInfo(dds_rf_config_path_).fileName() + ")");
-    radio_dds_wifi_->setToolTip("Use WiFi CycloneDDS config (~/" + QFileInfo(dds_wifi_config_path_).fileName() + ")");
+    // Communication architecture: CycloneDDS (loopback) + Zenoh bridge (Microhard RF)
+    // CycloneDDS handles local node communication on loopback interface
+    // Zenoh bridge DDS handles laptop <-> robot communication over Microhard
+    // The Zenoh bridge is managed by laptop_teleop.launch.py (not by this application)
     
-    // Set initial selection based on persisted profile
-    if (dds_profile_ == "wifi") {
-        radio_dds_wifi_->setChecked(true);
-    } else {
-        radio_dds_rf_->setChecked(true);
-    }
-    
-    dds_layout->addWidget(radio_dds_rf_);
-    dds_layout->addWidget(radio_dds_wifi_);
-    dds_layout->addStretch();
-    v->addLayout(dds_layout);
-    
-    // DDS status label
+    // CycloneDDS status
     lbl_dds_status_ = new QLabel();
     lbl_dds_status_->setStyleSheet("color: #666; font-size: 10px;");
-    QString config_path = currentDdsConfigPath();
-    if (QFile::exists(config_path)) {
-        lbl_dds_status_->setText("✓ Config: ~/" + QFileInfo(config_path).fileName());
+    if (QFile::exists(dds_config_path_)) {
+        lbl_dds_status_->setText("DDS: CycloneDDS (loopback) ✓");
         lbl_dds_status_->setStyleSheet("color: green; font-size: 10px;");
     } else {
-        lbl_dds_status_->setText("⚠ Config not found: ~/" + QFileInfo(config_path).fileName());
+        lbl_dds_status_->setText("DDS: CycloneDDS config missing (~/" + QFileInfo(dds_config_path_).fileName() + ")");
         lbl_dds_status_->setStyleSheet("color: orange; font-size: 10px;");
     }
     v->addWidget(lbl_dds_status_);
     
-    // Connect radio buttons to profile change handler
-    connect(radio_dds_rf_, &QRadioButton::toggled, this, &CoverageGUI::onDdsProfileChanged);
+    // Zenoh bridge status (monitored, not managed)
+    lbl_zenoh_status_ = new QLabel("Zenoh Bridge: checking...");
+    lbl_zenoh_status_->setStyleSheet("color: #666; font-size: 10px;");
+    lbl_zenoh_status_->setToolTip("Zenoh bridge DDS is managed by laptop_teleop.launch.py\n"
+                                   "It bridges ROS2 topics between laptop and robot over Microhard RF");
+    v->addWidget(lbl_zenoh_status_);
     
     // Robot IP configuration
     QHBoxLayout* ip_layout = new QHBoxLayout();
@@ -5764,7 +5767,8 @@ void CoverageGUI::tryReconnectROS2() {
         // Success! Stop the reconnection timer
         ros_reconnect_timer_->stop();
         
-        setStatus(QString("✅ ROS2 connected via %1!").arg(dds_profile_.toUpper()), 5000);
+        QString bridge_str = zenoh_bridge_detected_ ? "Zenoh bridge active" : "Zenoh bridge not detected";
+        setStatus(QString("ROS2 connected (local DDS, %1)").arg(bridge_str), 5000);
         std::cout << "[Coverage Planner] ROS2 reconnection successful!" << std::endl;
         
     } catch (const std::exception& e) {
@@ -5773,56 +5777,15 @@ void CoverageGUI::tryReconnectROS2() {
     }
 }
 
-QString CoverageGUI::currentDdsConfigPath() const {
-    if (dds_profile_ == "wifi") {
-        return dds_wifi_config_path_;
-    }
-    return dds_rf_config_path_;
-}
-
-void CoverageGUI::onDdsProfileChanged() {
-    // Determine which profile is now selected
-    QString new_profile = radio_dds_rf_->isChecked() ? "rf" : "wifi";
-    
-    // Skip if unchanged
-    if (new_profile == dds_profile_) {
-        return;
-    }
-    
-    dds_profile_ = new_profile;
-    
-    // Persist the selection
-    QSettings settings("PilotControl", "BDRCoveragePlanner");
-    settings.setValue("dds_profile", dds_profile_);
-    
-    // Update status label
-    QString config_path = currentDdsConfigPath();
-    if (QFile::exists(config_path)) {
-        lbl_dds_status_->setText("✓ Config: ~/" + QFileInfo(config_path).fileName());
-        lbl_dds_status_->setStyleSheet("color: green; font-size: 10px;");
-    } else {
-        lbl_dds_status_->setText("⚠ Config not found: ~/" + QFileInfo(config_path).fileName());
-        lbl_dds_status_->setStyleSheet("color: orange; font-size: 10px;");
-    }
-    
-    std::cout << "[Coverage Planner] DDS profile changed to: " << dds_profile_.toStdString() << std::endl;
-    
-    // Update environment variable
-    qputenv("CYCLONEDDS_URI", config_path.toUtf8());
-    
-    // Reinitialize ROS2 with new DDS config
-    reinitializeROS2();
-}
-
 void CoverageGUI::reinitializeROS2() {
-    setStatus(QString("Switching to %1 network...").arg(dds_profile_.toUpper()));
+    setStatus("Reinitializing ROS2 (CycloneDDS loopback + Zenoh bridge)...");
     
     // Stop reconnection timer if running
     ros_reconnect_timer_->stop();
     
     // Shutdown existing ROS2 connection if any
     if (ros_initialized_) {
-        std::cout << "[Coverage Planner] Shutting down ROS2 for profile switch..." << std::endl;
+        std::cout << "[Coverage Planner] Shutting down ROS2 for reinit..." << std::endl;
         fastlio_sub_.reset();
         
         // Stop the spin thread by shutting down the node's context
@@ -5842,17 +5805,16 @@ void CoverageGUI::reinitializeROS2() {
         ros_initialized_ = false;
         waypoints_published_ = false;
         
-        // Reinitialize rclcpp for the new configuration
+        // Reinitialize rclcpp
         // Note: rclcpp::init should be called again after shutdown
         int argc = 0;
         char** argv = nullptr;
         rclcpp::init(argc, argv);
     }
     
-    // Try to initialize with new config
-    QString config_path = currentDdsConfigPath();
-    if (!QFile::exists(config_path)) {
-        setStatus(QString("⚠ %1 config not found - ROS2 may fail").arg(dds_profile_.toUpper()), 5000);
+    // Ensure CycloneDDS config is set
+    if (QFile::exists(dds_config_path_)) {
+        qputenv("CYCLONEDDS_URI", dds_config_path_.toUtf8());
     }
     
     try {
@@ -5866,13 +5828,46 @@ void CoverageGUI::reinitializeROS2() {
         });
         
         ros_initialized_ = true;
-        setStatus(QString("✅ ROS2 connected via %1").arg(dds_profile_.toUpper()), 5000);
-        std::cout << "[Coverage Planner] ROS2 reinitialized with " << dds_profile_.toStdString() << " profile" << std::endl;
+        QString bridge_str = zenoh_bridge_detected_ ? "Zenoh bridge active" : "Zenoh bridge not detected";
+        setStatus(QString("ROS2 connected (local DDS, %1)").arg(bridge_str), 5000);
+        std::cout << "[Coverage Planner] ROS2 reinitialized (CycloneDDS loopback)" << std::endl;
         
     } catch (const std::exception& e) {
         std::cerr << "[Coverage Planner] ROS2 reinit failed: " << e.what() << std::endl;
-        setStatus(QString("ROS2 unavailable on %1 - retrying...").arg(dds_profile_.toUpper()));
+        setStatus("ROS2 unavailable - retrying...");
         ros_reconnect_timer_->start();
+    }
+}
+
+void CoverageGUI::checkZenohBridgeStatus() {
+    // Check if the Zenoh bridge daemon (zenohd) is running
+    // The bridge is managed by laptop_teleop.launch.py, not by this application
+    QProcess proc;
+    proc.start("pgrep", QStringList() << "-x" << "zenohd");
+    proc.waitForFinished(1000);
+    
+    bool was_detected = zenoh_bridge_detected_;
+    zenoh_bridge_detected_ = (proc.exitCode() == 0);
+    
+    // Update UI label
+    if (lbl_zenoh_status_) {
+        if (zenoh_bridge_detected_) {
+            lbl_zenoh_status_->setText("Zenoh Bridge: running (Microhard RF) ✓");
+            lbl_zenoh_status_->setStyleSheet("color: green; font-size: 10px;");
+        } else {
+            lbl_zenoh_status_->setText("Zenoh Bridge: not running (start laptop_teleop.launch.py)");
+            lbl_zenoh_status_->setStyleSheet("color: orange; font-size: 10px;");
+        }
+    }
+    
+    // Log state transitions
+    if (zenoh_bridge_detected_ && !was_detected) {
+        std::cout << "[Coverage Planner] Zenoh bridge detected - robot communication available" << std::endl;
+        setStatus("Zenoh bridge connected - robot communication active", 5000);
+    } else if (!zenoh_bridge_detected_ && was_detected) {
+        std::cerr << "[Coverage Planner] Zenoh bridge lost - robot communication unavailable" << std::endl;
+        std::cerr << "[Coverage Planner] Start with: ros2 launch pilot_control laptop_teleop.launch.py" << std::endl;
+        setStatus("⚠ Zenoh bridge disconnected - robot comms unavailable", 8000);
     }
 }
 

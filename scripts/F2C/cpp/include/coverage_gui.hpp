@@ -351,8 +351,8 @@ private slots:
     // ROS2 reconnection
     void tryReconnectROS2();
     
-    // DDS profile switching
-    void onDdsProfileChanged();
+    // Zenoh bridge status monitoring
+    void checkZenohBridgeStatus();
     
     // Reprojection error analysis
     void computeReprojectionError();
@@ -550,10 +550,9 @@ private:
     QPushButton* btn_start_segments_ = nullptr;
     QLabel* lbl_scan_progress_ = nullptr;
     
-    // DDS profile controls
-    QRadioButton* radio_dds_rf_;
-    QRadioButton* radio_dds_wifi_;
+    // DDS / Zenoh bridge status controls
     QLabel* lbl_dds_status_;
+    QLabel* lbl_zenoh_status_;
     
     // Height controls (Z range filtering relative to robot origin Z=0)
     QDoubleSpinBox* spin_z_min_;   // Minimum Z value (can be negative)
@@ -639,15 +638,14 @@ private:
     QString robot_data_path_ = "/R_DATA";
     QString local_map_base_;  // Set to ~/Roofus_maps in constructor
     
-    // CycloneDDS profile settings (user-agnostic paths)
-    QString dds_profile_;           // "rf" or "wifi"
-    QString dds_rf_config_path_;    // ~/rf_cyclonedds.xml
-    QString dds_wifi_config_path_;  // ~/wifi_cyclonedds.xml
+    // CycloneDDS config (loopback-only for local node communication)
+    QString dds_config_path_;       // ~/cyclone_loopback.xml
     
-    // Helper to get current DDS config path
-    QString currentDdsConfigPath() const;
+    // Zenoh bridge status tracking (bridge managed by laptop_teleop.launch.py)
+    QTimer* zenoh_check_timer_;
+    bool zenoh_bridge_detected_;
     
-    // Helper to shutdown and reinitialize ROS2 with new DDS config
+    // Helper to shutdown and reinitialize ROS2
     void reinitializeROS2();
     
     // Robot tracking state

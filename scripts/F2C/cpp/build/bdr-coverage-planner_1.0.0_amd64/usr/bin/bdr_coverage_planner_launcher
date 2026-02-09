@@ -22,33 +22,26 @@ fi
 # Set basic environment
 export DISPLAY=${DISPLAY:-:0}
 
-# Determine CycloneDDS config (user-agnostic)
-# Read saved profile from QSettings config file if it exists
-SETTINGS_FILE="$HOME/.config/PilotControl/BDRCoveragePlanner.conf"
-DDS_PROFILE="rf"  # Default to RF
+# CycloneDDS config (loopback-only for local node communication)
+# Cross-network communication is handled by Zenoh bridge DDS (managed by laptop_teleop.launch.py)
+DDS_CONFIG="$HOME/cyclone_loopback.xml"
 
-if [ -f "$SETTINGS_FILE" ]; then
-    # Extract dds_profile value from INI-style config
-    SAVED_PROFILE=$(grep -E "^dds_profile=" "$SETTINGS_FILE" 2>/dev/null | cut -d'=' -f2)
-    if [ -n "$SAVED_PROFILE" ]; then
-        DDS_PROFILE="$SAVED_PROFILE"
-    fi
-fi
-
-# Select appropriate config file based on profile
-if [ "$DDS_PROFILE" = "wifi" ]; then
-    DDS_CONFIG="$HOME/wifi_cyclonedds.xml"
-else
-    DDS_CONFIG="$HOME/rf_cyclonedds.xml"
-fi
-
-# Set CYCLONEDDS_URI if config file exists, otherwise let CycloneDDS auto-discover
+# Set CYCLONEDDS_URI if config file exists
 if [ -f "$DDS_CONFIG" ]; then
     export CYCLONEDDS_URI="$DDS_CONFIG"
-    echo "Using CycloneDDS config: $DDS_CONFIG"
+    echo "Using CycloneDDS config (loopback): $DDS_CONFIG"
 else
-    echo "Warning: DDS config not found at $DDS_CONFIG"
-    echo "CycloneDDS will use auto-discovery (may not work on all networks)"
+    echo "Warning: CycloneDDS config not found at $DDS_CONFIG"
+    echo "Local node communication may not work correctly."
+    echo "Expected loopback-only config at: $DDS_CONFIG"
+fi
+
+# Check if Zenoh bridge is running (managed by laptop_teleop.launch.py)
+if pgrep -x zenohd > /dev/null 2>&1; then
+    echo "Zenoh bridge DDS: running (robot communication available)"
+else
+    echo "Note: Zenoh bridge DDS not running - robot communication unavailable"
+    echo "Start with: ros2 launch pilot_control laptop_teleop.launch.py"
 fi
 
 # CRITICAL: Set RMW implementation to CycloneDDS (required for communication)
