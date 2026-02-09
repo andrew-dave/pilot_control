@@ -313,7 +313,7 @@ class OdomTiltCorrector(Node):
 
     # ---------------- Save transformation ----------------
     def _save_transformation(self, initial_yaw):
-        """Save the transformation details to files."""
+        """Save the transformation details to files using old naming convention."""
         if not self.save_directory or not os.path.exists(self.save_directory):
             self.get_logger().warn(f'Save directory not set or does not exist: {self.save_directory}')
             return
@@ -322,20 +322,20 @@ class OdomTiltCorrector(Node):
             timestamp = datetime.now()
             timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
             
-            # Save rotation matrices as numpy binary
-            np_file = os.path.join(self.save_directory, f'lidar_to_robot_transform_{timestamp_str}.npz')
+            # Save rotation matrices as numpy binary (old naming: tilt_correction_matrices_*)
+            np_file = os.path.join(self.save_directory, f'tilt_correction_matrices_{timestamp_str}.npz')
             np.savez(
                 np_file,
-                R_init=self.R_init,
+                R_map=self.R_init,              # Old name for full transformation matrix
+                p0_world=self.p0_lidar,         # Old name for origin offset
                 R_lidar_to_robot=self.R_lidar_to_robot,
-                p0_lidar=self.p0_lidar,
                 initial_yaw=initial_yaw,
                 lidar_pitch_deg=self.lidar_pitch_deg,
                 timestamp=timestamp_str
             )
             
             # Save human-readable CSV
-            csv_file = os.path.join(self.save_directory, f'lidar_to_robot_transform_{timestamp_str}.csv')
+            csv_file = os.path.join(self.save_directory, f'tilt_correction_matrices_{timestamp_str}.csv')
             with open(csv_file, 'w') as f:
                 f.write('# LiDAR to Robot Frame Transformation\n')
                 f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
@@ -344,20 +344,20 @@ class OdomTiltCorrector(Node):
                 f.write(f'# Initial yaw removed: {math.degrees(initial_yaw):.2f} degrees\n')
                 f.write('#\n')
                 f.write('# Transformation formula:\n')
-                f.write('#   p_robot = R_init @ (p_lidar - p0_lidar)\n')
-                f.write('#   R_robot = R_init @ R_lidar\n')
-                f.write('#   v_robot = R_lidar_to_robot @ v_lidar\n')
+                f.write('#   p_robot = R_map @ (p_raw - p0_world)\n')
+                f.write('#   R_robot = R_map @ R_raw\n')
+                f.write('#   v_robot = R_lidar_to_robot @ v_raw\n')
                 f.write('#\n')
-                f.write('# Origin (first odometry in LiDAR frame)\n')
-                f.write(f'p0_lidar_x,{self.p0_lidar[0]:.6f}\n')
-                f.write(f'p0_lidar_y,{self.p0_lidar[1]:.6f}\n')
-                f.write(f'p0_lidar_z,{self.p0_lidar[2]:.6f}\n')
+                f.write('# Origin (first odometry position)\n')
+                f.write(f'p0_world_x,{self.p0_lidar[0]:.6f}\n')
+                f.write(f'p0_world_y,{self.p0_lidar[1]:.6f}\n')
+                f.write(f'p0_world_z,{self.p0_lidar[2]:.6f}\n')
                 f.write('#\n')
                 f.write('# R_lidar_to_robot (pitch correction matrix)\n')
                 for i in range(3):
                     f.write(f'{self.R_lidar_to_robot[i,0]:.8f},{self.R_lidar_to_robot[i,1]:.8f},{self.R_lidar_to_robot[i,2]:.8f}\n')
                 f.write('#\n')
-                f.write('# R_init (full transformation matrix)\n')
+                f.write('# R_map (full transformation matrix)\n')
                 for i in range(3):
                     f.write(f'{self.R_init[i,0]:.8f},{self.R_init[i,1]:.8f},{self.R_init[i,2]:.8f}\n')
             
