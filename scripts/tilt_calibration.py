@@ -8,7 +8,7 @@ then computes the rotation matrix needed to align the LiDAR frame with
 the robot's body frame (ground-aligned).
 
 Usage:
-    ros2 run pilot_control tilt_calibration.py [--samples N] [--timeout T]
+    ros2 run pilot_control tilt_calibration [--ros-args -p num_samples:=100]
 
 The calibration result is saved to:
     <pilot_control>/config/tilt_correction_matrices.npz
@@ -43,21 +43,15 @@ class TiltCalibration(Node):
         self.output_file = str(self.get_parameter('output_file').value)
 
         # State
-        self.accel_samples = []
+        self.accel_sum = np.zeros(3, dtype=float)
+        self.accel_count = 0
         self.calibration_complete = False
         self.calibration_success = False
 
         # Determine output path
         if not self.output_file:
             try:
-                pkg_share = get_package_share_directory('pilot_control')
-                # Navigate from share to src config folder
-                # share is at install/pilot_control/share/pilot_control
-                # We want src/pilot_control/config
-                pkg_src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(pkg_share))))
-                config_dir = os.path.join(pkg_src, 'src', 'pilot_control', 'src', 'pilot_control', 'config')
-                
-                # Try source directory first (more reliable)
+                # Try source directory first (more reliable for development)
                 source_config = os.path.join(
                     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                     'config'
@@ -66,6 +60,7 @@ class TiltCalibration(Node):
                     config_dir = source_config
                 else:
                     # Fallback to share directory
+                    pkg_share = get_package_share_directory('pilot_control')
                     config_dir = os.path.join(pkg_share, 'config')
                     
                 self.output_file = os.path.join(config_dir, 'tilt_correction_matrices.npz')
@@ -104,26 +99,27 @@ class TiltCalibration(Node):
             float(msg.linear_acceleration.z),
         ], dtype=float)
 
-        # Validate
+        # Validate - skip invalid samples
         if not np.all(np.isfinite(a)):
             return
 
-        # Collect sample
-        self.accel_samples.append(a)
+        # Accumulate samples
+        self.accel_sum += a
+        self.accel_count += 1
 
         # Progress update every 10 samples
-        if len(self.accel_samples) % 10 == 0:
+        if self.accel_count % 10 == 0:
             self.get_logger().info(
-                f'Collecting IMU samples... ({len(self.accel_samples)}/{self.num_samples})')
+                f'Collecting IMU samples... ({self.accel_count}/{self.num_samples})')
 
         # Check if we have enough samples
-        if len(self.accel_samples) >= self.num_samples:
+        if self.accel_count >= self.num_samples:
             self.compute_calibration()
 
     def timeout_callback(self):
         if not self.calibration_complete:
             self.get_logger().error(
-                f'Timeout! Only collected {len(self.accel_samples)}/{self.num_samples} samples')
+                f'Timeout! Only collected {self.accel_count}/{self.num_samples} samples')
             self.get_logger().error('Check that IMU is publishing on the correct topic')
             self.calibration_complete = True
             self.calibration_success = False
@@ -134,8 +130,7 @@ class TiltCalibration(Node):
         self.calibration_complete = True
 
         # Average the acceleration samples
-        accel_avg = np.mean(self.accel_samples, axis=0)
-        accel_std = np.std(self.accel_samples, axis=0)
+        accel_avg = self.accel_sum / float(self.accel_count)
 
         self.get_logger().info('')
         self.get_logger().info('='*60)
@@ -144,49 +139,32 @@ class TiltCalibration(Node):
         self.get_logger().info(
             f'Averaged acceleration (IMU frame): '
             f'[{accel_avg[0]:.4f}, {accel_avg[1]:.4f}, {accel_avg[2]:.4f}] m/s²')
+
+        # Normalize to get gravity direction in IMU/LiDAR body frame
+        a_body_norm = accel_avg / (np.linalg.norm(accel_avg) + 1e-12)
+
         self.get_logger().info(
-            f'Standard deviation: '
-            f'[{accel_std[0]:.4f}, {accel_std[1]:.4f}, {accel_std[2]:.4f}] m/s²')
+            f'Gravity direction (normalized): '
+            f'[{a_body_norm[0]:.4f}, {a_body_norm[1]:.4f}, {a_body_norm[2]:.4f}]')
 
-        # Check for excessive noise (robot might be moving)
-        max_std = np.max(accel_std)
-        if max_std > 0.5:
-            self.get_logger().warn(
-                f'High acceleration variance detected ({max_std:.3f} m/s²). '
-                f'Was the robot stationary?')
+        # Compute pitch correction matrix from gravity measurement
+        # This is the same approach used in the original odom_tilt_corrector.py
+        R_map, pitch_angle = self.compute_pitch_correction_matrix(a_body_norm)
 
-        # Normalize to get gravity direction in IMU frame
-        g_mag = np.linalg.norm(accel_avg)
-        if g_mag < 5.0 or g_mag > 15.0:
-            self.get_logger().error(
-                f'Invalid gravity magnitude: {g_mag:.3f} m/s² (expected ~9.81)')
-            self.calibration_success = False
-            rclpy.shutdown()
-            return
-
-        g_imu = accel_avg / g_mag  # Unit gravity vector in IMU frame
-
-        self.get_logger().info(f'Gravity magnitude: {g_mag:.4f} m/s² (expected: 9.81)')
-        self.get_logger().info(f'Gravity direction (IMU frame): [{g_imu[0]:.4f}, {g_imu[1]:.4f}, {g_imu[2]:.4f}]')
-
-        # Compute rotation matrix to align IMU Z-axis with gravity
-        # Target: gravity should point along -Z in robot frame (down)
-        # R_map transforms from LiDAR/IMU frame to gravity-aligned frame
-        R_map = self._compute_gravity_alignment_rotation(g_imu)
-
-        # Extract pitch and roll from the rotation matrix
-        pitch_rad = math.asin(-R_map[2, 0])
-        roll_rad = math.atan2(R_map[2, 1], R_map[2, 2])
-        pitch_deg = math.degrees(pitch_rad)
-        roll_deg = math.degrees(roll_rad)
+        pitch_deg = math.degrees(pitch_angle)
 
         self.get_logger().info('')
-        self.get_logger().info(f'Estimated LiDAR mount angles:')
-        self.get_logger().info(f'  Pitch: {pitch_deg:.2f}° (forward tilt)')
-        self.get_logger().info(f'  Roll:  {roll_deg:.2f}° (side tilt)')
+        self.get_logger().info(f'Estimated LiDAR mount pitch: {pitch_deg:.2f}°')
+
+        # Verify: gravity should now point to [0, 0, -g] after correction
+        g_corrected = R_map @ a_body_norm
+        self.get_logger().info(
+            f'Gravity after correction: '
+            f'[{g_corrected[0]:.4f}, {g_corrected[1]:.4f}, {g_corrected[2]:.4f}]')
+        self.get_logger().info(f'  (should be close to [0, 0, -1])')
 
         # Save calibration
-        self._save_calibration(R_map, accel_avg, pitch_deg, roll_deg)
+        self._save_calibration(R_map, accel_avg, pitch_deg)
 
         self.get_logger().info('')
         self.get_logger().info('='*60)
@@ -201,60 +179,50 @@ class TiltCalibration(Node):
         self.calibration_success = True
         rclpy.shutdown()
 
-    def _compute_gravity_alignment_rotation(self, g_imu):
+    @staticmethod
+    def compute_pitch_correction_matrix(gravity_vec):
         """
-        Compute rotation matrix that aligns the IMU frame with gravity.
+        Compute PURE PITCH correction around Y-axis from gravity measurement.
         
-        The rotation transforms vectors from IMU frame to a gravity-aligned frame where:
-        - Z axis points up (opposite to gravity)
-        - X axis is the projection of IMU X onto the horizontal plane
-        - Y axis completes the right-handed system
+        This is the same algorithm used in the original odom_tilt_corrector.py.
         
-        Args:
-            g_imu: Unit gravity vector in IMU frame (points down, so typically [~0, ~0, ~1])
+        The LiDAR is mounted tilted forward (pitch). We want to find the rotation
+        that makes the measured gravity vector point straight down [0, 0, -1].
         
-        Returns:
-            R_map: 3x3 rotation matrix
+        Input: gravity_vec = gravity direction measured in LiDAR body frame (normalized)
+        Output: (R_map, pitch_angle) where R_map rotates LiDAR frame to level frame
+        
+        In robot body frame (level), gravity should point to [0, 0, -1] (down in Z).
         """
-        # Target gravity direction in robot frame: -Z (down)
-        g_target = np.array([0.0, 0.0, -1.0])
+        g = np.array(gravity_vec, dtype=float)
+        g = g / (np.linalg.norm(g) + 1e-12)  # Ensure normalized
 
-        # The measured gravity direction (normalized)
-        g_measured = g_imu
+        # If gravity already points down in Z, no correction needed
+        if abs(g[2] + 1.0) < 1e-6:
+            return np.eye(3), 0.0
 
-        # Compute rotation axis (cross product)
-        axis = np.cross(g_measured, g_target)
-        axis_norm = np.linalg.norm(axis)
+        # Extract pitch angle: rotation around Y-axis needed to align gravity to -Z
+        # Project gravity onto XZ plane to get pitch
+        # pitch = angle from -Z axis to gravity vector in XZ plane
+        gx, gz = g[0], g[2]
+        
+        # atan2(gx, -gz) gives the angle from -Z to gravity in XZ plane
+        # This is the pitch angle we need to correct
+        pitch_angle = math.atan2(gx, -gz)
 
-        if axis_norm < 1e-6:
-            # Vectors are parallel - no rotation needed or 180° rotation
-            if np.dot(g_measured, g_target) > 0:
-                return np.eye(3)
-            else:
-                # 180° rotation around X axis
-                return np.array([
-                    [1.0, 0.0, 0.0],
-                    [0.0, -1.0, 0.0],
-                    [0.0, 0.0, -1.0]
-                ])
+        # Build rotation matrix around Y-axis by -pitch_angle (to undo the tilt)
+        cp = math.cos(-pitch_angle)
+        sp = math.sin(-pitch_angle)
+        
+        R_pitch = np.array([
+            [cp,  0.0, sp],
+            [0.0, 1.0, 0.0],
+            [-sp, 0.0, cp]
+        ], dtype=float)
 
-        axis = axis / axis_norm
+        return R_pitch, pitch_angle
 
-        # Compute rotation angle
-        angle = math.acos(np.clip(np.dot(g_measured, g_target), -1.0, 1.0))
-
-        # Build rotation matrix using Rodrigues' formula
-        K = np.array([
-            [0, -axis[2], axis[1]],
-            [axis[2], 0, -axis[0]],
-            [-axis[1], axis[0], 0]
-        ])
-
-        R = np.eye(3) + math.sin(angle) * K + (1 - math.cos(angle)) * (K @ K)
-
-        return R
-
-    def _save_calibration(self, R_map, accel_avg, pitch_deg, roll_deg):
+    def _save_calibration(self, R_map, accel_avg, pitch_deg):
         """Save calibration results to .npz file."""
         try:
             # Ensure output directory exists
@@ -274,8 +242,7 @@ class TiltCalibration(Node):
                 p0_world=np.zeros(3),  # Origin set at runtime by odom_tilt_corrector
                 accel_avg=accel_avg,
                 pitch_deg=pitch_deg,
-                roll_deg=roll_deg,
-                num_samples=len(self.accel_samples),
+                num_samples=self.accel_count,
                 timestamp=timestamp_str
             )
 
@@ -284,18 +251,17 @@ class TiltCalibration(Node):
             with open(csv_file, 'w') as f:
                 f.write('# Tilt Calibration Results\n')
                 f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
-                f.write(f'# Samples collected: {len(self.accel_samples)}\n')
+                f.write(f'# Samples collected: {self.accel_count}\n')
                 f.write('#\n')
-                f.write(f'# Estimated mount angles:\n')
+                f.write(f'# Estimated mount pitch angle:\n')
                 f.write(f'pitch_deg,{pitch_deg:.4f}\n')
-                f.write(f'roll_deg,{roll_deg:.4f}\n')
                 f.write('#\n')
                 f.write('# Averaged acceleration (m/s²)\n')
                 f.write(f'accel_x,{accel_avg[0]:.6f}\n')
                 f.write(f'accel_y,{accel_avg[1]:.6f}\n')
                 f.write(f'accel_z,{accel_avg[2]:.6f}\n')
                 f.write('#\n')
-                f.write('# R_map (gravity alignment rotation matrix)\n')
+                f.write('# R_map (pitch correction rotation matrix)\n')
                 for i in range(3):
                     f.write(f'{R_map[i,0]:.8f},{R_map[i,1]:.8f},{R_map[i,2]:.8f}\n')
 
