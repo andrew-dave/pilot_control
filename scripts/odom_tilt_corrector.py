@@ -1,50 +1,71 @@
 #!/usr/bin/env python3
+"""
+Odometry Tilt Corrector - Transforms LiDAR frame odometry to Robot Body frame.
+
+The LiDAR is mounted tilted (15° forward pitch) relative to the robot body.
+This node transforms Fast-LIO2 odometry from the tilted LiDAR frame to the
+robot's initial body frame (ground-aligned, with robot's initial heading).
+
+The transformation is a FIXED 15° pitch correction based on the mechanical mount.
+No IMU measurements needed - this is purely a geometric transformation.
+
+Output frame properties:
+- Origin: Robot's initial position (at startup)
+- Orientation: Robot's initial heading (yaw=0 at startup)
+- XY plane: Parallel to ground (level with robot body)
+- X axis: Robot's initial forward direction
+- Z axis: Perpendicular to ground (up)
+"""
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Imu
 import numpy as np
 import math
 import os
 from datetime import datetime
 
 
+# Default LiDAR mount angle (degrees) - LiDAR is tilted forward relative to robot body
+LIDAR_PITCH_DEG = 15.0
+
+
 class OdomTiltCorrector(Node):
     def __init__(self):
         super().__init__('odom_tilt_corrector')
 
-        # Parameters (match pose_controller.py naming)
+        # Parameters
         self.declare_parameter('odometry_topic', '/Odometry')
-        self.declare_parameter('accel_topic', '/livox/imu')
-        self.declare_parameter('accel_samples', 10)
         self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected_diff')
         self.declare_parameter('save_directory', '')  # Session folder path for saving transformation
+        self.declare_parameter('lidar_pitch_deg', LIDAR_PITCH_DEG)  # LiDAR tilt angle (degrees)
 
         self.odom_topic = str(self.get_parameter('odometry_topic').value)
-        self.accel_topic = str(self.get_parameter('accel_topic').value)
-        self.accel_samples_target = max(1, int(self.get_parameter('accel_samples').value))
         self.output_topic = str(self.get_parameter('corrected_odometry_topic').value)
         self.save_directory = str(self.get_parameter('save_directory').value)
+        self.lidar_pitch_deg = float(self.get_parameter('lidar_pitch_deg').value)
+        self.lidar_pitch_rad = math.radians(self.lidar_pitch_deg)
 
         # State
-        self.accel_initialized = False
-        self.accel_sum = np.zeros(3, dtype=float)
-        self.accel_count = 0
-        self.accel_avg = None
         self.pose_initialized = False
-
-        self.alignment_set = False
         self.origin_set = False
-        self.R_map = np.eye(3, dtype=float)
-        self.R_body_level = np.eye(3, dtype=float)  # For body-frame velocity tilt correction
-        self.p0_world = np.zeros(3, dtype=float)
-        self.align_quat = (0.0, 0.0, 0.0, 1.0)
+        
+        # Fixed transformation matrix: LiDAR frame → Robot body frame
+        # This is a pure pitch rotation (around Y-axis) to correct for the mount tilt
+        # LiDAR is pitched forward, so we rotate by -pitch to level it
+        self.R_lidar_to_robot = self._build_pitch_rotation(-self.lidar_pitch_rad)
+        
+        # Full transformation from LiDAR world frame to robot's initial frame
+        # Combines: pitch correction + initial yaw removal
+        self.R_init = np.eye(3, dtype=float)
+        
+        # Origin in LiDAR world frame (first odometry position)
+        self.p0_lidar = np.zeros(3, dtype=float)
+        
+        # Initial LiDAR orientation (to remove initial yaw)
+        self.R0_lidar = np.eye(3, dtype=float)
 
-        # Subscriptions (sensor-data QoS for IMU and odometry)
-        self.imu_sub = self.create_subscription(
-            Imu, self.accel_topic, self.imu_callback, qos_profile_sensor_data
-        )
+        # Subscription
         self.odom_sub = self.create_subscription(
             Odometry, self.odom_topic, self.odom_callback, qos_profile_sensor_data
         )
@@ -53,184 +74,39 @@ class OdomTiltCorrector(Node):
         self.odom_pub = self.create_publisher(Odometry, self.output_topic, 10)
 
         self.get_logger().info(
-            f'Odom tilt corrector started | odom="{self.odom_topic}" imu="{self.accel_topic}" '
-            f'→ out="{self.output_topic}" (N={self.accel_samples_target})'
-        )
+            f'Odom tilt corrector (LiDAR→Robot frame) started')
+        self.get_logger().info(
+            f'  Input: "{self.odom_topic}" → Output: "{self.output_topic}"')
+        self.get_logger().info(
+            f'  Fixed LiDAR pitch correction: {self.lidar_pitch_deg:.1f}°')
 
-    # ---------------- Pose controller math (mirrored) ----------------
+    # ---------------- Math utilities ----------------
     @staticmethod
-    def quat_normalize(q):
-        x, y, z, w = q
-        n = math.sqrt(x*x + y*y + z*z + w*w)
-        if n <= 1e-12:
-            return (0.0, 0.0, 0.0, 1.0)
-        return (x/n, y/n, z/n, w/n)
-
-    @staticmethod
-    def quat_from_axis_angle(axis, angle_rad):
-        ax = np.asarray(axis, dtype=float)
-        norm = np.linalg.norm(ax)
-        if norm <= 1e-12:
-            return (0.0, 0.0, 0.0, 1.0)
-        ax = ax / norm
-        s = math.sin(angle_rad * 0.5)
-        c = math.cos(angle_rad * 0.5)
-        return (ax[0]*s, ax[1]*s, ax[2]*s, c)
+    def _build_pitch_rotation(pitch_rad):
+        """Build rotation matrix for pitch (rotation around Y-axis)."""
+        cp = np.cos(pitch_rad)
+        sp = np.sin(pitch_rad)
+        return np.array([[cp,  0.0, sp],
+                         [0.0, 1.0, 0.0],
+                         [-sp, 0.0, cp]], dtype=float)
 
     @staticmethod
-    def quat_multiply(q1, q2):
-        x1, y1, z1, w1 = q1
-        x2, y2, z2, w2 = q2
-        x = w1*x2 + x1*w2 + y1*z2 - z1*y2
-        y = w1*y2 - x1*z2 + y1*w2 + z1*x2
-        z = w1*z2 + x1*y2 - y1*x2 + z1*w2
-        w = w1*w2 - x1*x2 - y1*y2 - z1*z2
-        return (x, y, z, w)
+    def _build_yaw_rotation(yaw_rad):
+        """Build rotation matrix for yaw (rotation around Z-axis)."""
+        cy = np.cos(yaw_rad)
+        sy = np.sin(yaw_rad)
+        return np.array([[cy, -sy, 0.0],
+                         [sy,  cy, 0.0],
+                         [0.0, 0.0, 1.0]], dtype=float)
 
     @staticmethod
-    def quat_conjugate(q):
-        x, y, z, w = q
-        return (-float(x), -float(y), -float(z), float(w))
-
-    @staticmethod
-    def rotate_vector_by_quat(v, q):
-        x, y, z = v
-        qx, qy, qz, qw = q
-        tx = 2.0 * (qy * z - qz * y)
-        ty = 2.0 * (qz * x - qx * z)
-        tz = 2.0 * (qx * y - qy * x)
-        vx = x + qw * tx + (qy * tz - qz * ty)
-        vy = y + qw * ty + (qz * tx - qx * tz)
-        vz = z + qw * tz + (qx * ty - qy * tx)
-        return np.array([vx, vy, vz], dtype=float)
-
-    @staticmethod
-    def compute_alignment_quat(from_vec, to_vec):
-        v1 = np.asarray(from_vec, dtype=float)
-        v2 = np.asarray(to_vec, dtype=float)
-        n1 = np.linalg.norm(v1)
-        n2 = np.linalg.norm(v2)
-        if n1 <= 1e-12 or n2 <= 1e-12:
-            return (0.0, 0.0, 0.0, 1.0)
-        v1 = v1 / n1
-        v2 = v2 / n2
-        cos_theta = float(np.clip(v1.dot(v2), -1.0, 1.0))
-        if cos_theta > 1.0 - 1e-9:
-            return (0.0, 0.0, 0.0, 1.0)
-        if cos_theta < -1.0 + 1e-9:
-            axis = np.array([1.0, 0.0, 0.0])
-            if abs(v1[0]) > 0.9:
-                axis = np.array([0.0, 1.0, 0.0])
-            axis = axis - v1 * v1.dot(axis)
-            if np.linalg.norm(axis) < 1e-12:
-                axis = np.array([0.0, 0.0, 1.0])
-            axis = axis / (np.linalg.norm(axis) + 1e-12)
-            return OdomTiltCorrector.quat_from_axis_angle(axis, math.pi)
-        axis = np.cross(v1, v2)
-        s = math.sqrt((1.0 + cos_theta) * 2.0)
-        invs = 1.0 / s
-        w = 0.5 * s
-        x = axis[0] * invs
-        y = axis[1] * invs
-        z = axis[2] * invs
-        return OdomTiltCorrector.quat_normalize((x, y, z, w))
-
-    @staticmethod
-    def compute_tilt_correction_matrix(a_world):
-        """
-        Compute PURE PITCH correction around Y-axis ONLY.
-        Assumes LiDAR is mounted with tilt only in the forward direction (pitch),
-        not sideways (roll).
-        
-        This gives a rotation matrix that:
-        - Corrects the forward/backward tilt (pitch around Y)
-        - Preserves yaw completely (no rotation around Z)
-        - Ignores any roll component (assumes it's sensor noise)
-        
-        Input: a_world = gravity direction in world frame (normalized)
-        Output: rotation matrix for pitch correction only
-        """
-        a_world = np.array(a_world, dtype=float)
-        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
-        
-        # Target: gravity pointing down [0, 0, -1]
-        # Already aligned?
-        if a_world[2] < -0.9999:
-            return np.eye(3, dtype=float)
-        
-        # Extract ONLY pitch (rotation around Y-axis)
-        # Project gravity onto XZ plane (forward-backward tilt)
-        # Ignore the Y component (assume no roll, just sensor noise)
-        pitch = np.arctan2(a_world[0], -a_world[2])
-        
-        # Build pure pitch rotation matrix around Y-axis
-        cp = np.cos(pitch)
-        sp = np.sin(pitch)
-        
-        R_pitch = np.array([[cp,  0.0, sp],
-                            [0.0, 1.0, 0.0],
-                            [-sp, 0.0, cp]], dtype=float)
-        
-        return R_pitch
-
-    @staticmethod
-    def compute_alignment_quat_yaw_preserving(a_world):
-        """
-        Compute alignment to make gravity point down in Z, PRESERVING YAW.
-        Only corrects tilt (pitch/roll), does not rotate yaw.
-        
-        Input: a_world = gravity direction in world frame (normalized)
-        Output: quaternion to rotate world frame so gravity is [0, 0, -1]
-                while keeping yaw unchanged
-        """
-        a_world = np.array(a_world, dtype=float)
-        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
-        
-        # Target: gravity should point to [0, 0, -1] (down in Z)
-        target = np.array([0.0, 0.0, -1.0])
-        
-        # If already aligned, return identity
-        if np.dot(a_world, target) > 0.9999:
-            return (0.0, 0.0, 0.0, 1.0)
-        
-        # Compute rotation axis perpendicular to both a_world and target
-        # This axis lies in the horizontal (X-Y) plane
-        axis = np.cross(a_world, target)
-        axis_len = np.linalg.norm(axis)
-        
-        if axis_len < 1e-9:
-            # Vectors are parallel or anti-parallel
-            # If anti-parallel, rotate 180° around X-axis (preserves yaw)
-            if np.dot(a_world, target) < 0:
-                return (1.0, 0.0, 0.0, 0.0)  # 180° around X
-            return (0.0, 0.0, 0.0, 1.0)  # Identity
-        
-        # Normalize the rotation axis
-        axis = axis / axis_len
-        
-        # Compute rotation angle
-        # Use atan2 for better numerical stability than acos
-        angle = np.arctan2(axis_len, np.dot(a_world, target))
-        
-        # Create quaternion for this axis-angle rotation
-        half_angle = 0.5 * angle
-        s = np.sin(half_angle)
-        c = np.cos(half_angle)
-        
-        return (axis[0] * s, axis[1] * s, axis[2] * s, c)
-
-    @staticmethod
-    def rpy_to_matrix(roll: float, pitch: float, yaw: float):
-        cr = math.cos(roll);  sr = math.sin(roll)
-        cp = math.cos(pitch); sp = math.sin(pitch)
-        cy = math.cos(yaw);   sy = math.sin(yaw)
-        Rz = np.array([[cy, -sy, 0.0], [sy, cy, 0.0], [0.0, 0.0, 1.0]], dtype=float)
-        Ry = np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]], dtype=float)
-        Rx = np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]], dtype=float)
-        return Rz @ Ry @ Rx
+    def _extract_yaw_from_matrix(R):
+        """Extract yaw angle from rotation matrix (ZYX Euler convention)."""
+        return np.arctan2(R[1, 0], R[0, 0])
 
     @staticmethod
     def quat_to_matrix(q):
+        """Convert quaternion (x, y, z, w) to rotation matrix."""
         x, y, z, w = q
         xx = x * x; yy = y * y; zz = z * z
         xy = x * y; xz = x * z; yz = y * z
@@ -244,6 +120,7 @@ class OdomTiltCorrector(Node):
 
     @staticmethod
     def matrix_to_quat(R):
+        """Convert rotation matrix to quaternion (x, y, z, w)."""
         m00, m01, m02 = float(R[0,0]), float(R[0,1]), float(R[0,2])
         m10, m11, m12 = float(R[1,0]), float(R[1,1]), float(R[1,2])
         m20, m21, m22 = float(R[2,0]), float(R[2,1]), float(R[2,2])
@@ -275,276 +152,15 @@ class OdomTiltCorrector(Node):
         return (x, y, z, w)
 
     @staticmethod
-    def quaternion_to_yaw(qx: float, qy: float, qz: float, qw: float) -> float:
+    def quaternion_to_yaw(qx, qy, qz, qw):
+        """Extract yaw angle from quaternion."""
         siny_cosp = 2.0 * (qw * qz + qx * qy)
         cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
-        yaw = math.atan2(siny_cosp, cosy_cosp)
-        return yaw
+        return math.atan2(siny_cosp, cosy_cosp)
 
     @staticmethod
-    def normalize_angle(angle: float) -> float:
-        while angle > math.pi:
-            angle -= 2.0 * math.pi
-        while angle < -math.pi:
-            angle += 2.0 * math.pi
-        return angle
-
-    # ---------------- IMU averaging ----------------
-    def imu_callback(self, msg: Imu):
-        a = np.array([
-            float(msg.linear_acceleration.x),
-            float(msg.linear_acceleration.y),
-            float(msg.linear_acceleration.z),
-        ], dtype=float)
-        if not np.all(np.isfinite(a)):
-            return
-        if not self.accel_initialized:
-            self.accel_sum += a
-            self.accel_count += 1
-            if self.accel_count < self.accel_samples_target:
-                return
-            self.accel_avg = self.accel_sum / float(max(1, self.accel_count))
-            self.accel_initialized = True
-            self.get_logger().info(
-                f'IMU accel averaged (N={self.accel_count}): '
-                f'{self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f} — waiting first odom'
-            )
-        else:
-            return
-
-    # ---------------- Odom processing ----------------
-    def odom_callback(self, msg: Odometry):
-        """
-        Callback for Fast-LIO2 odometry messages.
-        Extracts x, y, yaw from the odometry message.
-        """
-        # Gate processing until IMU-based tilt alignment has completed
-        if not self.accel_initialized:
-            return
-        # Extract raw pose
-        raw_pos = np.array([
-            float(msg.pose.pose.position.x),
-            float(msg.pose.pose.position.y),
-            float(msg.pose.pose.position.z),
-        ], dtype=float)
-        raw_q = (
-            float(msg.pose.pose.orientation.x),
-            float(msg.pose.pose.orientation.y),
-            float(msg.pose.pose.orientation.z),
-            float(msg.pose.pose.orientation.w),
-        )
-        self.last_raw_q = raw_q
-        self.last_raw_pos = raw_pos
-        R_wb = self.quat_to_matrix(raw_q)
-
-        # Establish leveling rotation at first odom using hybrid approach:
-        # - Try IMU-based alignment when Fast-LIO orientation is reliable
-        # - Fall back to fixed pitch correction when unreliable
-        if self.accel_initialized and not self.alignment_set:
-            # Compute gravity direction in world frame
-            try:
-                a_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-                R_wb_curr = self.quat_to_matrix(raw_q)
-                a_world = R_wb_curr @ a_norm
-            except Exception:
-                a_world = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-            
-            # Fixed coordinate system flip
-            R_flip = np.array([[-1.0, 0.0, 0.0],
-                               [ 0.0, 1.0, 0.0],
-                               [ 0.0, 0.0,-1.0]], dtype=float)
-            
-            # HYBRID APPROACH: Check if a_world is reasonable (mostly vertical)
-            # Gravity should be mostly in Z direction in world frame
-            use_imu_alignment = abs(a_world[2]) > 0.8  # Reasonable vertical component
-            
-            if use_imu_alignment:
-                # Use pitch-only correction (strictly around Y-axis, preserves yaw)
-                R_align = self.compute_tilt_correction_matrix(a_world)
-                # Compute the pitch angle for logging
-                pitch_angle = np.arctan2(a_world[0], -a_world[2])
-                alignment_method = "IMU-based (pitch-only)"
-                self.get_logger().info(
-                    f'✓ Using IMU pitch correction: {math.degrees(pitch_angle):.2f}° | '
-                    f'a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]')
-            else:
-                # Fall back to fixed pitch
-                pitch_rad = -0.2617993878  # -15 degrees
-                roll_rad = 0.0
-                yaw_rad = 0.0
-                roll_quat = self.quat_from_axis_angle(np.array([1.0, 0.0, 0.0]), roll_rad)
-                pitch_quat = self.quat_from_axis_angle(np.array([0.0, 1.0, 0.0]), pitch_rad)
-                yaw_quat = self.quat_from_axis_angle(np.array([0.0, 0.0, 1.0]), yaw_rad)
-                q_align_world = self.quat_multiply(yaw_quat, self.quat_multiply(pitch_quat, roll_quat))
-                rx, ry, rz = self.quaternion_to_rpy(q_align_world[0], q_align_world[1], q_align_world[2], q_align_world[3])
-                R_align = self.rpy_to_matrix(rx, ry, rz)
-                alignment_method = "Fixed pitch (fallback)"
-                self.get_logger().warn(
-                    f'⚠ IMU unreliable (a_world=[{a_world[0]:.3f}, {a_world[1]:.3f}, {a_world[2]:.3f}]), '
-                    f'using fixed 15° pitch')
-            
-            self.R_map = R_flip @ R_align
-            
-            # Compute body-frame tilt correction for velocity
-            # This corrects body velocity to level body frame (horizontal XY plane)
-            # Uses IMU gravity directly in body frame (not rotated to world)
-            a_body_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
-            R_body_align = self.compute_tilt_correction_matrix(a_body_norm)
-            self.R_body_level = R_flip @ R_body_align
-            
-            # Compute body pitch angle for logging
-            body_pitch = np.arctan2(a_body_norm[0], -a_body_norm[2])
-            self.get_logger().info(
-                f'✓ Body velocity tilt correction: pitch={math.degrees(body_pitch):.2f}° | '
-                f'a_body=[{a_body_norm[0]:.3f}, {a_body_norm[1]:.3f}, {a_body_norm[2]:.3f}]'
-            )
-            
-            self.alignment_set = True
-            
-            # Verify the correction worked
-            try:
-                a_flat = self.R_map @ a_world
-                self.get_logger().info(
-                    f'Tilt correction set ({alignment_method}): '
-                    f'gravity aligned to [{a_flat[0]:.3f}, {a_flat[1]:.3f}, {a_flat[2]:.3f}]')
-            except Exception:
-                pass
-            
-            # Save transformation details to file (after origin is set)
-            # Note: p0_world will be saved when origin_set becomes True
-            self._transformation_data = {
-                'R_map': self.R_map,
-                'R_align': R_align,
-                'R_flip': R_flip,
-                'a_world': a_world,
-                'a_body': self.accel_avg,
-                'alignment_method': alignment_method,
-                'pitch_angle': pitch_angle if use_imu_alignment else -0.2617993878
-            }
-            self._transformation_ready_to_save = True
-
-        # Establish origin in leveled world
-        if not self.origin_set and self.alignment_set:
-            self.p0_world = raw_pos.copy()
-            self.origin_set = True
-            
-            # Now save transformation with complete origin information
-            if hasattr(self, '_transformation_ready_to_save') and self._transformation_ready_to_save:
-                self._transformation_data['p0_world'] = self.p0_world
-                self.save_transformation_details(**self._transformation_data)
-                self._transformation_ready_to_save = False  # Save only once
-
-        # Leveled world position and orientation (matrix-based) with flip+align mapping
-        p_local = self.R_map @ (raw_pos - self.p0_world)
-        try:
-            R_wb_curr = self.quat_to_matrix(raw_q)
-            R_fb = self.R_map @ R_wb_curr
-            q_local = self.matrix_to_quat(R_fb)
-            rL, pL, yL = self.quaternion_to_rpy(q_local[0], q_local[1], q_local[2], q_local[3])
-            if not hasattr(self, '_logged_q_choice'):
-                self.get_logger().info(
-                    f'Orientation mapping: R_fb = R_map * R_wb (roll,pitch deg)={math.degrees(rL):.2f},{math.degrees(pL):.2f}')
-                self._logged_q_choice = True
-        except Exception:
-            q_local = self.quat_multiply(self.align_quat, raw_q)
-
-        self.current_x = float(p_local[0])
-        self.current_y = float(p_local[1])
-        # z not used
-        self.current_yaw = self.quaternion_to_yaw(q_local[0], q_local[1], q_local[2], q_local[3])
-        
-        # Extract and transform velocities to TILT-CORRECTED BODY FRAME
-        # This gives velocity in a level body frame (XY horizontal, Z vertical)
-        # but still aligned with robot heading (not rotated to world)
-        raw_vel = np.array([
-            float(msg.twist.twist.linear.x),
-            float(msg.twist.twist.linear.y),
-            float(msg.twist.twist.linear.z)
-        ], dtype=float)
-        
-        # Transform raw body velocity to level body frame using body tilt correction
-        # R_body_level corrects pitch/roll but preserves heading direction
-        vel_body_level = self.R_body_level @ raw_vel
-        
-        try:
-            # One-time diagnostic: check z vs x slope sign changes by logging the ratio
-            if not hasattr(self, '_logged_slope_hint') and abs(float(p_local[0])) > 1e-6:
-                slope = float(p_local[2]) / float(p_local[0])
-                self.get_logger().info(f'Leveled frame slope hint: dz/dx={slope:.4f}')
-                self._logged_slope_hint = True
-        except Exception:
-            pass
-        
-        # Body frame velocities (tilt-corrected)
-        self.current_vx = float(vel_body_level[0])  # Forward velocity (horizontal)
-        self.current_vy = float(vel_body_level[1])  # Lateral velocity (horizontal)
-        
-        # Angular velocity: transform to get yaw rate in level frame
-        # Raw angular velocity in body frame
-        raw_omega = np.array([
-            float(msg.twist.twist.angular.x),
-            float(msg.twist.twist.angular.y),
-            float(msg.twist.twist.angular.z)
-        ], dtype=float)
-        omega_body_level = self.R_body_level @ raw_omega
-        self.current_vyaw = float(omega_body_level[2])  # Yaw rate around vertical axis
-        
-        # Mark pose as initialized
-        if not self.pose_initialized:
-            self.pose_initialized = True
-            self.get_logger().info(
-                f'✓ Odometry initialized: x={self.current_x:.3f}, '
-                f'y={self.current_y:.3f}, yaw={math.degrees(self.current_yaw):.1f}°'
-            )
-            try:
-                qx, qy, qz, qw = self.align_quat
-                roll, pitch, yaw = self.quaternion_to_rpy(qx, qy, qz, qw)
-                self.get_logger().info(
-                    f'align_quat: q=({qx:.4f}, {qy:.4f}, {qz:.4f}, {qw:.4f}) | '
-                    f'rpy=({math.degrees(roll):.1f}°, {math.degrees(pitch):.1f}°, {math.degrees(yaw):.1f}°)'
-                )
-            except Exception:
-                pass
-        
-        # Update last odometry time
-        self.last_odom_time = self.get_clock().now()
-
-        # Publish corrected odometry
-        try:
-            odom_corr = Odometry()
-            odom_corr.header.stamp = msg.header.stamp
-            odom_corr.header.frame_id = msg.header.frame_id
-            # child_frame_id preserved
-            try:
-                odom_corr.child_frame_id = msg.child_frame_id
-            except Exception:
-                odom_corr.child_frame_id = ''
-            odom_corr.pose.pose.position.x = self.current_x
-            odom_corr.pose.pose.position.y = self.current_y
-            odom_corr.pose.pose.position.z = float(p_local[2])
-            odom_corr.pose.pose.orientation.x = q_local[0]
-            odom_corr.pose.pose.orientation.y = q_local[1]
-            odom_corr.pose.pose.orientation.z = q_local[2]
-            odom_corr.pose.pose.orientation.w = q_local[3]
-            
-            # Twist in TILT-CORRECTED BODY FRAME
-            # Linear velocity: horizontal forward/lateral in robot body frame
-            odom_corr.twist.twist.linear.x = self.current_vx   # Forward (horizontal)
-            odom_corr.twist.twist.linear.y = self.current_vy   # Lateral (horizontal)
-            odom_corr.twist.twist.linear.z = 0.0               # Vertical (zeroed for planar)
-            
-            # Angular velocity: yaw rate around vertical axis
-            odom_corr.twist.twist.angular.x = 0.0              # Roll rate (zeroed)
-            odom_corr.twist.twist.angular.y = 0.0              # Pitch rate (zeroed)
-            odom_corr.twist.twist.angular.z = self.current_vyaw  # Yaw rate (around vertical)
-            
-            self.odom_pub.publish(odom_corr)
-        except Exception:
-            pass
-
-    # ---------------- Utilities ----------------
-    @staticmethod
-    def quaternion_to_rpy(qx: float, qy: float, qz: float, qw: float):
+    def quaternion_to_rpy(qx, qy, qz, qw):
+        """Convert quaternion to roll, pitch, yaw."""
         sinr_cosp = 2.0 * (qw * qx + qy * qz)
         cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy)
         roll = math.atan2(sinr_cosp, cosr_cosp)
@@ -557,9 +173,147 @@ class OdomTiltCorrector(Node):
         cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return roll, pitch, yaw
-    
-    def save_transformation_details(self, R_map, R_align, R_flip, a_world, a_body, alignment_method, pitch_angle, p0_world):
-        """Save the computed transformation details to CSV and numpy files"""
+
+    # ---------------- Odom processing ----------------
+    def odom_callback(self, msg: Odometry):
+        """
+        Transform Fast-LIO2 odometry from LiDAR frame to robot's initial body frame.
+        
+        The transformation consists of:
+        1. Pitch correction: Fixed 15° rotation to account for LiDAR mount tilt
+        2. Origin shift: Robot starts at (0,0,0) in output frame
+        3. Initial yaw removal: Robot starts with yaw=0 (facing +X direction)
+        
+        Output frame is the robot's body frame at t=0:
+        - XY plane parallel to ground
+        - X axis = robot's initial forward direction
+        - Z axis = up (perpendicular to ground)
+        """
+        # Extract raw pose from Fast-LIO2 (in LiDAR world frame)
+        raw_pos = np.array([
+            float(msg.pose.pose.position.x),
+            float(msg.pose.pose.position.y),
+            float(msg.pose.pose.position.z),
+        ], dtype=float)
+        raw_q = (
+            float(msg.pose.pose.orientation.x),
+            float(msg.pose.pose.orientation.y),
+            float(msg.pose.pose.orientation.z),
+            float(msg.pose.pose.orientation.w),
+        )
+        R_lidar_world_to_body = self.quat_to_matrix(raw_q)
+
+        # ============ FIRST ODOMETRY: Compute transformation ============
+        if not self.origin_set:
+            # Store initial LiDAR pose for origin and yaw removal
+            self.p0_lidar = raw_pos.copy()
+            self.R0_lidar = R_lidar_world_to_body.copy()
+            
+            # Compute initial yaw in the pitch-corrected frame
+            # First apply pitch correction to initial orientation
+            R0_robot = self.R_lidar_to_robot @ self.R0_lidar
+            initial_yaw = self._extract_yaw_from_matrix(R0_robot)
+            
+            # Create yaw removal matrix (rotate by -initial_yaw around Z)
+            R_yaw_remove = self._build_yaw_rotation(-initial_yaw)
+            
+            # Combine into final transformation:
+            # R_init = R_yaw_remove @ R_lidar_to_robot
+            # This transforms: LiDAR world frame → Robot's initial body frame
+            self.R_init = R_yaw_remove @ self.R_lidar_to_robot
+            
+            self.origin_set = True
+            
+            self.get_logger().info(
+                f'✓ Transformation initialized:')
+            self.get_logger().info(
+                f'  Fixed pitch correction: {self.lidar_pitch_deg:.1f}°')
+            self.get_logger().info(
+                f'  Origin (LiDAR frame): [{self.p0_lidar[0]:.3f}, {self.p0_lidar[1]:.3f}, {self.p0_lidar[2]:.3f}]')
+            self.get_logger().info(
+                f'  Initial yaw removed: {math.degrees(initial_yaw):.2f}°')
+            self.get_logger().info(
+                f'  Robot starts at (0, 0, 0) with yaw=0°')
+            
+            # Save transformation details
+            self._save_transformation(initial_yaw)
+
+        # ============ TRANSFORM POSITION ============
+        # p_robot = R_init @ (p_lidar - p0_lidar)
+        p_robot = self.R_init @ (raw_pos - self.p0_lidar)
+        
+        # ============ TRANSFORM ORIENTATION ============
+        # R_robot = R_init @ R_lidar_world_to_body
+        # This gives orientation relative to robot's initial frame
+        R_robot = self.R_init @ R_lidar_world_to_body
+        q_robot = self.matrix_to_quat(R_robot)
+        
+        # Extract state for logging
+        current_x = float(p_robot[0])
+        current_y = float(p_robot[1])
+        current_yaw = self.quaternion_to_yaw(q_robot[0], q_robot[1], q_robot[2], q_robot[3])
+        
+        # ============ TRANSFORM VELOCITIES ============
+        # Velocities are in LiDAR body frame, transform to robot body frame
+        # Only need pitch correction (not yaw removal, since velocity is body-relative)
+        raw_vel = np.array([
+            float(msg.twist.twist.linear.x),
+            float(msg.twist.twist.linear.y),
+            float(msg.twist.twist.linear.z)
+        ], dtype=float)
+        
+        # Transform velocity from LiDAR body frame to robot body frame
+        vel_robot = self.R_lidar_to_robot @ raw_vel
+        
+        # Transform angular velocity
+        raw_omega = np.array([
+            float(msg.twist.twist.angular.x),
+            float(msg.twist.twist.angular.y),
+            float(msg.twist.twist.angular.z)
+        ], dtype=float)
+        omega_robot = self.R_lidar_to_robot @ raw_omega
+        
+        # ============ LOG FIRST POSE ============
+        if not self.pose_initialized:
+            self.pose_initialized = True
+            r, p, y = self.quaternion_to_rpy(q_robot[0], q_robot[1], q_robot[2], q_robot[3])
+            self.get_logger().info(
+                f'✓ First pose in robot frame: '
+                f'pos=[{current_x:.3f}, {current_y:.3f}, {p_robot[2]:.3f}] '
+                f'rpy=[{math.degrees(r):.1f}°, {math.degrees(p):.1f}°, {math.degrees(y):.1f}°]')
+
+        # ============ PUBLISH CORRECTED ODOMETRY ============
+        odom_corr = Odometry()
+        odom_corr.header.stamp = msg.header.stamp
+        odom_corr.header.frame_id = 'robot_init'  # Robot's initial frame
+        odom_corr.child_frame_id = 'robot_body'
+        
+        # Position in robot's initial frame
+        odom_corr.pose.pose.position.x = current_x
+        odom_corr.pose.pose.position.y = current_y
+        odom_corr.pose.pose.position.z = float(p_robot[2])
+        
+        # Orientation relative to robot's initial frame
+        odom_corr.pose.pose.orientation.x = q_robot[0]
+        odom_corr.pose.pose.orientation.y = q_robot[1]
+        odom_corr.pose.pose.orientation.z = q_robot[2]
+        odom_corr.pose.pose.orientation.w = q_robot[3]
+        
+        # Velocity in robot body frame (pitch-corrected, level with ground)
+        odom_corr.twist.twist.linear.x = float(vel_robot[0])   # Forward
+        odom_corr.twist.twist.linear.y = float(vel_robot[1])   # Lateral
+        odom_corr.twist.twist.linear.z = float(vel_robot[2])   # Vertical
+        
+        # Angular velocity in robot body frame
+        odom_corr.twist.twist.angular.x = float(omega_robot[0])
+        odom_corr.twist.twist.angular.y = float(omega_robot[1])
+        odom_corr.twist.twist.angular.z = float(omega_robot[2])
+        
+        self.odom_pub.publish(odom_corr)
+
+    # ---------------- Save transformation ----------------
+    def _save_transformation(self, initial_yaw):
+        """Save the transformation details to files."""
         if not self.save_directory or not os.path.exists(self.save_directory):
             self.get_logger().warn(f'Save directory not set or does not exist: {self.save_directory}')
             return
@@ -568,84 +322,49 @@ class OdomTiltCorrector(Node):
             timestamp = datetime.now()
             timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
             
-            # Save rotation matrices as numpy binary (for precise reconstruction)
-            np_file = os.path.join(self.save_directory, f'tilt_correction_matrices_{timestamp_str}.npz')
+            # Save rotation matrices as numpy binary
+            np_file = os.path.join(self.save_directory, f'lidar_to_robot_transform_{timestamp_str}.npz')
             np.savez(
                 np_file,
-                R_map=R_map,
-                R_align=R_align,
-                R_flip=R_flip,
-                a_world=a_world,
-                a_body=a_body,
-                pitch_angle=pitch_angle,
-                p0_world=p0_world,
+                R_init=self.R_init,
+                R_lidar_to_robot=self.R_lidar_to_robot,
+                p0_lidar=self.p0_lidar,
+                initial_yaw=initial_yaw,
+                lidar_pitch_deg=self.lidar_pitch_deg,
                 timestamp=timestamp_str
             )
             
-            # Save human-readable CSV with transformation details
-            csv_file = os.path.join(self.save_directory, f'tilt_correction_details_{timestamp_str}.csv')
+            # Save human-readable CSV
+            csv_file = os.path.join(self.save_directory, f'lidar_to_robot_transform_{timestamp_str}.csv')
             with open(csv_file, 'w') as f:
-                f.write('# Tilt Correction Transformation Details\n')
+                f.write('# LiDAR to Robot Frame Transformation\n')
                 f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
-                f.write(f'# Method: {alignment_method}\n')
-                f.write(f'# Pitch Angle: {math.degrees(pitch_angle):.6f} degrees ({pitch_angle:.6f} radians)\n')
                 f.write('#\n')
-                
-                # Origin offset
-                f.write('# Origin Offset (p0_world - first raw odometry position)\n')
-                f.write(f'p0_world_x,p0_world_y,p0_world_z\n')
-                f.write(f'{p0_world[0]:.6f},{p0_world[1]:.6f},{p0_world[2]:.6f}\n')
+                f.write(f'# LiDAR mount pitch: {self.lidar_pitch_deg:.1f} degrees (fixed)\n')
+                f.write(f'# Initial yaw removed: {math.degrees(initial_yaw):.2f} degrees\n')
                 f.write('#\n')
-                f.write('# Complete Transformation Formula:\n')
-                f.write('# p_corrected = R_map @ (p_raw - p0_world)\n')
+                f.write('# Transformation formula:\n')
+                f.write('#   p_robot = R_init @ (p_lidar - p0_lidar)\n')
+                f.write('#   R_robot = R_init @ R_lidar\n')
+                f.write('#   v_robot = R_lidar_to_robot @ v_lidar\n')
                 f.write('#\n')
-                
-                # Acceleration vectors
-                f.write('# Acceleration Body Frame (raw IMU average)\n')
-                f.write(f'accel_body_x,accel_body_y,accel_body_z\n')
-                f.write(f'{a_body[0]:.6f},{a_body[1]:.6f},{a_body[2]:.6f}\n')
+                f.write('# Origin (first odometry in LiDAR frame)\n')
+                f.write(f'p0_lidar_x,{self.p0_lidar[0]:.6f}\n')
+                f.write(f'p0_lidar_y,{self.p0_lidar[1]:.6f}\n')
+                f.write(f'p0_lidar_z,{self.p0_lidar[2]:.6f}\n')
                 f.write('#\n')
-                
-                f.write('# Gravity Direction World Frame (before correction)\n')
-                f.write(f'gravity_world_x,gravity_world_y,gravity_world_z\n')
-                f.write(f'{a_world[0]:.6f},{a_world[1]:.6f},{a_world[2]:.6f}\n')
-                f.write('#\n')
-                
-                # Rotation matrices
-                f.write('# R_align (Tilt Alignment Matrix)\n')
-                f.write('R_align_00,R_align_01,R_align_02\n')
-                f.write('R_align_10,R_align_11,R_align_12\n')
-                f.write('R_align_20,R_align_21,R_align_22\n')
+                f.write('# R_lidar_to_robot (pitch correction matrix)\n')
                 for i in range(3):
-                    f.write(f'{R_align[i,0]:.8f},{R_align[i,1]:.8f},{R_align[i,2]:.8f}\n')
+                    f.write(f'{self.R_lidar_to_robot[i,0]:.8f},{self.R_lidar_to_robot[i,1]:.8f},{self.R_lidar_to_robot[i,2]:.8f}\n')
                 f.write('#\n')
-                
-                f.write('# R_flip (Coordinate Flip Matrix)\n')
-                f.write('R_flip_00,R_flip_01,R_flip_02\n')
-                f.write('R_flip_10,R_flip_11,R_flip_12\n')
-                f.write('R_flip_20,R_flip_21,R_flip_22\n')
+                f.write('# R_init (full transformation matrix)\n')
                 for i in range(3):
-                    f.write(f'{R_flip[i,0]:.8f},{R_flip[i,1]:.8f},{R_flip[i,2]:.8f}\n')
-                f.write('#\n')
-                
-                f.write('# R_map (Final Transformation: R_flip @ R_align)\n')
-                f.write('R_map_00,R_map_01,R_map_02\n')
-                f.write('R_map_10,R_map_11,R_map_12\n')
-                f.write('R_map_20,R_map_21,R_map_22\n')
-                for i in range(3):
-                    f.write(f'{R_map[i,0]:.8f},{R_map[i,1]:.8f},{R_map[i,2]:.8f}\n')
-                f.write('#\n')
-                
-                # Verification: corrected gravity
-                a_corrected = R_map @ a_world
-                f.write('# Gravity After Correction (should be [0, 0, -1])\n')
-                f.write(f'gravity_corrected_x,gravity_corrected_y,gravity_corrected_z\n')
-                f.write(f'{a_corrected[0]:.6f},{a_corrected[1]:.6f},{a_corrected[2]:.6f}\n')
+                    f.write(f'{self.R_init[i,0]:.8f},{self.R_init[i,1]:.8f},{self.R_init[i,2]:.8f}\n')
             
             self.get_logger().info(f'✓ Transformation saved to:\n  - {np_file}\n  - {csv_file}')
             
         except Exception as e:
-            self.get_logger().error(f'Failed to save transformation details: {e}')
+            self.get_logger().error(f'Failed to save transformation: {e}')
 
 
 def main(args=None):
@@ -662,5 +381,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
-

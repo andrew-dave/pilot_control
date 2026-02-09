@@ -74,7 +74,8 @@ def generate_launch_description():
     base_data_dir = '/R_DATA'
     folder_paths = setup_data_folders(base_data_dir)
     
-    # Odometry Tilt Corrector (Node launch for timing consistency)
+    # Odometry Tilt Corrector - transforms LiDAR frame to robot body frame
+    # Uses fixed 15° pitch correction based on LiDAR mount angle (no IMU needed)
     odom_tilt_corrector_node = Node(
         package='pilot_control',
         executable='odom_tilt_corrector',
@@ -82,9 +83,8 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'odometry_topic': '/Odometry',
-            'accel_topic': '/livox/imu',
-            'accel_samples': 10,
             'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
+            'lidar_pitch_deg': 15.0,  # Fixed LiDAR mount angle (degrees)
             'save_directory': folder_paths['section_folder']  # Save transformation to session folder
         }]
     )
