@@ -17,9 +17,10 @@ Usage:
     ros2 run pilot_control tilt_calibration [--ros-args -p num_samples:=100]
 
 The calibration result is saved to:
-    <pilot_control>/config/tilt_correction_matrices.npz
+    /R_DATA/tilt_calibration/tilt_correction_matrices_<index>.npz
 
-All nodes that need tilt correction should load this file.
+Where <index> is auto-incremented (0, 1, 2, ...).
+The launch file automatically loads the latest (highest index) file.
 """
 import rclpy
 from rclpy.node import Node
@@ -30,8 +31,81 @@ import numpy as np
 import math
 import os
 import sys
+import re
+import glob
 from datetime import datetime
-from ament_index_python.packages import get_package_share_directory
+
+
+# Default calibration directory
+TILT_CALIBRATION_DIR = '/R_DATA/tilt_calibration'
+
+
+def get_latest_calibration_file(calibration_dir=TILT_CALIBRATION_DIR):
+    """
+    Find the latest (highest index) tilt_correction_matrices_*.npz file.
+    
+    Args:
+        calibration_dir: Directory containing calibration files
+        
+    Returns:
+        Path to the latest calibration file, or empty string if none found
+    """
+    if not os.path.exists(calibration_dir):
+        return ''
+    
+    pattern = os.path.join(calibration_dir, 'tilt_correction_matrices_*.npz')
+    files = glob.glob(pattern)
+    
+    if not files:
+        return ''
+    
+    # Extract indices and find the maximum
+    max_index = -1
+    latest_file = ''
+    
+    for f in files:
+        basename = os.path.basename(f)
+        match = re.match(r'tilt_correction_matrices_(\d+)\.npz', basename)
+        if match:
+            index = int(match.group(1))
+            if index > max_index:
+                max_index = index
+                latest_file = f
+    
+    return latest_file
+
+
+def get_next_calibration_index(calibration_dir=TILT_CALIBRATION_DIR):
+    """
+    Get the next available index for a new calibration file.
+    
+    Args:
+        calibration_dir: Directory containing calibration files
+        
+    Returns:
+        Next available index (0 if no files exist)
+    """
+    if not os.path.exists(calibration_dir):
+        return 0
+    
+    pattern = os.path.join(calibration_dir, 'tilt_correction_matrices_*.npz')
+    files = glob.glob(pattern)
+    
+    if not files:
+        return 0
+    
+    # Extract indices and find the maximum
+    max_index = -1
+    
+    for f in files:
+        basename = os.path.basename(f)
+        match = re.match(r'tilt_correction_matrices_(\d+)\.npz', basename)
+        if match:
+            index = int(match.group(1))
+            if index > max_index:
+                max_index = index
+    
+    return max_index + 1
 
 
 class TiltCalibration(Node):
@@ -43,13 +117,13 @@ class TiltCalibration(Node):
         self.declare_parameter('odometry_topic', '/Odometry')
         self.declare_parameter('num_samples', 100)  # Number of IMU samples to average
         self.declare_parameter('timeout_sec', 30.0)  # Timeout in seconds
-        self.declare_parameter('output_file', '')  # Override output path (optional)
+        self.declare_parameter('calibration_dir', TILT_CALIBRATION_DIR)  # Calibration directory
 
         self.imu_topic = str(self.get_parameter('imu_topic').value)
         self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.num_samples = int(self.get_parameter('num_samples').value)
         self.timeout_sec = float(self.get_parameter('timeout_sec').value)
-        self.output_file = str(self.get_parameter('output_file').value)
+        self.calibration_dir = str(self.get_parameter('calibration_dir').value)
 
         # State - IMU averaging
         self.accel_sum = np.zeros(3, dtype=float)
@@ -65,25 +139,16 @@ class TiltCalibration(Node):
         self.calibration_complete = False
         self.calibration_success = False
 
-        # Determine output path
-        if not self.output_file:
-            try:
-                # Try source directory first (more reliable for development)
-                source_config = os.path.join(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    'config'
-                )
-                if os.path.exists(source_config):
-                    config_dir = source_config
-                else:
-                    # Fallback to share directory
-                    pkg_share = get_package_share_directory('pilot_control')
-                    config_dir = os.path.join(pkg_share, 'config')
-                    
-                self.output_file = os.path.join(config_dir, 'tilt_correction_matrices.npz')
-            except Exception as e:
-                self.get_logger().error(f'Could not determine config directory: {e}')
-                self.output_file = '/tmp/tilt_correction_matrices.npz'
+        # Determine output path with auto-incrementing index
+        # Create calibration directory if it doesn't exist
+        os.makedirs(self.calibration_dir, exist_ok=True)
+        
+        # Get next available index
+        self.calibration_index = get_next_calibration_index(self.calibration_dir)
+        self.output_file = os.path.join(
+            self.calibration_dir, 
+            f'tilt_correction_matrices_{self.calibration_index}.npz'
+        )
 
         # Subscriptions
         self.imu_sub = self.create_subscription(
@@ -103,7 +168,16 @@ class TiltCalibration(Node):
         self.get_logger().info(f'Odometry topic: {self.odom_topic}')
         self.get_logger().info(f'Samples to collect: {self.num_samples}')
         self.get_logger().info(f'Timeout: {self.timeout_sec}s')
-        self.get_logger().info(f'Output file: {self.output_file}')
+        self.get_logger().info(f'Calibration directory: {self.calibration_dir}')
+        self.get_logger().info(f'Output file: {self.output_file} (index={self.calibration_index})')
+        
+        # Show existing calibrations
+        latest = get_latest_calibration_file(self.calibration_dir)
+        if latest:
+            self.get_logger().info(f'Previous latest: {os.path.basename(latest)}')
+        else:
+            self.get_logger().info('No previous calibrations found')
+        
         self.get_logger().info('')
         self.get_logger().info('IMPORTANT: Keep the robot STATIONARY on LEVEL GROUND!')
         self.get_logger().info('='*60)
