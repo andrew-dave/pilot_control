@@ -7,6 +7,12 @@ It collects IMU accelerometer samples to determine the gravity vector,
 then computes the rotation matrix needed to align the LiDAR frame with
 the robot's body frame (ground-aligned).
 
+This implements the same algorithm as the original odom_tilt_corrector.py:
+- Collects IMU samples and averages them
+- Computes R_align using pitch-only correction from gravity
+- Applies R_flip coordinate flip
+- Saves R_map = R_flip @ R_align
+
 Usage:
     ros2 run pilot_control tilt_calibration [--ros-args -p num_samples:=100]
 
@@ -18,6 +24,7 @@ All nodes that need tilt correction should load this file.
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 import numpy as np
 import math
@@ -33,18 +40,28 @@ class TiltCalibration(Node):
 
         # Parameters
         self.declare_parameter('imu_topic', '/livox/imu')
+        self.declare_parameter('odometry_topic', '/Odometry')
         self.declare_parameter('num_samples', 100)  # Number of IMU samples to average
         self.declare_parameter('timeout_sec', 30.0)  # Timeout in seconds
         self.declare_parameter('output_file', '')  # Override output path (optional)
 
         self.imu_topic = str(self.get_parameter('imu_topic').value)
+        self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.num_samples = int(self.get_parameter('num_samples').value)
         self.timeout_sec = float(self.get_parameter('timeout_sec').value)
         self.output_file = str(self.get_parameter('output_file').value)
 
-        # State
+        # State - IMU averaging
         self.accel_sum = np.zeros(3, dtype=float)
         self.accel_count = 0
+        self.accel_avg = None
+        self.accel_initialized = False
+        
+        # State - Odometry (for transforming gravity to world frame)
+        self.last_odom_q = None
+        self.odom_received = False
+        
+        # State - Calibration
         self.calibration_complete = False
         self.calibration_success = False
 
@@ -68,9 +85,12 @@ class TiltCalibration(Node):
                 self.get_logger().error(f'Could not determine config directory: {e}')
                 self.output_file = '/tmp/tilt_correction_matrices.npz'
 
-        # Subscription
+        # Subscriptions
         self.imu_sub = self.create_subscription(
             Imu, self.imu_topic, self.imu_callback, qos_profile_sensor_data
+        )
+        self.odom_sub = self.create_subscription(
+            Odometry, self.odom_topic, self.odom_callback, qos_profile_sensor_data
         )
 
         # Timeout timer
@@ -80,6 +100,7 @@ class TiltCalibration(Node):
         self.get_logger().info('TILT CALIBRATION')
         self.get_logger().info('='*60)
         self.get_logger().info(f'IMU topic: {self.imu_topic}')
+        self.get_logger().info(f'Odometry topic: {self.odom_topic}')
         self.get_logger().info(f'Samples to collect: {self.num_samples}')
         self.get_logger().info(f'Timeout: {self.timeout_sec}s')
         self.get_logger().info(f'Output file: {self.output_file}')
@@ -88,8 +109,62 @@ class TiltCalibration(Node):
         self.get_logger().info('='*60)
         self.get_logger().info(f'Collecting IMU samples... (0/{self.num_samples})')
 
+    # ---------------- Quaternion/Matrix utilities ----------------
+    @staticmethod
+    def quat_to_matrix(q):
+        """Convert quaternion (x, y, z, w) to rotation matrix."""
+        x, y, z, w = q
+        xx = x * x; yy = y * y; zz = z * z
+        xy = x * y; xz = x * z; yz = y * z
+        wx = w * x; wy = w * y; wz = w * z
+        R = np.array([
+            [1.0 - 2.0 * (yy + zz),     2.0 * (xy - wz),         2.0 * (xz + wy)],
+            [    2.0 * (xy + wz),   1.0 - 2.0 * (xx + zz),       2.0 * (yz - wx)],
+            [    2.0 * (xz - wy),       2.0 * (yz + wx),     1.0 - 2.0 * (xx + yy)]
+        ], dtype=float)
+        return R
+
+    @staticmethod
+    def compute_tilt_correction_matrix(a_world):
+        """
+        Compute PURE PITCH correction around Y-axis ONLY.
+        Assumes LiDAR is mounted with tilt only in the forward direction (pitch),
+        not sideways (roll).
+        
+        This gives a rotation matrix that:
+        - Corrects the forward/backward tilt (pitch around Y)
+        - Preserves yaw completely (no rotation around Z)
+        - Ignores any roll component (assumes it's sensor noise)
+        
+        Input: a_world = gravity direction in world frame (normalized)
+        Output: rotation matrix for pitch correction only
+        """
+        a_world = np.array(a_world, dtype=float)
+        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
+        
+        # Target: gravity pointing down [0, 0, -1]
+        # Already aligned?
+        if a_world[2] < -0.9999:
+            return np.eye(3, dtype=float), 0.0
+        
+        # Extract ONLY pitch (rotation around Y-axis)
+        # Project gravity onto XZ plane (forward-backward tilt)
+        # Ignore the Y component (assume no roll, just sensor noise)
+        pitch = np.arctan2(a_world[0], -a_world[2])
+        
+        # Build pure pitch rotation matrix around Y-axis
+        cp = np.cos(pitch)
+        sp = np.sin(pitch)
+        
+        R_pitch = np.array([[cp,  0.0, sp],
+                            [0.0, 1.0, 0.0],
+                            [-sp, 0.0, cp]], dtype=float)
+        
+        return R_pitch, pitch
+
+    # ---------------- IMU callback ----------------
     def imu_callback(self, msg: Imu):
-        if self.calibration_complete:
+        if self.calibration_complete or self.accel_initialized:
             return
 
         # Extract acceleration
@@ -114,57 +189,105 @@ class TiltCalibration(Node):
 
         # Check if we have enough samples
         if self.accel_count >= self.num_samples:
+            self.accel_avg = self.accel_sum / float(self.accel_count)
+            self.accel_initialized = True
+            self.get_logger().info(
+                f'IMU accel averaged (N={self.accel_count}): '
+                f'{self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f} — waiting for odom'
+            )
+            
+            # If we already have odometry, compute calibration
+            if self.odom_received:
+                self.compute_calibration()
+
+    # ---------------- Odometry callback ----------------
+    def odom_callback(self, msg: Odometry):
+        if self.calibration_complete:
+            return
+
+        # Store the latest orientation
+        self.last_odom_q = (
+            float(msg.pose.pose.orientation.x),
+            float(msg.pose.pose.orientation.y),
+            float(msg.pose.pose.orientation.z),
+            float(msg.pose.pose.orientation.w),
+        )
+        
+        if not self.odom_received:
+            self.odom_received = True
+            self.get_logger().info('Odometry received')
+        
+        # If IMU is ready, compute calibration
+        if self.accel_initialized:
             self.compute_calibration()
 
+    # ---------------- Timeout callback ----------------
     def timeout_callback(self):
         if not self.calibration_complete:
             self.get_logger().error(
-                f'Timeout! Only collected {self.accel_count}/{self.num_samples} samples')
-            self.get_logger().error('Check that IMU is publishing on the correct topic')
+                f'Timeout! IMU samples: {self.accel_count}/{self.num_samples}, '
+                f'Odom received: {self.odom_received}')
+            if self.accel_count < self.num_samples:
+                self.get_logger().error(f'Check that IMU is publishing on {self.imu_topic}')
+            if not self.odom_received:
+                self.get_logger().error(f'Check that odometry is publishing on {self.odom_topic}')
             self.calibration_complete = True
             self.calibration_success = False
             rclpy.shutdown()
 
+    # ---------------- Compute calibration ----------------
     def compute_calibration(self):
         """Compute tilt correction matrices from collected IMU samples."""
+        if self.calibration_complete:
+            return
+            
         self.calibration_complete = True
 
-        # Average the acceleration samples
-        accel_avg = self.accel_sum / float(self.accel_count)
+        self.get_logger().info('')
+        self.get_logger().info('='*60)
+        self.get_logger().info('COMPUTING CALIBRATION')
+        self.get_logger().info('='*60)
+
+        # Normalize body-frame gravity
+        a_body_norm = self.accel_avg / (np.linalg.norm(self.accel_avg) + 1e-12)
+        self.get_logger().info(
+            f'Gravity in body frame (normalized): '
+            f'[{a_body_norm[0]:.4f}, {a_body_norm[1]:.4f}, {a_body_norm[2]:.4f}]')
+
+        # Transform gravity to world frame using odometry orientation
+        R_wb = self.quat_to_matrix(self.last_odom_q)
+        a_world = R_wb @ a_body_norm
+        self.get_logger().info(
+            f'Gravity in world frame: '
+            f'[{a_world[0]:.4f}, {a_world[1]:.4f}, {a_world[2]:.4f}]')
+
+        # Fixed coordinate system flip (same as original odom_tilt_corrector)
+        R_flip = np.array([[-1.0, 0.0, 0.0],
+                           [ 0.0, 1.0, 0.0],
+                           [ 0.0, 0.0,-1.0]], dtype=float)
+
+        # Compute pitch-only correction from world-frame gravity
+        R_align, pitch_angle = self.compute_tilt_correction_matrix(a_world)
+        pitch_deg = math.degrees(pitch_angle)
+
+        # Final transformation: R_map = R_flip @ R_align
+        R_map = R_flip @ R_align
 
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('CALIBRATION RESULTS')
         self.get_logger().info('='*60)
-        self.get_logger().info(
-            f'Averaged acceleration (IMU frame): '
-            f'[{accel_avg[0]:.4f}, {accel_avg[1]:.4f}, {accel_avg[2]:.4f}] m/s²')
+        self.get_logger().info(f'Pitch angle: {pitch_deg:.2f}°')
 
-        # Normalize to get gravity direction in IMU/LiDAR body frame
-        a_body_norm = accel_avg / (np.linalg.norm(accel_avg) + 1e-12)
-
-        self.get_logger().info(
-            f'Gravity direction (normalized): '
-            f'[{a_body_norm[0]:.4f}, {a_body_norm[1]:.4f}, {a_body_norm[2]:.4f}]')
-
-        # Compute pitch correction matrix from gravity measurement
-        # This is the same approach used in the original odom_tilt_corrector.py
-        R_map, pitch_angle = self.compute_pitch_correction_matrix(a_body_norm)
-
-        pitch_deg = math.degrees(pitch_angle)
-
-        self.get_logger().info('')
-        self.get_logger().info(f'Estimated LiDAR mount pitch: {pitch_deg:.2f}°')
-
-        # Verify: gravity should now point to [0, 0, -g] after correction
-        g_corrected = R_map @ a_body_norm
+        # Verify: gravity should now point to [0, 0, -1] after correction
+        a_corrected = R_map @ a_world
         self.get_logger().info(
             f'Gravity after correction: '
-            f'[{g_corrected[0]:.4f}, {g_corrected[1]:.4f}, {g_corrected[2]:.4f}]')
+            f'[{a_corrected[0]:.4f}, {a_corrected[1]:.4f}, {a_corrected[2]:.4f}]')
         self.get_logger().info(f'  (should be close to [0, 0, -1])')
 
         # Save calibration
-        self._save_calibration(R_map, accel_avg, pitch_deg)
+        self._save_calibration(R_map, R_align, R_flip, a_world, a_body_norm, pitch_angle)
 
         self.get_logger().info('')
         self.get_logger().info('='*60)
@@ -179,51 +302,9 @@ class TiltCalibration(Node):
         self.calibration_success = True
         rclpy.shutdown()
 
-    @staticmethod
-    def compute_pitch_correction_matrix(gravity_vec):
-        """
-        Compute PURE PITCH correction around Y-axis from gravity measurement.
-        
-        This is the same algorithm used in the original odom_tilt_corrector.py.
-        
-        The LiDAR is mounted tilted forward (pitch). We want to find the rotation
-        that makes the measured gravity vector point straight down [0, 0, -1].
-        
-        Input: gravity_vec = gravity direction measured in LiDAR body frame (normalized)
-        Output: (R_map, pitch_angle) where R_map rotates LiDAR frame to level frame
-        
-        In robot body frame (level), gravity should point to [0, 0, -1] (down in Z).
-        """
-        g = np.array(gravity_vec, dtype=float)
-        g = g / (np.linalg.norm(g) + 1e-12)  # Ensure normalized
-
-        # If gravity already points down in Z, no correction needed
-        if abs(g[2] + 1.0) < 1e-6:
-            return np.eye(3), 0.0
-
-        # Extract pitch angle: rotation around Y-axis needed to align gravity to -Z
-        # Project gravity onto XZ plane to get pitch
-        # pitch = angle from -Z axis to gravity vector in XZ plane
-        gx, gz = g[0], g[2]
-        
-        # atan2(gx, -gz) gives the angle from -Z to gravity in XZ plane
-        # This is the pitch angle we need to correct
-        pitch_angle = math.atan2(gx, -gz)
-
-        # Build rotation matrix around Y-axis by -pitch_angle (to undo the tilt)
-        cp = math.cos(-pitch_angle)
-        sp = math.sin(-pitch_angle)
-        
-        R_pitch = np.array([
-            [cp,  0.0, sp],
-            [0.0, 1.0, 0.0],
-            [-sp, 0.0, cp]
-        ], dtype=float)
-
-        return R_pitch, pitch_angle
-
-    def _save_calibration(self, R_map, accel_avg, pitch_deg):
-        """Save calibration results to .npz file."""
+    # ---------------- Save calibration ----------------
+    def _save_calibration(self, R_map, R_align, R_flip, a_world, a_body, pitch_angle):
+        """Save calibration results to .npz file (same format as original odom_tilt_corrector)."""
         try:
             # Ensure output directory exists
             output_dir = os.path.dirname(self.output_file)
@@ -234,15 +315,16 @@ class TiltCalibration(Node):
             timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
 
             # Save in format compatible with raw_map_saver.cpp and odom_tilt_corrector.py
-            # R_map: rotation matrix to transform from LiDAR frame to gravity-aligned frame
-            # p0_world: origin offset (zero for calibration - will be set at runtime)
+            # Same keys as original save_transformation_details()
             np.savez(
                 self.output_file,
                 R_map=R_map,
-                p0_world=np.zeros(3),  # Origin set at runtime by odom_tilt_corrector
-                accel_avg=accel_avg,
-                pitch_deg=pitch_deg,
-                num_samples=self.accel_count,
+                R_align=R_align,
+                R_flip=R_flip,
+                a_world=a_world,
+                a_body=a_body,
+                pitch_angle=pitch_angle,
+                p0_world=np.zeros(3),  # Origin set at runtime
                 timestamp=timestamp_str
             )
 
@@ -253,17 +335,35 @@ class TiltCalibration(Node):
                 f.write(f'# Generated: {timestamp.strftime("%Y-%m-%d %H:%M:%S")}\n')
                 f.write(f'# Samples collected: {self.accel_count}\n')
                 f.write('#\n')
-                f.write(f'# Estimated mount pitch angle:\n')
-                f.write(f'pitch_deg,{pitch_deg:.4f}\n')
+                f.write(f'# Pitch Angle: {math.degrees(pitch_angle):.6f} degrees ({pitch_angle:.6f} radians)\n')
                 f.write('#\n')
-                f.write('# Averaged acceleration (m/s²)\n')
-                f.write(f'accel_x,{accel_avg[0]:.6f}\n')
-                f.write(f'accel_y,{accel_avg[1]:.6f}\n')
-                f.write(f'accel_z,{accel_avg[2]:.6f}\n')
+                f.write('# Acceleration Body Frame (raw IMU average, normalized)\n')
+                f.write(f'accel_body_x,{a_body[0]:.6f}\n')
+                f.write(f'accel_body_y,{a_body[1]:.6f}\n')
+                f.write(f'accel_body_z,{a_body[2]:.6f}\n')
                 f.write('#\n')
-                f.write('# R_map (pitch correction rotation matrix)\n')
+                f.write('# Gravity Direction World Frame (before correction)\n')
+                f.write(f'gravity_world_x,{a_world[0]:.6f}\n')
+                f.write(f'gravity_world_y,{a_world[1]:.6f}\n')
+                f.write(f'gravity_world_z,{a_world[2]:.6f}\n')
+                f.write('#\n')
+                f.write('# R_align (Tilt Alignment Matrix - pitch only)\n')
+                for i in range(3):
+                    f.write(f'{R_align[i,0]:.8f},{R_align[i,1]:.8f},{R_align[i,2]:.8f}\n')
+                f.write('#\n')
+                f.write('# R_flip (Coordinate Flip Matrix)\n')
+                for i in range(3):
+                    f.write(f'{R_flip[i,0]:.8f},{R_flip[i,1]:.8f},{R_flip[i,2]:.8f}\n')
+                f.write('#\n')
+                f.write('# R_map (Final Transformation: R_flip @ R_align)\n')
                 for i in range(3):
                     f.write(f'{R_map[i,0]:.8f},{R_map[i,1]:.8f},{R_map[i,2]:.8f}\n')
+                f.write('#\n')
+                f.write('# Gravity After Correction (should be [0, 0, -1])\n')
+                a_corrected = R_map @ a_world
+                f.write(f'gravity_corrected_x,{a_corrected[0]:.6f}\n')
+                f.write(f'gravity_corrected_y,{a_corrected[1]:.6f}\n')
+                f.write(f'gravity_corrected_z,{a_corrected[2]:.6f}\n')
 
             self.get_logger().info(f'Also saved CSV: {csv_file}')
 
