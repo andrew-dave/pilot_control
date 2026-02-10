@@ -497,21 +497,40 @@ class GPRScanController(Node):
     
     def stop_callback(self, request, response):
         """
-        Stop GPR scanning completely - close files, lower actuator, and save.
-        This does NOT break the node - it can start a new scan afterwards.
+        Stop GPR scanning completely via coordinator.
+        Uses the same graceful shutdown as the G-key toggle: motor stop,
+        post-stop logging period, then actuator down and file close.
+        This does NOT break the node — it can start a new scan afterwards.
         """
         with self.lock:
+            if not self.scanning and not self.stopping and not self.logging_active:
+                # Nothing is running — just make sure state is clean
+                self.get_logger().info('GPR scan not active — nothing to stop')
+                response.success = True
+                response.message = 'GPR scan not active'
+                return response
+            
             self.get_logger().info('='*60)
             self.get_logger().info('GPR SCAN STOPPING (via coordinator)')
             self.get_logger().info('='*60)
             
-            # Cancel any pending timers
+            # Cancel any pending motor-start timer (scan may still be in startup phase)
             if self.motor_start_timer:
                 self.motor_start_timer.cancel()
                 self.motor_start_timer = None
+            
+            # Cancel any previous stop timer (in case stop_scan was already called)
             if self.stop_timer:
                 self.stop_timer.cancel()
                 self.stop_timer = None
+            
+            # Un-pause if paused, so the post-stop logging can write final rows
+            self.paused = False
+            
+            # Log the KEY_PRESS_STOP event while CSV is still open
+            if self.logging_active and self.csv_writer:
+                self.log_event_now('KEY_PRESS_STOP')
+                self.current_event = 'MOTOR_STOPPING'
             
             # Stop motor
             msg = ControlMessage()
@@ -523,48 +542,26 @@ class GPRScanController(Node):
             self.gpr_motor_pub.publish(msg)
             self.get_logger().info('  ✓ GPR motor stopped')
             
-            # Reset state flags (ready for next scan)
             self.scanning = False
-            self.paused = False
-            self.logging_active = False
             self.motor_enabled = False
-            self.stopping = False
             self.gpr_motor_started = False
             
-            # Close log file
-            if self.log_file_handle:
-                try:
-                    self.log_file_handle.close()
-                    self.get_logger().info(f'  ✓ GPR CSV file closed: {self.current_log_file}')
-                except Exception as e:
-                    self.get_logger().error(f'  ✗ Error closing log file: {e}')
-                self.log_file_handle = None
-                self.csv_writer = None
+            # Keep logging_active=True and stopping=True so the 50 Hz timer
+            # continues writing POST_STOP rows during the grace period.
+            self.stopping = True
+            self.post_stop_time = time.time()
             
-            # Lower linear actuator (line down) - use non-blocking call
-            self.get_logger().info('  Lowering linear actuator...')
-            if self.line_stop_client.wait_for_service(timeout_sec=1.0):
-                future = self.line_stop_client.call_async(Trigger.Request())
-                # Use polling instead of spin_until_future_complete to avoid re-entrant spinning
-                start_time = time.time()
-                while not future.done() and (time.time() - start_time) < 2.0:
-                    time.sleep(0.05)
-                if future.done() and future.result() and future.result().success:
-                    self.get_logger().info('  ✓ Linear actuator lowered')
-                else:
-                    self.get_logger().warn('  ⚠️  Linear actuator stop failed or timed out')
-            else:
-                self.get_logger().warn('  ⚠️  Linear actuator service not available')
-            
-            logged_samples = self.log_count
-            # Reset log count for next scan
-            self.log_count = 0
-            
-            response.success = True
-            response.message = f'GPR scan stopped. Logged {logged_samples} samples. Ready for new scan.'
-            self.get_logger().info(f'✓ GPR scan STOPPED - {logged_samples} samples logged')
-            self.get_logger().info('✓ Ready for new scan')
-            self.get_logger().info('='*60)
+            self.get_logger().info(
+                f'  ⏳ Continuing 50 Hz logging for {self.post_stop_duration}s...')
+        
+        # Schedule the same delayed cleanup that stop_scan() uses.
+        # delayed_stop_cleanup will close the CSV, lower the actuator, and reset state.
+        self.stop_timer = self.create_timer(
+            self.post_stop_duration, self.delayed_stop_cleanup)
+        
+        # We must respond now — the file will be closed asynchronously.
+        response.success = True
+        response.message = 'GPR scan stopping (post-stop logging in progress)'
         return response
     
     def rosbag_start_callback(self, request, response):
