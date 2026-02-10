@@ -50,31 +50,9 @@ def find_next_section_number(day_folder_path):
     return max(section_numbers) + 1
 
 
-def setup_day_folder_only(base_directory):
-    """
-    Create only the day folder (Month_Day_Year). No section folder is created.
-    Section folders are created dynamically by data_collection_coordinator when
-    /dc/start is called (using current time at start, not launch time).
-    
-    Returns:
-        dict: base_directory, day_folder, day_name
-    """
-    base_path = Path(base_directory).expanduser()
-    day_folder_name = get_day_folder_name()
-    day_folder = base_path / day_folder_name
-    day_folder.mkdir(parents=True, exist_ok=True)
-    return {
-        'base_directory': str(base_path),
-        'day_folder': str(day_folder),
-        'day_name': day_folder_name,
-    }
-
-
 def setup_data_folders(base_directory):
     """
-    Create the hierarchical folder structure and return paths.
-    Used for standalone runs; launch uses setup_day_folder_only() and
-    data_collection_coordinator creates sections on /dc/start.
+    Create the hierarchical folder structure and return paths
     
     Returns:
         dict: Contains paths for visual_data and gpr_scan_data
