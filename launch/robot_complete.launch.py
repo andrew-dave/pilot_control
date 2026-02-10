@@ -23,19 +23,7 @@ else:
     install_script_dir = package_dir.parent.parent / 'lib' / 'pilot_control'
     sys.path.insert(0, str(install_script_dir))
 
-# Use dynamic section creation (day folder only at launch); support old installs without setup_day_folder_only
-try:
-    from setup_data_folders import setup_day_folder_only
-except ImportError:
-    # Backward compatibility: old setup_data_folders only had setup_data_folders()
-    from setup_data_folders import setup_data_folders
-    def setup_day_folder_only(base_directory):
-        paths = setup_data_folders(base_directory)
-        return {
-            'base_directory': paths['base_directory'],
-            'day_folder': paths['day_folder'],
-            'day_name': paths['day_name'],
-        }
+from setup_data_folders import setup_day_folder_only
 
 
 # Tilt calibration directory (same as in tilt_calibration.py)
