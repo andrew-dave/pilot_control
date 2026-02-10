@@ -15,22 +15,31 @@ This node coordinates:
 - unified_data_collector (thermal + cameras + odometry)
 - gpr_scan_controller (GPR + rosbag)
 - raw_map_saver (point cloud maps)
-- gpr_serial_bridge (linear actuator control)
+
+Note: Linear actuator control is handled internally by gpr_scan_controller
+when /gpr_scan/start or /gpr_scan/stop is called. The coordinator does NOT
+call /gpr_line_start or /gpr_line_stop directly to avoid duplicate actions.
 """
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import Trigger, SetBool
 import os
 import shutil
 import json
 import time
+import threading
 from pathlib import Path
 
 
 class DataCollectionCoordinator(Node):
     def __init__(self):
         super().__init__('data_collection_coordinator')
+        
+        # Use reentrant callback group to allow service calls from within service callbacks
+        self.callback_group = ReentrantCallbackGroup()
         
         # Declare parameters
         self.declare_parameter('section_folder', '')
@@ -48,46 +57,61 @@ class DataCollectionCoordinator(Node):
         self.collection_started = False
         
         # ==================== Service Servers ====================
-        # Main coordination services
+        # Main coordination services (use reentrant callback group)
         self.start_srv = self.create_service(
-            Trigger, '/dc/start', self.start_callback)
+            Trigger, '/dc/start', self.start_callback,
+            callback_group=self.callback_group)
         self.pause_srv = self.create_service(
-            Trigger, '/dc/pause', self.pause_callback)
+            Trigger, '/dc/pause', self.pause_callback,
+            callback_group=self.callback_group)
         self.resume_srv = self.create_service(
-            Trigger, '/dc/resume', self.resume_callback)
+            Trigger, '/dc/resume', self.resume_callback,
+            callback_group=self.callback_group)
         self.end_save_srv = self.create_service(
-            SetBool, '/dc/end_and_save', self.end_and_save_callback)
+            SetBool, '/dc/end_and_save', self.end_and_save_callback,
+            callback_group=self.callback_group)
         self.end_delete_srv = self.create_service(
-            Trigger, '/dc/end_and_delete', self.end_and_delete_callback)
+            Trigger, '/dc/end_and_delete', self.end_and_delete_callback,
+            callback_group=self.callback_group)
         
         # ==================== Service Clients ====================
+        # All clients use the same reentrant callback group
+        
         # unified_data_collector services (video/thermal recording)
         # /video_record_set (SetBool) is used for start (data=true) and stop (data=false)
-        self.video_record_client = self.create_client(SetBool, '/video_record_set')
-        self.udc_pause_client = self.create_client(Trigger, '/udc/pause')
-        self.udc_resume_client = self.create_client(Trigger, '/udc/resume')
-        self.udc_stop_client = self.create_client(Trigger, '/udc/stop')
+        self.video_record_client = self.create_client(
+            SetBool, '/video_record_set', callback_group=self.callback_group)
+        self.udc_pause_client = self.create_client(
+            Trigger, '/udc/pause', callback_group=self.callback_group)
+        self.udc_resume_client = self.create_client(
+            Trigger, '/udc/resume', callback_group=self.callback_group)
+        self.udc_stop_client = self.create_client(
+            Trigger, '/udc/stop', callback_group=self.callback_group)
         
         # gpr_scan_controller services
-        self.gpr_scan_start_client = self.create_client(Trigger, '/gpr_scan/start')
-        self.gpr_scan_toggle_client = self.create_client(Trigger, '/gpr_scan/toggle')
-        self.gpr_pause_client = self.create_client(Trigger, '/gpr_scan/pause')
-        self.gpr_resume_client = self.create_client(Trigger, '/gpr_scan/resume')
-        self.gpr_stop_client = self.create_client(Trigger, '/gpr_scan/stop')
+        # Note: /gpr_scan/start and /gpr_scan/stop handle linear actuator internally
+        self.gpr_scan_start_client = self.create_client(
+            Trigger, '/gpr_scan/start', callback_group=self.callback_group)
+        self.gpr_pause_client = self.create_client(
+            Trigger, '/gpr_scan/pause', callback_group=self.callback_group)
+        self.gpr_resume_client = self.create_client(
+            Trigger, '/gpr_scan/resume', callback_group=self.callback_group)
+        self.gpr_stop_client = self.create_client(
+            Trigger, '/gpr_scan/stop', callback_group=self.callback_group)
         
         # rosbag control (via gpr_scan_controller)
-        self.rosbag_start_client = self.create_client(Trigger, '/rosbag/start')
-        self.rosbag_toggle_client = self.create_client(Trigger, '/rosbag/toggle')
-        self.rosbag_pause_client = self.create_client(Trigger, '/rosbag/pause')
-        self.rosbag_resume_client = self.create_client(Trigger, '/rosbag/resume')
-        self.rosbag_stop_client = self.create_client(Trigger, '/rosbag/stop')
-        
-        # Linear actuator control (Arduino via gpr_serial_bridge)
-        self.line_start_client = self.create_client(Trigger, '/gpr_line_start')
-        self.line_stop_client = self.create_client(Trigger, '/gpr_line_stop')
+        self.rosbag_start_client = self.create_client(
+            Trigger, '/rosbag/start', callback_group=self.callback_group)
+        self.rosbag_pause_client = self.create_client(
+            Trigger, '/rosbag/pause', callback_group=self.callback_group)
+        self.rosbag_resume_client = self.create_client(
+            Trigger, '/rosbag/resume', callback_group=self.callback_group)
+        self.rosbag_stop_client = self.create_client(
+            Trigger, '/rosbag/stop', callback_group=self.callback_group)
         
         # raw_map_saver service
-        self.save_map_client = self.create_client(Trigger, '/save_raw_map')
+        self.save_map_client = self.create_client(
+            Trigger, '/save_raw_map', callback_group=self.callback_group)
         
         self.get_logger().info('='*60)
         self.get_logger().info('DATA COLLECTION COORDINATOR STARTED')
@@ -102,19 +126,34 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('  /dc/end_and_delete - End and delete all session data')
         self.get_logger().info('='*60)
 
-    def call_service_async(self, client, request, service_name, timeout=2.0):
-        """Helper to call a service asynchronously with timeout"""
-        if not client.wait_for_service(timeout_sec=1.0):
+    def call_service_sync(self, client, request, service_name, timeout=5.0):
+        """
+        Call a service synchronously with proper timeout handling.
+        Uses a separate thread to wait for the future to avoid blocking the executor.
+        """
+        if not client.wait_for_service(timeout_sec=2.0):
             self.get_logger().warn(f'Service {service_name} not available')
             return False, f'Service {service_name} not available'
         
         future = client.call_async(request)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=timeout)
         
-        if future.result() is not None:
-            return future.result().success, future.result().message
-        else:
-            return False, f'Service {service_name} call failed'
+        # Wait for the future in a way that works from within a callback
+        start_time = time.time()
+        while not future.done():
+            if time.time() - start_time > timeout:
+                self.get_logger().warn(f'Service {service_name} timed out')
+                return False, f'Service {service_name} timed out'
+            time.sleep(0.05)  # Small sleep to avoid busy waiting
+        
+        try:
+            result = future.result()
+            if result is not None:
+                return result.success, result.message
+            else:
+                return False, f'Service {service_name} returned None'
+        except Exception as e:
+            self.get_logger().error(f'Service {service_name} exception: {e}')
+            return False, f'Service {service_name} exception: {e}'
 
     def start_callback(self, request, response):
         """
@@ -142,7 +181,7 @@ class DataCollectionCoordinator(Node):
         # Step 1: Start rosbag recording (B key equivalent)
         self.get_logger().info('')
         self.get_logger().info('Step 1/3: Starting rosbag recording...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.rosbag_start_client, Trigger.Request(), '/rosbag/start')
         if not success:
             errors.append(f'Rosbag start: {msg}')
@@ -156,9 +195,10 @@ class DataCollectionCoordinator(Node):
         
         # Step 2: Start GPR scan (G key equivalent)
         # This includes: linear actuator UP + GPR motor enable + GPR logging
+        # Note: Linear actuator is handled internally by gpr_scan_controller
         self.get_logger().info('')
         self.get_logger().info('Step 2/3: Starting GPR scan (actuator + motor + logging)...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.gpr_scan_start_client, Trigger.Request(), '/gpr_scan/start')
         if not success:
             errors.append(f'GPR scan start: {msg}')
@@ -175,7 +215,7 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('Step 3/3: Starting video recording (RGB + thermal)...')
         req = SetBool.Request()
         req.data = True
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.video_record_client, req, '/video_record_set')
         if not success:
             errors.append(f'Video start: {msg}')
@@ -220,7 +260,7 @@ class DataCollectionCoordinator(Node):
         
         # 1. Pause unified_data_collector
         self.get_logger().info('Pausing unified_data_collector...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.udc_pause_client, Trigger.Request(), '/udc/pause')
         if not success:
             errors.append(f'UDC pause: {msg}')
@@ -229,7 +269,7 @@ class DataCollectionCoordinator(Node):
         
         # 2. Pause GPR scan controller
         self.get_logger().info('Pausing gpr_scan_controller...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.gpr_pause_client, Trigger.Request(), '/gpr_scan/pause')
         if not success:
             errors.append(f'GPR pause: {msg}')
@@ -238,7 +278,7 @@ class DataCollectionCoordinator(Node):
         
         # 3. Pause rosbag recording
         self.get_logger().info('Pausing rosbag recording...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.rosbag_pause_client, Trigger.Request(), '/rosbag/pause')
         if not success:
             errors.append(f'Rosbag pause: {msg}')
@@ -275,7 +315,7 @@ class DataCollectionCoordinator(Node):
         
         # 1. Resume unified_data_collector
         self.get_logger().info('Resuming unified_data_collector...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.udc_resume_client, Trigger.Request(), '/udc/resume')
         if not success:
             errors.append(f'UDC resume: {msg}')
@@ -284,7 +324,7 @@ class DataCollectionCoordinator(Node):
         
         # 2. Resume GPR scan controller
         self.get_logger().info('Resuming gpr_scan_controller...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.gpr_resume_client, Trigger.Request(), '/gpr_scan/resume')
         if not success:
             errors.append(f'GPR resume: {msg}')
@@ -293,7 +333,7 @@ class DataCollectionCoordinator(Node):
         
         # 3. Resume rosbag recording
         self.get_logger().info('Resuming rosbag recording...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.rosbag_resume_client, Trigger.Request(), '/rosbag/resume')
         if not success:
             errors.append(f'Rosbag resume: {msg}')
@@ -319,6 +359,8 @@ class DataCollectionCoordinator(Node):
         End data collection and save with tag.
         Sequence mirrors the stop keys: T -> G -> B -> M
         
+        Note: Linear actuator is handled internally by /gpr_scan/stop
+        
         request.data: False (0) = partial, True (1) = complete
         """
         tag = 'complete' if request.data else 'partial'
@@ -337,10 +379,10 @@ class DataCollectionCoordinator(Node):
         
         # Step 1: Stop video recording (T key equivalent)
         self.get_logger().info('')
-        self.get_logger().info('Step 1/5: Stopping video recording...')
+        self.get_logger().info('Step 1/4: Stopping video recording...')
         req = SetBool.Request()
         req.data = False
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.video_record_client, req, '/video_record_set')
         if not success:
             errors.append(f'Video stop: {msg}')
@@ -350,39 +392,29 @@ class DataCollectionCoordinator(Node):
         
         # Also stop unified_data_collector CSV logging
         self.get_logger().info('  Stopping unified_data_collector CSV logging...')
-        success, msg = self.call_service_async(
+        success, msg = self.call_service_sync(
             self.udc_stop_client, Trigger.Request(), '/udc/stop')
         if not success:
             errors.append(f'UDC stop: {msg}')
         else:
             self.get_logger().info('  ✓ unified_data_collector stopped')
         
-        # Step 2: Stop GPR scan (G key toggle equivalent - stops motor, logging, actuator DOWN)
+        # Step 2: Stop GPR scan (G key toggle equivalent)
+        # This internally handles: motor stop, logging stop, actuator DOWN
         self.get_logger().info('')
-        self.get_logger().info('Step 2/5: Stopping GPR scan (motor + logging + actuator DOWN)...')
-        success, msg = self.call_service_async(
+        self.get_logger().info('Step 2/4: Stopping GPR scan (motor + logging + actuator)...')
+        success, msg = self.call_service_sync(
             self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
         if not success:
             errors.append(f'GPR stop: {msg}')
             self.get_logger().error(f'  ✗ GPR stop failed: {msg}')
         else:
-            self.get_logger().info(f'  ✓ GPR scan stopped')
+            self.get_logger().info(f'  ✓ GPR scan stopped (actuator lowered)')
         
-        # Step 3: Lower linear actuator explicitly (K key equivalent - line DOWN)
+        # Step 3: Stop rosbag recording (B key toggle equivalent)
         self.get_logger().info('')
-        self.get_logger().info('Step 3/5: Lowering linear actuator...')
-        success, msg = self.call_service_async(
-            self.line_stop_client, Trigger.Request(), '/gpr_line_stop')
-        if not success:
-            errors.append(f'Actuator down: {msg}')
-            self.get_logger().error(f'  ✗ Actuator down failed: {msg}')
-        else:
-            self.get_logger().info(f'  ✓ Linear actuator lowered')
-        
-        # Step 4: Stop rosbag recording (B key toggle equivalent)
-        self.get_logger().info('')
-        self.get_logger().info('Step 4/5: Stopping rosbag recording...')
-        success, msg = self.call_service_async(
+        self.get_logger().info('Step 3/4: Stopping rosbag recording...')
+        success, msg = self.call_service_sync(
             self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
         if not success:
             errors.append(f'Rosbag stop: {msg}')
@@ -390,18 +422,18 @@ class DataCollectionCoordinator(Node):
         else:
             self.get_logger().info(f'  ✓ Rosbag recording stopped')
         
-        # Step 5: Save map (M key equivalent)
+        # Step 4: Save map (M key equivalent)
         self.get_logger().info('')
-        self.get_logger().info('Step 5/5: Saving point cloud map...')
-        success, msg = self.call_service_async(
-            self.save_map_client, Trigger.Request(), '/save_raw_map', timeout=10.0)
+        self.get_logger().info('Step 4/4: Saving point cloud map...')
+        success, msg = self.call_service_sync(
+            self.save_map_client, Trigger.Request(), '/save_raw_map', timeout=15.0)
         if not success:
             errors.append(f'Map save: {msg}')
             self.get_logger().error(f'  ✗ Map save failed: {msg}')
         else:
             self.get_logger().info(f'  ✓ Point cloud map saved: {msg}')
         
-        # Step 6: Rename section folder with tag
+        # Step 5: Rename section folder with tag
         self.get_logger().info('')
         self.get_logger().info('Renaming section folder...')
         new_folder_path = self.rename_section_folder(tag)
@@ -432,6 +464,8 @@ class DataCollectionCoordinator(Node):
         """
         End data collection and delete all session data.
         Stops all processes and removes the entire Section folder.
+        
+        Note: Linear actuator is handled internally by /gpr_scan/stop
         """
         self.get_logger().info('')
         self.get_logger().info('='*60)
@@ -445,43 +479,36 @@ class DataCollectionCoordinator(Node):
         
         # Step 1: Stop video recording
         self.get_logger().info('')
-        self.get_logger().info('Step 1/5: Stopping video recording...')
+        self.get_logger().info('Step 1/4: Stopping video recording...')
         req = SetBool.Request()
         req.data = False
-        self.call_service_async(
+        self.call_service_sync(
             self.video_record_client, req, '/video_record_set')
         self.get_logger().info('  ✓ Video recording stopped')
         
         # Also stop unified_data_collector
         self.get_logger().info('  Stopping unified_data_collector...')
-        self.call_service_async(
+        self.call_service_sync(
             self.udc_stop_client, Trigger.Request(), '/udc/stop')
         self.get_logger().info('  ✓ unified_data_collector stopped')
         
-        # Step 2: Stop GPR scan controller
+        # Step 2: Stop GPR scan controller (handles actuator internally)
         self.get_logger().info('')
-        self.get_logger().info('Step 2/5: Stopping GPR scan...')
-        self.call_service_async(
+        self.get_logger().info('Step 2/4: Stopping GPR scan (motor + logging + actuator)...')
+        self.call_service_sync(
             self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
-        self.get_logger().info('  ✓ gpr_scan_controller stopped')
+        self.get_logger().info('  ✓ gpr_scan_controller stopped (actuator lowered)')
         
-        # Step 3: Lower linear actuator (K key equivalent)
+        # Step 3: Stop rosbag recording (will be deleted with folder)
         self.get_logger().info('')
-        self.get_logger().info('Step 3/5: Lowering linear actuator...')
-        self.call_service_async(
-            self.line_stop_client, Trigger.Request(), '/gpr_line_stop')
-        self.get_logger().info('  ✓ Linear actuator lowered')
-        
-        # Step 4: Stop rosbag recording (will be deleted with folder)
-        self.get_logger().info('')
-        self.get_logger().info('Step 4/5: Stopping rosbag recording...')
-        self.call_service_async(
+        self.get_logger().info('Step 3/4: Stopping rosbag recording...')
+        self.call_service_sync(
             self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
         self.get_logger().info('  ✓ rosbag recording stopped')
         
-        # Step 5: Delete the entire section folder
+        # Step 4: Delete the entire section folder
         self.get_logger().info('')
-        self.get_logger().info('Step 5/5: Deleting session data...')
+        self.get_logger().info('Step 4/4: Deleting session data...')
         if self.section_folder and os.path.exists(self.section_folder):
             try:
                 self.get_logger().info(f'  Deleting: {self.section_folder}')
@@ -556,8 +583,12 @@ def main(args=None):
     rclpy.init(args=args)
     node = DataCollectionCoordinator()
     
+    # Use MultiThreadedExecutor to allow service calls from within service callbacks
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         node.get_logger().info('Interrupted by user')
     finally:
