@@ -379,15 +379,18 @@ class GPRScanController(Node):
         self.get_logger().info('Sending GPR power off command...')
         if self.power_off_client.wait_for_service(timeout_sec=1.0):
             future = self.power_off_client.call_async(Trigger.Request())
-            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-            if future.result() and future.result().success:
+            # Use polling instead of spin_until_future_complete
+            start_time = time.time()
+            while not future.done() and (time.time() - start_time) < 2.0:
+                time.sleep(0.05)
+            if future.done() and future.result() and future.result().success:
                 response.success = True
                 response.message = 'GPR power off command sent'
                 self.get_logger().info('✓ GPR power off command sent')
             else:
                 response.success = False
-                response.message = 'GPR power off service call failed'
-                self.get_logger().warn('⚠️  GPR power off service call failed')
+                response.message = 'GPR power off service call failed or timed out'
+                self.get_logger().warn('⚠️  GPR power off service call failed or timed out')
         else:
             response.success = False
             response.message = 'GPR power off service not available'
@@ -484,11 +487,22 @@ class GPRScanController(Node):
         return response
     
     def stop_callback(self, request, response):
-        """Stop GPR scanning completely - close files, lower actuator, and save"""
+        """
+        Stop GPR scanning completely - close files, lower actuator, and save.
+        This does NOT break the node - it can start a new scan afterwards.
+        """
         with self.lock:
             self.get_logger().info('='*60)
             self.get_logger().info('GPR SCAN STOPPING (via coordinator)')
             self.get_logger().info('='*60)
+            
+            # Cancel any pending timers
+            if self.motor_start_timer:
+                self.motor_start_timer.cancel()
+                self.motor_start_timer = None
+            if self.stop_timer:
+                self.stop_timer.cancel()
+                self.stop_timer = None
             
             # Stop motor
             msg = ControlMessage()
@@ -500,11 +514,13 @@ class GPRScanController(Node):
             self.gpr_motor_pub.publish(msg)
             self.get_logger().info('  ✓ GPR motor stopped')
             
-            # Reset state
+            # Reset state flags (ready for next scan)
             self.scanning = False
             self.paused = False
             self.logging_active = False
             self.motor_enabled = False
+            self.stopping = False
+            self.gpr_motor_started = False
             
             # Close log file
             if self.log_file_handle:
@@ -516,21 +532,29 @@ class GPRScanController(Node):
                 self.log_file_handle = None
                 self.csv_writer = None
             
-            # Lower linear actuator (line down)
+            # Lower linear actuator (line down) - use non-blocking call
             self.get_logger().info('  Lowering linear actuator...')
             if self.line_stop_client.wait_for_service(timeout_sec=1.0):
                 future = self.line_stop_client.call_async(Trigger.Request())
-                rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-                if future.result() and future.result().success:
+                # Use polling instead of spin_until_future_complete to avoid re-entrant spinning
+                start_time = time.time()
+                while not future.done() and (time.time() - start_time) < 2.0:
+                    time.sleep(0.05)
+                if future.done() and future.result() and future.result().success:
                     self.get_logger().info('  ✓ Linear actuator lowered')
                 else:
-                    self.get_logger().warn('  ⚠️  Linear actuator stop failed')
+                    self.get_logger().warn('  ⚠️  Linear actuator stop failed or timed out')
             else:
                 self.get_logger().warn('  ⚠️  Linear actuator service not available')
             
+            logged_samples = self.log_count
+            # Reset log count for next scan
+            self.log_count = 0
+            
             response.success = True
-            response.message = f'GPR scan stopped. Logged {self.log_count} samples'
-            self.get_logger().info(f'✓ GPR scan STOPPED - {self.log_count} samples logged')
+            response.message = f'GPR scan stopped. Logged {logged_samples} samples. Ready for new scan.'
+            self.get_logger().info(f'✓ GPR scan STOPPED - {logged_samples} samples logged')
+            self.get_logger().info('✓ Ready for new scan')
             self.get_logger().info('='*60)
         return response
     
@@ -794,17 +818,19 @@ class GPRScanController(Node):
         
         # Step 3: Start linear actuator (Arduino - line up) - non-blocking
         self.get_logger().info('⏳ Starting linear actuator...')
-        #self.current_event = 'ARDUINO_START'
         # Immediate event log
         self.log_event_now('ARDUINO_START')
         self.current_event = None
         if self.line_start_client.wait_for_service(timeout_sec=1.0):
             future = self.line_start_client.call_async(Trigger.Request())
-            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-            if future.result() and future.result().success:
+            # Use polling instead of spin_until_future_complete to avoid re-entrant spinning
+            start_time = time.time()
+            while not future.done() and (time.time() - start_time) < 2.0:
+                time.sleep(0.05)
+            if future.done() and future.result() and future.result().success:
                 self.get_logger().info('✓ Linear actuator started')
             else:
-                self.get_logger().warn('⚠️  Linear actuator service call failed')
+                self.get_logger().warn('⚠️  Linear actuator service call failed or timed out')
         else:
             self.get_logger().warn('⚠️  Linear actuator service not available')
         
@@ -911,25 +937,29 @@ class GPRScanController(Node):
         self.get_logger().info('✓ Post-stop logging duration complete')
         
         # Log ARDUINO_STOP event before stopping actuator
-        #self.current_event = 'ARDUINO_STOP'
         self.log_event_now('ARDUINO_STOP')
         self.current_event = None
         
-        # Step 4: Stop linear actuator
+        # Step 4: Stop linear actuator - use non-blocking call
         self.get_logger().info('⏳ Stopping linear actuator...')
         if self.line_stop_client.wait_for_service(timeout_sec=1.0):
             future = self.line_stop_client.call_async(Trigger.Request())
-            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-            if future.result() and future.result().success:
+            # Use polling instead of spin_until_future_complete
+            start_time = time.time()
+            while not future.done() and (time.time() - start_time) < 2.0:
+                time.sleep(0.05)
+            if future.done() and future.result() and future.result().success:
                 self.get_logger().info('✓ Linear actuator stopped')
             else:
-                self.get_logger().warn('⚠️  Linear actuator stop failed')
+                self.get_logger().warn('⚠️  Linear actuator stop failed or timed out')
         else:
             self.get_logger().warn('⚠️  Linear actuator service not available')
         
         # Step 5: Disable logging and close log file
         self.stopping = False
         self.logging_active = False
+        self.motor_enabled = False
+        self.gpr_motor_started = False
         
         if self.log_file_handle:
             try:
@@ -950,6 +980,7 @@ class GPRScanController(Node):
         
         self.get_logger().info('')
         self.get_logger().info('🔴 GPR SCAN STOPPED - Logging ended')
+        self.get_logger().info('✓ Ready for new scan')
         self.get_logger().info('='*70)
     
     def update_gpr_motor(self):

@@ -52,8 +52,12 @@ class DataCollectionCoordinator(Node):
         self.start_delay = self.get_parameter('start_sequence_delay').value
         
         # State tracking
+        # Note: These flags track coordinator-initiated actions only.
+        # The underlying nodes (gpr_scan_controller, unified_data_collector) 
+        # can also be controlled directly via teleop keys (B, G, R, T, M).
+        # The stop services will work regardless of how collection was started.
         self.is_paused = False
-        self.collection_active = False  # Start as inactive until start_dc is called
+        self.collection_active = True  # Assume active - stop services should always work
         self.collection_started = False
         
         # ==================== Service Servers ====================
@@ -79,14 +83,14 @@ class DataCollectionCoordinator(Node):
         
         # unified_data_collector services (video/thermal recording)
         # /video_record_set (SetBool) is used for start (data=true) and stop (data=false)
+        # Note: /video_record_set handles both video AND CSV logging start/stop
         self.video_record_client = self.create_client(
             SetBool, '/video_record_set', callback_group=self.callback_group)
         self.udc_pause_client = self.create_client(
             Trigger, '/udc/pause', callback_group=self.callback_group)
         self.udc_resume_client = self.create_client(
             Trigger, '/udc/resume', callback_group=self.callback_group)
-        self.udc_stop_client = self.create_client(
-            Trigger, '/udc/stop', callback_group=self.callback_group)
+        # Note: /udc/stop is NOT used - /video_record_set false handles stopping
         
         # gpr_scan_controller services
         # Note: /gpr_scan/start and /gpr_scan/stop handle linear actuator internally
@@ -370,16 +374,13 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info(f'ENDING DATA COLLECTION - TAG: {tag.upper()}')
         self.get_logger().info('='*60)
         
-        if not self.collection_active:
-            response.success = False
-            response.message = 'Collection already ended'
-            return response
-        
         errors = []
         
         # Step 1: Stop video recording (T key equivalent)
+        # This also stops CSV logging in unified_data_collector
+        # Note: Do NOT call /udc/stop separately - /video_record_set handles everything
         self.get_logger().info('')
-        self.get_logger().info('Step 1/4: Stopping video recording...')
+        self.get_logger().info('Step 1/4: Stopping video recording + CSV logging...')
         req = SetBool.Request()
         req.data = False
         success, msg = self.call_service_sync(
@@ -388,16 +389,7 @@ class DataCollectionCoordinator(Node):
             errors.append(f'Video stop: {msg}')
             self.get_logger().error(f'  ✗ Video stop failed: {msg}')
         else:
-            self.get_logger().info(f'  ✓ Video recording stopped')
-        
-        # Also stop unified_data_collector CSV logging
-        self.get_logger().info('  Stopping unified_data_collector CSV logging...')
-        success, msg = self.call_service_sync(
-            self.udc_stop_client, Trigger.Request(), '/udc/stop')
-        if not success:
-            errors.append(f'UDC stop: {msg}')
-        else:
-            self.get_logger().info('  ✓ unified_data_collector stopped')
+            self.get_logger().info(f'  ✓ Video recording + CSV logging stopped')
         
         # Step 2: Stop GPR scan (G key toggle equivalent)
         # This internally handles: motor stop, logging stop, actuator DOWN
@@ -443,8 +435,10 @@ class DataCollectionCoordinator(Node):
             errors.append('Failed to rename section folder')
             self.get_logger().error('  ✗ Failed to rename section folder')
         
-        self.collection_active = False
+        # Reset state - ready for new section
         self.collection_started = False
+        self.is_paused = False
+        # Keep collection_active = True so stop services always work
         
         self.get_logger().info('')
         if errors:
@@ -457,6 +451,8 @@ class DataCollectionCoordinator(Node):
             self.get_logger().info('='*60)
             self.get_logger().info(f'✓ DATA COLLECTION ENDED AND SAVED AS {tag.upper()}')
             self.get_logger().info('='*60)
+        
+        self.get_logger().info('✓ Ready for new section (call /dc/start or use teleop keys)')
         
         return response
 
@@ -472,25 +468,15 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('ENDING DATA COLLECTION - DELETING ALL DATA')
         self.get_logger().info('='*60)
         
-        if not self.collection_active:
-            response.success = False
-            response.message = 'Collection already ended'
-            return response
-        
-        # Step 1: Stop video recording
+        # Step 1: Stop video recording + CSV logging
+        # Note: Do NOT call /udc/stop separately - /video_record_set handles everything
         self.get_logger().info('')
-        self.get_logger().info('Step 1/4: Stopping video recording...')
+        self.get_logger().info('Step 1/4: Stopping video recording + CSV logging...')
         req = SetBool.Request()
         req.data = False
         self.call_service_sync(
             self.video_record_client, req, '/video_record_set')
-        self.get_logger().info('  ✓ Video recording stopped')
-        
-        # Also stop unified_data_collector
-        self.get_logger().info('  Stopping unified_data_collector...')
-        self.call_service_sync(
-            self.udc_stop_client, Trigger.Request(), '/udc/stop')
-        self.get_logger().info('  ✓ unified_data_collector stopped')
+        self.get_logger().info('  ✓ Video recording + CSV logging stopped')
         
         # Step 2: Stop GPR scan controller (handles actuator internally)
         self.get_logger().info('')
@@ -525,14 +511,17 @@ class DataCollectionCoordinator(Node):
             response.success = False
             response.message = f'Section folder not found: {self.section_folder}'
         
-        self.collection_active = False
+        # Reset state - ready for new section
         self.collection_started = False
+        self.is_paused = False
+        # Keep collection_active = True so stop services always work
         
         self.get_logger().info('')
         if response.success:
             self.get_logger().info('='*60)
             self.get_logger().info('✓ DATA COLLECTION ENDED AND DELETED')
             self.get_logger().info('='*60)
+            self.get_logger().info('✓ Ready for new section (call /dc/start or use teleop keys)')
         
         return response
 
