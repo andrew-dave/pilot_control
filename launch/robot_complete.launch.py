@@ -23,7 +23,7 @@ else:
     install_script_dir = package_dir.parent.parent / 'lib' / 'pilot_control'
     sys.path.insert(0, str(install_script_dir))
 
-from setup_data_folders import setup_data_folders
+from setup_data_folders import setup_day_folder_only
 
 
 # Tilt calibration directory (same as in tilt_calibration.py)
@@ -122,9 +122,9 @@ def generate_launch_description():
         description='Base directory for all robot data collection.'
     )
 
-    # Setup folder structure for this session
+    # Setup day folder only; section folders are created by data_collection_coordinator on /dc/start
     base_data_dir = '/R_DATA'
-    folder_paths = setup_data_folders(base_data_dir)
+    folder_paths = setup_day_folder_only(base_data_dir)
     
     # Odometry Tilt Corrector - transforms LiDAR frame to robot body frame
     # Uses calibration file if available, otherwise falls back to fixed 15° pitch
@@ -138,19 +138,15 @@ def generate_launch_description():
             'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
             'calibration_file': tilt_calibration_file,  # Load from config folder
             'lidar_pitch_deg': 15.0,  # Fallback if calibration file not found
-            'save_directory': folder_paths['section_folder']  # Save transformation to session folder
+            'save_directory': folder_paths['day_folder']  # Save transformation to day folder
         }]
     )
     
     print("\n" + "="*70)
     print("DATA COLLECTION SESSION SETUP")
     print("="*70)
-    print(f"Day Folder:     {folder_paths['day_name']}")
-    print(f"Section:        {folder_paths['section_name']}")
-    print(f"Section Path:   {folder_paths['section_folder']}")
-    print(f"Visual Data:    {folder_paths['visual_data_folder']}")
-    print(f"GPR Scan Data:  {folder_paths['gpr_scan_folder']}")
-    print("Note: Tilt correction transformation will be saved to Section folder")
+    print(f"Day Folder:     {folder_paths['day_name']} ({folder_paths['day_folder']})")
+    print("Section:        (created by data_collection_coordinator on /dc/start)")
     print("="*70 + "\n")
     # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
     unified_data_collector_node = Node(
@@ -163,8 +159,8 @@ def generate_launch_description():
         parameters=[{
             # Odometry and thermal camera settings (using tilt-corrected odometry)
             'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',
-            'log_directory': '/R_DATA/unified_scans',  # Fallback
-            'visual_data_directory': folder_paths['visual_data_folder'],  # Session-specific
+            'log_directory': '/R_DATA/unified_scans',  # Fallback until /dc/start sets section
+            'visual_data_directory': '',  # Set by data_collection_coordinator on /dc/start
             'use_seekvision_mode': True,
             'save_color_png': True,
             'csv_flush_every_rows': 50,
@@ -334,7 +330,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'input_topic': '/Laser_map',
-            'save_directory': folder_paths['section_folder'],  # Save to session folder
+            'save_directory': '/tmp/robot_maps',  # Fallback until /dc/start sets section folder
             'auto_save_enabled': False,  # Disabled - save only when M key pressed
             'auto_save_interval_sec': 30.0,
             'apply_tilt_correction': True,  # Apply tilt correction when saving
@@ -406,8 +402,8 @@ def generate_launch_description():
             'invert_third': True,                # GPR motor direction inversion
             'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',  # Use tilt-corrected odometry
             'log_frequency_hz': 50.0,            # 50 Hz logging
-            'log_directory': '/R_DATA/gpr_scans',  # Fallback
-            'gpr_scan_data_directory': folder_paths['gpr_scan_folder'],  # Session-specific GPR CSV folder
+            'log_directory': '/R_DATA/gpr_scans',  # Fallback until /dc/start sets section
+            'gpr_scan_data_directory': '',  # Set by data_collection_coordinator on /dc/start
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
                 '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
@@ -514,7 +510,7 @@ def generate_launch_description():
         name='data_collection_coordinator',
         output='screen',
         parameters=[{
-            'section_folder': folder_paths['section_folder'],
+            'section_folder': '',  # Created dynamically on /dc/start
             'day_folder': folder_paths['day_folder'],
         }]
     )
