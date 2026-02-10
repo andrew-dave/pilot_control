@@ -226,6 +226,27 @@ else()
   message(WARNING "OpenCV not found — jpegxl_test_simple will not be built")
 endif()
 
+# === THERMAL CHECK (headless Seek SDK frame check for preflight) ===
+if(OpenCV_FOUND)
+  # Check if seekcamera header exists
+  find_path(SEEKCAMERA_INCLUDE_DIR seekcamera/seekcamera.h
+    PATHS /usr/include /usr/local/include)
+  find_library(SEEKCAMERA_LIB seekcamera)
+  if(SEEKCAMERA_INCLUDE_DIR AND SEEKCAMERA_LIB)
+    add_executable(thermal_check src/thermal_check.cpp)
+    target_compile_features(thermal_check PUBLIC cxx_std_17)
+    target_include_directories(thermal_check PUBLIC
+      ${OpenCV_INCLUDE_DIRS} ${SEEKCAMERA_INCLUDE_DIR})
+    target_link_libraries(thermal_check ${OpenCV_LIBS} ${SEEKCAMERA_LIB})
+    install(TARGETS thermal_check DESTINATION lib/${PROJECT_NAME})
+    message(STATUS "thermal_check will be built (SeekCamera + OpenCV found)")
+  else()
+    message(WARNING "SeekCamera SDK not found — thermal_check will not be built")
+  endif()
+else()
+  message(WARNING "OpenCV not found — thermal_check will not be built")
+endif()
+
 # Install launch and config files
 install(
   DIRECTORY launch
@@ -258,6 +279,13 @@ install(
   scripts/F2C/pointcloud_to_f2c_field.py
   scripts/measure_actuation_delay.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install startup_preflight script
+install(
+  PROGRAMS scripts/startup_preflight.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME startup_preflight
 )
 
 # Install odom_tilt_corrector without .py suffix so it can be launched as a node name
