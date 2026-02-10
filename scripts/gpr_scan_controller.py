@@ -24,6 +24,7 @@ from nav_msgs.msg import Odometry
 from odrive_can.msg import ControlMessage, ControllerStatus
 from odrive_can.srv import AxisState
 from std_srvs.srv import Trigger
+from rcl_interfaces.msg import SetParametersResult
 import os
 import time
 from datetime import datetime
@@ -222,6 +223,13 @@ class GPRScanController(Node):
         self.rosbag_stop_service = self.create_service(
             Trigger, '/rosbag/stop', self.rosbag_stop_callback)
         
+        # Directory update service (for multi-section support via coordinator)
+        self.set_directory_service = self.create_service(
+            Trigger, '/gpr_scan/set_directory', self.set_directory_callback)
+        
+        # Dynamic parameter callback
+        self.add_on_set_parameters_callback(self._on_param_change)
+        
         # Timer for motor control (20 Hz)
         self.motor_timer = self.create_timer(0.05, self.update_gpr_motor)
         
@@ -242,6 +250,7 @@ class GPRScanController(Node):
         self.get_logger().info(f'  - /gpr_scan/toggle')
         self.get_logger().info(f'  - /gpr_scan/power_off')
         self.get_logger().info(f'  - /gpr_scan/start, /gpr_scan/pause, /gpr_scan/resume, /gpr_scan/stop')
+        self.get_logger().info(f'  - /gpr_scan/set_directory (update paths for new section)')
         self.get_logger().info(f'  - /rosbag/toggle')
         self.get_logger().info(f'  - /rosbag/start, /rosbag/pause, /rosbag/resume, /rosbag/stop')
         self.get_logger().info('')
@@ -652,6 +661,40 @@ class GPRScanController(Node):
             else:
                 response.success = False
                 response.message = 'Failed to stop rosbag recording'
+        return response
+    
+    def _on_param_change(self, params):
+        """Handle dynamic parameter updates from coordinator."""
+        for param in params:
+            if param.name == 'gpr_scan_data_directory':
+                new_dir = param.value
+                if new_dir and new_dir != self.log_dir:
+                    self.log_dir = new_dir
+                    self.rosbag_dir_final = os.path.dirname(new_dir)
+                    os.makedirs(self.log_dir, exist_ok=True)
+                    self.get_logger().info(f'[param update] GPR CSV dir:  {self.log_dir}')
+                    self.get_logger().info(f'[param update] Rosbag dest:  {self.rosbag_dir_final}')
+        return SetParametersResult(successful=True)
+    
+    def set_directory_callback(self, request, response):
+        """Re-read gpr_scan_data_directory param and apply it."""
+        try:
+            new_dir = self.get_parameter('gpr_scan_data_directory').value
+            if new_dir:
+                self.log_dir = new_dir
+                self.rosbag_dir_final = os.path.dirname(new_dir)
+                os.makedirs(self.log_dir, exist_ok=True)
+                self.get_logger().info(f'Directory updated — CSV: {self.log_dir}')
+                self.get_logger().info(f'Directory updated — Rosbag dest: {self.rosbag_dir_final}')
+                response.success = True
+                response.message = f'GPR dir: {self.log_dir}, Rosbag dest: {self.rosbag_dir_final}'
+            else:
+                response.success = False
+                response.message = 'gpr_scan_data_directory parameter is empty'
+        except Exception as e:
+            self.get_logger().error(f'set_directory failed: {e}')
+            response.success = False
+            response.message = str(e)
         return response
     
     def start_rosbag_recording(self):

@@ -448,7 +448,10 @@ public:
     stop_srv_ = this->create_service<std_srvs::srv::Trigger>(
         "/udc/stop",
         std::bind(&UnifiedDataCollector::onStop, this, std::placeholders::_1, std::placeholders::_2));
-    RCLCPP_INFO(this->get_logger(), "Services ready: /udc/pause, /udc/resume, /udc/stop");
+    set_dir_srv_ = this->create_service<std_srvs::srv::Trigger>(
+        "/udc/set_directory",
+        std::bind(&UnifiedDataCollector::onSetDirectory, this, std::placeholders::_1, std::placeholders::_2));
+    RCLCPP_INFO(this->get_logger(), "Services ready: /udc/pause, /udc/resume, /udc/stop, /udc/set_directory");
     
     // Camera stream selection subscriber (for switching between left/right cameras)
     camera_select_sub_ = this->create_subscription<std_msgs::msg::String>(
@@ -642,6 +645,23 @@ private:
     RCLCPP_INFO(this->get_logger(), "Data collection STOPPED - files saved to: %s", session_dir_.c_str());
     resp->success = true;
     resp->message = "Data collection stopped. Data saved to: " + session_dir_.string();
+  }
+
+  void onSetDirectory(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
+                      std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    // Re-read the visual_data_directory parameter
+    std::string new_dir;
+    this->get_parameter("visual_data_directory", new_dir);
+    if (new_dir.empty()) {
+      resp->success = false;
+      resp->message = "visual_data_directory parameter is empty";
+      return;
+    }
+    cfg_.log_directory = new_dir;
+    std::filesystem::create_directories(new_dir);
+    RCLCPP_INFO(this->get_logger(), "Visual data directory updated: %s", new_dir.c_str());
+    resp->success = true;
+    resp->message = "Directory set to: " + new_dir;
   }
 
   // ---------- Odom -> enqueue one row ----------
@@ -1313,6 +1333,7 @@ private:
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr pause_srv_;   // Pause service
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr resume_srv_;  // Resume service
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_srv_;    // Stop service
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_dir_srv_; // Set directory service
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_select_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_target_sub_;

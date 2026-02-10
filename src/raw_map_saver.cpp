@@ -86,6 +86,12 @@ public:
             std::bind(&RawMapSaver::save_raw_map_service, this, std::placeholders::_1, std::placeholders::_2)
         );
         
+        // Create service for updating save directory (multi-section support)
+        set_dir_service_ = this->create_service<std_srvs::srv::Trigger>(
+            "/raw_map_saver/set_directory",
+            std::bind(&RawMapSaver::set_directory_service, this, std::placeholders::_1, std::placeholders::_2)
+        );
+        
         // Create timer for automatic periodic saving if enabled
         if (auto_save_enabled_) {
             auto_save_timer_ = this->create_wall_timer(
@@ -98,7 +104,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "Raw Map Saver started");
         RCLCPP_INFO(this->get_logger(), "Input topic: %s", input_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "Save directory: %s", save_directory_.c_str());
-        RCLCPP_INFO(this->get_logger(), "Service available at: /save_raw_map");
+        RCLCPP_INFO(this->get_logger(), "Services: /save_raw_map, /raw_map_saver/set_directory");
         RCLCPP_INFO(this->get_logger(), "Auto-save: %s", auto_save_enabled_ ? "ENABLED" : "DISABLED");
         RCLCPP_INFO(this->get_logger(), "Tilt correction: %s", apply_tilt_correction_ ? "ENABLED" : "DISABLED");
         if (apply_tilt_correction_) {
@@ -471,9 +477,27 @@ private:
         return generate_filename("raw_map");
     }
     
+    void set_directory_service(
+        const std_srvs::srv::Trigger::Request::SharedPtr /*request*/,
+        std_srvs::srv::Trigger::Response::SharedPtr response)
+    {
+        std::string new_dir = this->get_parameter("save_directory").as_string();
+        if (new_dir.empty()) {
+            response->success = false;
+            response->message = "save_directory parameter is empty";
+            return;
+        }
+        save_directory_ = new_dir;
+        std::filesystem::create_directories(save_directory_);
+        RCLCPP_INFO(this->get_logger(), "Save directory updated: %s", save_directory_.c_str());
+        response->success = true;
+        response->message = "Directory set to: " + save_directory_;
+    }
+    
     // Member variables
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_dir_service_;
     rclcpp::TimerBase::SharedPtr auto_save_timer_;
     
     sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_;
