@@ -754,6 +754,11 @@ class StartupPreflight(Node):
         UBX_SYNC1 = 0xB5
         UBX_SYNC2 = 0x62
 
+        # Configure receiver to output UBX-NAV-PVT (same as gps_driver.cpp)
+        self.get_logger().info('  [gps] Configuring receiver for UBX output...')
+        self._configure_gps_ubx(ser, UBX_SYNC1, UBX_SYNC2)
+        time.sleep(0.3)  # Wait for config to apply
+
         # Read serial data and look for UBX-NAV-PVT (class=0x01, id=0x07, len=92)
         self.get_logger().info(f'  [gps] Waiting for NAV-PVT packets (up to {self.gps_timeout_s}s)...')
         t0 = time.time()
@@ -862,6 +867,43 @@ class StartupPreflight(Node):
             f'pDOP={result.pdop:.1f}')
         return result
 
+    def _send_ubx(self, ser, msg_class: int, msg_id: int, payload: bytes):
+        """Send a UBX message with proper checksum (same logic as gps_driver.cpp)."""
+        length = len(payload)
+        header = bytes([0xB5, 0x62, msg_class, msg_id,
+                        length & 0xFF, (length >> 8) & 0xFF])
+        body = bytes([msg_class, msg_id, length & 0xFF, (length >> 8) & 0xFF]) + payload
+        ck_a = 0
+        ck_b = 0
+        for b in body:
+            ck_a = (ck_a + b) & 0xFF
+            ck_b = (ck_b + ck_a) & 0xFF
+        packet = header + payload + bytes([ck_a, ck_b])
+        ser.write(packet)
+
+    def _configure_gps_ubx(self, ser, sync1: int, sync2: int):
+        """Configure GPS receiver to output UBX-NAV-PVT (mirrors gps_driver.cpp)."""
+        try:
+            # 1. Enable UBX-NAV-PVT output (CFG-MSG: class=0x01, id=0x07, rate=1)
+            self._send_ubx(ser, 0x06, 0x01, bytes([0x01, 0x07, 0x01]))
+
+            # 2. Disable common NMEA messages to reduce serial traffic
+            nmea_msgs = [
+                (0xF0, 0x00),  # GGA
+                (0xF0, 0x01),  # GLL
+                (0xF0, 0x02),  # GSA
+                (0xF0, 0x03),  # GSV
+                (0xF0, 0x04),  # RMC
+                (0xF0, 0x05),  # VTG
+            ]
+            for cls, mid in nmea_msgs:
+                self._send_ubx(ser, 0x06, 0x01, bytes([cls, mid, 0x00]))
+
+            # Flush any pending data
+            ser.reset_input_buffer()
+        except Exception as e:
+            self.get_logger().warn(f'  [gps] Config write warning: {e}')
+
     def _parse_nav_pvt(self, payload: bytes) -> Optional[Dict[str, Any]]:
         """Parse a 92-byte UBX-NAV-PVT payload (same struct as gps_driver.cpp)."""
         if len(payload) < 92:
@@ -924,14 +966,36 @@ class StartupPreflight(Node):
         self.get_logger().info('  [motors] Setting up CAN and ODrive nodes...')
 
         # Step 1: Bring up CAN
+        can_ok = False
         try:
-            subprocess.run(
+            # Try setting up the CAN interface
+            can_result = subprocess.run(
                 ['sudo', 'ip', 'link', 'set', self.can_interface, 'up',
                  'type', 'can', 'bitrate', str(self.can_bitrate)],
-                capture_output=True, timeout=5
+                capture_output=True, text=True, timeout=5
             )
+            if can_result.returncode == 0:
+                can_ok = True
+            else:
+                # Maybe already up? Check if it exists
+                check = subprocess.run(
+                    ['ip', 'link', 'show', self.can_interface],
+                    capture_output=True, text=True, timeout=5
+                )
+                if check.returncode == 0 and 'UP' in check.stdout.upper():
+                    can_ok = True
+                    self.get_logger().info(f'  [motors] CAN interface already up')
+                else:
+                    self.get_logger().error(
+                        f'  [motors] CAN setup failed: {can_result.stderr.strip()}')
         except Exception as e:
-            self.get_logger().warn(f'  [motors] CAN setup note: {e} (may already be up)')
+            self.get_logger().error(f'  [motors] CAN setup error: {e}')
+
+        if not can_ok:
+            result.status = 'FAIL'
+            result.reason = f'CAN interface {self.can_interface} not available (adapter connected?)'
+            self.get_logger().error(f'  [motors] {result.reason}')
+            return result
 
         # Step 2: Start ODrive CAN nodes
         left_cmd = [
@@ -1060,16 +1124,26 @@ class StartupPreflight(Node):
         future_l = left_client.call_async(req)
         future_r = right_client.call_async(req)
 
+        # Wait for service responses
         t0 = time.time()
         while time.time() - t0 < 5:
             rclpy.spin_once(self, timeout_sec=0.1)
             if future_l.done() and future_r.done():
                 break
 
-        time.sleep(0.5)
-        # Verify armed
-        return (self.left_axis_state == 8 and self.right_axis_state == 8
-                and self.left_errors == 0 and self.right_errors == 0)
+        # Spin a few more times to receive updated status after arming
+        for _ in range(20):
+            rclpy.spin_once(self, timeout_sec=0.05)
+
+        armed = (self.left_axis_state == 8 and self.right_axis_state == 8
+                 and self.left_errors == 0 and self.right_errors == 0)
+
+        if not armed:
+            self.get_logger().warn(
+                f'  [motors] Arming state: L={self.left_axis_state} R={self.right_axis_state} '
+                f'L_err=0x{self.left_errors:X} R_err=0x{self.right_errors:X}')
+
+        return armed
 
     def _disarm_motors(self, left_client, right_client) -> bool:
         """Disarm both motors to IDLE."""
@@ -1100,11 +1174,15 @@ class StartupPreflight(Node):
         t0 = time.time()
         while time.time() - t0 < self.motor_test_duration:
             msg_l = ControlMessage()
+            msg_l.control_mode = 2   # VELOCITY_CONTROL
+            msg_l.input_mode = 1     # PASSTHROUGH
             msg_l.input_vel = float(left_v)
             msg_l.input_torque = 0.0
             left_pub.publish(msg_l)
 
             msg_r = ControlMessage()
+            msg_r.control_mode = 2   # VELOCITY_CONTROL
+            msg_r.input_mode = 1     # PASSTHROUGH
             msg_r.input_vel = float(right_v)
             msg_r.input_torque = 0.0
             right_pub.publish(msg_r)
@@ -1128,6 +1206,8 @@ class StartupPreflight(Node):
         t0 = time.time()
         while time.time() - t0 < self.motor_stop_duration:
             msg = ControlMessage()
+            msg.control_mode = 2   # VELOCITY_CONTROL
+            msg.input_mode = 1     # PASSTHROUGH
             msg.input_vel = 0.0
             msg.input_torque = 0.0
             left_pub.publish(msg)
@@ -1182,6 +1262,8 @@ class StartupPreflight(Node):
         # Send zero commands
         if left_pub and right_pub:
             msg = ControlMessage()
+            msg.control_mode = 2   # VELOCITY_CONTROL
+            msg.input_mode = 1     # PASSTHROUGH
             msg.input_vel = 0.0
             msg.input_torque = 0.0
             for _ in range(5):
