@@ -226,7 +226,8 @@ class StartupPreflight(Node):
         self.declare_parameter('gps_min_sats', 8)
         self.declare_parameter('gps_max_hacc_m', 5.0)
         self.declare_parameter('gps_max_pdop', 4.0)
-        self.declare_parameter('gps_timeout_s', 20.0)
+        self.declare_parameter('gps_timeout_s', 15.0)
+        self.declare_parameter('skip_gps_check', False)
 
         # Motors
         self.declare_parameter('can_interface', 'can0')
@@ -269,6 +270,7 @@ class StartupPreflight(Node):
         self.gps_max_hacc_m = float(self.get_parameter('gps_max_hacc_m').value)
         self.gps_max_pdop = float(self.get_parameter('gps_max_pdop').value)
         self.gps_timeout_s = float(self.get_parameter('gps_timeout_s').value)
+        self.skip_gps_check = bool(self.get_parameter('skip_gps_check').value)
 
         self.can_interface = str(self.get_parameter('can_interface').value)
         self.can_bitrate = int(self.get_parameter('can_bitrate').value)
@@ -729,14 +731,41 @@ class StartupPreflight(Node):
     def check_gps(self) -> GpsResult:
         """Check GPS via direct serial UBX parsing (same as gps_driver.cpp)."""
         result = GpsResult()
+
+        if self.skip_gps_check:
+            result.status = 'SKIP'
+            result.reason = 'GPS check skipped by parameter'
+            self.get_logger().info(f'  [gps] {result.reason}')
+            return result
+
         self.get_logger().info(f'  [gps] Opening {self.gps_device}...')
 
-        # Try to open serial port
-        devices_to_try = [self.gps_device, '/dev/ttyACM0']
+        # Only try /dev/gps — don't blindly fall back to /dev/ttyACM0
+        # which could be a completely different device
+        devices_to_try = [self.gps_device]
+        if self.gps_device != '/dev/ttyACM0':
+            # Only try ACM0 fallback if it's a symlink to help identify GPS
+            acm0_path = '/dev/ttyACM0'
+            if os.path.exists(acm0_path):
+                try:
+                    # Quick sanity: check if udevadm identifies it as u-blox
+                    udev_check = subprocess.run(
+                        ['udevadm', 'info', '--query=all', '--name=' + acm0_path],
+                        capture_output=True, text=True, timeout=3
+                    )
+                    if 'u-blox' in udev_check.stdout.lower() or '1546:' in udev_check.stdout:
+                        devices_to_try.append(acm0_path)
+                except Exception:
+                    # If udevadm fails, still try it but with short timeout validation
+                    devices_to_try.append(acm0_path)
+
         ser = None
+        opened_dev = None
         for dev in devices_to_try:
             try:
-                ser = serial.Serial(dev, self.gps_baud, timeout=1)
+                ser = serial.Serial(dev, self.gps_baud, timeout=1,
+                                    write_timeout=2)
+                opened_dev = dev
                 self.get_logger().info(f'  [gps] Opened {dev}')
                 break
             except Exception:
@@ -744,7 +773,25 @@ class StartupPreflight(Node):
 
         if ser is None:
             result.status = 'FAIL'
-            result.reason = 'cannot open GPS serial port'
+            result.reason = f'cannot open GPS serial port ({self.gps_device})'
+            self.get_logger().error(f'  [gps] {result.reason}')
+            return result
+
+        # Quick validation: read a small amount to check if the device
+        # produces any data at all (GPS outputs continuous NMEA/UBX)
+        self.get_logger().info('  [gps] Validating device responds...')
+        try:
+            probe = ser.read(64)
+            if len(probe) == 0:
+                ser.close()
+                result.status = 'FAIL'
+                result.reason = f'device {opened_dev} produced no data (not a GPS?)'
+                self.get_logger().error(f'  [gps] {result.reason}')
+                return result
+        except Exception as e:
+            ser.close()
+            result.status = 'FAIL'
+            result.reason = f'device {opened_dev} read failed: {e}'
             self.get_logger().error(f'  [gps] {result.reason}')
             return result
 
@@ -884,6 +931,10 @@ class StartupPreflight(Node):
     def _configure_gps_ubx(self, ser, sync1: int, sync2: int):
         """Configure GPS receiver to output UBX-NAV-PVT (mirrors gps_driver.cpp)."""
         try:
+            # Ensure write_timeout is set so we don't block forever
+            if ser.write_timeout is None or ser.write_timeout > 2:
+                ser.write_timeout = 2
+
             # 1. Enable UBX-NAV-PVT output (CFG-MSG: class=0x01, id=0x07, rate=1)
             self._send_ubx(ser, 0x06, 0x01, bytes([0x01, 0x07, 0x01]))
 
@@ -901,6 +952,8 @@ class StartupPreflight(Node):
 
             # Flush any pending data
             ser.reset_input_buffer()
+        except serial.SerialTimeoutException:
+            self.get_logger().warn('  [gps] Config write timed out (device may not be a GPS)')
         except Exception as e:
             self.get_logger().warn(f'  [gps] Config write warning: {e}')
 
