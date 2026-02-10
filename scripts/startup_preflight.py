@@ -272,7 +272,7 @@ class StartupPreflight(Node):
         self.declare_parameter('right_node_id', 1)
         self.declare_parameter('motor_test_vel', 0.3)
         self.declare_parameter('motor_test_duration', 1.5)
-        self.declare_parameter('motor_stop_duration', 0.5)
+        self.declare_parameter('motor_stop_duration', 1.0)
         self.declare_parameter('motor_max_current', 5.0)
         self.declare_parameter('motor_vel_threshold', 0.05)
         self.declare_parameter('skip_motion_test', False)
@@ -1356,8 +1356,8 @@ class StartupPreflight(Node):
 
             rclpy.spin_once(self, timeout_sec=0.05)
 
-            # Record feedback (skip first 0.3s for ramp-up)
-            if time.time() - t0 > 0.3:
+            # Record feedback (skip first 0.5s for ramp-up)
+            if time.time() - t0 > 0.5:
                 left_vels.append(self.left_vel)
                 right_vels.append(self.right_vel)
                 left_currents.append(abs(self.left_iq))
@@ -1369,7 +1369,8 @@ class StartupPreflight(Node):
                 mr.reason = (f'ODrive errors: L=0x{self.left_errors:X}, '
                              f'R=0x{self.right_errors:X}')
 
-        # Stop command
+        # Stop command — send zero and wait for wheels to actually stop
+        stopped = False
         t0 = time.time()
         while time.time() - t0 < self.motor_stop_duration:
             msg = ControlMessage()
@@ -1380,6 +1381,16 @@ class StartupPreflight(Node):
             left_pub.publish(msg)
             right_pub.publish(msg)
             rclpy.spin_once(self, timeout_sec=0.05)
+            # Check if both wheels have actually stopped
+            if (abs(self.left_vel) < 0.02 and abs(self.right_vel) < 0.02
+                    and time.time() - t0 > 0.2):
+                stopped = True
+                break
+        # Extra settle time after stop to let mechanical vibration die down
+        if stopped:
+            time.sleep(0.2)
+        else:
+            time.sleep(0.3)
 
         # Evaluate
         if left_vels:
