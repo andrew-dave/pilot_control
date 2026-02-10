@@ -2,19 +2,27 @@
 """
 Tilt Calibration Script - Estimates LiDAR mount tilt using IMU gravity alignment.
 
-This script should be run ONCE with the robot stationary on level ground.
+This script is FULLY STANDALONE - it automatically starts the LiDAR driver,
+collects IMU data, computes calibration, and shuts down.
+
+Run this ONCE with the robot stationary on level ground.
 It collects IMU accelerometer samples to determine the gravity vector,
 then computes the rotation matrix needed to align the LiDAR frame with
 the robot's body frame (ground-aligned).
 
-This implements the same algorithm as the original odom_tilt_corrector.py:
-- Collects IMU samples and averages them
-- Computes R_align using pitch-only correction from gravity
+Algorithm:
+- Starts Livox MID360 driver (if not already running)
+- Collects IMU samples and averages them (gravity in body frame)
+- Computes R_align using pitch-only correction from body-frame gravity
 - Applies R_flip coordinate flip
 - Saves R_map = R_flip @ R_align
+- Shuts down the driver
 
 Usage:
-    ros2 run pilot_control tilt_calibration [--ros-args -p num_samples:=100]
+    ros2 run pilot_control tilt_calibration
+    
+    # Or with custom parameters:
+    ros2 run pilot_control tilt_calibration --ros-args -p num_samples:=200 -p start_lidar:=false
 
 The calibration result is saved to:
     /R_DATA/tilt_calibration/tilt_correction_matrices_<index>.npz
@@ -25,7 +33,6 @@ The launch file automatically loads the latest (highest index) file.
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 import numpy as np
 import math
@@ -33,6 +40,10 @@ import os
 import sys
 import re
 import glob
+import signal
+import subprocess
+import time
+import threading
 from datetime import datetime
 
 
@@ -108,32 +119,157 @@ def get_next_calibration_index(calibration_dir=TILT_CALIBRATION_DIR):
     return max_index + 1
 
 
+class LivoxDriverManager:
+    """Manages the Livox LiDAR driver subprocess."""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        self.process = None
+        self.started_by_us = False
+        
+    def is_imu_available(self):
+        """Check if IMU topic is already being published."""
+        try:
+            result = subprocess.run(
+                ['ros2', 'topic', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            return '/livox/imu' in result.stdout
+        except Exception:
+            return False
+    
+    def start(self):
+        """Start the Livox driver if not already running."""
+        if self.is_imu_available():
+            self.logger.info('LiDAR driver already running (IMU topic available)')
+            self.started_by_us = False
+            return True
+        
+        self.logger.info('Starting Livox MID360 driver...')
+        
+        try:
+            # Try to find the config file
+            config_paths = [
+                '/home/raj/livox_ws/src/livox_ros_driver2/config/MID360_config.json',
+                '/opt/ros/humble/share/livox_ros_driver2/config/MID360_config.json',
+            ]
+            
+            # Also try to find via ros2 pkg
+            try:
+                result = subprocess.run(
+                    ['ros2', 'pkg', 'prefix', 'livox_ros_driver2'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    pkg_path = result.stdout.strip()
+                    config_paths.insert(0, f'{pkg_path}/share/livox_ros_driver2/config/MID360_config.json')
+            except Exception:
+                pass
+            
+            config_file = None
+            for path in config_paths:
+                if os.path.exists(path):
+                    config_file = path
+                    break
+            
+            if not config_file:
+                self.logger.error('Could not find MID360_config.json')
+                self.logger.error(f'Searched: {config_paths}')
+                return False
+            
+            self.logger.info(f'Using config: {config_file}')
+            
+            # Start the driver node directly
+            cmd = [
+                'ros2', 'run', 'livox_ros_driver2', 'livox_ros_driver2_node',
+                '--ros-args',
+                '-p', 'xfer_format:=1',
+                '-p', 'multi_topic:=0',
+                '-p', 'data_src:=0',
+                '-p', 'publish_freq:=10.0',
+                '-p', 'output_data_type:=0',
+                '-p', 'frame_id:=livox_frame',
+                '-p', f'user_config_path:={config_file}',
+            ]
+            
+            # Start process with output suppressed (to keep calibration output clean)
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                preexec_fn=os.setsid  # Create new process group for clean shutdown
+            )
+            
+            self.started_by_us = True
+            
+            # Wait for IMU topic to become available
+            self.logger.info('Waiting for LiDAR to initialize...')
+            for i in range(30):  # Wait up to 30 seconds
+                time.sleep(1)
+                if self.is_imu_available():
+                    self.logger.info('LiDAR driver started successfully')
+                    return True
+                if i % 5 == 4:
+                    self.logger.info(f'Still waiting for IMU... ({i+1}s)')
+            
+            self.logger.error('Timeout waiting for LiDAR driver to start')
+            self.stop()
+            return False
+            
+        except FileNotFoundError:
+            self.logger.error('livox_ros_driver2 package not found')
+            self.logger.error('Make sure the Livox ROS2 driver is installed')
+            return False
+        except Exception as e:
+            self.logger.error(f'Failed to start LiDAR driver: {e}')
+            return False
+    
+    def stop(self):
+        """Stop the Livox driver if we started it."""
+        if self.process and self.started_by_us:
+            self.logger.info('Stopping LiDAR driver...')
+            try:
+                # Send SIGTERM to the process group
+                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                self.process.wait(timeout=5)
+            except Exception:
+                try:
+                    # Force kill if SIGTERM didn't work
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                except Exception:
+                    pass
+            self.process = None
+            self.logger.info('LiDAR driver stopped')
+
+
 class TiltCalibration(Node):
-    def __init__(self):
+    def __init__(self, lidar_manager=None):
         super().__init__('tilt_calibration')
+        
+        self.lidar_manager = lidar_manager
 
         # Parameters
         self.declare_parameter('imu_topic', '/livox/imu')
-        self.declare_parameter('odometry_topic', '/Odometry')
         self.declare_parameter('num_samples', 100)  # Number of IMU samples to average
         self.declare_parameter('timeout_sec', 30.0)  # Timeout in seconds
         self.declare_parameter('calibration_dir', TILT_CALIBRATION_DIR)  # Calibration directory
+        self.declare_parameter('start_lidar', True)  # Whether to start LiDAR driver
 
         self.imu_topic = str(self.get_parameter('imu_topic').value)
-        self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.num_samples = int(self.get_parameter('num_samples').value)
         self.timeout_sec = float(self.get_parameter('timeout_sec').value)
         self.calibration_dir = str(self.get_parameter('calibration_dir').value)
+        self.start_lidar = bool(self.get_parameter('start_lidar').value)
 
         # State - IMU averaging
         self.accel_sum = np.zeros(3, dtype=float)
         self.accel_count = 0
         self.accel_avg = None
         self.accel_initialized = False
-        
-        # State - Odometry (for transforming gravity to world frame)
-        self.last_odom_q = None
-        self.odom_received = False
         
         # State - Calibration
         self.calibration_complete = False
@@ -150,22 +286,18 @@ class TiltCalibration(Node):
             f'tilt_correction_matrices_{self.calibration_index}.npz'
         )
 
-        # Subscriptions
+        # Subscription - only IMU needed (no odometry required!)
         self.imu_sub = self.create_subscription(
             Imu, self.imu_topic, self.imu_callback, qos_profile_sensor_data
-        )
-        self.odom_sub = self.create_subscription(
-            Odometry, self.odom_topic, self.odom_callback, qos_profile_sensor_data
         )
 
         # Timeout timer
         self.timeout_timer = self.create_timer(self.timeout_sec, self.timeout_callback)
 
         self.get_logger().info('='*60)
-        self.get_logger().info('TILT CALIBRATION')
+        self.get_logger().info('TILT CALIBRATION (Standalone)')
         self.get_logger().info('='*60)
         self.get_logger().info(f'IMU topic: {self.imu_topic}')
-        self.get_logger().info(f'Odometry topic: {self.odom_topic}')
         self.get_logger().info(f'Samples to collect: {self.num_samples}')
         self.get_logger().info(f'Timeout: {self.timeout_sec}s')
         self.get_logger().info(f'Calibration directory: {self.calibration_dir}')
@@ -183,48 +315,37 @@ class TiltCalibration(Node):
         self.get_logger().info('='*60)
         self.get_logger().info(f'Collecting IMU samples... (0/{self.num_samples})')
 
-    # ---------------- Quaternion/Matrix utilities ----------------
     @staticmethod
-    def quat_to_matrix(q):
-        """Convert quaternion (x, y, z, w) to rotation matrix."""
-        x, y, z, w = q
-        xx = x * x; yy = y * y; zz = z * z
-        xy = x * y; xz = x * z; yz = y * z
-        wx = w * x; wy = w * y; wz = w * z
-        R = np.array([
-            [1.0 - 2.0 * (yy + zz),     2.0 * (xy - wz),         2.0 * (xz + wy)],
-            [    2.0 * (xy + wz),   1.0 - 2.0 * (xx + zz),       2.0 * (yz - wx)],
-            [    2.0 * (xz - wy),       2.0 * (yz + wx),     1.0 - 2.0 * (xx + yy)]
-        ], dtype=float)
-        return R
-
-    @staticmethod
-    def compute_tilt_correction_matrix(a_world):
+    def compute_tilt_correction_matrix_body(a_body):
         """
-        Compute PURE PITCH correction around Y-axis ONLY.
+        Compute PURE PITCH correction around Y-axis from BODY-FRAME gravity.
+        
+        This works directly with IMU measurements without needing odometry.
+        The IMU measures gravity in the sensor's body frame. We compute the
+        pitch angle needed to make gravity point straight down [0, 0, -1].
+        
         Assumes LiDAR is mounted with tilt only in the forward direction (pitch),
         not sideways (roll).
         
-        This gives a rotation matrix that:
-        - Corrects the forward/backward tilt (pitch around Y)
-        - Preserves yaw completely (no rotation around Z)
-        - Ignores any roll component (assumes it's sensor noise)
-        
-        Input: a_world = gravity direction in world frame (normalized)
-        Output: rotation matrix for pitch correction only
+        Input: a_body = gravity direction in body frame (normalized)
+        Output: (R_align, pitch_angle) rotation matrix for pitch correction
         """
-        a_world = np.array(a_world, dtype=float)
-        a_world = a_world / (np.linalg.norm(a_world) + 1e-12)
+        a_body = np.array(a_body, dtype=float)
+        a_body = a_body / (np.linalg.norm(a_body) + 1e-12)
         
-        # Target: gravity pointing down [0, 0, -1]
-        # Already aligned?
-        if a_world[2] < -0.9999:
+        # Target: gravity pointing down [0, 0, -1] in corrected frame
+        # In body frame, gravity points roughly in +Z direction (sensor facing forward-down)
+        
+        # Already aligned? (gravity pointing down)
+        if a_body[2] < -0.9999:
             return np.eye(3, dtype=float), 0.0
         
         # Extract ONLY pitch (rotation around Y-axis)
         # Project gravity onto XZ plane (forward-backward tilt)
         # Ignore the Y component (assume no roll, just sensor noise)
-        pitch = np.arctan2(a_world[0], -a_world[2])
+        # 
+        # The pitch angle is the angle from -Z axis to gravity in XZ plane
+        pitch = np.arctan2(a_body[0], -a_body[2])
         
         # Build pure pitch rotation matrix around Y-axis
         cp = np.cos(pitch)
@@ -267,44 +388,17 @@ class TiltCalibration(Node):
             self.accel_initialized = True
             self.get_logger().info(
                 f'IMU accel averaged (N={self.accel_count}): '
-                f'{self.accel_avg[0]:.3f},{self.accel_avg[1]:.3f},{self.accel_avg[2]:.3f} — waiting for odom'
+                f'[{self.accel_avg[0]:.3f}, {self.accel_avg[1]:.3f}, {self.accel_avg[2]:.3f}]'
             )
-            
-            # If we already have odometry, compute calibration
-            if self.odom_received:
-                self.compute_calibration()
-
-    # ---------------- Odometry callback ----------------
-    def odom_callback(self, msg: Odometry):
-        if self.calibration_complete:
-            return
-
-        # Store the latest orientation
-        self.last_odom_q = (
-            float(msg.pose.pose.orientation.x),
-            float(msg.pose.pose.orientation.y),
-            float(msg.pose.pose.orientation.z),
-            float(msg.pose.pose.orientation.w),
-        )
-        
-        if not self.odom_received:
-            self.odom_received = True
-            self.get_logger().info('Odometry received')
-        
-        # If IMU is ready, compute calibration
-        if self.accel_initialized:
+            # Compute calibration immediately - no need to wait for odometry!
             self.compute_calibration()
 
     # ---------------- Timeout callback ----------------
     def timeout_callback(self):
         if not self.calibration_complete:
             self.get_logger().error(
-                f'Timeout! IMU samples: {self.accel_count}/{self.num_samples}, '
-                f'Odom received: {self.odom_received}')
-            if self.accel_count < self.num_samples:
-                self.get_logger().error(f'Check that IMU is publishing on {self.imu_topic}')
-            if not self.odom_received:
-                self.get_logger().error(f'Check that odometry is publishing on {self.odom_topic}')
+                f'Timeout! IMU samples: {self.accel_count}/{self.num_samples}')
+            self.get_logger().error(f'Check that IMU is publishing on {self.imu_topic}')
             self.calibration_complete = True
             self.calibration_success = False
             rclpy.shutdown()
@@ -328,20 +422,14 @@ class TiltCalibration(Node):
             f'Gravity in body frame (normalized): '
             f'[{a_body_norm[0]:.4f}, {a_body_norm[1]:.4f}, {a_body_norm[2]:.4f}]')
 
-        # Transform gravity to world frame using odometry orientation
-        R_wb = self.quat_to_matrix(self.last_odom_q)
-        a_world = R_wb @ a_body_norm
-        self.get_logger().info(
-            f'Gravity in world frame: '
-            f'[{a_world[0]:.4f}, {a_world[1]:.4f}, {a_world[2]:.4f}]')
-
         # Fixed coordinate system flip (same as original odom_tilt_corrector)
         R_flip = np.array([[-1.0, 0.0, 0.0],
                            [ 0.0, 1.0, 0.0],
                            [ 0.0, 0.0,-1.0]], dtype=float)
 
-        # Compute pitch-only correction from world-frame gravity
-        R_align, pitch_angle = self.compute_tilt_correction_matrix(a_world)
+        # Compute pitch-only correction from body-frame gravity directly
+        # No need for odometry - we work in body frame
+        R_align, pitch_angle = self.compute_tilt_correction_matrix_body(a_body_norm)
         pitch_deg = math.degrees(pitch_angle)
 
         # Final transformation: R_map = R_flip @ R_align
@@ -354,14 +442,15 @@ class TiltCalibration(Node):
         self.get_logger().info(f'Pitch angle: {pitch_deg:.2f}°')
 
         # Verify: gravity should now point to [0, 0, -1] after correction
-        a_corrected = R_map @ a_world
+        # Note: We apply R_map to body-frame gravity for verification
+        a_corrected = R_map @ a_body_norm
         self.get_logger().info(
             f'Gravity after correction: '
             f'[{a_corrected[0]:.4f}, {a_corrected[1]:.4f}, {a_corrected[2]:.4f}]')
         self.get_logger().info(f'  (should be close to [0, 0, -1])')
 
         # Save calibration
-        self._save_calibration(R_map, R_align, R_flip, a_world, a_body_norm, pitch_angle)
+        self._save_calibration(R_map, R_align, R_flip, a_body_norm, pitch_angle)
 
         self.get_logger().info('')
         self.get_logger().info('='*60)
@@ -369,7 +458,7 @@ class TiltCalibration(Node):
         self.get_logger().info('='*60)
         self.get_logger().info(f'Saved to: {self.output_file}')
         self.get_logger().info('')
-        self.get_logger().info('You can now restart robot_complete.launch.py')
+        self.get_logger().info('You can now run robot_complete.launch.py')
         self.get_logger().info('The tilt correction will be loaded automatically.')
         self.get_logger().info('='*60)
 
@@ -377,7 +466,7 @@ class TiltCalibration(Node):
         rclpy.shutdown()
 
     # ---------------- Save calibration ----------------
-    def _save_calibration(self, R_map, R_align, R_flip, a_world, a_body, pitch_angle):
+    def _save_calibration(self, R_map, R_align, R_flip, a_body, pitch_angle):
         """Save calibration results to .npz file (same format as original odom_tilt_corrector)."""
         try:
             # Ensure output directory exists
@@ -395,7 +484,6 @@ class TiltCalibration(Node):
                 R_map=R_map,
                 R_align=R_align,
                 R_flip=R_flip,
-                a_world=a_world,
                 a_body=a_body,
                 pitch_angle=pitch_angle,
                 p0_world=np.zeros(3),  # Origin set at runtime
@@ -416,11 +504,6 @@ class TiltCalibration(Node):
                 f.write(f'accel_body_y,{a_body[1]:.6f}\n')
                 f.write(f'accel_body_z,{a_body[2]:.6f}\n')
                 f.write('#\n')
-                f.write('# Gravity Direction World Frame (before correction)\n')
-                f.write(f'gravity_world_x,{a_world[0]:.6f}\n')
-                f.write(f'gravity_world_y,{a_world[1]:.6f}\n')
-                f.write(f'gravity_world_z,{a_world[2]:.6f}\n')
-                f.write('#\n')
                 f.write('# R_align (Tilt Alignment Matrix - pitch only)\n')
                 for i in range(3):
                     f.write(f'{R_align[i,0]:.8f},{R_align[i,1]:.8f},{R_align[i,2]:.8f}\n')
@@ -434,7 +517,7 @@ class TiltCalibration(Node):
                     f.write(f'{R_map[i,0]:.8f},{R_map[i,1]:.8f},{R_map[i,2]:.8f}\n')
                 f.write('#\n')
                 f.write('# Gravity After Correction (should be [0, 0, -1])\n')
-                a_corrected = R_map @ a_world
+                a_corrected = R_map @ a_body
                 f.write(f'gravity_corrected_x,{a_corrected[0]:.6f}\n')
                 f.write(f'gravity_corrected_y,{a_corrected[1]:.6f}\n')
                 f.write(f'gravity_corrected_z,{a_corrected[2]:.6f}\n')
@@ -447,17 +530,72 @@ class TiltCalibration(Node):
 
 
 def main(args=None):
+    # Initialize ROS first to get parameters
     rclpy.init(args=args)
-    node = TiltCalibration()
+    
+    # Create a temporary node just to read the start_lidar parameter
+    temp_node = rclpy.create_node('_tilt_calibration_init')
+    temp_node.declare_parameter('start_lidar', True)
+    start_lidar = bool(temp_node.get_parameter('start_lidar').value)
+    temp_node.destroy_node()
+    
+    lidar_manager = None
+    
+    print('')
+    print('='*60)
+    print('TILT CALIBRATION - Standalone Mode')
+    print('='*60)
+    
+    if start_lidar:
+        # Create a simple logger for the LiDAR manager
+        class SimpleLogger:
+            def info(self, msg): print(f'[INFO] {msg}')
+            def error(self, msg): print(f'[ERROR] {msg}')
+            def warn(self, msg): print(f'[WARN] {msg}')
+        
+        lidar_manager = LivoxDriverManager(SimpleLogger())
+        
+        if not lidar_manager.start():
+            print('')
+            print('='*60)
+            print('FAILED TO START LIDAR DRIVER')
+            print('='*60)
+            print('Options:')
+            print('  1. Start the LiDAR driver manually first:')
+            print('     ros2 launch livox_ros_driver2 msg_MID360_launch.py')
+            print('')
+            print('  2. Run calibration with start_lidar:=false:')
+            print('     ros2 run pilot_control tilt_calibration --ros-args -p start_lidar:=false')
+            print('='*60)
+            rclpy.shutdown()
+            sys.exit(1)
+    else:
+        print('[INFO] start_lidar=false, assuming LiDAR driver is already running')
+    
+    print('')
+    
+    # Create and run the calibration node
+    node = TiltCalibration(lidar_manager)
+    
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info('Calibration interrupted by user')
     finally:
-        if not node.calibration_success:
-            node.get_logger().error('Calibration failed or was interrupted')
-            sys.exit(1)
+        # Clean up
+        calibration_success = node.calibration_success
         node.destroy_node()
+        
+        # Stop LiDAR driver if we started it
+        if lidar_manager:
+            lidar_manager.stop()
+        
+        rclpy.shutdown()
+        
+        if not calibration_success:
+            print('')
+            print('[ERROR] Calibration failed or was interrupted')
+            sys.exit(1)
 
 
 if __name__ == '__main__':
