@@ -6,6 +6,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <std_srvs/srv/set_bool.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <std_msgs/msg/string.hpp>
 
 #include <gst/gst.h>
