@@ -41,7 +41,7 @@ from std_msgs.msg import Float64MultiArray, String, Bool, Empty as EmptyMsg
 from geometry_msgs.msg import Twist
 from odrive_can.msg import ControlMessage
 from odrive_can.srv import AxisState
-from std_srvs.srv import Trigger, Empty
+from std_srvs.srv import Trigger, Empty, SetBool
 
 import numpy as np
 import math
@@ -50,6 +50,7 @@ import time
 import os
 import signal
 import csv
+import threading
 
 # Optional dependencies for MPC
 try:
@@ -1011,6 +1012,13 @@ class MPCAccelController(Node):
         self.declare_parameter("heartbeat_timeout", 1.0)  # 1 second timeout
         self.declare_parameter("heartbeat_enabled", True)
 
+        # Autonomous data collection parameters
+        # When enabled, /dc/start is called on first waypoint and /dc/end_and_save on last
+        # DC is also paused/resumed on heartbeat loss/recovery
+        self.declare_parameter("auto_dc_enabled", False)
+        self.declare_parameter("auto_dc_start_delay", 2.0)  # seconds to wait after DC start before resuming
+        self.declare_parameter("auto_dc_end_delay", 2.0)    # seconds to wait before ending DC after last waypoint
+
         # Wheel ramp compensation parameters
         # ramp_rate: ODrive vel_ramp_rate in turn/s² (must match ODrive config)
         # delay_time: Pure transport delay (CAN latency + processing) in seconds
@@ -1081,6 +1089,11 @@ class MPCAccelController(Node):
         self.heartbeat_timeout = float(self.get_parameter("heartbeat_timeout").value)
         self.heartbeat_enabled = bool(self.get_parameter("heartbeat_enabled").value)
 
+        # Autonomous data collection
+        self.auto_dc_enabled: bool = bool(self.get_parameter("auto_dc_enabled").value)
+        self.auto_dc_start_delay: float = float(self.get_parameter("auto_dc_start_delay").value)
+        self.auto_dc_end_delay: float = float(self.get_parameter("auto_dc_end_delay").value)
+
         # Wheel ramp compensation
         self.ramp_compensation_enabled = bool(
             self.get_parameter("ramp_compensation_enabled").value
@@ -1127,6 +1140,11 @@ class MPCAccelController(Node):
         self.last_heartbeat_time: Optional[float] = None
         self.heartbeat_lost: bool = False
         self._heartbeat_lost_logged: bool = False  # Prevent log spam
+
+        # Autonomous data collection state
+        self.dc_active: bool = False          # True while DC is running for this waypoint sequence
+        self.dc_paused_by_heartbeat: bool = False  # True when DC was paused due to heartbeat loss
+        self._dc_sequence_lock = threading.Lock()  # Prevent concurrent DC sequences
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -1236,6 +1254,17 @@ class MPCAccelController(Node):
                 "⚠️  Heartbeat safety monitoring DISABLED - robot will operate without connection check"
             )
 
+        # Log auto-DC status
+        if self.auto_dc_enabled:
+            self.get_logger().info(
+                f"✓ Autonomous data collection ENABLED "
+                f"(start_delay={self.auto_dc_start_delay:.1f}s, end_delay={self.auto_dc_end_delay:.1f}s)")
+            self.get_logger().info(
+                "  Toggle at runtime via: ros2 topic pub /mpc_auto_dc_enable std_msgs/Bool '{data: true}'")
+        else:
+            self.get_logger().info(
+                "  Autonomous data collection DISABLED (enable via /mpc_auto_dc_enable)")
+
         # Publishers
         self.left_pub = self.create_publisher(ControlMessage, left_ctrl_topic, 10)
         self.right_pub = self.create_publisher(ControlMessage, right_ctrl_topic, 10)
@@ -1264,6 +1293,20 @@ class MPCAccelController(Node):
 
         # Optional shutdown mapping client (same as main MPC controller)
         self.shutdown_client = self.create_client(Trigger, "/shutdown_mapping")
+
+        # Data collection coordinator service clients (for autonomous DC)
+        self.dc_start_client = self.create_client(Trigger, "/dc/start")
+        self.dc_pause_client = self.create_client(Trigger, "/dc/pause")
+        self.dc_resume_client = self.create_client(Trigger, "/dc/resume")
+        self.dc_end_save_client = self.create_client(SetBool, "/dc/end_and_save")
+
+        # Auto-DC enable/disable subscriber (disabled by default)
+        self.auto_dc_enable_sub = self.create_subscription(
+            Bool,
+            "/mpc_auto_dc_enable",
+            self._auto_dc_enable_callback,
+            10,
+        )
 
         # Motor arming state
         self._arm_attempts = 0
@@ -1746,6 +1789,120 @@ class MPCAccelController(Node):
         state = "ENABLED" if self.autonomy_enabled else "DISABLED"
         self.get_logger().info(f"MPC autonomy {state} via /mpc_autonomy_enable")
 
+    def _auto_dc_enable_callback(self, msg: Bool) -> None:
+        """Enable/disable autonomous data collection via /mpc_auto_dc_enable topic."""
+        self.auto_dc_enabled = bool(msg.data)
+        state = "ENABLED" if self.auto_dc_enabled else "DISABLED"
+        self.get_logger().info(f"Autonomous data collection {state} via /mpc_auto_dc_enable")
+
+    # ----------------------------------------------------------------
+    #  Autonomous Data Collection helpers
+    # ----------------------------------------------------------------
+
+    def _call_dc_service_async(self, client, request, service_name):
+        """
+        Fire-and-forget service call.  Used for pause/resume where we don't
+        need to wait for the result in the control loop.
+        """
+        if not client.service_is_ready():
+            self.get_logger().warn(f'DC service {service_name} not ready')
+            return
+        future = client.call_async(request)
+        future.add_done_callback(
+            lambda f: self._dc_service_done(f, service_name)
+        )
+
+    def _dc_service_done(self, future, service_name):
+        """Log result of a fire-and-forget DC service call."""
+        try:
+            result = future.result()
+            if result is not None and hasattr(result, 'success'):
+                if result.success:
+                    self.get_logger().info(f'DC {service_name}: {result.message}')
+                else:
+                    self.get_logger().warn(f'DC {service_name} failed: {result.message}')
+        except Exception as e:
+            self.get_logger().warn(f'DC {service_name} exception: {e}')
+
+    def _call_dc_service_blocking(self, client, request, service_name, timeout=10.0):
+        """
+        Blocking service call for use in background threads.
+        Polls the future while the main executor processes the response.
+        """
+        if not client.wait_for_service(timeout_sec=3.0):
+            self.get_logger().warn(f'DC service {service_name} not available')
+            return False
+        future = client.call_async(request)
+        start = time.time()
+        while not future.done():
+            if time.time() - start > timeout:
+                self.get_logger().warn(f'DC service {service_name} timed out')
+                return False
+            time.sleep(0.05)
+        try:
+            result = future.result()
+            if result is not None and hasattr(result, 'success'):
+                if result.success:
+                    self.get_logger().info(f'DC {service_name}: {result.message}')
+                    return True
+                else:
+                    self.get_logger().warn(f'DC {service_name} failed: {result.message}')
+                    return False
+            return False
+        except Exception as e:
+            self.get_logger().error(f'DC {service_name} exception: {e}')
+            return False
+
+    def _dc_start_sequence(self):
+        """
+        Background thread: start data collection, wait, then re-enable autonomy.
+        Called when the robot reaches the first waypoint in a set.
+        """
+        with self._dc_sequence_lock:
+            self.get_logger().info('')
+            self.get_logger().info('='*60)
+            self.get_logger().info('AUTO-DC: Starting data collection...')
+            self.get_logger().info('='*60)
+
+            ok = self._call_dc_service_blocking(
+                self.dc_start_client, Trigger.Request(), '/dc/start', timeout=15.0)
+            if ok:
+                self.dc_active = True
+            else:
+                self.get_logger().error('AUTO-DC: /dc/start failed — resuming autonomy anyway')
+
+            # Wait before resuming robot motion
+            self.get_logger().info(
+                f'AUTO-DC: Waiting {self.auto_dc_start_delay:.1f}s before resuming...')
+            time.sleep(self.auto_dc_start_delay)
+
+            # Re-enable autonomy so the robot continues to the next waypoints
+            self.autonomy_enabled = True
+            self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+
+    def _dc_end_sequence(self):
+        """
+        Background thread: wait, then end and save data collection (complete).
+        Called when the robot reaches the last waypoint in a set.
+        """
+        with self._dc_sequence_lock:
+            self.get_logger().info(
+                f'AUTO-DC: Waiting {self.auto_dc_end_delay:.1f}s before ending DC...')
+            time.sleep(self.auto_dc_end_delay)
+
+            self.get_logger().info('')
+            self.get_logger().info('='*60)
+            self.get_logger().info('AUTO-DC: Ending data collection (complete)...')
+            self.get_logger().info('='*60)
+
+            req = SetBool.Request()
+            req.data = True  # complete tag
+            self._call_dc_service_blocking(
+                self.dc_end_save_client, req, '/dc/end_and_save', timeout=20.0)
+
+            self.dc_active = False
+            self.get_logger().info('AUTO-DC: Data collection ended and saved')
+
     def heartbeat_callback(self, msg: EmptyMsg) -> None:
         """
         Heartbeat callback from host_teleop via Zenoh bridge.
@@ -1762,6 +1919,12 @@ class MPCAccelController(Node):
             self.get_logger().info(
                 "✓ Heartbeat RECOVERED - Zenoh bridge connection restored"
             )
+            # Resume DC if it was paused by heartbeat loss
+            if self.auto_dc_enabled and self.dc_active and self.dc_paused_by_heartbeat:
+                self.get_logger().info('AUTO-DC: Resuming data collection after heartbeat recovery')
+                self._call_dc_service_async(
+                    self.dc_resume_client, Trigger.Request(), '/dc/resume')
+                self.dc_paused_by_heartbeat = False
 
     # -----------------------------
     # Control loop
@@ -1800,6 +1963,12 @@ class MPCAccelController(Node):
                 self.get_logger().error(
                     "🛑 SAFETY STOP: Sending zero velocities until heartbeat recovers"
                 )
+                # Pause DC on heartbeat loss
+                if self.auto_dc_enabled and self.dc_active and not self.dc_paused_by_heartbeat:
+                    self.get_logger().info('AUTO-DC: Pausing data collection due to heartbeat loss')
+                    self._call_dc_service_async(
+                        self.dc_pause_client, Trigger.Request(), '/dc/pause')
+                    self.dc_paused_by_heartbeat = True
             return False
         
         return True
@@ -1874,6 +2043,22 @@ class MPCAccelController(Node):
                     f"✅ Waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)} "
                     f"reached at x={self.current_x:.3f}m, y={self.current_y:.3f}m"
                 )
+
+                # AUTO-DC: On reaching the FIRST waypoint, start data collection
+                if self.auto_dc_enabled and self.current_waypoint_index == 0:
+                    self.get_logger().info(
+                        'AUTO-DC: First waypoint reached — stopping robot to start DC')
+                    self.autonomy_enabled = False
+                    self.send_zero_velocity()
+                    # Advance index so the robot targets waypoint 2 when autonomy resumes
+                    self.previous_waypoint = (self.target_x, self.target_y)
+                    self.current_waypoint_index += 1
+                    self.has_target = False
+                    # Background thread: start DC, wait, re-enable autonomy
+                    threading.Thread(
+                        target=self._dc_start_sequence, daemon=True).start()
+                    return
+
                 # Update previous waypoint and advance index
                 self.previous_waypoint = (self.target_x, self.target_y)
                 self.current_waypoint_index += 1
@@ -1892,6 +2077,14 @@ class MPCAccelController(Node):
                     f"{distance_along_line_remaining:.3f} m "
                     f"(threshold: {self.target_reached_threshold:.3f} m)"
                 )
+
+                # AUTO-DC: On reaching the LAST waypoint, end and save DC
+                if self.auto_dc_enabled and self.dc_active:
+                    self.get_logger().info(
+                        'AUTO-DC: Last waypoint reached — will end DC shortly')
+                    threading.Thread(
+                        target=self._dc_end_sequence, daemon=True).start()
+
                 return
 
         # Build reference trajectory
