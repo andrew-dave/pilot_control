@@ -230,11 +230,11 @@ class StartupPreflight(Node):
         # ── Parameters ──
         # Camera
         # Camera serial-based paths (from /dev/v4l/by-id/ on the robot)
-        # 0F12... = Left camera, 3728... = Right camera
+        # 3728... = Left camera, 0F12... = Right camera
         self.declare_parameter('left_device',
-            '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0')
-        self.declare_parameter('right_device',
             '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0')
+        self.declare_parameter('right_device',
+            '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0')
         self.declare_parameter('brightness_min', 15.0)
         self.declare_parameter('variance_min', 50.0)
         self.declare_parameter('sharpness_min', 50.0)      # Laplacian variance
