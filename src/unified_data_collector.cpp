@@ -421,6 +421,7 @@ public:
   UnifiedDataCollector()
       : rclcpp::Node("unified_data_collector"),
         recording_active_(false),
+        paused_(false),
         shutting_down_(false),
         last_log_time_(std::chrono::steady_clock::now()),
         ring_(cfg_.frame_ring_size),
@@ -435,6 +436,18 @@ public:
         "/video_record_set",
         std::bind(&UnifiedDataCollector::onSetRecording, this, std::placeholders::_1, std::placeholders::_2));
     RCLCPP_INFO(this->get_logger(), "Service ready: /video_record_set (std_srvs/SetBool)");
+    
+    // Pause/Resume/Stop services for data collection coordinator
+    pause_srv_ = this->create_service<std_srvs::srv::Trigger>(
+        "/udc/pause",
+        std::bind(&UnifiedDataCollector::onPause, this, std::placeholders::_1, std::placeholders::_2));
+    resume_srv_ = this->create_service<std_srvs::srv::Trigger>(
+        "/udc/resume",
+        std::bind(&UnifiedDataCollector::onResume, this, std::placeholders::_1, std::placeholders::_2));
+    stop_srv_ = this->create_service<std_srvs::srv::Trigger>(
+        "/udc/stop",
+        std::bind(&UnifiedDataCollector::onStop, this, std::placeholders::_1, std::placeholders::_2));
+    RCLCPP_INFO(this->get_logger(), "Services ready: /udc/pause, /udc/resume, /udc/stop");
     
     // Camera stream selection subscriber (for switching between left/right cameras)
     camera_select_sub_ = this->create_subscription<std_msgs::msg::String>(
@@ -579,9 +592,60 @@ private:
     ring_.push(std::move(f));
   }
 
+  // ---------- Pause/Resume/Stop handlers ----------
+  void onPause(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
+               std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    if (paused_) {
+      resp->success = true;
+      resp->message = "Already paused";
+      return;
+    }
+    paused_ = true;
+    RCLCPP_INFO(this->get_logger(), "Data collection PAUSED - frames will not be saved");
+    resp->success = true;
+    resp->message = "Data collection paused";
+  }
+  
+  void onResume(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
+                std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    if (!paused_) {
+      resp->success = true;
+      resp->message = "Not paused";
+      return;
+    }
+    paused_ = false;
+    RCLCPP_INFO(this->get_logger(), "Data collection RESUMED");
+    resp->success = true;
+    resp->message = "Data collection resumed";
+  }
+  
+  void onStop(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
+              std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    std::lock_guard<std::mutex> lk(mu_);
+    
+    if (!recording_active_) {
+      resp->success = true;
+      resp->message = "Already stopped";
+      return;
+    }
+    
+    recording_active_ = false;
+    paused_ = false;
+    
+    // Close CSV file
+    if (csv_stream_ && csv_stream_->is_open()) {
+      csv_stream_->flush();
+      csv_stream_->close();
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Data collection STOPPED - files saved to: %s", session_dir_.c_str());
+    resp->success = true;
+    resp->message = "Data collection stopped. Data saved to: " + session_dir_.string();
+  }
+
   // ---------- Odom -> enqueue one row ----------
   void onOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
-    if (!recording_active_) return;
+    if (!recording_active_ || paused_) return;  // Skip if not recording or paused
     
     // Throttle to configured frequency
     auto now = std::chrono::steady_clock::now();
@@ -1225,6 +1289,7 @@ private:
   Config cfg_;
   std::mutex mu_;
   std::atomic<bool> recording_active_;
+  std::atomic<bool> paused_;           // Pause state for data collection coordinator
   std::atomic<bool> shutting_down_;
   std::chrono::steady_clock::time_point last_log_time_;
   
@@ -1244,6 +1309,9 @@ private:
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_srv_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr pause_srv_;   // Pause service
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr resume_srv_;  // Resume service
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_srv_;    // Stop service
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr camera_select_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_target_sub_;

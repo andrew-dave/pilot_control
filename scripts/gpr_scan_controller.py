@@ -120,6 +120,8 @@ class GPRScanController(Node):
         self.start_sequence_time = None  # Time when start sequence began
         self.gpr_motor_start_delay = 0.5  # Delay before starting GPR motor (seconds)
         self.motor_enabled = False  # Gate to prevent motion before start event
+        self.paused = False  # Pause state for data collection coordinator
+        self.rosbag_paused = False  # Rosbag pause state
         
         # GPR motor state (from ODrive feedback)
         self.gpr_position = 0.0
@@ -200,6 +202,26 @@ class GPRScanController(Node):
         self.power_off_service = self.create_service(
             Trigger, '/gpr_scan/power_off', self.power_off_callback)
         
+        # Start/Pause/Resume/Stop services for data collection coordinator
+        self.start_service = self.create_service(
+            Trigger, '/gpr_scan/start', self.start_callback)
+        self.pause_service = self.create_service(
+            Trigger, '/gpr_scan/pause', self.pause_callback)
+        self.resume_service = self.create_service(
+            Trigger, '/gpr_scan/resume', self.resume_callback)
+        self.stop_service = self.create_service(
+            Trigger, '/gpr_scan/stop', self.stop_callback)
+        
+        # Rosbag start/pause/resume/stop services
+        self.rosbag_start_service = self.create_service(
+            Trigger, '/rosbag/start', self.rosbag_start_callback)
+        self.rosbag_pause_service = self.create_service(
+            Trigger, '/rosbag/pause', self.rosbag_pause_callback)
+        self.rosbag_resume_service = self.create_service(
+            Trigger, '/rosbag/resume', self.rosbag_resume_callback)
+        self.rosbag_stop_service = self.create_service(
+            Trigger, '/rosbag/stop', self.rosbag_stop_callback)
+        
         # Timer for motor control (20 Hz)
         self.motor_timer = self.create_timer(0.05, self.update_gpr_motor)
         
@@ -219,7 +241,9 @@ class GPRScanController(Node):
         self.get_logger().info(f'Services available:')
         self.get_logger().info(f'  - /gpr_scan/toggle')
         self.get_logger().info(f'  - /gpr_scan/power_off')
+        self.get_logger().info(f'  - /gpr_scan/start, /gpr_scan/pause, /gpr_scan/resume, /gpr_scan/stop')
         self.get_logger().info(f'  - /rosbag/toggle')
+        self.get_logger().info(f'  - /rosbag/start, /rosbag/pause, /rosbag/resume, /rosbag/stop')
         self.get_logger().info('')
         self.get_logger().info('💡 Press G in teleop to start/stop GPR scanning')
         self.get_logger().info('💡 Press B in teleop to start/stop rosbag recording')
@@ -275,7 +299,8 @@ class GPRScanController(Node):
 
         # 100 Hz trigger on GPR status; log only when new Fast-LIO data is available,
         # except for immediate event rows which we force to log on this tick.
-        if not self.logging_active or not self.csv_writer:
+        # Skip logging if paused
+        if not self.logging_active or not self.csv_writer or self.paused:
             return
 
         # Determine event
@@ -391,6 +416,218 @@ class GPRScanController(Node):
                     response.success = False
                     response.message = 'Failed to stop rosbag recording'
         
+        return response
+    
+    # ==================== Start/Pause/Resume/Stop Services ====================
+    def start_callback(self, request, response):
+        """Start GPR scanning (called by coordinator) - same as toggle when not scanning"""
+        with self.lock:
+            if self.scanning:
+                response.success = True
+                response.message = 'GPR scan already running'
+                return response
+            
+            # Start scanning
+            success = self.start_scan()
+            if success:
+                response.success = True
+                response.message = f'GPR scan started. Logging to: {self.current_log_file}'
+            else:
+                response.success = False
+                response.message = 'Failed to start GPR scan'
+        
+        return response
+    
+    def pause_callback(self, request, response):
+        """Pause GPR scanning - stop motor and pause CSV logging"""
+        with self.lock:
+            if self.paused:
+                response.success = True
+                response.message = 'Already paused'
+                return response
+            
+            self.paused = True
+            
+            # Stop GPR motor (set velocity to zero)
+            msg = ControlMessage()
+            msg.control_mode = 2  # VELOCITY_CONTROL
+            msg.input_mode = 1    # PASSTHROUGH
+            msg.input_vel = 0.0
+            msg.input_torque = 0.0
+            msg.input_pos = 0.0
+            self.gpr_motor_pub.publish(msg)
+            
+            self.get_logger().info('='*60)
+            self.get_logger().info('GPR SCAN PAUSED - Motor stopped, CSV logging paused')
+            self.get_logger().info('='*60)
+            
+            response.success = True
+            response.message = 'GPR scan paused'
+        return response
+    
+    def resume_callback(self, request, response):
+        """Resume GPR scanning - restart motor and resume CSV logging"""
+        with self.lock:
+            if not self.paused:
+                response.success = True
+                response.message = 'Not paused'
+                return response
+            
+            self.paused = False
+            
+            self.get_logger().info('='*60)
+            self.get_logger().info('GPR SCAN RESUMED - Motor and CSV logging resumed')
+            self.get_logger().info('='*60)
+            
+            response.success = True
+            response.message = 'GPR scan resumed'
+        return response
+    
+    def stop_callback(self, request, response):
+        """Stop GPR scanning completely - close files, lower actuator, and save"""
+        with self.lock:
+            self.get_logger().info('='*60)
+            self.get_logger().info('GPR SCAN STOPPING (via coordinator)')
+            self.get_logger().info('='*60)
+            
+            # Stop motor
+            msg = ControlMessage()
+            msg.control_mode = 2  # VELOCITY_CONTROL
+            msg.input_mode = 1    # PASSTHROUGH
+            msg.input_vel = 0.0
+            msg.input_torque = 0.0
+            msg.input_pos = 0.0
+            self.gpr_motor_pub.publish(msg)
+            self.get_logger().info('  ✓ GPR motor stopped')
+            
+            # Reset state
+            self.scanning = False
+            self.paused = False
+            self.logging_active = False
+            self.motor_enabled = False
+            
+            # Close log file
+            if self.log_file_handle:
+                try:
+                    self.log_file_handle.close()
+                    self.get_logger().info(f'  ✓ GPR CSV file closed: {self.current_log_file}')
+                except Exception as e:
+                    self.get_logger().error(f'  ✗ Error closing log file: {e}')
+                self.log_file_handle = None
+                self.csv_writer = None
+            
+            # Lower linear actuator (line down)
+            self.get_logger().info('  Lowering linear actuator...')
+            if self.line_stop_client.wait_for_service(timeout_sec=1.0):
+                future = self.line_stop_client.call_async(Trigger.Request())
+                rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+                if future.result() and future.result().success:
+                    self.get_logger().info('  ✓ Linear actuator lowered')
+                else:
+                    self.get_logger().warn('  ⚠️  Linear actuator stop failed')
+            else:
+                self.get_logger().warn('  ⚠️  Linear actuator service not available')
+            
+            response.success = True
+            response.message = f'GPR scan stopped. Logged {self.log_count} samples'
+            self.get_logger().info(f'✓ GPR scan STOPPED - {self.log_count} samples logged')
+            self.get_logger().info('='*60)
+        return response
+    
+    def rosbag_start_callback(self, request, response):
+        """Start rosbag recording (called by coordinator)"""
+        with self.lock:
+            if self.rosbag_recording:
+                response.success = True
+                response.message = f'Rosbag already recording: {self.rosbag_path}'
+                return response
+            
+            # Start recording
+            success = self.start_rosbag_recording()
+            if success:
+                response.success = True
+                response.message = f'Rosbag recording started: {self.rosbag_path}'
+            else:
+                response.success = False
+                response.message = 'Failed to start rosbag recording'
+        
+        return response
+    
+    def rosbag_pause_callback(self, request, response):
+        """Pause rosbag recording by sending SIGSTOP"""
+        with self.lock:
+            if not self.rosbag_recording or self.rosbag_process is None:
+                response.success = False
+                response.message = 'No rosbag recording active'
+                return response
+            
+            if self.rosbag_paused:
+                response.success = True
+                response.message = 'Rosbag already paused'
+                return response
+            
+            try:
+                # Send SIGSTOP to pause the process
+                os.killpg(os.getpgid(self.rosbag_process.pid), signal.SIGSTOP)
+                self.rosbag_paused = True
+                self.get_logger().info('✓ Rosbag recording PAUSED')
+                response.success = True
+                response.message = 'Rosbag recording paused'
+            except Exception as e:
+                self.get_logger().error(f'Failed to pause rosbag: {e}')
+                response.success = False
+                response.message = f'Failed to pause rosbag: {e}'
+        return response
+    
+    def rosbag_resume_callback(self, request, response):
+        """Resume rosbag recording by sending SIGCONT"""
+        with self.lock:
+            if not self.rosbag_recording or self.rosbag_process is None:
+                response.success = False
+                response.message = 'No rosbag recording active'
+                return response
+            
+            if not self.rosbag_paused:
+                response.success = True
+                response.message = 'Rosbag not paused'
+                return response
+            
+            try:
+                # Send SIGCONT to resume the process
+                os.killpg(os.getpgid(self.rosbag_process.pid), signal.SIGCONT)
+                self.rosbag_paused = False
+                self.get_logger().info('✓ Rosbag recording RESUMED')
+                response.success = True
+                response.message = 'Rosbag recording resumed'
+            except Exception as e:
+                self.get_logger().error(f'Failed to resume rosbag: {e}')
+                response.success = False
+                response.message = f'Failed to resume rosbag: {e}'
+        return response
+    
+    def rosbag_stop_callback(self, request, response):
+        """Stop rosbag recording and save"""
+        with self.lock:
+            if not self.rosbag_recording:
+                response.success = True
+                response.message = 'No rosbag recording active'
+                return response
+            
+            # Resume if paused before stopping
+            if self.rosbag_paused and self.rosbag_process is not None:
+                try:
+                    os.killpg(os.getpgid(self.rosbag_process.pid), signal.SIGCONT)
+                    self.rosbag_paused = False
+                except:
+                    pass
+            
+            success = self.stop_rosbag_recording()
+            if success:
+                response.success = True
+                response.message = f'Rosbag recording stopped: {self.rosbag_path}'
+            else:
+                response.success = False
+                response.message = 'Failed to stop rosbag recording'
         return response
     
     def start_rosbag_recording(self):
@@ -717,6 +954,10 @@ class GPRScanController(Node):
     
     def update_gpr_motor(self):
         """Send velocity command to GPR motor"""
+        # Don't send velocity commands when paused
+        if self.paused:
+            return
+        
         if self.scanning and self.motor_enabled:
             # Calculate motor velocity in turns/s
             wheel_turns_per_sec = self.gpr_scan_velocity / self.gpr_circumference

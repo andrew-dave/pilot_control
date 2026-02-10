@@ -507,6 +507,18 @@ def generate_launch_description():
     #     output='screen'
     # )
 
+    # Data Collection Coordinator - central control for pause/end/delete operations
+    data_collection_coordinator_node = Node(
+        package='pilot_control',
+        executable='data_collection_coordinator.py',
+        name='data_collection_coordinator',
+        output='screen',
+        parameters=[{
+            'section_folder': folder_paths['section_folder'],
+            'day_folder': folder_paths['day_folder'],
+        }]
+    )
+
     return LaunchDescription([
         # Launch arguments
         declare_wheel_radius_arg,
@@ -550,6 +562,7 @@ def generate_launch_description():
                 
                 gpr_serial_bridge_node,
                 gpr_scan_controller_node, # taskset -c 4,6 (includes rosbag recording)
+                data_collection_coordinator_node,  # Central coordinator for pause/end/delete
             ]
         ),
         
