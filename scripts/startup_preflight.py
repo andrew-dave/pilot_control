@@ -1248,11 +1248,14 @@ class StartupPreflight(Node):
 
         # Step 5: Run maneuvers
         v = self.motor_test_vel
+        # Note: right ODrive positive direction is inverted (invert_right=true
+        # in diff_drive_controller), so to turn the robot left we need
+        # L=+v (forward), R=-v (which the right ODrive interprets as forward).
         maneuvers = [
             ('forward',     +v, +v),
             ('backward',    -v, -v),
-            ('axial_left',  -v, +v),
-            ('axial_right', +v, -v),
+            ('axial_left',  +v, -v),
+            ('axial_right', -v, +v),
         ]
 
         for name, left_v, right_v in maneuvers:
