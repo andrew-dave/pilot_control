@@ -70,6 +70,9 @@ class CameraResult:
     connected: bool = False
     brightness: float = 0.0
     variance: float = 0.0
+    sharpness: float = 0.0       # Laplacian variance (edge content)
+    edge_density: float = 0.0    # Percentage of Canny edge pixels
+    entropy: float = 0.0         # Histogram entropy (information content)
     sample_image: str = ''
     reason: str = ''
 
@@ -234,8 +237,11 @@ class StartupPreflight(Node):
             '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0')
         self.declare_parameter('brightness_min', 15.0)
         self.declare_parameter('variance_min', 50.0)
+        self.declare_parameter('sharpness_min', 50.0)      # Laplacian variance
+        self.declare_parameter('edge_density_min', 1.5)     # % of Canny edge pixels
+        self.declare_parameter('entropy_min', 4.5)          # Histogram entropy (bits)
         self.declare_parameter('thermal_range_min', 2.0)
-        self.declare_parameter('camera_warmup_frames', 5)
+        self.declare_parameter('camera_warmup_frames', 10)
 
         # LiDAR
         self.declare_parameter('lidar_topic', '/livox/lidar')
@@ -280,6 +286,9 @@ class StartupPreflight(Node):
         self.right_device = str(self.get_parameter('right_device').value)
         self.brightness_min = float(self.get_parameter('brightness_min').value)
         self.variance_min = float(self.get_parameter('variance_min').value)
+        self.sharpness_min = float(self.get_parameter('sharpness_min').value)
+        self.edge_density_min = float(self.get_parameter('edge_density_min').value)
+        self.entropy_min = float(self.get_parameter('entropy_min').value)
         self.thermal_range_min = float(self.get_parameter('thermal_range_min').value)
         self.camera_warmup_frames = int(self.get_parameter('camera_warmup_frames').value)
 
@@ -396,23 +405,56 @@ class StartupPreflight(Node):
         cv2.imwrite(sample_path, frame)
         result.sample_image = f'{name}_sample.png'
 
-        # Occlusion analysis
+        # ── Multi-metric occlusion analysis ──
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 1. Basic stats
         result.brightness = float(np.mean(gray))
         result.variance = float(np.var(gray.astype(np.float64)))
 
+        # 2. Sharpness — Laplacian variance measures edge content.
+        #    A real scene has abundant edges (high value); tape/obstruction
+        #    produces a blurry, featureless image (low value).
+        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+        result.sharpness = float(np.var(laplacian))
+
+        # 3. Edge density — percentage of pixels that are Canny edges.
+        #    A real scene has 3-15%+ edge pixels; an obstructed camera < 1%.
+        edges = cv2.Canny(gray, 50, 150)
+        result.edge_density = float(np.count_nonzero(edges) / edges.size * 100.0)
+
+        # 4. Histogram entropy — information content in bits.
+        #    A real scene has a wide pixel distribution (entropy > 5);
+        #    tape/cover compresses into a narrow band (entropy < 4).
+        hist = cv2.calcHist([gray], [0], None, [256], [0, 256]).flatten()
+        hist_norm = hist / hist.sum()
+        # Avoid log(0)
+        hist_nonzero = hist_norm[hist_norm > 0]
+        result.entropy = float(-np.sum(hist_nonzero * np.log2(hist_nonzero)))
+
+        # ── Evaluate: fail on ANY metric indicating obstruction ──
+        issues = []
         if result.brightness < self.brightness_min:
+            issues.append(f'too dark ({result.brightness:.0f}<{self.brightness_min:.0f})')
+        if result.variance < self.variance_min:
+            issues.append(f'low variance ({result.variance:.0f}<{self.variance_min:.0f})')
+        if result.sharpness < self.sharpness_min:
+            issues.append(f'no detail ({result.sharpness:.0f}<{self.sharpness_min:.0f})')
+        if result.edge_density < self.edge_density_min:
+            issues.append(f'no edges ({result.edge_density:.1f}%<{self.edge_density_min:.1f}%)')
+        if result.entropy < self.entropy_min:
+            issues.append(f'low entropy ({result.entropy:.1f}<{self.entropy_min:.1f})')
+
+        if issues:
             result.status = 'FAIL'
-            result.reason = f'too dark (brightness={result.brightness:.1f} < {self.brightness_min}), lens cap on?'
-        elif result.variance < self.variance_min:
-            result.status = 'FAIL'
-            result.reason = f'uniform image (variance={result.variance:.1f} < {self.variance_min}), obstructed?'
+            result.reason = 'obstructed? ' + '; '.join(issues)
         else:
             result.status = 'PASS'
 
         self.get_logger().info(
-            f'  [{name}] {result.status} — brightness={result.brightness:.1f}, '
-            f'variance={result.variance:.1f}')
+            f'  [{name}] {result.status} — bright={result.brightness:.0f} '
+            f'var={result.variance:.0f} sharp={result.sharpness:.0f} '
+            f'edge={result.edge_density:.1f}% entropy={result.entropy:.1f}')
         return result
 
     # ═══════════════════════════════════════════════════════════════
@@ -1559,7 +1601,8 @@ class StartupPreflight(Node):
             detail = ''
 
             if isinstance(r, CameraResult):
-                detail = f'brightness={r.brightness:.0f}, var={r.variance:.0f}'
+                detail = (f'sharp={r.sharpness:.0f} edge={r.edge_density:.1f}% '
+                          f'entropy={r.entropy:.1f}')
             elif isinstance(r, ThermalResult):
                 detail = f'range={r.temp_range_c:.1f}C'
             elif isinstance(r, LidarResult):
