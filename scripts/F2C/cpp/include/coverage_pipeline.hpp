@@ -50,6 +50,12 @@ struct Point3D {
 };
 
 using Polygon2D = std::vector<Point2D>;
+struct Obstacle2D {
+    // Outer ring (boundary of obstacle area)
+    Polygon2D outer;
+    // Optional holes (free space inside the outer ring)
+    std::vector<Polygon2D> holes;
+};
 using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
 using PointCloudPtr = pcl::PointCloud<pcl::PointXYZ>::Ptr;
 
@@ -226,7 +232,7 @@ void polygonBounds(const Polygon2D& poly,
 CoverageResult generateCoverage(const Polygon2D& boundary,
                                 const CoverageConfig& config,
                                 const Polygon2D* roi = nullptr,
-                                const std::vector<Polygon2D>* obstacles = nullptr);
+                                const std::vector<Obstacle2D>* obstacles = nullptr);
 
 /**
  * @brief Generate swaths for axial-turn robots (direct swath corners)

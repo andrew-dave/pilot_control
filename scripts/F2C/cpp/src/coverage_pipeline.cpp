@@ -118,6 +118,27 @@ static BgPolygon toBgPolygon(const Polygon2D& in) {
     return poly;
 }
 
+static BgPolygon toBgPolygon(const Obstacle2D& obs) {
+    BgPolygon poly;
+    auto outer_clean = sanitizePolygon2D(obs.outer);
+    for (const auto& p : outer_clean) {
+        poly.outer().push_back(BgPoint(p.x, p.y));
+    }
+    for (const auto& hole : obs.holes) {
+        auto hole_clean = sanitizePolygon2D(hole);
+        if (hole_clean.size() < 3) {
+            continue;
+        }
+        poly.inners().emplace_back();
+        auto& inner = poly.inners().back();
+        for (const auto& p : hole_clean) {
+            inner.push_back(BgPoint(p.x, p.y));
+        }
+    }
+    bg::correct(poly);
+    return poly;
+}
+
 static bool bgValidate(const BgPolygon& poly, std::string& reason) {
     bg::validity_failure_type failure;
     if (!bg::is_valid(poly, failure)) {
@@ -294,7 +315,7 @@ static void addBgPolygonToF2CCells(const BgPolygon& poly, F2CCells& cells) {
 static bool buildEffectiveCellsFromROIAndObstacles(
     const Polygon2D& boundary,
     const Polygon2D* roi,
-    const std::vector<Polygon2D>* obstacles,
+    const std::vector<Obstacle2D>* obstacles,
     F2CCells& out_cells,
     Polygon2D& out_primary_outer,
     double& out_effective_area_m2,
@@ -352,11 +373,12 @@ static bool buildEffectiveCellsFromROIAndObstacles(
     if (obstacles && !obstacles->empty()) {
         for (size_t i = 0; i < obstacles->size(); ++i) {
             const auto& obs_in = obstacles->at(i);
-            Polygon2D obs_clean = sanitizePolygon2D(obs_in);
-            if (obs_clean.size() < 3) {
+            Polygon2D obs_outer_clean = sanitizePolygon2D(obs_in.outer);
+            if (obs_outer_clean.size() < 3) {
                 error = "Obstacle polygon #" + std::to_string(i + 1) + " is too small (need >= 3 vertices)";
                 return false;
             }
+            Obstacle2D obs_clean{obs_outer_clean, obs_in.holes};
             BgPolygon obs_bg = toBgPolygon(obs_clean);
             {
                 std::string why;
@@ -1187,7 +1209,7 @@ static bool segmentIntersectsPolygon(const Point2D& a, const Point2D& b, const P
 // and adds intermediate points to go around them
 static PathStateList filterPathAroundObstacles(
     const PathStateList& original_path,
-    const std::vector<Polygon2D>& obstacles) {
+    const std::vector<Obstacle2D>& obstacles) {
     
     if (obstacles.empty() || original_path.empty()) {
         return original_path;
@@ -1202,9 +1224,18 @@ static PathStateList filterPathAroundObstacles(
         // Check if this point is inside any obstacle
         bool inside_obstacle = false;
         for (const auto& obs : obstacles) {
-            if (pointInPolygon(state.point, obs)) {
+            if (pointInPolygon(state.point, obs.outer)) {
+                bool in_hole = false;
+                for (const auto& hole : obs.holes) {
+                    if (pointInPolygon(state.point, hole)) {
+                        in_hole = true;
+                        break;
+                    }
+                }
+                if (!in_hole) {
                 inside_obstacle = true;
                 break;
+                }
             }
         }
         
@@ -1215,7 +1246,7 @@ static PathStateList filterPathAroundObstacles(
                 bool crosses_obstacle = false;
                 
                 for (const auto& obs : obstacles) {
-                    if (segmentIntersectsPolygon(prev, state.point, obs)) {
+                    if (segmentIntersectsPolygon(prev, state.point, obs.outer)) {
                         crosses_obstacle = true;
                         break;
                     }
@@ -1239,7 +1270,7 @@ static PathStateList filterPathAroundObstacles(
 CoverageResult generateCoverage(const Polygon2D& boundary,
                                 const CoverageConfig& config,
                                 const Polygon2D* roi,
-                                const std::vector<Polygon2D>* obstacles) {
+                                const std::vector<Obstacle2D>* obstacles) {
     CoverageResult result;
     
     try {
@@ -1569,7 +1600,7 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
 CoverageResult generateCoverage(const Polygon2D& boundary,
                                 const CoverageConfig& config,
                                 const Polygon2D* roi,
-                                const std::vector<Polygon2D>* obstacles) {
+                                const std::vector<Obstacle2D>* obstacles) {
     CoverageResult result;
     
     // Note: obstacles are not handled in the simple fallback version

@@ -13,6 +13,7 @@
 #include <QFont>
 #include <QPen>
 #include <QBrush>
+#include <QPainterPath>
 #include <QToolTip>
 #include <QFileInfo>
 #include <QFile>
@@ -310,8 +311,12 @@ void PlotWidget::setROI(const Polygon2D& roi) {
     update();
 }
 
-void PlotWidget::setObstacles(const std::vector<Polygon2D>& obstacles) {
+void PlotWidget::setObstacles(const std::vector<Obstacle2D>& obstacles) {
     obstacles_ = obstacles;
+    if (selected_obstacle_idx_ >= static_cast<int>(obstacles_.size())) {
+        selected_obstacle_idx_ = -1;
+        emit obstacleSelectionChanged(-1);
+    }
     update();
 }
 
@@ -483,13 +488,20 @@ void PlotWidget::clearAll() {
     hovered_reproj_index_ = -1;
     selection_points_.clear();
     selecting_ = false;
+    selected_obstacle_idx_ = -1;
+    emit obstacleSelectionChanged(-1);
     update();
 }
 
 void PlotWidget::clearPoints() { points_.clear(); update(); }
 void PlotWidget::clearPolygon() { polygon_.clear(); update(); }
 void PlotWidget::clearROI() { roi_.clear(); update(); }
-void PlotWidget::clearObstacles() { obstacles_.clear(); update(); }
+void PlotWidget::clearObstacles() {
+    obstacles_.clear();
+    selected_obstacle_idx_ = -1;
+    emit obstacleSelectionChanged(-1);
+    update();
+}
 void PlotWidget::clearSwaths() { swaths_.clear(); update(); }
 void PlotWidget::clearRoute() { route_.clear(); update(); }
 void PlotWidget::clearPath() { path_.clear(); update(); }
@@ -566,6 +578,14 @@ Polygon2D PlotWidget::getSelectedPolygon() const {
     return selection_points_;
 }
 
+void PlotWidget::clearObstacleSelection() {
+    if (selected_obstacle_idx_ != -1) {
+        selected_obstacle_idx_ = -1;
+        emit obstacleSelectionChanged(-1);
+        update();
+    }
+}
+
 void PlotWidget::updateDataBounds() {
     data_min_x_ = data_min_y_ = std::numeric_limits<double>::max();
     data_max_x_ = data_max_y_ = std::numeric_limits<double>::lowest();
@@ -581,7 +601,10 @@ void PlotWidget::updateDataBounds() {
     for (const auto& p : polygon_) updateBounds(p);
     for (const auto& p : roi_) updateBounds(p);
     for (const auto& obs : obstacles_) {
-        for (const auto& p : obs) updateBounds(p);
+        for (const auto& p : obs.outer) updateBounds(p);
+        for (const auto& hole : obs.holes) {
+            for (const auto& p : hole) updateBounds(p);
+        }
     }
     for (const auto& sw : swaths_) {
         updateBounds(sw.start);
@@ -705,15 +728,32 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     }
     
     // Draw obstacles
-    for (const auto& obs : obstacles_) {
-        painter.setPen(QPen(Qt::red, 2));
-        painter.setBrush(QColor(255, 0, 0, 50));
-        QPolygonF obs_qp;
-        for (const auto& p : obs) {
-            obs_qp << worldToScreen(p);
+    for (size_t oi = 0; oi < obstacles_.size(); ++oi) {
+        const auto& obs = obstacles_[oi];
+        const bool selected = (static_cast<int>(oi) == selected_obstacle_idx_);
+        painter.setPen(QPen(selected ? QColor(255, 193, 7) : Qt::red, selected ? 3 : 2));
+        painter.setBrush(selected ? QColor(255, 193, 7, 55) : QColor(255, 0, 0, 50));
+        QPainterPath path;
+        path.setFillRule(Qt::OddEvenFill);
+        QPolygonF outer_qp;
+        for (const auto& p : obs.outer) {
+            outer_qp << worldToScreen(p);
         }
-        obs_qp << obs_qp.first();
-        painter.drawPolygon(obs_qp);
+        if (!outer_qp.isEmpty()) {
+            outer_qp << outer_qp.first();
+            path.addPolygon(outer_qp);
+        }
+        for (const auto& hole : obs.holes) {
+            QPolygonF hole_qp;
+            for (const auto& p : hole) {
+                hole_qp << worldToScreen(p);
+            }
+            if (!hole_qp.isEmpty()) {
+                hole_qp << hole_qp.first();
+                path.addPolygon(hole_qp);
+            }
+        }
+        painter.drawPath(path);
     }
     
     // Draw swaths
@@ -1080,6 +1120,36 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     }
 }
 
+static bool pointInPolygonRayCastLocal(const Point2D& p, const Polygon2D& poly) {
+    if (poly.size() < 3) return false;
+    bool inside = false;
+    double x = p.x;
+    double y = p.y;
+    Point2D p0 = poly.back();
+    for (size_t i = 0; i < poly.size(); ++i) {
+        const Point2D& p1 = poly[i];
+        bool intersects = ((p1.y > y) != (p0.y > y)) &&
+            (x < (p0.x - p1.x) * (y - p1.y) / ((p0.y - p1.y) + 1e-12) + p1.x);
+        if (intersects) {
+            inside = !inside;
+        }
+        p0 = p1;
+    }
+    return inside;
+}
+
+static bool pointInObstacleShapeLocal(const Point2D& p, const Obstacle2D& obs) {
+    if (!pointInPolygonRayCastLocal(p, obs.outer)) {
+        return false;
+    }
+    for (const auto& hole : obs.holes) {
+        if (pointInPolygonRayCastLocal(p, hole)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         if (custom_draw_mode_) {
@@ -1134,6 +1204,29 @@ void PlotWidget::mousePressEvent(QMouseEvent* event) {
             selection_points_.push_back(world);
             update();
         } else {
+            // Click-to-select obstacles (only when not selecting/drawing)
+            Point2D world = screenToWorld(event->pos());
+            int hit_idx = -1;
+            for (int i = static_cast<int>(obstacles_.size()) - 1; i >= 0; --i) {
+                if (pointInObstacleShapeLocal(world, obstacles_[static_cast<size_t>(i)])) {
+                    hit_idx = i;
+                    break;
+                }
+            }
+            if (hit_idx != -1) {
+                if (selected_obstacle_idx_ != hit_idx) {
+                    selected_obstacle_idx_ = hit_idx;
+                    emit obstacleSelectionChanged(selected_obstacle_idx_);
+                    update();
+                }
+                return;
+            }
+            if (selected_obstacle_idx_ != -1) {
+                selected_obstacle_idx_ = -1;
+                emit obstacleSelectionChanged(-1);
+                update();
+            }
+
             // Start panning
             panning_ = true;
             pan_start_ = event->pos();
@@ -1164,6 +1257,20 @@ void PlotWidget::mouseDoubleClickEvent(QMouseEvent* event) {
 }
 
 void PlotWidget::keyPressEvent(QKeyEvent* event) {
+    // Delete selected obstacle
+    if (!selecting_ && !drawing_rectangle_) {
+        if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace) {
+            if (selected_obstacle_idx_ >= 0 &&
+                selected_obstacle_idx_ < static_cast<int>(obstacles_.size())) {
+                emit obstacleDeleteRequested(selected_obstacle_idx_);
+                selected_obstacle_idx_ = -1;
+                emit obstacleSelectionChanged(-1);
+                update();
+                return;
+            }
+        }
+    }
+
     // Press Enter/Return to finish polygon selection
     if (selecting_) {
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
@@ -1368,6 +1475,11 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     pcd_watcher_ = new QFutureWatcher<PointCloudPtr>(this);
     connect(pcd_watcher_, &QFutureWatcher<PointCloudPtr>::finished, 
             this, &CoverageGUI::onPointCloudLoaded);
+
+    // Initialize async obstacle detector
+    obstacle_detect_watcher_ = new QFutureWatcher<ObstacleDetectionResult>(this);
+    connect(obstacle_detect_watcher_, &QFutureWatcher<ObstacleDetectionResult>::finished,
+            this, &CoverageGUI::onAutoDetectObstaclesFinished);
     
     // Load dark mode preference (reuse settings from above)
     dark_mode_ = settings.value("dark_mode", false).toBool();
@@ -1435,6 +1547,14 @@ CoverageGUI::~CoverageGUI() {
     }
     if (zenoh_check_timer_) {
         zenoh_check_timer_->stop();
+    }
+
+    // Avoid use-after-free if background futures are still running
+    if (pcd_watcher_ && pcd_watcher_->isRunning()) {
+        pcd_watcher_->waitForFinished();
+    }
+    if (obstacle_detect_watcher_ && obstacle_detect_watcher_->isRunning()) {
+        obstacle_detect_watcher_->waitForFinished();
     }
     
     // Clean up ROS2 resources
@@ -1595,6 +1715,8 @@ void CoverageGUI::setupConnections() {
     connect(plot_, &PlotWidget::roiSelected, this, &CoverageGUI::onROISelected);
     connect(plot_, &PlotWidget::obstacleSelected, this, &CoverageGUI::onObstacleSelected);
     connect(plot_, &PlotWidget::selectionCancelled, this, &CoverageGUI::onSelectionCancelled);
+    connect(plot_, &PlotWidget::obstacleDeleteRequested, this, &CoverageGUI::onObstacleDeleteRequested);
+    connect(plot_, &PlotWidget::obstacleSelectionChanged, this, &CoverageGUI::onObstacleSelectionChanged);
     connect(plot_, &PlotWidget::customWaypointRequested, this, &CoverageGUI::onPlotCustomWaypoint);
     connect(plot_, &PlotWidget::rectangleCompleted, this, &CoverageGUI::onRectangleCompleted);
     
@@ -2625,6 +2747,22 @@ QWidget* CoverageGUI::buildF2CControls() {
     connect(btn_obstacle_clear_, &QPushButton::clicked, this, &CoverageGUI::clearObstacles);
     obstacle_box->addWidget(btn_obstacle_clear_);
     v->addLayout(obstacle_box);
+
+    btn_delete_selected_obstacle_ = new QPushButton("Delete Selected Obstacle");
+    btn_delete_selected_obstacle_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    btn_delete_selected_obstacle_->setEnabled(false);
+    btn_delete_selected_obstacle_->setToolTip("Delete the currently selected obstacle (click an obstacle in the plot).");
+    connect(btn_delete_selected_obstacle_, &QPushButton::clicked, this, &CoverageGUI::deleteSelectedObstacle);
+    v->addWidget(btn_delete_selected_obstacle_);
+
+    btn_auto_detect_obstacles_ = new QPushButton("Auto-detect Obstacles");
+    btn_auto_detect_obstacles_->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+    btn_auto_detect_obstacles_->setToolTip(
+        "Automatically detect obstacles from the full loaded point cloud\n"
+        "(ignores view crop/downsample), using the driven robot trail\n"
+        "(AUTO mode; supports holes when hollow).");
+    connect(btn_auto_detect_obstacles_, &QPushButton::clicked, this, &CoverageGUI::autoDetectObstacles);
+    v->addWidget(btn_auto_detect_obstacles_);
     
     lbl_obstacles_ = new QLabel("Obstacles: 0");
     v->addWidget(lbl_obstacles_);
@@ -3376,7 +3514,7 @@ void CoverageGUI::refreshPlot() {
     plot_->setPoints(show_points ? xy_2d_ : std::vector<Point2D>());
     plot_->setPolygon(show_polygon ? polygon_ : Polygon2D());
     plot_->setROI(show_roi ? roi_polygon_ : Polygon2D());
-    plot_->setObstacles(show_obstacles ? obstacles_ : std::vector<Polygon2D>());
+    plot_->setObstacles(show_obstacles ? obstacles_ : std::vector<Obstacle2D>());
     plot_->setSwaths(show_swaths ? swaths_ : SwathList());
     
     // Set route and path
@@ -3468,6 +3606,8 @@ void CoverageGUI::clearRobotTrail() {
     {
         std::lock_guard<std::mutex> lock(robot_pose_mutex_);
         robot_trail_.clear();
+        robot_trail_states_.clear();
+        driven_path_snapshot_.clear();
     }
     refreshPlot();
 }
@@ -3613,6 +3753,12 @@ void CoverageGUI::loadPointCloudFromPath(const QString& path) {
         swaths_.clear();
         route_.clear();
         path_.clear();
+
+        // Snapshot driven path at map-load time (used for obstacle detection)
+        {
+            std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+            driven_path_snapshot_ = robot_trail_states_;
+        }
         
         lbl_roi_->setText("ROI: none");
         lbl_obstacles_->setText("Obstacles: 0");
@@ -4033,6 +4179,54 @@ void CoverageGUI::toggleObstacleSelection() {
     }
 }
 
+void CoverageGUI::autoDetectObstacles() {
+    if (auto_detect_obstacles_running_) {
+        return;
+    }
+    // Always use the full loaded point cloud for detection (ignore view filtering/cropping).
+    if (!pcd_points_ || pcd_points_->empty()) {
+        QMessageBox::warning(this, "Warning", "Load a point cloud first.");
+        return;
+    }
+
+    // Cancel any in-progress selection modes
+    if (btn_roi_) btn_roi_->setChecked(false);
+    if (btn_obstacle_) btn_obstacle_->setChecked(false);
+    plot_->cancelSelection();
+
+    // Scope: prefer ROI if available, else boundary if available.
+    Polygon2D scope;
+    if (!roi_polygon_.empty()) {
+        scope = roi_polygon_;
+    } else if (!polygon_.empty()) {
+        scope = polygon_;
+    }
+
+    std::vector<PathState> path_snapshot;
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        path_snapshot = !driven_path_snapshot_.empty() ? driven_path_snapshot_ : robot_trail_states_;
+    }
+
+    auto_detect_obstacles_running_ = true;
+    if (btn_auto_detect_obstacles_) {
+        btn_auto_detect_obstacles_->setEnabled(false);
+    }
+
+    showProgress(true, "Auto-detecting obstacles...");
+    progress_bar_->setRange(0, 0);
+    setStatus("Auto-detecting obstacles (AUTO mode)...");
+
+    PointCloudPtr cloud = pcd_points_;
+    ObstacleDetectionParams params;  // defaults mirror the Python script
+
+    auto future = QtConcurrent::run([cloud, path_snapshot, scope, params]() mutable {
+        const Polygon2D* scope_ptr = scope.empty() ? nullptr : &scope;
+        return detectObstaclesAuto(cloud, path_snapshot, scope_ptr, params);
+    });
+    obstacle_detect_watcher_->setFuture(future);
+}
+
 void CoverageGUI::clearObstacles() {
     obstacles_.clear();
     plot_->clearObstacles();
@@ -4041,6 +4235,69 @@ void CoverageGUI::clearObstacles() {
     clearCoverage();
     setStatus("Obstacles cleared", 4000);
     refreshPlot();
+}
+
+void CoverageGUI::onObstacleSelectionChanged(int index) {
+    if (btn_delete_selected_obstacle_) {
+        bool ok = (index >= 0 && index < static_cast<int>(obstacles_.size()));
+        btn_delete_selected_obstacle_->setEnabled(ok);
+    }
+}
+
+void CoverageGUI::deleteSelectedObstacle() {
+    const int idx = plot_ ? plot_->selectedObstacleIndex() : -1;
+    if (idx < 0) {
+        setStatus("No obstacle selected", 3000);
+        return;
+    }
+    onObstacleDeleteRequested(idx);
+    if (plot_) {
+        plot_->clearObstacleSelection();
+    }
+}
+
+void CoverageGUI::onObstacleDeleteRequested(int index) {
+    if (index < 0 || index >= static_cast<int>(obstacles_.size())) {
+        return;
+    }
+    obstacles_.erase(obstacles_.begin() + index);
+    lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
+    effective_area_m2_ = 0.0;
+    clearCoverage();
+    refreshPlot();
+    setStatus(QString("Obstacle deleted (remaining: %1)").arg(obstacles_.size()), 4000);
+}
+
+void CoverageGUI::onAutoDetectObstaclesFinished() {
+    auto_detect_obstacles_running_ = false;
+    if (btn_auto_detect_obstacles_) {
+        btn_auto_detect_obstacles_->setEnabled(true);
+    }
+
+    showProgress(false);
+
+    const ObstacleDetectionResult result = obstacle_detect_watcher_->result();
+    if (!result.success) {
+        QMessageBox::critical(this, "Auto-detect Obstacles",
+                              QString("Obstacle detection failed:\n\n%1")
+                                  .arg(QString::fromStdString(result.error_message)));
+        setStatus("Obstacle detection failed", 5000);
+        return;
+    }
+
+    obstacles_ = result.obstacles;  // replace existing obstacles
+    lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
+    if (btn_delete_selected_obstacle_) {
+        btn_delete_selected_obstacle_->setEnabled(false);
+    }
+    effective_area_m2_ = 0.0;
+    clearCoverage();
+    refreshPlot();
+
+    setStatus(QString("Auto-detected %1 obstacle(s) (%2 hole(s))")
+                  .arg(obstacles_.size())
+                  .arg(result.stats.total_holes),
+              6000);
 }
 
 void CoverageGUI::undoSelectionPoint() {
@@ -4062,7 +4319,7 @@ void CoverageGUI::onROISelected(const Polygon2D& roi) {
 }
 
 void CoverageGUI::onObstacleSelected(const Polygon2D& obstacle) {
-    obstacles_.push_back(obstacle);
+    obstacles_.push_back(Obstacle2D{obstacle, {}});
     btn_obstacle_->setChecked(false);
     lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
     effective_area_m2_ = 0.0;
@@ -4102,7 +4359,7 @@ void CoverageGUI::generateSwaths() {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
-        const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
+        const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
@@ -4136,7 +4393,7 @@ void CoverageGUI::generateRoute() {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
-        const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
+        const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
@@ -4170,7 +4427,7 @@ void CoverageGUI::generatePath() {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
-        const std::vector<Polygon2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
+        const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
         
         if (!result.success) {
@@ -4514,10 +4771,16 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                     std::hypot(robot_trail_.back().x - state.point.x,
                                robot_trail_.back().y - state.point.y) > 0.03) {
                     robot_trail_.push_back(state.point);
+                    robot_trail_states_.push_back(state);
                     if (robot_trail_.size() > robot_trail_max_points_) {
-                        robot_trail_.erase(
-                            robot_trail_.begin(),
-                            robot_trail_.begin() + (robot_trail_.size() - robot_trail_max_points_));
+                        const size_t remove_n = robot_trail_.size() - robot_trail_max_points_;
+                        robot_trail_.erase(robot_trail_.begin(), robot_trail_.begin() + remove_n);
+                        if (robot_trail_states_.size() >= remove_n) {
+                            robot_trail_states_.erase(robot_trail_states_.begin(),
+                                                      robot_trail_states_.begin() + remove_n);
+                        } else {
+                            robot_trail_states_.clear();
+                        }
                     }
                 }
                 
@@ -5099,6 +5362,12 @@ void CoverageGUI::onPointCloudLoaded() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+
+    // Snapshot driven path at map-load time (used for obstacle detection)
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        driven_path_snapshot_ = robot_trail_states_;
+    }
     
     lbl_roi_->setText("ROI: none");
     lbl_obstacles_->setText("Obstacles: 0");

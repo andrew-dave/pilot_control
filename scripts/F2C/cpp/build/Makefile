@@ -439,6 +439,30 @@ src/network_monitor.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s
 .PHONY : src/network_monitor.cpp.s
 
+src/obstacle_detector.o: src/obstacle_detector.cpp.o
+.PHONY : src/obstacle_detector.o
+
+# target to build an object file
+src/obstacle_detector.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o
+.PHONY : src/obstacle_detector.cpp.o
+
+src/obstacle_detector.i: src/obstacle_detector.cpp.i
+.PHONY : src/obstacle_detector.i
+
+# target to preprocess a source file
+src/obstacle_detector.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.i
+.PHONY : src/obstacle_detector.cpp.i
+
+src/obstacle_detector.s: src/obstacle_detector.cpp.s
+.PHONY : src/obstacle_detector.s
+
+# target to generate assembly for a file
+src/obstacle_detector.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.s
+.PHONY : src/obstacle_detector.cpp.s
+
 src/preset_dialog.o: src/preset_dialog.cpp.o
 .PHONY : src/preset_dialog.o
 
@@ -603,6 +627,9 @@ help:
 	@echo "... src/network_monitor.o"
 	@echo "... src/network_monitor.i"
 	@echo "... src/network_monitor.s"
+	@echo "... src/obstacle_detector.o"
+	@echo "... src/obstacle_detector.i"
+	@echo "... src/obstacle_detector.s"
 	@echo "... src/preset_dialog.o"
 	@echo "... src/preset_dialog.i"
 	@echo "... src/preset_dialog.s"

@@ -62,6 +62,7 @@
 #include <gst/video/videooverlay.h>
 
 #include "coverage_pipeline.hpp"
+#include "obstacle_detector.hpp"
 #include "transfer_manager.hpp"
 #include "data_transfer_dialog.hpp"
 #include "preset_manager.hpp"
@@ -156,7 +157,7 @@ public:
     void setPoints(const std::vector<Point2D>& points);
     void setPolygon(const Polygon2D& poly);
     void setROI(const Polygon2D& roi);
-    void setObstacles(const std::vector<Polygon2D>& obstacles);
+    void setObstacles(const std::vector<Obstacle2D>& obstacles);
     void setSwaths(const SwathList& swaths);
     void setRoute(const PathStateList& route);
     void setPath(const PathStateList& path);
@@ -211,11 +212,15 @@ public:
     
     bool isSelecting() const { return selecting_; }
     Polygon2D getSelectedPolygon() const;
+    int selectedObstacleIndex() const { return selected_obstacle_idx_; }  // -1 = none
+    void clearObstacleSelection();
 
 signals:
     void roiSelected(const Polygon2D& roi);
     void obstacleSelected(const Polygon2D& obstacle);
     void selectionCancelled();
+    void obstacleSelectionChanged(int index);
+    void obstacleDeleteRequested(int index);
     void customWaypointRequested(const Point2D& point);
     void rectangleCompleted(const Polygon2D& rect);
 
@@ -234,7 +239,7 @@ private:
     std::vector<Point2D> points_;
     Polygon2D polygon_;
     Polygon2D roi_;
-    std::vector<Polygon2D> obstacles_;
+    std::vector<Obstacle2D> obstacles_;
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
@@ -278,6 +283,9 @@ private:
     bool selecting_roi_ = false;  // true = ROI, false = obstacle
     std::vector<Point2D> selection_points_;
     QPointF cursor_pos_;
+
+    // Obstacle selection
+    int selected_obstacle_idx_ = -1;  // -1 = none
     
     // Panning
     bool panning_ = false;
@@ -322,6 +330,8 @@ private slots:
     void toggleROISelection();
     void clearROI();
     void toggleObstacleSelection();
+    void autoDetectObstacles();
+    void deleteSelectedObstacle();
     void clearObstacles();
     void undoSelectionPoint();
     void finishSelection();
@@ -344,6 +354,9 @@ private slots:
     void onROISelected(const Polygon2D& roi);
     void onObstacleSelected(const Polygon2D& obstacle);
     void onSelectionCancelled();
+    void onObstacleDeleteRequested(int index);
+    void onObstacleSelectionChanged(int index);
+    void onAutoDetectObstaclesFinished();
     
     // UI updates
     void updateDownsampleUI(const QString& method);
@@ -605,6 +618,8 @@ private:
     
     // Obstacle controls
     QPushButton* btn_obstacle_;
+    QPushButton* btn_auto_detect_obstacles_ = nullptr;
+    QPushButton* btn_delete_selected_obstacle_ = nullptr;
     QPushButton* btn_obstacle_clear_;
     QLabel* lbl_obstacles_;
     
@@ -614,7 +629,9 @@ private:
     std::vector<Point2D> xy_2d_;
     Polygon2D polygon_;
     Polygon2D roi_polygon_;
-    std::vector<Polygon2D> obstacles_;
+    std::vector<Obstacle2D> obstacles_;
+    QFutureWatcher<ObstacleDetectionResult>* obstacle_detect_watcher_ = nullptr;
+    bool auto_detect_obstacles_running_ = false;
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
@@ -652,6 +669,8 @@ private:
     mutable std::mutex robot_pose_mutex_;
     std::optional<PathState> robot_pose_state_;
     std::vector<Point2D> robot_trail_;
+    std::vector<PathState> robot_trail_states_;
+    std::vector<PathState> driven_path_snapshot_;
     size_t robot_trail_max_points_ = 5000;
     std::chrono::steady_clock::time_point last_robot_update_;
     QString robot_odom_topic_ = "/Odometry_tilt_corrected_diff";

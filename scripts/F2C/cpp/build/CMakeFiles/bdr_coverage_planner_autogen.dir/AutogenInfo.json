@@ -1604,6 +1604,12 @@
 			null
 		],
 		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp",
+			"MU",
+			"6YEA5652QU/moc_obstacle_detector.cpp",
+			null
+		],
+		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp",
 			"MU",
 			"6YEA5652QU/moc_preset_dialog.cpp",
@@ -1798,6 +1804,11 @@
 		],
 		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp",
 			"MU",
 			null
 		],

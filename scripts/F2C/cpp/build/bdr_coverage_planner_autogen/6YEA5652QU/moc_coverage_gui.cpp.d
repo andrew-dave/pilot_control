@@ -5,6 +5,7 @@
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/network_monitor.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \

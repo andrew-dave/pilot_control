@@ -20,6 +20,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o.d"
   "CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o"
   "CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o.d"
+  "CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o"
+  "CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o.d"
   "CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o"
   "CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o.d"
   "CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o"

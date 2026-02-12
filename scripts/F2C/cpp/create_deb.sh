@@ -313,7 +313,7 @@ chmod 755 "$DEB_DIR/DEBIAN/prerm"
 
 # Build the package
 echo "Building Debian package..."
-dpkg-deb --build "$DEB_DIR" "$DEB_FILE"
+dpkg-deb --root-owner-group --build "$DEB_DIR" "$DEB_FILE"
 
 echo "=== Debian Package Created Successfully ==="
 echo "Package: $DEB_FILE"
