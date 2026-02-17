@@ -1,0 +1,15 @@
+{
+  // Robot-side Zenoh router config (router mode)
+  mode: "router",
+
+  // Disable discovery mechanisms that rely on multicast/gossip (not used over Microhard).
+  scouting: { multicast: { enabled: false }, gossip: { enabled: false } },
+
+  // Listen for laptop clients on the Microhard network.
+  listen: { endpoints: { router: ["tcp/0.0.0.0:7447"] } },
+
+  plugins: {
+    ros2dds: {}
+  }
+}
+

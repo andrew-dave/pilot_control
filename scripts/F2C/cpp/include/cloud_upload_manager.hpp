@@ -91,6 +91,8 @@ struct ScanMetadata {
     QString siteName;
     
     // Session info
+    QString robotId;              // canonical robot_id (e.g., "Roofus#001")
+    QString robotIdSlug;          // machine-friendly (e.g., "roofus-001")
     QString sectionName;
     QString dateFolder;
     QDateTime scanTimestamp;

@@ -1,16 +1,43 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
+from ament_index_python.packages import get_package_share_directory
 import os
 
+
+def _make_zenoh_bridge(context, *args, **kwargs):
+    """
+    Generate a laptop Zenoh config with the selected robot endpoint.
+    This avoids hard-coding a single robot IP in the repo config.
+    """
+    robot_ip = LaunchConfiguration('robot_ip').perform(context)
+
+    template_path = os.path.join(
+        get_package_share_directory('pilot_control'),
+        'config', 'zenoh', 'zenohd_laptop.json5'
+    )
+    with open(template_path, 'r', encoding='utf-8') as f:
+        cfg = f.read()
+
+    cfg = cfg.replace('__ROBOT_IP__', robot_ip)
+    out_path = os.path.join('/tmp', f'zenohd_laptop_{robot_ip}.json5')
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(cfg)
+
+    return [
+        ExecuteProcess(
+            cmd=['zenohd', '-c', out_path],
+            output='screen',
+            name='zenoh_bridge_dds'
+        )
+    ]
+
 def generate_launch_description():
-    # Start Zenoh bridge DDS daemon for Microhard communication
-    # This must be running before ROS nodes launch for cross-network DDS communication
-    zenoh_bridge = ExecuteProcess(
-        cmd=['zenohd', '-c', os.path.expanduser('~/zenohd_laptop.json5')],
-        output='screen',
-        name='zenoh_bridge_dds'
+    declare_robot_ip_arg = DeclareLaunchArgument(
+        'robot_ip',
+        default_value='192.168.168.101',
+        description='Robot Microhard IP for Zenoh (tcp/<robot_ip>:7447).'
     )
     
     # No streaming viewer; recording-only system
@@ -40,7 +67,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         # Zenoh bridge DDS (must start first for Microhard communication)
-        zenoh_bridge,
+        declare_robot_ip_arg,
+        OpaqueFunction(function=_make_zenoh_bridge),
         
         # Teleop node (with delay to ensure Zenoh bridge is ready)
         TimerAction(

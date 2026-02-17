@@ -144,8 +144,10 @@ public:
     // Configuration
     void setRobotHost(const QString& host) { robotHost_ = host; }
     void setRobotUser(const QString& user) { robotUser_ = user; }
+    void setKnownHostsFile(const QString& path) { knownHostsFile_ = path; }
     QString robotHost() const { return robotHost_; }
     QString robotUser() const { return robotUser_; }
+    QString knownHostsFile() const { return knownHostsFile_; }
     
     // Job management
     int enqueueJob(const TransferJob& job);
@@ -217,6 +219,7 @@ private:
     // State
     QString robotHost_ = "192.168.168.101";
     QString robotUser_ = "roofus";
+    QString knownHostsFile_;
     
     int nextJobId_ = 1;
     std::optional<TransferJob> currentJob_;
@@ -229,6 +232,7 @@ private:
     QTimer* processMonitorTimer_ = nullptr;
     
     QSet<QString> downloadedSections_;
+    bool downloadHistoryUsesHostPrefix_ = false;
     mutable QMutex mutex_;
     
     // Progress parsing state

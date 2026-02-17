@@ -84,6 +84,8 @@ public:
     void setRobotHost(const QString& host);
     void setRobotUser(const QString& user);
     void setDataPath(const QString& path);
+    void setRobotDisplayName(const QString& displayName);
+    void setRobotIdSlug(const QString& slug);
     void setDefaultDestination(const QString& path);
     
 signals:
@@ -138,6 +140,7 @@ private:
     void startDownload(bool cancelCurrent);
     void loadSettings();
     void saveSettings();
+    void updateDestinationForCurrentDate();
     
     // Get currently selected items for download
     struct DownloadSelection {
@@ -179,6 +182,8 @@ private:
     QString robotHost_;
     QString robotUser_;
     QString dataPath_ = "/R_DATA";
+    QString robotDisplayName_;
+    QString robotIdSlug_;
     QString defaultDestination_;
     QString currentDate_;
     

@@ -1,0 +1,14 @@
+{
+  // Laptop-side Zenoh router config (client mode)
+  // NOTE: This file is treated as a template by `launch/laptop_teleop.launch.py`.
+  // The placeholder `__ROBOT_IP__` is replaced at launch-time with the selected robot IP.
+  mode: "client",
+  connect: { endpoints: ["tcp/__ROBOT_IP__:7447"] },
+  scouting: { multicast: { enabled: false }, gossip: { enabled: false } },
+  listen: { endpoints: { router: [] } },
+
+  plugins: {
+    ros2dds: {}
+  }
+}
+

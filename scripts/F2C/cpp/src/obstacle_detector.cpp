@@ -314,7 +314,7 @@ struct OccGrid {
     int h = 0;
     double xmin = 0.0;
     double ymin = 0.0;
-    double cell = 0.03;
+    double cell = 0.09;
     std::vector<uint8_t> occ;  // row-major (y then x), 1=occupied
 };
 
@@ -387,6 +387,340 @@ static OccGrid inflateOccupancy(const OccGrid& in, double radius_m) {
             }
         }
     }
+    return out;
+}
+
+static std::vector<std::pair<int, int>> circleOffsets(int r) {
+    std::vector<std::pair<int, int>> offsets;
+    if (r <= 0) return offsets;
+    offsets.reserve(static_cast<size_t>((2 * r + 1) * (2 * r + 1)));
+    for (int dy = -r; dy <= r; ++dy) {
+        for (int dx = -r; dx <= r; ++dx) {
+            if (dx * dx + dy * dy <= r * r) {
+                offsets.emplace_back(dx, dy);
+            }
+        }
+    }
+    return offsets;
+}
+
+static OccGrid erodeOccupancy(const OccGrid& in, double radius_m) {
+    if (in.w <= 0 || in.h <= 0 || in.occ.empty()) return in;
+    if (radius_m <= 1e-9) return in;
+
+    int r = static_cast<int>(std::ceil(radius_m / in.cell));
+    if (r <= 0) return in;
+
+    const auto offsets = circleOffsets(r);
+    if (offsets.empty()) return in;
+
+    OccGrid out = in;
+    std::fill(out.occ.begin(), out.occ.end(), 0);
+
+    for (int y = 0; y < in.h; ++y) {
+        for (int x = 0; x < in.w; ++x) {
+            bool keep = true;
+            for (const auto& [dx, dy] : offsets) {
+                const int nx = x + dx;
+                const int ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= in.w || ny >= in.h) {
+                    keep = false;
+                    break;
+                }
+                if (!occAt(in, nx, ny)) {
+                    keep = false;
+                    break;
+                }
+            }
+            if (keep) {
+                out.occ[static_cast<size_t>(y) * static_cast<size_t>(in.w) + static_cast<size_t>(x)] = 1;
+            }
+        }
+    }
+    return out;
+}
+
+static OccGrid closeOccupancyConservative(const OccGrid& in, double radius_m) {
+    // Morphological closing = dilation then erosion (conservative / extensive in infinite grid).
+    if (radius_m <= 1e-9) return in;
+    OccGrid dil = inflateOccupancy(in, radius_m);
+    OccGrid clo = erodeOccupancy(dil, radius_m);
+    return clo;
+}
+
+static OccGrid maxpoolOccupancy(const OccGrid& in, int factor) {
+    if (in.w <= 0 || in.h <= 0 || in.occ.empty()) return in;
+    if (factor <= 1) return in;
+
+    const int pad_w = (factor - (in.w % factor)) % factor;
+    const int pad_h = (factor - (in.h % factor)) % factor;
+    const int w2 = in.w + pad_w;
+    const int h2 = in.h + pad_h;
+
+    std::vector<uint8_t> padded(static_cast<size_t>(w2) * static_cast<size_t>(h2), 0);
+    for (int y = 0; y < in.h; ++y) {
+        for (int x = 0; x < in.w; ++x) {
+            padded[static_cast<size_t>(y) * static_cast<size_t>(w2) + static_cast<size_t>(x)] =
+                in.occ[static_cast<size_t>(y) * static_cast<size_t>(in.w) + static_cast<size_t>(x)];
+        }
+    }
+
+    const int out_w = w2 / factor;
+    const int out_h = h2 / factor;
+    OccGrid out;
+    out.xmin = in.xmin;
+    out.ymin = in.ymin;
+    out.cell = in.cell * static_cast<double>(factor);
+    out.w = out_w;
+    out.h = out_h;
+    out.occ.assign(static_cast<size_t>(out_w) * static_cast<size_t>(out_h), 0);
+
+    for (int by = 0; by < out_h; ++by) {
+        for (int bx = 0; bx < out_w; ++bx) {
+            uint8_t mx = 0;
+            const int y0 = by * factor;
+            const int x0 = bx * factor;
+            for (int dy = 0; dy < factor && mx == 0; ++dy) {
+                for (int dx = 0; dx < factor; ++dx) {
+                    const int ix = x0 + dx;
+                    const int iy = y0 + dy;
+                    mx = std::max<uint8_t>(mx, padded[static_cast<size_t>(iy) * static_cast<size_t>(w2) + static_cast<size_t>(ix)]);
+                    if (mx) break;
+                }
+            }
+            out.occ[static_cast<size_t>(by) * static_cast<size_t>(out_w) + static_cast<size_t>(bx)] = mx;
+        }
+    }
+    return out;
+}
+
+// Forward declarations (used by helper routines below)
+static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g);
+static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> groupRingsIntoShapes(
+    std::vector<Polygon2D> rings,
+    double min_area_m2);
+
+static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClusterGrid(
+    const std::vector<Point2D>& pts2d,
+    double grid_cell_m,
+    double contour_cell_m,
+    double inflate_radius_m,
+    double smooth_radius_m,
+    double min_contour_area_m2) {
+    if (pts2d.empty() || grid_cell_m <= 0.0) {
+        return {};
+    }
+
+    // Match Python: padding=max(0.20, 2*inflate_radius)
+    const double padding = std::max(0.20, 2.0 * std::max(0.0, inflate_radius_m));
+    OccGrid occ = occupancyFromPoints(pts2d, grid_cell_m, padding);
+    occ = inflateOccupancy(occ, std::max(0.0, inflate_radius_m));
+    occ = closeOccupancyConservative(occ, std::max(0.0, smooth_radius_m));
+
+    // Optional coarser contour grid (conservative max-pooling)
+    if (contour_cell_m > 0.0 && contour_cell_m > grid_cell_m + 1e-12) {
+        const int factor = std::max(1, static_cast<int>(std::round(contour_cell_m / grid_cell_m)));
+        if (factor > 1) {
+            occ = maxpoolOccupancy(occ, factor);
+        }
+    }
+
+    std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ);
+    return groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+}
+
+static Polygon2D rectFromBbox(const std::vector<Point2D>& pts2d, double min_size_m, double margin_m) {
+    if (pts2d.empty()) {
+        const double half = 0.5 * min_size_m;
+        return Polygon2D{
+            { -half, -half },
+            {  half, -half },
+            {  half,  half },
+            { -half,  half },
+        };
+    }
+    double xmin = pts2d.front().x;
+    double xmax = pts2d.front().x;
+    double ymin = pts2d.front().y;
+    double ymax = pts2d.front().y;
+    for (const auto& p : pts2d) {
+        xmin = std::min(xmin, p.x);
+        xmax = std::max(xmax, p.x);
+        ymin = std::min(ymin, p.y);
+        ymax = std::max(ymax, p.y);
+    }
+    const double cx = 0.5 * (xmin + xmax);
+    const double cy = 0.5 * (ymin + ymax);
+    const double w = std::max(min_size_m, (xmax - xmin)) + 2.0 * margin_m;
+    const double h = std::max(min_size_m, (ymax - ymin)) + 2.0 * margin_m;
+    const double hw = 0.5 * w;
+    const double hh = 0.5 * h;
+    return Polygon2D{
+        { cx - hw, cy - hh },
+        { cx + hw, cy - hh },
+        { cx + hw, cy + hh },
+        { cx - hw, cy + hh },
+    };
+}
+
+static bool isMicroCluster(const std::vector<Point2D>& pts2d, const ObstacleDetectionParams& params) {
+    if (static_cast<int>(pts2d.size()) < params.micro_min_pts) {
+        return false;
+    }
+    double xmin = pts2d.front().x;
+    double xmax = pts2d.front().x;
+    double ymin = pts2d.front().y;
+    double ymax = pts2d.front().y;
+    for (const auto& p : pts2d) {
+        xmin = std::min(xmin, p.x);
+        xmax = std::max(xmax, p.x);
+        ymin = std::min(ymin, p.y);
+        ymax = std::max(ymax, p.y);
+    }
+    const double span_x = xmax - xmin;
+    const double span_y = ymax - ymin;
+    if (std::max(span_x, span_y) > params.micro_max_span_m) {
+        return false;
+    }
+    const double area = std::max(span_x, 1e-6) * std::max(span_y, 1e-6);
+    const double density = static_cast<double>(pts2d.size()) / area;
+    return density >= params.micro_min_density_pts_per_m2;
+}
+
+static bool pointInObstacleShape(const Point2D& p, const Obstacle2D& shape) {
+    if (!pointInPolyRayCast(p, shape.outer)) {
+        return false;
+    }
+    for (const auto& h : shape.holes) {
+        if (pointInPolyRayCast(p, h)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static OccGrid rasterizeShapeToOccupancy(
+    const Obstacle2D& shape,
+    double cell_size,
+    double padding) {
+    OccGrid g;
+    if (shape.outer.size() < 3 || cell_size <= 0.0) {
+        return g;
+    }
+    g.cell = cell_size;
+
+    double xmin = shape.outer.front().x;
+    double xmax = shape.outer.front().x;
+    double ymin = shape.outer.front().y;
+    double ymax = shape.outer.front().y;
+    for (const auto& p : shape.outer) {
+        xmin = std::min(xmin, p.x);
+        xmax = std::max(xmax, p.x);
+        ymin = std::min(ymin, p.y);
+        ymax = std::max(ymax, p.y);
+    }
+    g.xmin = xmin - padding;
+    g.ymin = ymin - padding;
+    const double xmax2 = xmax + padding;
+    const double ymax2 = ymax + padding;
+
+    g.w = std::max(1, static_cast<int>(std::ceil((xmax2 - g.xmin) / cell_size)));
+    g.h = std::max(1, static_cast<int>(std::ceil((ymax2 - g.ymin) / cell_size)));
+    g.occ.assign(static_cast<size_t>(g.w) * static_cast<size_t>(g.h), 0);
+
+    for (int y = 0; y < g.h; ++y) {
+        const double wy = g.ymin + (static_cast<double>(y) + 0.5) * cell_size;
+        for (int x = 0; x < g.w; ++x) {
+            const double wx = g.xmin + (static_cast<double>(x) + 0.5) * cell_size;
+            if (pointInObstacleShape(Point2D(wx, wy), shape)) {
+                g.occ[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)] = 1;
+            }
+        }
+    }
+    return g;
+}
+
+static std::vector<Obstacle2D> smoothShapesRollingDiskGrid(
+    const std::vector<Obstacle2D>& shapes,
+    double radius_m,
+    double cell_size,
+    double contour_cell_m,
+    double min_contour_area_m2,
+    bool preserve_holes,
+    double preserve_holes_min_area_m2) {
+    if (radius_m <= 1e-9 || shapes.empty()) {
+        return shapes;
+    }
+
+    std::vector<Obstacle2D> out;
+    out.reserve(shapes.size());
+
+    for (const auto& sh : shapes) {
+        const double padding = std::max(0.20, 2.0 * radius_m);
+        OccGrid occ = rasterizeShapeToOccupancy(sh, cell_size, padding);
+        if (occ.occ.empty()) {
+            out.push_back(sh);
+            continue;
+        }
+
+        OccGrid occ2 = closeOccupancyConservative(occ, radius_m);
+
+        // Preserve large holes: prevent smoothing from filling navigable cavities.
+        if (preserve_holes && !sh.holes.empty() && preserve_holes_min_area_m2 > 0.0) {
+            std::vector<const Polygon2D*> holes_keep;
+            holes_keep.reserve(sh.holes.size());
+            for (const auto& h : sh.holes) {
+                if (polygonArea(h) >= preserve_holes_min_area_m2) {
+                    holes_keep.push_back(&h);
+                }
+            }
+            if (!holes_keep.empty()) {
+                for (int y = 0; y < occ2.h; ++y) {
+                    const double wy = occ2.ymin + (static_cast<double>(y) + 0.5) * occ2.cell;
+                    for (int x = 0; x < occ2.w; ++x) {
+                        if (!occAt(occ2, x, y)) {
+                            continue;
+                        }
+                        const double wx = occ2.xmin + (static_cast<double>(x) + 0.5) * occ2.cell;
+                        const Point2D p(wx, wy);
+                        bool in_preserved_hole = false;
+                        for (const auto* hptr : holes_keep) {
+                            if (pointInPolyRayCast(p, *hptr)) {
+                                in_preserved_hole = true;
+                                break;
+                            }
+                        }
+                        if (in_preserved_hole) {
+                            occ2.occ[static_cast<size_t>(y) * static_cast<size_t>(occ2.w) + static_cast<size_t>(x)] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Optional coarser contour grid (conservative max-pooling)
+        if (contour_cell_m > 0.0 && contour_cell_m > cell_size + 1e-12) {
+            const int factor = std::max(1, static_cast<int>(std::round(contour_cell_m / cell_size)));
+            if (factor > 1) {
+                occ2 = maxpoolOccupancy(occ2, factor);
+            }
+        }
+
+        std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ2);
+        auto grouped = groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+        if (grouped.empty()) {
+            out.push_back(sh);
+            continue;
+        }
+
+        for (auto& gsh : grouped) {
+            Obstacle2D obs;
+            obs.outer = std::move(gsh.first);
+            obs.holes = std::move(gsh.second);
+            out.push_back(std::move(obs));
+        }
+    }
+
     return out;
 }
 
@@ -685,11 +1019,29 @@ ObstacleDetectionResult detectObstaclesAuto(
     }
     res.stats.path_poses = path.size();
 
-    // Inflate default (matches python main()).
-    double inflate_radius_m = params.inflate_radius_m;
-    if (inflate_radius_m < 0.0) {
-        inflate_radius_m = 0.5 * std::max(params.robot_length_m, params.robot_width_m);
+    // Derived defaults (match Python main()).
+    double grid_cell_m = params.grid_cell_m;
+    if (grid_cell_m <= 0.0) {
+        grid_cell_m = 0.09;
     }
+    double contour_cell_m = params.contour_cell_m;
+    if (contour_cell_m < 0.0) {
+        contour_cell_m = 2.0 * grid_cell_m;
+    }
+    if (contour_cell_m < grid_cell_m) {
+        contour_cell_m = grid_cell_m;
+    }
+    double smooth_radius_m = params.smooth_radius_m;
+    if (smooth_radius_m < 0.0) {
+        smooth_radius_m = 2.0 * grid_cell_m;
+    }
+    if (smooth_radius_m < 0.0) {
+        smooth_radius_m = 0.0;
+    }
+    const double inflate_radius_m = std::max(0.0, params.inflate_radius_m);
+    const double geom_smooth_radius_m = std::max(0.0, params.geom_smooth_radius_m);
+    const bool preserve_holes = params.preserve_holes;
+    const double preserve_holes_min_area_m2 = std::max(0.0, params.preserve_holes_min_area_m2);
 
     // ------------------------------------------------------------------
     // 3. Ground detection
@@ -792,7 +1144,60 @@ ObstacleDetectionResult detectObstaclesAuto(
     }
     clusters.clear();
 
+    // ------------------------------------------------------------------
+    // 6b. Preserve micro obstacles (tiny but dense) (matches Python)
+    // ------------------------------------------------------------------
+    std::vector<Obstacle2D> micro_obstacles;
+    if (params.micro_enable && !obs_xy.empty()) {
+        std::vector<std::vector<Point2D>> normal_clusters;
+        normal_clusters.reserve(cluster_list.size());
+        for (auto& cl : cluster_list) {
+            if (isMicroCluster(cl, params)) {
+                Obstacle2D obs;
+                obs.outer = rectFromBbox(cl, params.micro_min_size_m, params.micro_margin_m);
+                micro_obstacles.push_back(std::move(obs));
+            } else {
+                normal_clusters.push_back(std::move(cl));
+            }
+        }
+        cluster_list = std::move(normal_clusters);
+
+        // Recover micro obstacles from noise points (labels == -1) using tighter DBSCAN
+        std::vector<Point2D> noise_pts;
+        noise_pts.reserve(obs_xy.size());
+        for (size_t i = 0; i < obs_xy.size(); ++i) {
+            if (labels[i] == -1) {
+                noise_pts.push_back(obs_xy[i]);
+            }
+        }
+        if (static_cast<int>(noise_pts.size()) >= params.micro_min_pts && params.micro_noise_eps_m > 0.0) {
+            std::vector<int> micro_labels = dbscan2D(noise_pts, params.micro_noise_eps_m, params.micro_min_pts);
+            int micro_max_label = -1;
+            for (int l : micro_labels) micro_max_label = std::max(micro_max_label, l);
+            const int micro_n_clusters = micro_max_label + 1;
+            if (micro_n_clusters > 0) {
+                std::vector<std::vector<Point2D>> micro_clusters(static_cast<size_t>(micro_n_clusters));
+                for (size_t i = 0; i < noise_pts.size(); ++i) {
+                    int l = micro_labels[i];
+                    if (l < 0) continue;
+                    micro_clusters[static_cast<size_t>(l)].push_back(noise_pts[i]);
+                }
+                for (auto& mc : micro_clusters) {
+                    if (mc.empty()) continue;
+                    if (!isMicroCluster(mc, params)) continue;
+                    Obstacle2D obs;
+                    obs.outer = rectFromBbox(mc, params.micro_min_size_m, params.micro_margin_m);
+                    micro_obstacles.push_back(std::move(obs));
+                }
+            }
+        }
+    }
+
     if (cluster_list.empty()) {
+        // Only micro obstacles exist (or no obstacles at all)
+        res.stats.total_holes = 0;
+        res.stats.obstacle_shapes = static_cast<int>(micro_obstacles.size());
+        res.obstacles = std::move(micro_obstacles);
         res.success = true;
         return res;
     }
@@ -910,30 +1315,57 @@ ObstacleDetectionResult detectObstaclesAuto(
             const auto& pts = ck[static_cast<size_t>(ci)].pts;
             merged_pts.insert(merged_pts.end(), pts.begin(), pts.end());
         }
-        if (merged_pts.size() < 3) continue;
+        if (merged_pts.empty()) continue;
 
-        Polygon2D hull = computeConvexHull(merged_pts);
-        double hull_area = polygonArea(hull);
-
-        // AUTO decision: hollow ratio from *non-inflated* occupancy (padding=0.20)
-        bool use_grid = false;
-        if (hull_area > params.min_contour_area_m2 && params.grid_cell_m > 0.0) {
-            OccGrid occ = occupancyFromPoints(merged_pts, params.grid_cell_m, 0.20);
-            size_t occ_sum = 0;
-            for (uint8_t v : occ.occ) occ_sum += (v != 0);
-            double occ_area = static_cast<double>(occ_sum) * (params.grid_cell_m * params.grid_cell_m);
-            double hollow_ratio = occ_area / std::max(hull_area, 1e-9);
-            if (hollow_ratio < params.hollow_ratio_thresh) {
-                use_grid = true;
+        // Representative hull (used for AUTO heuristics and hull fallback)
+        Polygon2D merged_hull;
+        try {
+            if (merged_pts.size() >= 3) {
+                merged_hull = computeConvexHull(merged_pts);
+            } else {
+                merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
             }
+        } catch (...) {
+            merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
+        }
+        double hull_area = polygonArea(merged_hull);
+        if (hull_area <= 1e-12) {
+            merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
+            hull_area = polygonArea(merged_hull);
+        }
+
+        bool use_grid = false;
+        bool allow_grid = (params.polygon_mode == ObstaclePolygonMode::Auto ||
+                           params.polygon_mode == ObstaclePolygonMode::Grid);
+
+        if (allow_grid) {
+            const bool prefer_grid = (params.polygon_mode == ObstaclePolygonMode::Auto) &&
+                (geom_smooth_radius_m > 0.0 || contour_cell_m > grid_cell_m + 1e-12);
+
+            // Hollow ratio computed from *non-inflated* occupancy (padding=0.20)
+            bool hollow_trigger = false;
+            if (grid_cell_m > 0.0 && hull_area > params.min_contour_area_m2) {
+                OccGrid occ0 = occupancyFromPoints(merged_pts, grid_cell_m, 0.20);
+                size_t occ_sum = 0;
+                for (uint8_t v : occ0.occ) occ_sum += (v != 0);
+                const double occ_area = static_cast<double>(occ_sum) * (grid_cell_m * grid_cell_m);
+                const double hollow_ratio = occ_area / std::max(hull_area, 1e-9);
+                hollow_trigger = (hollow_ratio < params.hollow_ratio_thresh);
+            }
+
+            use_grid = (params.polygon_mode == ObstaclePolygonMode::Grid) || prefer_grid || hollow_trigger;
         }
 
         if (use_grid) {
-            double padding = std::max(0.20, 2.0 * inflate_radius_m);
-            OccGrid occ = occupancyFromPoints(merged_pts, params.grid_cell_m, padding);
-            occ = inflateOccupancy(occ, inflate_radius_m);
-            std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ);
-            auto shapes = groupRingsIntoShapes(std::move(rings), params.min_contour_area_m2);
+            // Keep polygonization simple; apply smoothing once as a post-process (matches Python).
+            auto shapes = polygonizeClusterGrid(
+                merged_pts,
+                grid_cell_m,
+                contour_cell_m,
+                inflate_radius_m,
+                /*smooth_radius_m=*/0.0,
+                params.min_contour_area_m2);
+
             if (!shapes.empty()) {
                 for (auto& sh : shapes) {
                     Obstacle2D obs;
@@ -948,11 +1380,35 @@ ObstacleDetectionResult detectObstaclesAuto(
         }
 
         Obstacle2D obs;
-        obs.outer = std::move(hull);
+        obs.outer = std::move(merged_hull);
         obstacles_out.push_back(std::move(obs));
     }
 
-    res.stats.total_holes = total_holes;
+    // 7c. Optional geometric smoothing (rolling-disk closing) on final polygons (grid fallback).
+    if (geom_smooth_radius_m > 0.0 && !obstacles_out.empty()) {
+        obstacles_out = smoothShapesRollingDiskGrid(
+            obstacles_out,
+            geom_smooth_radius_m,
+            grid_cell_m,
+            contour_cell_m,
+            params.min_contour_area_m2,
+            preserve_holes,
+            preserve_holes_min_area_m2);
+    }
+
+    // Append preserved micro obstacles unchanged (Python skips smoothing for micro shapes).
+    if (!micro_obstacles.empty()) {
+        obstacles_out.reserve(obstacles_out.size() + micro_obstacles.size());
+        for (auto& m : micro_obstacles) {
+            obstacles_out.push_back(std::move(m));
+        }
+    }
+
+    int final_holes = 0;
+    for (const auto& o : obstacles_out) {
+        final_holes += static_cast<int>(o.holes.size());
+    }
+    res.stats.total_holes = final_holes;
     res.stats.obstacle_shapes = static_cast<int>(obstacles_out.size());
     res.obstacles = std::move(obstacles_out);
     res.success = true;

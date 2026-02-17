@@ -63,6 +63,7 @@
 
 #include "coverage_pipeline.hpp"
 #include "obstacle_detector.hpp"
+#include "robot_registry.hpp"
 #include "transfer_manager.hpp"
 #include "data_transfer_dialog.hpp"
 #include "preset_manager.hpp"
@@ -316,6 +317,11 @@ private slots:
     void loadPointCloud();
     void fetchLatestMapFromRobot();
     void loadPointCloudFromPath(const QString& path);
+
+    // Robot login
+    void onRobotLoginClicked();
+    void onRobotIdChanged(const QString& robotId);
+    void onLoginCountdownTick();
     
     // Processing
     void applyHeightCrop();
@@ -432,9 +438,27 @@ private:
     void setupUI();
     void setupConnections();
     void setupRobotTrackingSubscription();
+
+    // Robot registry / active robot selection
+    void loadRobotRegistry();
+    bool setActiveRobotId(const QString& robotId, bool persist = true);
+    void applyActiveRobotProfile(bool updateUi = true);
+    QString activeRobotSlug() const;
+    QString ensurePinnedKnownHostsFile(QString* errorOut = nullptr);
+
+    // Robot login/session (in-memory only)
+    bool hasValidLoginSession() const;
+    void clearLoginSession(const QString& reason = QString());
+    void updateLoginUi();
+    void updatePrivilegedUiState();
+    bool loginToRobotOverSsh(const QString& robotId, const QString& pin, QString* errorOut);
+
+    // Mission-control helpers (SSH + CSV upload)
+    bool uploadMissionCsvToRobot(const PathStateList& exportPath, QString* remoteCsvPathOut, QString* errorOut);
     
     // UI building helpers
     QGroupBox* buildFileControls();
+    QGroupBox* buildRobotLoginControls();
     QGroupBox* buildHeightControls();
     QGroupBox* buildDownsampleControls();
     QGroupBox* buildHullControls();
@@ -537,12 +561,21 @@ private:
     
     // File controls
     QLabel* lbl_file_;
-    QLineEdit* txt_robot_ip_;
+    QLineEdit* txt_robot_ip_ = nullptr;
+    QLabel* lbl_active_robot_ = nullptr;
     QCheckBox* chk_show_robot_;
     QPushButton* btn_clear_robot_trail_;
     QLabel* lbl_robot_status_;
     QLineEdit* txt_robot_topic_;
     QDoubleSpinBox* spin_robot_marker_size_;
+
+    // Robot login controls
+    QComboBox* combo_robot_id_ = nullptr;
+    QLineEdit* txt_access_code_ = nullptr;
+    QPushButton* btn_robot_login_ = nullptr;
+    QLabel* lbl_login_status_ = nullptr;
+    QLabel* lbl_login_expiry_ = nullptr;
+    QTimer* login_countdown_timer_ = nullptr;
     
     // Path mode selector (F2C vs Custom)
     QRadioButton* radio_mode_f2c_ = nullptr;
@@ -653,7 +686,23 @@ private:
     QString robot_host_ = "192.168.168.101";
     QString robot_user_ = "roofus";
     QString robot_data_path_ = "/R_DATA";
-    QString local_map_base_;  // Set to ~/Roofus_maps in constructor
+    QString local_map_base_;  // Set to ~/Roofus_maps/<robot_id_slug> in constructor
+
+    // Robot registry + active robot identity (robot_host_ remains internal-only)
+    RobotRegistry robot_registry_;
+    std::optional<RobotProfile> active_robot_;
+    QString active_robot_id_;
+    QString active_robot_slug_;
+    QString pinned_known_hosts_file_;
+
+    // In-memory auth session (never persisted to disk)
+    QString session_robot_id_;
+    QString session_token_;
+    QDateTime session_expires_at_;
+    QStringList session_scopes_;
+
+    // Last uploaded waypoint CSV (for mission start)
+    QString last_uploaded_csv_remote_path_;
     
     // CycloneDDS config (loopback-only for local node communication)
     QString dds_config_path_;       // ~/cyclone_loopback.xml

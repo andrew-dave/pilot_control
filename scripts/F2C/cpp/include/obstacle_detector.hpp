@@ -8,9 +8,10 @@
  * removes outliers, clusters with DBSCAN, merges nearby clusters, and then
  * polygonizes each merged group.
  *
- * Polygonization mode: AUTO (fast). Uses convex hull unless the cluster looks
- * hollow, in which case it uses occupancy-grid contour polygonization that
- * supports holes.
+ * This port tracks the evolving Python reference implementation, including:
+ * - grid-based polygonization with optional coarser contour extraction
+ * - conservative smoothing (rolling-disk closing) with optional hole preservation
+ * - micro-obstacle preservation (tiny but dense)
  */
 
 #pragma once
@@ -21,6 +22,12 @@
 #include <vector>
 
 namespace f2c_cpp {
+
+enum class ObstaclePolygonMode {
+    Auto,
+    Hull,
+    Grid,
+};
 
 struct ObstacleDetectionParams {
     // Robot dimensions (metres) - defaults match the Python script.
@@ -44,14 +51,34 @@ struct ObstacleDetectionParams {
     double cluster_eps_m = 0.08;
     int cluster_min_pts = 8;
 
-    // AUTO polygonization (hull vs grid-with-holes)
-    double grid_cell_m = 0.03;
-    double inflate_radius_m = -1.0;  // if < 0 => 0.5 * max(robot_length, robot_width)
+    // Polygonization / chaining (defaults match current Python script)
+    ObstaclePolygonMode polygon_mode = ObstaclePolygonMode::Grid;
+    double grid_cell_m = 0.09;
+    double contour_cell_m = -1.0;    // if < 0 => 2 * grid_cell_m
+    double inflate_radius_m = 0.0;  // default: disabled
+    double smooth_radius_m = -1.0;  // if < 0 => 2 * grid_cell_m (kept for parity)
+
+    // Post-process smoothing (rolling-disk closing)
+    double geom_smooth_radius_m = 1.0;
+    int geom_smooth_segs = 16;  // (Shapely-only in Python; kept for parity)
+    bool preserve_holes = true;
+    double preserve_holes_min_area_m2 = 0.5;
+
+    // AUTO mode heuristic
     double hollow_ratio_thresh = 0.35;
-    double min_contour_area_m2 = 0.02;
+    double min_contour_area_m2 = 1e-4;
 
     // Cluster merging (metres)
     double merge_distance_m = 0.50;
+
+    // Micro obstacles (tiny but dense) - enabled by default in Python
+    bool micro_enable = true;
+    double micro_max_span_m = 0.01;
+    double micro_min_size_m = 0.01;
+    double micro_margin_m = 0.002;
+    int micro_min_pts = 20;
+    double micro_min_density_pts_per_m2 = 200000.0;
+    double micro_noise_eps_m = 0.02;
 };
 
 struct ObstacleDetectionStats {
@@ -84,9 +111,9 @@ struct ObstacleDetectionResult {
 /**
  * @brief Detect obstacles using AUTO mode (hull by default, grid-with-holes when hollow).
  *
- * @param cloud Filtered point cloud currently loaded in the UI (map frame).
+ * @param cloud Point cloud currently loaded in the UI (map frame).
  * @param driven_path Driven odometry trail poses (x,y,heading). Used to sample footprint ground.
- * @param roi_or_boundary Optional polygon to restrict detection (ROI preferred, else boundary).
+ * @param roi_or_boundary Optional polygon to restrict detection (legacy; UI may choose to post-filter instead).
  * @param params Algorithm parameters (defaults match Python script).
  */
 ObstacleDetectionResult detectObstaclesAuto(

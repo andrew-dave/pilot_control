@@ -83,7 +83,14 @@ QJsonObject ScanMetadata::toJson() const {
     root["section"] = sectionName;
     root["date"] = dateFolder;
     root["operator"] = operatorName;
-    root["robot"] = "Roofus";
+    // Backward-compatible key (previously hardcoded)
+    root["robot"] = robotId.isEmpty() ? "Unknown" : robotId;
+    if (!robotId.isEmpty()) {
+        root["robot_id"] = robotId;
+    }
+    if (!robotIdSlug.isEmpty()) {
+        root["robot_id_slug"] = robotIdSlug;
+    }
     root["scan_timestamp"] = scanTimestamp.toString(Qt::ISODate);
     
     // Scan statistics

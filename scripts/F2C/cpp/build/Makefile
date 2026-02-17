@@ -271,6 +271,30 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s
 .PHONY : bdr_coverage_planner_autogen/mocs_compilation.cpp.s
 
+src/app_shell.o: src/app_shell.cpp.o
+.PHONY : src/app_shell.o
+
+# target to build an object file
+src/app_shell.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o
+.PHONY : src/app_shell.cpp.o
+
+src/app_shell.i: src/app_shell.cpp.i
+.PHONY : src/app_shell.i
+
+# target to preprocess a source file
+src/app_shell.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.i
+.PHONY : src/app_shell.cpp.i
+
+src/app_shell.s: src/app_shell.cpp.s
+.PHONY : src/app_shell.s
+
+# target to generate assembly for a file
+src/app_shell.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.s
+.PHONY : src/app_shell.cpp.s
+
 src/cloud_upload_dialog.o: src/cloud_upload_dialog.cpp.o
 .PHONY : src/cloud_upload_dialog.o
 
@@ -511,6 +535,30 @@ src/preset_manager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s
 .PHONY : src/preset_manager.cpp.s
 
+src/robot_registry.o: src/robot_registry.cpp.o
+.PHONY : src/robot_registry.o
+
+# target to build an object file
+src/robot_registry.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o
+.PHONY : src/robot_registry.cpp.o
+
+src/robot_registry.i: src/robot_registry.cpp.i
+.PHONY : src/robot_registry.i
+
+# target to preprocess a source file
+src/robot_registry.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.i
+.PHONY : src/robot_registry.cpp.i
+
+src/robot_registry.s: src/robot_registry.cpp.s
+.PHONY : src/robot_registry.s
+
+# target to generate assembly for a file
+src/robot_registry.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.s
+.PHONY : src/robot_registry.cpp.s
+
 src/scan_session_tracker.o: src/scan_session_tracker.cpp.o
 .PHONY : src/scan_session_tracker.o
 
@@ -534,6 +582,54 @@ src/scan_session_tracker.s: src/scan_session_tracker.cpp.s
 src/scan_session_tracker.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s
 .PHONY : src/scan_session_tracker.cpp.s
+
+src/setup_screen.o: src/setup_screen.cpp.o
+.PHONY : src/setup_screen.o
+
+# target to build an object file
+src/setup_screen.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o
+.PHONY : src/setup_screen.cpp.o
+
+src/setup_screen.i: src/setup_screen.cpp.i
+.PHONY : src/setup_screen.i
+
+# target to preprocess a source file
+src/setup_screen.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.i
+.PHONY : src/setup_screen.cpp.i
+
+src/setup_screen.s: src/setup_screen.cpp.s
+.PHONY : src/setup_screen.s
+
+# target to generate assembly for a file
+src/setup_screen.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.s
+.PHONY : src/setup_screen.cpp.s
+
+src/startup_screen.o: src/startup_screen.cpp.o
+.PHONY : src/startup_screen.o
+
+# target to build an object file
+src/startup_screen.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o
+.PHONY : src/startup_screen.cpp.o
+
+src/startup_screen.i: src/startup_screen.cpp.i
+.PHONY : src/startup_screen.i
+
+# target to preprocess a source file
+src/startup_screen.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.i
+.PHONY : src/startup_screen.cpp.i
+
+src/startup_screen.s: src/startup_screen.cpp.s
+.PHONY : src/startup_screen.s
+
+# target to generate assembly for a file
+src/startup_screen.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bdr_coverage_planner.dir/build.make CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.s
+.PHONY : src/startup_screen.cpp.s
 
 src/teleop_widget.o: src/teleop_widget.cpp.o
 .PHONY : src/teleop_widget.o
@@ -606,6 +702,9 @@ help:
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.o"
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.i"
 	@echo "... bdr_coverage_planner_autogen/mocs_compilation.s"
+	@echo "... src/app_shell.o"
+	@echo "... src/app_shell.i"
+	@echo "... src/app_shell.s"
 	@echo "... src/cloud_upload_dialog.o"
 	@echo "... src/cloud_upload_dialog.i"
 	@echo "... src/cloud_upload_dialog.s"
@@ -636,9 +735,18 @@ help:
 	@echo "... src/preset_manager.o"
 	@echo "... src/preset_manager.i"
 	@echo "... src/preset_manager.s"
+	@echo "... src/robot_registry.o"
+	@echo "... src/robot_registry.i"
+	@echo "... src/robot_registry.s"
 	@echo "... src/scan_session_tracker.o"
 	@echo "... src/scan_session_tracker.i"
 	@echo "... src/scan_session_tracker.s"
+	@echo "... src/setup_screen.o"
+	@echo "... src/setup_screen.i"
+	@echo "... src/setup_screen.s"
+	@echo "... src/startup_screen.o"
+	@echo "... src/startup_screen.i"
+	@echo "... src/startup_screen.s"
 	@echo "... src/teleop_widget.o"
 	@echo "... src/teleop_widget.i"
 	@echo "... src/teleop_widget.s"

@@ -1848,6 +1848,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: \
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/robot_registry.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
@@ -1897,7 +1899,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QThread \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/network_monitor.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDirIterator \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \

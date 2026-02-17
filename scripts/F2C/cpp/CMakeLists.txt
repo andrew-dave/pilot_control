@@ -69,7 +69,11 @@ endif()
 set(HEADERS
     include/coverage_pipeline.hpp
     include/coverage_gui.hpp
+    include/setup_screen.hpp
+    include/app_shell.hpp
+    include/startup_screen.hpp
     include/obstacle_detector.hpp
+    include/robot_registry.hpp
     include/transfer_manager.hpp
     include/data_transfer_dialog.hpp
     include/preset_manager.hpp
@@ -88,7 +92,11 @@ set(PIPELINE_SOURCES
 
 set(GUI_SOURCES
     src/coverage_gui.cpp
+    src/setup_screen.cpp
+    src/app_shell.cpp
+    src/startup_screen.cpp
     src/obstacle_detector.cpp
+    src/robot_registry.cpp
     src/transfer_manager.cpp
     src/data_transfer_dialog.cpp
     src/preset_manager.cpp

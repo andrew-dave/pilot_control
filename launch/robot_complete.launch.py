@@ -62,8 +62,12 @@ def generate_launch_description():
     
     # Start Zenoh bridge DDS daemon for Microhard communication
     # This must be running before ROS nodes launch for cross-network DDS communication
+    zenoh_cfg_path = os.path.join(
+        get_package_share_directory('pilot_control'),
+        'config', 'zenoh', 'zenohd_robot.json5'
+    )
     zenoh_bridge = ExecuteProcess(
-        cmd=['zenohd', '-c', os.path.expanduser('~/zenohd_robot.json5')],
+        cmd=['zenohd', '-c', zenoh_cfg_path],
         output='screen',
         name='zenoh_bridge_dds'
     )

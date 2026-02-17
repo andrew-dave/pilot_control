@@ -25,6 +25,8 @@ QJsonObject ScanSession::toJson() const {
     QJsonObject obj;
     obj["session_id"] = sessionId;
     obj["section_name"] = sectionName;
+    obj["robot_id"] = robotId;
+    obj["robot_id_slug"] = robotIdSlug;
     obj["start_time"] = startTime.toString(Qt::ISODate);
     obj["end_time"] = endTime.toString(Qt::ISODate);
     
@@ -61,6 +63,8 @@ ScanSession ScanSession::fromJson(const QJsonObject& obj) {
     ScanSession s;
     s.sessionId = obj["session_id"].toString();
     s.sectionName = obj["section_name"].toString();
+    s.robotId = obj["robot_id"].toString();
+    s.robotIdSlug = obj["robot_id_slug"].toString();
     s.startTime = QDateTime::fromString(obj["start_time"].toString(), Qt::ISODate);
     s.endTime = QDateTime::fromString(obj["end_time"].toString(), Qt::ISODate);
     
@@ -144,10 +148,12 @@ void ScanSessionTracker::onGpsFix(const sensor_msgs::msg::NavSatFix::SharedPtr m
     emit gpsFixReceived(lat, lon, alt);
 }
 
-void ScanSessionTracker::startSession(const QString& sectionName, 
-                                        const CoverageStats& plannedStats,
-                                        double swathWidth, 
-                                        const QString& patternType) {
+void ScanSessionTracker::startSession(const QString& sectionName,
+                                      const QString& robotId,
+                                      const QString& robotIdSlug,
+                                      const CoverageStats& plannedStats,
+                                      double swathWidth,
+                                      const QString& patternType) {
     QMutexLocker locker(&mutex_);
     
     if (sessionActive_) {
@@ -160,6 +166,8 @@ void ScanSessionTracker::startSession(const QString& sectionName,
     currentSession_ = ScanSession{};
     currentSession_.sessionId = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
     currentSession_.sectionName = sectionName;
+    currentSession_.robotId = robotId;
+    currentSession_.robotIdSlug = robotIdSlug;
     currentSession_.startTime = QDateTime::currentDateTime();
     
     // Copy planned stats
@@ -224,6 +232,8 @@ ScanMetadata ScanSessionTracker::getMetadataForSection(const QString& sectionNam
     auto session = findSession(sectionName);
     
     if (session) {
+        meta.robotId = session->robotId;
+        meta.robotIdSlug = session->robotIdSlug;
         meta.pathLengthM = session->pathLengthM;
         meta.coverageAreaM2 = session->coverageAreaM2;
         meta.fieldAreaM2 = session->fieldAreaM2;

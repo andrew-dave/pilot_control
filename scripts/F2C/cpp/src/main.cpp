@@ -59,9 +59,9 @@ int main(int argc, char* argv[])
 #endif
     std::cout << "==================================" << std::endl;
     
-    // Create and show main window
-    f2c_cpp::CoverageGUI gui;
-    gui.show();
+    // Create and show coverage planner
+    f2c_cpp::CoverageGUI window;
+    window.show();
     
     // Run event loop
     int exit_code = app.exec();

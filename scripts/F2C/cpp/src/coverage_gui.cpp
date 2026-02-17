@@ -20,7 +20,13 @@
 #include <QFrame>
 #include <QDir>
 #include <QTabWidget>
+#include <QStandardPaths>
 #include <QSignalBlocker>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QtConcurrent>
 #include <QFutureWatcher>
 #include <QStyleFactory>
@@ -1150,6 +1156,65 @@ static bool pointInObstacleShapeLocal(const Point2D& p, const Obstacle2D& obs) {
     return true;
 }
 
+static double orient2DLocal(const Point2D& a, const Point2D& b, const Point2D& c) {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+static bool onSegmentLocal(const Point2D& a, const Point2D& b, const Point2D& p) {
+    const double eps = 1e-12;
+    if (std::abs(orient2DLocal(a, b, p)) > eps) return false;
+    return (p.x >= std::min(a.x, b.x) - eps && p.x <= std::max(a.x, b.x) + eps &&
+            p.y >= std::min(a.y, b.y) - eps && p.y <= std::max(a.y, b.y) + eps);
+}
+
+static bool segmentsIntersectLocal(const Point2D& a, const Point2D& b, const Point2D& c, const Point2D& d) {
+    const double o1 = orient2DLocal(a, b, c);
+    const double o2 = orient2DLocal(a, b, d);
+    const double o3 = orient2DLocal(c, d, a);
+    const double o4 = orient2DLocal(c, d, b);
+
+    auto sgn = [](double v) -> int {
+        const double eps = 1e-12;
+        if (v > eps) return 1;
+        if (v < -eps) return -1;
+        return 0;
+    };
+
+    const int s1 = sgn(o1);
+    const int s2 = sgn(o2);
+    const int s3 = sgn(o3);
+    const int s4 = sgn(o4);
+
+    // General case
+    if (s1 * s2 < 0 && s3 * s4 < 0) {
+        return true;
+    }
+
+    // Collinear cases
+    if (s1 == 0 && onSegmentLocal(a, b, c)) return true;
+    if (s2 == 0 && onSegmentLocal(a, b, d)) return true;
+    if (s3 == 0 && onSegmentLocal(c, d, a)) return true;
+    if (s4 == 0 && onSegmentLocal(c, d, b)) return true;
+
+    return false;
+}
+
+static bool polygonEdgesIntersectLocal(const Polygon2D& a, const Polygon2D& b) {
+    if (a.size() < 2 || b.size() < 2) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        const Point2D& a0 = a[i];
+        const Point2D& a1 = a[(i + 1) % a.size()];
+        for (size_t j = 0; j < b.size(); ++j) {
+            const Point2D& b0 = b[j];
+            const Point2D& b1 = b[(j + 1) % b.size()];
+            if (segmentsIntersectLocal(a0, a1, b0, b1)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         if (custom_draw_mode_) {
@@ -1443,7 +1508,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     setWindowTitle("BDR Coverage Planner");
     resize(1500, 900);
     
-    // Initialize robot map fetch settings (user-agnostic)
+    // Initialize robot map fetch base (robot-specific suffix applied after registry load)
     local_map_base_ = QDir::homePath() + "/Roofus_maps";
     
     // Initialize CycloneDDS config path (loopback-only for local node communication)
@@ -1455,6 +1520,25 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
     robot_odom_topic_ = settings.value("robot_odom_topic", robot_odom_topic_).toString();
     robot_marker_size_m_ = settings.value("robot_marker_size_m", robot_marker_size_m_).toDouble();
+
+    // Load robot registry and select active robot (robot_id -> hidden static IP)
+    loadRobotRegistry();
+    const QString persisted_robot_id = settings.value("robot_id", "").toString().trimmed();
+    if (robot_registry_.isLoaded() && !robot_registry_.isEmpty()) {
+        if (!persisted_robot_id.isEmpty() && setActiveRobotId(persisted_robot_id, false)) {
+            // Active robot restored from settings
+        } else {
+            // Default to first registry entry
+            setActiveRobotId(robot_registry_.robots().front().robot_id, true);
+        }
+    } else if (!persisted_robot_id.isEmpty()) {
+        // Registry not available, but still keep identity for local paths/metadata.
+        active_robot_id_ = persisted_robot_id;
+        active_robot_slug_ = RobotRegistry::slugifyRobotId(active_robot_id_);
+    }
+
+    // Apply robot-dependent paths/config (UI is not built yet, so updateUi=false)
+    applyActiveRobotProfile(false);
     
     // Set CYCLONEDDS_URI environment variable (loopback-only config)
     if (QFile::exists(dds_config_path_)) {
@@ -1485,6 +1569,8 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     dark_mode_ = settings.value("dark_mode", false).toBool();
     
     setupUI();
+    applyActiveRobotProfile(true);
+    updateLoginUi();
     setupConnections();
     refreshCustomPathUI();
     applyTheme();  // Apply saved theme
@@ -1598,6 +1684,7 @@ void CoverageGUI::setupUI() {
     
     // Standard panel layout with QGroupBox sections
     controls_layout->addWidget(buildFileControls());
+    controls_layout->addWidget(buildRobotLoginControls());
     controls_layout->addWidget(buildRobotTrackingControls());
     controls_layout->addWidget(buildHeightControls());
     controls_layout->addWidget(buildDownsampleControls());
@@ -2174,6 +2261,8 @@ void CoverageGUI::openDataTransferDialog() {
         data_transfer_dialog_->setRobotHost(robot_host_);
         data_transfer_dialog_->setRobotUser(robot_user_);
         data_transfer_dialog_->setDataPath(robot_data_path_);
+        data_transfer_dialog_->setRobotDisplayName(active_robot_id_);
+        data_transfer_dialog_->setRobotIdSlug(activeRobotSlug());
         
         connect(data_transfer_dialog_, &DataTransferDialog::transferActive,
                 this, &CoverageGUI::onTransferActive);
@@ -2185,10 +2274,8 @@ void CoverageGUI::openDataTransferDialog() {
         // Tab 2: Laptop → Cloud (cloud upload dialog)
         cloud_upload_dialog_ = new CloudUploadDialog(scan_session_tracker_);
         
-        QSettings settings("PilotControl", "BDRCoveragePlanner");
-        QString dataPath = settings.value("data_transfer/default_destination",
-            QDir::homePath() + "/robot_data").toString();
-        cloud_upload_dialog_->setLocalDataPath(dataPath);
+        const QString robotLocalDataRoot = QDir::homePath() + "/robot_data/" + activeRobotSlug();
+        cloud_upload_dialog_->setLocalDataPath(robotLocalDataRoot);
         
         connect(cloud_upload_dialog_, &CloudUploadDialog::uploadActive,
                 this, &CoverageGUI::onCloudUploadActive);
@@ -2205,13 +2292,8 @@ void CoverageGUI::openDataTransferDialog() {
         layout->addWidget(data_transfer_tabs_);
     }
     
-    // Update robot host in case it changed
-    if (txt_robot_ip_) {
-        robot_host_ = txt_robot_ip_->text();
-    }
-    if (data_transfer_dialog_) {
-        data_transfer_dialog_->setRobotHost(robot_host_);
-    }
+    // Ensure dialogs match currently active robot
+    applyActiveRobotProfile(true);
     
     // Show and bring to front
     data_transfer_window_->show();
@@ -2287,14 +2369,27 @@ QGroupBox* CoverageGUI::buildFileControls() {
                                    "It bridges ROS2 topics between laptop and robot over Microhard RF");
     v->addWidget(lbl_zenoh_status_);
     
-    // Robot IP configuration
-    QHBoxLayout* ip_layout = new QHBoxLayout();
-    ip_layout->addWidget(new QLabel("Robot IP:"));
-    txt_robot_ip_ = new QLineEdit(robot_host_);
-    txt_robot_ip_->setPlaceholderText("e.g. 192.168.168.101");
-    txt_robot_ip_->setToolTip("IP address for fetching maps via SSH");
-    ip_layout->addWidget(txt_robot_ip_);
-    v->addLayout(ip_layout);
+    // Robot identity (hide static IP when registry is present)
+    const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
+    if (using_registry) {
+        QHBoxLayout* robot_layout = new QHBoxLayout();
+        robot_layout->addWidget(new QLabel("Robot:"));
+        lbl_active_robot_ = new QLabel(active_robot_id_.isEmpty() ? "(not set)" : active_robot_id_);
+        lbl_active_robot_->setToolTip("Selected via robots.json (static IP hidden)");
+        robot_layout->addWidget(lbl_active_robot_);
+        robot_layout->addStretch();
+        v->addLayout(robot_layout);
+        txt_robot_ip_ = nullptr;  // Don't expose IP in UI
+    } else {
+        // Robot IP configuration (legacy)
+        QHBoxLayout* ip_layout = new QHBoxLayout();
+        ip_layout->addWidget(new QLabel("Robot IP:"));
+        txt_robot_ip_ = new QLineEdit(robot_host_);
+        txt_robot_ip_->setPlaceholderText("e.g. 192.168.168.101");
+        txt_robot_ip_->setToolTip("IP address for fetching maps via SSH");
+        ip_layout->addWidget(txt_robot_ip_);
+        v->addLayout(ip_layout);
+    }
     
     // Load from local file
     QPushButton* btn_load = new QPushButton("Load PCD / PLY / XYZ");
@@ -2305,29 +2400,103 @@ QGroupBox* CoverageGUI::buildFileControls() {
     // Fetch from robot via SSH
     QPushButton* btn_fetch = new QPushButton("📡 Fetch Latest from Robot");
     auto updateFetchTooltip = [this, btn_fetch]() {
-        btn_fetch->setToolTip(
-            QString("Download the latest map from robot (%1@%2)\nSaves to ~/Roofus_maps/")
-            .arg(robot_user_, robot_host_));
+        QString display_map_dir = local_map_base_;
+        if (display_map_dir.startsWith(QDir::homePath())) {
+            display_map_dir.replace(0, QDir::homePath().size(), "~");
+        }
+
+        const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
+        const QString target = using_registry
+                                   ? (active_robot_id_.isEmpty() ? "Active robot" : active_robot_id_)
+                                   : QString("%1@%2").arg(robot_user_, robot_host_);
+        btn_fetch->setToolTip(QString("Download the latest map from robot (%1)\nSaves to %2/")
+                                  .arg(target, display_map_dir));
     };
     updateFetchTooltip();
     btn_fetch->setObjectName("btn_fetch");  // For theme-aware styling
     connect(btn_fetch, &QPushButton::clicked, this, &CoverageGUI::fetchLatestMapFromRobot);
     
-    connect(txt_robot_ip_, &QLineEdit::editingFinished, this, [this, updateFetchTooltip]() mutable {
-        QString trimmed = txt_robot_ip_->text().trimmed();
-        if (trimmed != txt_robot_ip_->text()) {
-            txt_robot_ip_->setText(trimmed);
-        }
-        robot_host_ = trimmed;
-        QSettings settings("PilotControl", "BDRCoveragePlanner");
-        settings.setValue("robot_ip", robot_host_);
-        updateFetchTooltip();
-    });
+    if (txt_robot_ip_) {
+        connect(txt_robot_ip_, &QLineEdit::editingFinished, this, [this, updateFetchTooltip]() mutable {
+            QString trimmed = txt_robot_ip_->text().trimmed();
+            if (trimmed != txt_robot_ip_->text()) {
+                txt_robot_ip_->setText(trimmed);
+            }
+            robot_host_ = trimmed;
+            QSettings settings("PilotControl", "BDRCoveragePlanner");
+            settings.setValue("robot_ip", robot_host_);
+            updateFetchTooltip();
+        });
+    }
     v->addWidget(btn_fetch);
     
     lbl_file_ = new QLabel("No file loaded");
     v->addWidget(lbl_file_);
     
+    return box;
+}
+
+QGroupBox* CoverageGUI::buildRobotLoginControls() {
+    QGroupBox* box = new QGroupBox("Robot Login");
+    QVBoxLayout* v = new QVBoxLayout(box);
+
+    // Robot ID selector
+    QHBoxLayout* id_layout = new QHBoxLayout();
+    id_layout->addWidget(new QLabel("Robot ID:"));
+    combo_robot_id_ = new QComboBox();
+    combo_robot_id_->setEditable(true);
+    combo_robot_id_->setInsertPolicy(QComboBox::NoInsert);
+    combo_robot_id_->setToolTip("Select a robot by ID (static IP is hidden).");
+
+    if (robot_registry_.isLoaded() && !robot_registry_.isEmpty()) {
+        combo_robot_id_->addItems(robot_registry_.robotIds());
+    }
+    const int idx = combo_robot_id_->findText(active_robot_id_, Qt::MatchFixedString);
+    if (idx >= 0) {
+        combo_robot_id_->setCurrentIndex(idx);
+    } else if (!active_robot_id_.isEmpty()) {
+        combo_robot_id_->setEditText(active_robot_id_);
+    }
+    id_layout->addWidget(combo_robot_id_, 1);
+    v->addLayout(id_layout);
+
+    // Access code (6-digit PIN)
+    QHBoxLayout* pin_layout = new QHBoxLayout();
+    pin_layout->addWidget(new QLabel("Access code:"));
+    txt_access_code_ = new QLineEdit();
+    txt_access_code_->setEchoMode(QLineEdit::Password);
+    txt_access_code_->setMaxLength(6);
+    txt_access_code_->setPlaceholderText("6 digits");
+    txt_access_code_->setToolTip("6-digit PIN (checked only during login).");
+    txt_access_code_->setValidator(new QRegularExpressionValidator(QRegularExpression("^\\d{0,6}$"), txt_access_code_));
+    pin_layout->addWidget(txt_access_code_, 1);
+    v->addLayout(pin_layout);
+
+    // Action row
+    QHBoxLayout* action_layout = new QHBoxLayout();
+    btn_robot_login_ = new QPushButton("Login");
+    btn_robot_login_->setMinimumHeight(32);
+    action_layout->addWidget(btn_robot_login_);
+
+    lbl_login_status_ = new QLabel("Not logged in");
+    lbl_login_status_->setStyleSheet("color: #666; font-size: 10px;");
+    action_layout->addWidget(lbl_login_status_, 1);
+    v->addLayout(action_layout);
+
+    lbl_login_expiry_ = new QLabel();
+    lbl_login_expiry_->setStyleSheet("color: #666; font-size: 10px;");
+    v->addWidget(lbl_login_expiry_);
+
+    // Countdown timer (1 Hz)
+    login_countdown_timer_ = new QTimer(this);
+    login_countdown_timer_->setInterval(1000);
+    connect(login_countdown_timer_, &QTimer::timeout, this, &CoverageGUI::onLoginCountdownTick);
+
+    // Hook up UI actions
+    connect(btn_robot_login_, &QPushButton::clicked, this, &CoverageGUI::onRobotLoginClicked);
+    connect(combo_robot_id_, &QComboBox::currentTextChanged, this, &CoverageGUI::onRobotIdChanged);
+
+    updateLoginUi();
     return box;
 }
 
@@ -2929,7 +3098,7 @@ QGroupBox* CoverageGUI::buildExportControls() {
     v->addWidget(btn_export_path);
 
     // Add waypoint publishing buttons (work for both F2C and Custom modes)
-    btn_publish_waypoints_ = new QPushButton("📡 Publish Waypoints to Robot");
+    btn_publish_waypoints_ = new QPushButton("⬆ Publish Waypoints to Robot");
     btn_publish_waypoints_->setObjectName("btn_publish");  // For theme-aware styling
     connect(btn_publish_waypoints_, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
     v->addWidget(btn_publish_waypoints_);
@@ -3327,7 +3496,7 @@ QGroupBox* CoverageGUI::buildScanPlannerPanel() {
     btn_make_segments_->setObjectName("btn_quick_generate");
     btn_make_segments_->setMinimumHeight(34);
 
-    btn_publish_segments_ = new QPushButton("📡 Publish selected");
+    btn_publish_segments_ = new QPushButton("⬆ Publish selected");
     btn_publish_segments_->setObjectName("btn_publish");
     btn_publish_segments_->setMinimumHeight(34);
 
@@ -3385,7 +3554,7 @@ QWidget* CoverageGUI::buildQuickActionsBar() {
     connect(btn_quick_generate_, &QPushButton::clicked, this, &CoverageGUI::generatePath);
     layout->addWidget(btn_quick_generate_);
     
-    btn_quick_publish_ = new QPushButton("📡 Publish");
+    btn_quick_publish_ = new QPushButton("⬆ Publish");
     btn_quick_publish_->setObjectName("btn_quick_publish");
     btn_quick_publish_->setMinimumWidth(100);
     btn_quick_publish_->setMinimumHeight(36);
@@ -3613,25 +3782,41 @@ void CoverageGUI::clearRobotTrail() {
 }
 
 void CoverageGUI::fetchLatestMapFromRobot() {
-    showProgress(true, QString("Connecting to %1...").arg(robot_host_));
+    const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
+    const QString display_robot = using_registry && !active_robot_id_.isEmpty()
+                                      ? active_robot_id_
+                                      : robot_host_;
+    const QString ssh_opts = pinned_known_hosts_file_.isEmpty()
+                                 ? "-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no"
+                                 : QString("-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=yes "
+                                           "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
+                                       .arg(pinned_known_hosts_file_);
+    showProgress(true, QString("Connecting to %1...").arg(display_robot));
     
     // Build SSH command to find the latest .pcd file on robot
     QString find_cmd = QString(
-        "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no %1@%2 "
-        "\"find %3 -name '*.pcd' -type f -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-\""
-    ).arg(robot_user_, robot_host_, robot_data_path_);
+        "ssh %1 %2@%3 "
+        "\"find %4 -name '*.pcd' -type f -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-\""
+    ).arg(ssh_opts, robot_user_, robot_host_, robot_data_path_);
     
     QProcess find_process;
     find_process.start("bash", QStringList() << "-c" << find_cmd);
     
     if (!find_process.waitForFinished(10000)) {
         showProgress(false);
-        QMessageBox::warning(this, "Connection Failed", 
-            QString("Could not connect to robot.\nCheck if:\n"
-            "• Robot is powered on\n"
-                    "• Microhard is connected (%1)\n"
-                    "• SSH keys are configured for %2@%1")
-                .arg(robot_host_, robot_user_));
+        const QString details = using_registry
+                                    ? QString("Could not connect to robot.\nCheck if:\n"
+                                              "• Robot is powered on\n"
+                                              "• Microhard link is connected\n"
+                                              "• SSH keys are configured for user '%1'\n"
+                                              "• Selected robot: %2")
+                                          .arg(robot_user_, display_robot)
+                                    : QString("Could not connect to robot.\nCheck if:\n"
+                                              "• Robot is powered on\n"
+                                              "• Microhard is connected (%1)\n"
+                                              "• SSH keys are configured for %2@%1")
+                                          .arg(robot_host_, robot_user_);
+        QMessageBox::warning(this, "Connection Failed", details);
         return;
     }
     
@@ -3684,8 +3869,14 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     
     // SCP the file to local machine
     QString scp_cmd = QString(
-        "scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no %1@%2:\"%3\" \"%4\""
-    ).arg(robot_user_, robot_host_, remote_path, local_path);
+        "scp %1 %2@%3:\"%4\" \"%5\""
+    ).arg(
+        pinned_known_hosts_file_.isEmpty()
+            ? "-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no"
+            : QString("-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=yes "
+                      "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
+                  .arg(pinned_known_hosts_file_),
+        robot_user_, robot_host_, remote_path, local_path);
     
     QProcess scp_process;
     scp_process.start("bash", QStringList() << "-c" << scp_cmd);
@@ -4194,13 +4385,9 @@ void CoverageGUI::autoDetectObstacles() {
     if (btn_obstacle_) btn_obstacle_->setChecked(false);
     plot_->cancelSelection();
 
-    // Scope: prefer ROI if available, else boundary if available.
-    Polygon2D scope;
-    if (!roi_polygon_.empty()) {
-        scope = roi_polygon_;
-    } else if (!polygon_.empty()) {
-        scope = polygon_;
-    }
+    // Detection should always run on the full point cloud.
+    // If ROI is selected, we post-filter the detected obstacle shapes for display only.
+    const Polygon2D display_roi = roi_polygon_;
 
     std::vector<PathState> path_snapshot;
     {
@@ -4220,9 +4407,50 @@ void CoverageGUI::autoDetectObstacles() {
     PointCloudPtr cloud = pcd_points_;
     ObstacleDetectionParams params;  // defaults mirror the Python script
 
-    auto future = QtConcurrent::run([cloud, path_snapshot, scope, params]() mutable {
-        const Polygon2D* scope_ptr = scope.empty() ? nullptr : &scope;
-        return detectObstaclesAuto(cloud, path_snapshot, scope_ptr, params);
+    auto future = QtConcurrent::run([cloud, path_snapshot, display_roi, params]() mutable {
+        ObstacleDetectionResult result = detectObstaclesAuto(cloud, path_snapshot, nullptr, params);
+        if (!result.success) {
+            return result;
+        }
+        if (display_roi.size() >= 3) {
+            std::vector<Obstacle2D> filtered;
+            filtered.reserve(result.obstacles.size());
+            for (const auto& obs : result.obstacles) {
+                // Keep any obstacle that intersects the ROI (vertex-in-poly or edge intersection).
+                bool keep = false;
+                // Quick accept: any obstacle outer vertex inside ROI.
+                for (const auto& p : obs.outer) {
+                    if (pointInPolygonRayCastLocal(p, display_roi)) {
+                        keep = true;
+                        break;
+                    }
+                }
+                if (!keep) {
+                    // Any ROI vertex inside obstacle shape?
+                    for (const auto& p : display_roi) {
+                        if (pointInObstacleShapeLocal(p, obs)) {
+                            keep = true;
+                            break;
+                        }
+                    }
+                }
+                if (!keep) {
+                    // Any edge intersection between obstacle outer ring and ROI boundary?
+                    keep = polygonEdgesIntersectLocal(obs.outer, display_roi);
+                }
+                if (keep) {
+                    filtered.push_back(obs);
+                }
+            }
+            result.obstacles = std::move(filtered);
+            int holes = 0;
+            for (const auto& o : result.obstacles) {
+                holes += static_cast<int>(o.holes.size());
+            }
+            result.stats.total_holes = holes;
+            result.stats.obstacle_shapes = static_cast<int>(result.obstacles.size());
+        }
+        return result;
     });
     obstacle_detect_watcher_->setFuture(future);
 }
@@ -4616,8 +4844,14 @@ void CoverageGUI::updateScanSegmentCompletion(double completed_m) {
 }
 
 void CoverageGUI::publishSelectedScanSegments() {
+    if (!hasValidLoginSession()) {
+        QMessageBox::warning(this, "Not Logged In",
+                             "Please log into the robot before publishing scan segments.");
+        return;
+    }
     if (!ros_initialized_ || !waypoint_pub_) {
-        QMessageBox::warning(this, "ROS2 Unavailable", "ROS2 publisher is not ready.");
+        QMessageBox::warning(this, "ROS2 Not Available",
+                             "ROS2 is not available; cannot publish scan segments.");
         return;
     }
     auto idxs = selectedScanSegmentIndices();
@@ -4634,21 +4868,24 @@ void CoverageGUI::publishSelectedScanSegments() {
 
     std_msgs::msg::Float64MultiArray msg;
     msg.data.reserve(publish_path.size() * 2);
-    for (const auto& st : publish_path) {
-        msg.data.push_back(st.point.x);
-        msg.data.push_back(st.point.y);
+    for (const auto& state : publish_path) {
+        msg.data.push_back(state.point.x);
+        msg.data.push_back(state.point.y);
     }
     waypoint_pub_->publish(msg);
+
     waypoints_published_ = true;
-    if (btn_start_navigation_) {
-        btn_start_navigation_->setEnabled(true);
-    }
+    if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
+    if (btn_quick_start_) btn_quick_start_->setEnabled(true);
     setStatus(QString("Published %1 scan(s), %2 points").arg(idxs.size()).arg(publish_path.size()), 4000);
 }
 
 void CoverageGUI::startSelectedScanSegments() {
+    // Always re-publish the selected scan(s) before starting.
+    waypoints_published_ = false;
+    publishSelectedScanSegments();
     if (!waypoints_published_) {
-        publishSelectedScanSegments();
+        return;
     }
     startNavigation();
 }
@@ -4832,70 +5069,62 @@ void CoverageGUI::scheduleFitToView() {
 }
 
 void CoverageGUI::publishWaypoints() {
-    // Check ROS2 availability first
-    if (!ros_initialized_) {
-        QMessageBox::warning(this, "ROS2 Unavailable", 
-            "ROS2 is not initialized. Cannot publish waypoints.\n\n"
-            "Check your network configuration and CycloneDDS settings.");
+    if (!hasValidLoginSession()) {
+        QMessageBox::warning(this, "Not Logged In",
+                             "Please log into the robot before publishing waypoints.");
         return;
     }
-    if (!waypoint_pub_) {
-        QMessageBox::warning(this, "ROS2 Unavailable", "Waypoint publisher is not ready yet.");
+    if (!ros_initialized_ || !waypoint_pub_) {
+        QMessageBox::warning(this, "ROS2 Not Available",
+                             "ROS2 is not available; cannot publish waypoints.");
         return;
     }
-    
-    std_msgs::msg::Float64MultiArray msg;
-    size_t waypoint_count = 0;
-    
+    // Build export path (custom vs planned)
+    PathStateList export_path;
+    QString mode_label;
+
     if (isCustomModeActive()) {
-        // Custom path mode
         if (custom_waypoints_.size() < 2) {
             QMessageBox::warning(this, "No Path", "Add at least two custom waypoints before publishing.");
             return;
         }
-        
-        msg.data.reserve(custom_waypoints_.size() * 2);
+        export_path.reserve(custom_waypoints_.size());
         for (const auto& pt : custom_waypoints_) {
-            msg.data.push_back(pt.x);
-            msg.data.push_back(pt.y);
+            PathState ps;
+            ps.point = pt;
+            ps.heading = 0;
+            ps.vx = 0;
+            ps.vy = 0;
+            export_path.push_back(ps);
         }
-        waypoint_count = custom_waypoints_.size();
-        
+        mode_label = "custom";
+
         // Reset visited status for tracking
         custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
         refreshCustomPathUI();
-        
-        std::cout << "[Coverage Planner] Published " << waypoint_count << " custom waypoints" << std::endl;
     } else {
-        // F2C coverage mode
         if (path_.empty()) {
             QMessageBox::warning(this, "No Path", "Generate a coverage path first before publishing waypoints.");
-        return;
+            return;
+        }
+        export_path = dedupePathStates(path_);
+        mode_label = "planned";
     }
 
-    // Remove consecutive duplicates to avoid sending repeated points
-    PathStateList deduped_path = dedupePathStates(path_);
+    export_path = dedupePathStates(export_path);
 
-        msg.data.reserve(deduped_path.size() * 2);
-    for (const auto& state : deduped_path) {
+    std_msgs::msg::Float64MultiArray msg;
+    msg.data.reserve(export_path.size() * 2);
+    for (const auto& state : export_path) {
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
-        }
-        waypoint_count = deduped_path.size();
-        
-        std::cout << "[Coverage Planner] Published " << waypoint_count << " planned waypoints" << std::endl;
     }
-
-    // Publish to ROS2 topic
     waypoint_pub_->publish(msg);
     waypoints_published_ = true;
 
-    // Update status and enable navigation buttons
-    setStatus(QString("✅ Published %1 waypoints to robot").arg(waypoint_count), 5000);
-    
-    if (btn_start_navigation_) {
-        btn_start_navigation_->setEnabled(true);
-    }
+    setStatus(QString("📡 Published %1 %2 waypoints").arg(export_path.size()).arg(mode_label), 5000);
+    if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
+    if (btn_quick_start_) btn_quick_start_->setEnabled(true);
 }
 
 void CoverageGUI::publishCustomPath() {
@@ -5080,24 +5309,27 @@ void CoverageGUI::updateCustomWaypointStatus() {
 }
 
 void CoverageGUI::startNavigation() {
+    if (!hasValidLoginSession()) {
+        QMessageBox::warning(this, "Not Logged In",
+                             "Please log into the robot before starting navigation.");
+        return;
+    }
     if (!waypoints_published_) {
         QMessageBox::warning(this, "Waypoints Not Published", "Please publish waypoints first.");
         return;
     }
-
-    if (!ros_initialized_) {
-        QMessageBox::warning(this, "ROS2 Unavailable", 
-            "ROS2 is not initialized. Cannot start navigation.");
+    if (!ros_initialized_ || !waypoint_pub_) {
+        QMessageBox::warning(this, "ROS2 Not Available",
+                             "ROS2 is not available; cannot start navigation.");
         return;
     }
 
-    // Publish empty message to signal start of navigation
-    auto msg = std_msgs::msg::Float64MultiArray();
-    msg.data = {0.0};  // Special signal value
-    waypoint_pub_->publish(msg);
+    std_msgs::msg::Float64MultiArray start_msg;
+    start_msg.data = {0.0};  // Start signal for controllers listening on /f2c_waypoints
+    waypoint_pub_->publish(start_msg);
 
     setStatus("🚀 Navigation started!", 3000);
-    std::cout << "[Coverage Planner] Sent navigation start signal" << std::endl;
+    std::cout << "[Coverage Planner] Start signal published to /f2c_waypoints" << std::endl;
     
     // Start scan session tracking (GPS accumulation + stats recording)
     QString sectionName = QString("Section_%1")
@@ -6418,7 +6650,9 @@ void CoverageGUI::startScanSession(const QString& sectionName) {
         patternType = combo_route_pattern_->currentText();
     }
     
-    scan_session_tracker_->startSession(sectionName, current_stats_, swathWidth, patternType);
+    const QString rid = session_robot_id_.isEmpty() ? active_robot_id_ : session_robot_id_;
+    scan_session_tracker_->startSession(sectionName, rid, activeRobotSlug(),
+                                        current_stats_, swathWidth, patternType);
 }
 
 void CoverageGUI::endScanSession() {
@@ -6518,6 +6752,504 @@ void CoverageGUI::applyPreset(const PlanningPreset& preset) {
     // Update UI that depends on these values
     if (combo_downsample_) {
         updateDownsampleUI(combo_downsample_->currentText());
+    }
+}
+
+// =============================================================================
+// Robot login/session (in-memory only)
+// =============================================================================
+
+bool CoverageGUI::hasValidLoginSession() const {
+    if (session_token_.isEmpty()) return false;
+    if (session_robot_id_.isEmpty()) return false;
+    if (!session_expires_at_.isValid()) return false;
+    return QDateTime::currentDateTimeUtc() < session_expires_at_.toUTC();
+}
+
+void CoverageGUI::clearLoginSession(const QString& reason) {
+    session_robot_id_.clear();
+    session_token_.clear();
+    session_expires_at_ = QDateTime();
+    session_scopes_.clear();
+
+    if (login_countdown_timer_) {
+        login_countdown_timer_->stop();
+    }
+
+    if (!reason.isEmpty()) {
+        setStatus(reason, 4000);
+    }
+
+    updateLoginUi();
+}
+
+void CoverageGUI::updatePrivilegedUiState() {
+    const bool authed = hasValidLoginSession();
+
+    if (btn_publish_waypoints_) btn_publish_waypoints_->setEnabled(authed);
+    if (btn_quick_publish_) btn_quick_publish_->setEnabled(authed);
+    if (btn_publish_segments_) btn_publish_segments_->setEnabled(authed);
+    if (btn_start_segments_) btn_start_segments_->setEnabled(authed);
+
+    if (!authed) {
+        if (btn_start_navigation_) btn_start_navigation_->setEnabled(false);
+        if (btn_quick_start_) btn_quick_start_->setEnabled(false);
+    } else {
+        // Keep start buttons gated by whether waypoints have been published.
+        if (waypoints_published_) {
+            if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
+            if (btn_quick_start_) btn_quick_start_->setEnabled(true);
+        }
+    }
+}
+
+void CoverageGUI::updateLoginUi() {
+    const bool authed = hasValidLoginSession();
+
+    if (btn_robot_login_) {
+        btn_robot_login_->setText(authed ? "Logout" : "Login");
+    }
+    if (combo_robot_id_) {
+        combo_robot_id_->setEnabled(!authed);
+    }
+    if (txt_access_code_) {
+        txt_access_code_->setEnabled(!authed);
+        if (authed) {
+            txt_access_code_->clear();
+        }
+    }
+
+    if (lbl_login_status_) {
+        if (authed) {
+            lbl_login_status_->setText(QString("Logged in (%1)").arg(session_robot_id_));
+            lbl_login_status_->setStyleSheet("color: #2e7d32; font-size: 10px;");
+        } else {
+            lbl_login_status_->setText("Not logged in");
+            lbl_login_status_->setStyleSheet("color: #666; font-size: 10px;");
+        }
+    }
+
+    if (lbl_login_expiry_) {
+        if (authed) {
+            qint64 secs = QDateTime::currentDateTimeUtc().secsTo(session_expires_at_.toUTC());
+            if (secs < 0) secs = 0;
+            const int mm = static_cast<int>(secs / 60);
+            const int ss = static_cast<int>(secs % 60);
+            lbl_login_expiry_->setText(QString("Session expires in %1:%2")
+                                           .arg(mm, 2, 10, QChar('0'))
+                                           .arg(ss, 2, 10, QChar('0')));
+        } else {
+            lbl_login_expiry_->clear();
+        }
+    }
+
+    updatePrivilegedUiState();
+}
+
+bool CoverageGUI::loginToRobotOverSsh(const QString& robotId, const QString& pin, QString* errorOut) {
+    if (robot_host_.isEmpty() || robot_user_.isEmpty()) {
+        if (errorOut) *errorOut = "Robot connection profile is not set.";
+        return false;
+    }
+
+    QProcess proc;
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+
+    QStringList args;
+    args << "-o" << "ConnectTimeout=8"
+         << "-o" << "BatchMode=yes";
+
+    if (!pinned_known_hosts_file_.isEmpty()) {
+        args << "-o" << "StrictHostKeyChecking=yes"
+             << "-o" << QString("UserKnownHostsFile=%1").arg(pinned_known_hosts_file_)
+             << "-o" << "GlobalKnownHostsFile=/dev/null";
+    } else {
+        args << "-o" << "StrictHostKeyChecking=no";
+    }
+
+    args << QString("%1@%2").arg(robot_user_, robot_host_)
+         << "pilot_control_auth"
+         << "login"
+         << "--robot-id" << robotId
+         << "--pin-stdin"
+         << "--json";
+
+    proc.start("ssh", args);
+    if (!proc.waitForStarted(3000)) {
+        if (errorOut) *errorOut = "Failed to start ssh process.";
+        return false;
+    }
+
+    // Send PIN via stdin (avoid exposing it in process list)
+    proc.write(pin.toUtf8());
+    proc.write("\n");
+    proc.closeWriteChannel();
+
+    if (!proc.waitForFinished(12000)) {
+        proc.kill();
+        proc.waitForFinished(3000);
+        if (errorOut) *errorOut = "Login timed out.";
+        return false;
+    }
+
+    const QByteArray out = proc.readAllStandardOutput();
+    const QByteArray err = proc.readAllStandardError();
+
+    if (proc.exitCode() != 0) {
+        QString msg = QString::fromUtf8(err).trimmed();
+        if (msg.isEmpty()) msg = QString::fromUtf8(out).trimmed();
+        if (msg.isEmpty()) msg = QString("ssh exited with code %1").arg(proc.exitCode());
+        if (errorOut) *errorOut = msg;
+        return false;
+    }
+
+    QJsonParseError jerr{};
+    QJsonDocument doc = QJsonDocument::fromJson(out, &jerr);
+    if (doc.isNull() || !doc.isObject()) {
+        if (errorOut) {
+            *errorOut = QString("Invalid JSON from robot auth (offset %1): %2")
+                            .arg(jerr.offset)
+                            .arg(jerr.errorString());
+        }
+        return false;
+    }
+
+    const QJsonObject obj = doc.object();
+    const QString out_robot_id = obj.value("robot_id").toString().trimmed();
+    const QString token = obj.value("token").toString().trimmed();
+    const QString expires_at = obj.value("expires_at").toString().trimmed();
+
+    if (token.isEmpty() || expires_at.isEmpty()) {
+        if (errorOut) *errorOut = "Robot auth response missing token/expires_at.";
+        return false;
+    }
+
+    QDateTime exp = QDateTime::fromString(expires_at, Qt::ISODate);
+    if (!exp.isValid()) {
+        // Some producers emit ISO8601 with milliseconds; try that too.
+        exp = QDateTime::fromString(expires_at, Qt::ISODateWithMs);
+    }
+    if (!exp.isValid()) {
+        if (errorOut) *errorOut = "Robot auth response has invalid expires_at timestamp.";
+        return false;
+    }
+
+    QStringList scopes;
+    if (obj.value("scopes").isArray()) {
+        const QJsonArray arr = obj.value("scopes").toArray();
+        for (const auto& v : arr) {
+            if (v.isString()) scopes << v.toString();
+        }
+    }
+
+    // Save session (in-memory only)
+    session_robot_id_ = out_robot_id.isEmpty() ? robotId : out_robot_id;
+    session_token_ = token;
+    session_expires_at_ = exp.toUTC();
+    session_scopes_ = scopes;
+
+    return true;
+}
+
+bool CoverageGUI::uploadMissionCsvToRobot(const PathStateList& exportPath, QString* remoteCsvPathOut, QString* errorOut) {
+    if (robot_host_.isEmpty() || robot_user_.isEmpty()) {
+        if (errorOut) *errorOut = "Robot connection profile is not set.";
+        return false;
+    }
+    if (exportPath.size() < 2) {
+        if (errorOut) *errorOut = "Export path is empty.";
+        return false;
+    }
+
+    // Save to a unique local temp CSV
+    const QString stamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss_zzz");
+    const QString localCsv = QDir::tempPath() + QString("/pilot_control_waypoints_%1_%2.csv")
+                                 .arg(activeRobotSlug(), stamp);
+    if (!savePathToCSV(exportPath, localCsv.toStdString())) {
+        if (errorOut) *errorOut = "Failed to write local CSV.";
+        return false;
+    }
+
+    // Choose remote upload directory
+    QString remoteDir;
+    if (active_robot_.has_value() && !active_robot_->default_remote_upload_dir.trimmed().isEmpty()) {
+        remoteDir = active_robot_->default_remote_upload_dir.trimmed();
+    } else {
+        remoteDir = robot_data_path_.trimmed() + "/waypoints";
+    }
+    if (!remoteDir.startsWith('/')) {
+        remoteDir = "/" + remoteDir;
+    }
+
+    const QString remoteCsv = remoteDir + QString("/waypoints_%1_%2.csv").arg(activeRobotSlug(), stamp);
+
+    // Build SSH/SCP options (use pinning if present)
+    QStringList sshArgs;
+    sshArgs << "-o" << "ConnectTimeout=8"
+            << "-o" << "BatchMode=yes";
+    if (!pinned_known_hosts_file_.isEmpty()) {
+        sshArgs << "-o" << "StrictHostKeyChecking=yes"
+                << "-o" << QString("UserKnownHostsFile=%1").arg(pinned_known_hosts_file_)
+                << "-o" << "GlobalKnownHostsFile=/dev/null";
+    } else {
+        sshArgs << "-o" << "StrictHostKeyChecking=no";
+    }
+    const QString userHost = QString("%1@%2").arg(robot_user_, robot_host_);
+
+    // Ensure remote dir exists
+    {
+        QProcess mkdirProc;
+        mkdirProc.setProcessChannelMode(QProcess::SeparateChannels);
+        mkdirProc.start("ssh", sshArgs + QStringList() << userHost << "mkdir" << "-p" << remoteDir);
+        if (!mkdirProc.waitForFinished(12000) || mkdirProc.exitCode() != 0) {
+            const QString err = QString::fromUtf8(mkdirProc.readAllStandardError()).trimmed();
+            if (errorOut) *errorOut = err.isEmpty() ? "Failed to create remote upload directory." : err;
+            return false;
+        }
+    }
+
+    // Upload CSV
+    {
+        QProcess scpProc;
+        scpProc.setProcessChannelMode(QProcess::SeparateChannels);
+
+        QStringList scpArgs;
+        scpArgs << "-o" << "ConnectTimeout=10"
+                << "-o" << "BatchMode=yes";
+        if (!pinned_known_hosts_file_.isEmpty()) {
+            scpArgs << "-o" << "StrictHostKeyChecking=yes"
+                    << "-o" << QString("UserKnownHostsFile=%1").arg(pinned_known_hosts_file_)
+                    << "-o" << "GlobalKnownHostsFile=/dev/null";
+        } else {
+            scpArgs << "-o" << "StrictHostKeyChecking=no";
+        }
+
+        const QString remoteTarget = QString("%1:%2").arg(userHost, remoteCsv);
+        scpProc.start("scp", scpArgs + QStringList() << localCsv << remoteTarget);
+
+        if (!scpProc.waitForFinished(180000) || scpProc.exitCode() != 0) {
+            const QString err = QString::fromUtf8(scpProc.readAllStandardError()).trimmed();
+            if (errorOut) *errorOut = err.isEmpty() ? "CSV upload failed." : err;
+            return false;
+        }
+    }
+
+    if (remoteCsvPathOut) *remoteCsvPathOut = remoteCsv;
+    return true;
+}
+
+void CoverageGUI::onRobotIdChanged(const QString& robotId) {
+    if (hasValidLoginSession()) {
+        // Robot selection is disabled while logged in, but guard anyway.
+        return;
+    }
+
+    const QString rid = robotId.trimmed();
+    if (rid.isEmpty()) return;
+
+    // Only apply when it matches a registry entry (avoid switching mid-typing).
+    if (robot_registry_.isLoaded() && !robot_registry_.isEmpty()) {
+        if (robot_registry_.findById(rid).has_value()) {
+            setActiveRobotId(rid, true);
+            applyActiveRobotProfile(true);
+        }
+    }
+}
+
+void CoverageGUI::onRobotLoginClicked() {
+    if (hasValidLoginSession()) {
+        clearLoginSession("Logged out.");
+        return;
+    }
+
+    const QString robotId = combo_robot_id_ ? combo_robot_id_->currentText().trimmed() : QString();
+    const QString pin = txt_access_code_ ? txt_access_code_->text().trimmed() : QString();
+
+    if (robotId.isEmpty()) {
+        QMessageBox::warning(this, "Robot ID Required", "Select a robot ID.");
+        return;
+    }
+    if (pin.size() != 6) {
+        QMessageBox::warning(this, "Invalid Access Code", "Access code must be exactly 6 digits.");
+        return;
+    }
+
+    // Resolve robot profile (robot_id -> host/user/path) without exposing IP
+    if (!setActiveRobotId(robotId, true)) {
+        QMessageBox::warning(this, "Unknown Robot", "Robot ID was not found in robots.json.");
+        return;
+    }
+    applyActiveRobotProfile(true);
+
+    if (btn_robot_login_) btn_robot_login_->setEnabled(false);
+    setStatus(QString("Logging into %1...").arg(robotId), 0);
+
+    QString err;
+    const bool ok = loginToRobotOverSsh(robotId, pin, &err);
+
+    if (btn_robot_login_) btn_robot_login_->setEnabled(true);
+
+    if (!ok) {
+        clearLoginSession("");
+        QMessageBox::warning(this, "Login Failed", err);
+        return;
+    }
+
+    if (login_countdown_timer_) login_countdown_timer_->start();
+    updateLoginUi();
+    setStatus(QString("✅ Logged in to %1").arg(session_robot_id_), 4000);
+}
+
+void CoverageGUI::onLoginCountdownTick() {
+    if (!hasValidLoginSession()) {
+        clearLoginSession("Session expired. Logged out.");
+        return;
+    }
+    updateLoginUi();
+}
+
+// =============================================================================
+// Robot registry / active robot selection
+// =============================================================================
+
+void CoverageGUI::loadRobotRegistry() {
+    QString err;
+    if (!robot_registry_.load(&err)) {
+        qWarning() << "[CoverageGUI] Robot registry not loaded:" << err;
+        return;
+    }
+    qDebug() << "[CoverageGUI] Loaded robot registry from" << robot_registry_.sourcePath()
+             << "robots:" << robot_registry_.robotIds();
+}
+
+QString CoverageGUI::activeRobotSlug() const {
+    const QString slug = active_robot_slug_.trimmed();
+    if (!slug.isEmpty()) return slug;
+
+    const QString rid = active_robot_id_.trimmed();
+    if (!rid.isEmpty()) return RobotRegistry::slugifyRobotId(rid);
+
+    return "robot";
+}
+
+QString CoverageGUI::ensurePinnedKnownHostsFile(QString* errorOut) {
+    pinned_known_hosts_file_.clear();
+
+    if (!active_robot_.has_value()) {
+        return QString();
+    }
+
+    const QString entry = active_robot_->known_hosts_entry.trimmed();
+    if (entry.isEmpty()) {
+        return QString();
+    }
+
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    if (dir.isEmpty()) {
+        dir = QDir::homePath() + "/.config/PilotControl/BDRCoveragePlanner";
+    }
+
+    if (!QDir().mkpath(dir)) {
+        if (errorOut) *errorOut = QString("Failed to create config directory: %1").arg(dir);
+        return QString();
+    }
+
+    const QString path = dir + "/known_hosts_" + activeRobotSlug();
+
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        if (errorOut) *errorOut = QString("Failed to write known_hosts file: %1").arg(path);
+        return QString();
+    }
+
+    QByteArray data = entry.toUtf8();
+    f.write(data);
+    if (!entry.endsWith('\n')) {
+        f.write("\n");
+    }
+    f.close();
+
+    pinned_known_hosts_file_ = path;
+    return path;
+}
+
+bool CoverageGUI::setActiveRobotId(const QString& robotId, bool persist) {
+    const QString rid = robotId.trimmed();
+    if (rid.isEmpty()) return false;
+
+    const QString prev_robot_id = active_robot_id_;
+    active_robot_id_ = rid;
+    active_robot_slug_ = RobotRegistry::slugifyRobotId(active_robot_id_);
+
+    active_robot_ = robot_registry_.findById(active_robot_id_);
+    if (!active_robot_.has_value()) {
+        qWarning() << "[CoverageGUI] Robot id not found in registry:" << active_robot_id_;
+        return false;
+    }
+
+    if (persist) {
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
+        settings.setValue("robot_id", active_robot_id_);
+    }
+
+    if (prev_robot_id != active_robot_id_) {
+        // Avoid cross-robot command/path reuse
+        waypoints_published_ = false;
+        last_uploaded_csv_remote_path_.clear();
+    }
+
+    applyActiveRobotProfile(true);
+    return true;
+}
+
+void CoverageGUI::applyActiveRobotProfile(bool updateUi) {
+    if (active_robot_.has_value()) {
+        robot_host_ = active_robot_->host;
+        robot_user_ = active_robot_->ssh_user;
+        robot_data_path_ = active_robot_->robot_data_path;
+    }
+
+    // Always include slug to avoid cross-robot collisions on disk.
+    local_map_base_ = QDir::homePath() + "/Roofus_maps/" + activeRobotSlug();
+
+    // Prepare per-robot pinned known_hosts file (if present in registry) for SSH operations
+    QString khErr;
+    ensurePinnedKnownHostsFile(&khErr);
+    if (!khErr.isEmpty()) {
+        qWarning() << "[CoverageGUI] Host-key pinning disabled:" << khErr;
+        pinned_known_hosts_file_.clear();
+    }
+    TransferManager::instance().setKnownHostsFile(pinned_known_hosts_file_);
+
+    if (!updateUi) return;
+
+    if (lbl_active_robot_) {
+        lbl_active_robot_->setText(active_robot_id_.isEmpty() ? "(not set)" : active_robot_id_);
+    }
+
+    // Keep the legacy IP field in sync (and non-editable when using registry).
+    if (txt_robot_ip_) {
+        txt_robot_ip_->setText(robot_host_);
+        const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
+        txt_robot_ip_->setReadOnly(using_registry);
+        txt_robot_ip_->setEnabled(!using_registry);
+        if (using_registry) {
+            txt_robot_ip_->setToolTip("Managed by robots.json (static IP hidden from operator)");
+        }
+    }
+
+    // Update any already-created transfer/upload dialogs
+    const QString robotLocalDataRoot = QDir::homePath() + "/robot_data/" + activeRobotSlug();
+    if (data_transfer_dialog_) {
+        data_transfer_dialog_->setRobotHost(robot_host_);
+        data_transfer_dialog_->setRobotUser(robot_user_);
+        data_transfer_dialog_->setDataPath(robot_data_path_);
+        data_transfer_dialog_->setRobotDisplayName(active_robot_id_);
+        data_transfer_dialog_->setRobotIdSlug(activeRobotSlug());
+        data_transfer_dialog_->setDefaultDestination(robotLocalDataRoot);
+    }
+    if (cloud_upload_dialog_) {
+        cloud_upload_dialog_->setLocalDataPath(robotLocalDataRoot);
     }
 }
 

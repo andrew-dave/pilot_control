@@ -17,6 +17,23 @@ namespace f2c_cpp {
 // Utility Functions
 // =============================================================================
 
+static QString buildSshOptions(const QString& knownHostsFile, int connectTimeoutSec) {
+    QStringList opts;
+    opts << "-o" << QString("ConnectTimeout=%1").arg(connectTimeoutSec)
+         << "-o" << "BatchMode=yes";
+
+    if (!knownHostsFile.trimmed().isEmpty()) {
+        opts << "-o" << "StrictHostKeyChecking=yes"
+             << "-o" << QString("UserKnownHostsFile=%1").arg(knownHostsFile)
+             << "-o" << "GlobalKnownHostsFile=/dev/null";
+    } else {
+        // Fallback (legacy behavior) if no pinning material is provided
+        opts << "-o" << "StrictHostKeyChecking=no";
+    }
+
+    return opts.join(' ');
+}
+
 QString formatFileSize(qint64 bytes) {
     if (bytes < 0) return "Unknown";
     
@@ -374,7 +391,7 @@ QString TransferManager::buildRsyncCommand(const TransferJob& job) const {
              << "--partial"
              << "--info=progress2"  // OVERALL progress instead of per-file
              << "--stats"
-             << "-e" << "'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o BatchMode=yes'";
+             << "-e" << QString("'%1'").arg(QString("ssh %1").arg(buildSshOptions(knownHostsFile_, 30)));
     
     // Build source path(s) - use single quotes and escape any single quotes in path
     auto escapePath = [](const QString& path) -> QString {
@@ -746,12 +763,16 @@ void TransferManager::checkProcessStatus() {
 
 bool TransferManager::isDownloaded(const QString& sectionPath) const {
     QMutexLocker locker(&mutex_);
+    if (downloadHistoryUsesHostPrefix_) {
+        return downloadedSections_.contains(robotHost_ + "|" + sectionPath);
+    }
     return downloadedSections_.contains(sectionPath);
 }
 
 void TransferManager::markAsDownloaded(const QString& sectionPath) {
     QMutexLocker locker(&mutex_);
-    downloadedSections_.insert(sectionPath);
+    downloadedSections_.insert(robotHost_ + "|" + sectionPath);
+    downloadHistoryUsesHostPrefix_ = true;
     locker.unlock();
     saveDownloadHistory();
 }
@@ -759,6 +780,7 @@ void TransferManager::markAsDownloaded(const QString& sectionPath) {
 void TransferManager::clearDownloadHistory() {
     QMutexLocker locker(&mutex_);
     downloadedSections_.clear();
+    downloadHistoryUsesHostPrefix_ = false;
     locker.unlock();
     saveDownloadHistory();
 }
@@ -774,6 +796,13 @@ void TransferManager::loadDownloadHistory() {
     
     QMutexLocker locker(&mutex_);
     downloadedSections_ = QSet<QString>(history.begin(), history.end());
+    downloadHistoryUsesHostPrefix_ = false;
+    for (const auto& entry : downloadedSections_) {
+        if (entry.contains('|')) {
+            downloadHistoryUsesHostPrefix_ = true;
+            break;
+        }
+    }
 }
 
 void TransferManager::saveDownloadHistory() {
@@ -799,8 +828,8 @@ void TransferManager::checkConnection() {
     
     // Simple connection test
     QString cmd = QString(
-        "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o BatchMode=yes %1@%2 'echo connected'"
-    ).arg(robotUser_, robotHost_);
+        "ssh %1 %2@%3 'echo connected'"
+    ).arg(buildSshOptions(knownHostsFile_, 5), robotUser_, robotHost_);
     
     qDebug() << "Connection check:" << cmd;
     
@@ -829,9 +858,8 @@ void TransferManager::fetchAvailableDates(const QString& dataPath) {
     // List directories in data path (day folders)
     // Use simpler command that's more portable
     QString cmd = QString(
-        "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o BatchMode=yes %1@%2 "
-        "\"ls -1 '%3' 2>/dev/null | sort -r\""
-    ).arg(robotUser_, robotHost_, dataPath);
+        "ssh %1 %2@%3 \"ls -1 '%4' 2>/dev/null | sort -r\""
+    ).arg(buildSshOptions(knownHostsFile_, 10), robotUser_, robotHost_, dataPath);
     
     qDebug() << "Fetching dates:" << cmd;
     
@@ -894,8 +922,8 @@ void TransferManager::fetchSectionsForDate(const QString& dataPath, const QStrin
     ).arg(dayPath);
     
     QString cmd = QString(
-        "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o BatchMode=yes %1@%2 '%3'"
-    ).arg(robotUser_, robotHost_, remoteScript.replace("'", "'\"'\"'"));
+        "ssh %1 %2@%3 '%4'"
+    ).arg(buildSshOptions(knownHostsFile_, 10), robotUser_, robotHost_, remoteScript.replace("'", "'\"'\"'"));
     
     qDebug() << "Fetching sections for" << date;
     
@@ -972,8 +1000,8 @@ void TransferManager::fetchSectionDetails(const QString& sectionPath) {
     ).arg(sectionPath);
     
     QString cmd = QString(
-        "ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o BatchMode=yes %1@%2 '%3'"
-    ).arg(robotUser_, robotHost_, remoteScript.replace("'", "'\"'\"'"));
+        "ssh %1 %2@%3 '%4'"
+    ).arg(buildSshOptions(knownHostsFile_, 10), robotUser_, robotHost_, remoteScript.replace("'", "'\"'\"'"));
     
     sshQueryProcess_->disconnect();
     connect(sshQueryProcess_, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),

@@ -8,6 +8,7 @@
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
+  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/robot_registry.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/teleop_widget.hpp \
   /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \

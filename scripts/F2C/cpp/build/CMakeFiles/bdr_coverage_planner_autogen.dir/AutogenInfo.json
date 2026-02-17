@@ -1568,6 +1568,12 @@
 	"HEADERS" : 
 	[
 		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/app_shell.hpp",
+			"MU",
+			"6YEA5652QU/moc_app_shell.cpp",
+			null
+		],
+		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/cloud_upload_dialog.hpp",
 			"MU",
 			"6YEA5652QU/moc_cloud_upload_dialog.cpp",
@@ -1622,9 +1628,27 @@
 			null
 		],
 		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/robot_registry.hpp",
+			"MU",
+			"6YEA5652QU/moc_robot_registry.cpp",
+			null
+		],
+		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp",
 			"MU",
 			"6YEA5652QU/moc_scan_session_tracker.cpp",
+			null
+		],
+		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/setup_screen.hpp",
+			"MU",
+			"6YEA5652QU/moc_setup_screen.cpp",
+			null
+		],
+		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/startup_screen.hpp",
+			"MU",
+			"6YEA5652QU/moc_startup_screen.cpp",
 			null
 		],
 		[
@@ -1773,6 +1797,11 @@
 	"SOURCES" : 
 	[
 		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp",
+			"MU",
+			null
+		],
+		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp",
 			"MU",
 			null
@@ -1823,7 +1852,22 @@
 			null
 		],
 		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp",
+			"MU",
+			null
+		],
+		[
 			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp",
+			"MU",
+			null
+		],
+		[
+			"/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp",
 			"MU",
 			null
 		],

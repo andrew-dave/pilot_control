@@ -1,7 +1,7 @@
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o: \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp \
  /usr/include/stdc-predef.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_dialog.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp \
  /usr/include/c++/11/memory /usr/include/c++/11/bits/stl_algobase.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -118,9 +118,9 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/c++/11/backward/auto_ptr.h \
  /usr/include/c++/11/pstl/glue_memory_defs.h \
  /usr/include/c++/11/pstl/execution_defs.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/cloud_upload_dialog.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/app_shell.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qtguiglobal.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h \
@@ -286,6 +286,12 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qsizepolicy.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qcursor.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qkeysequence.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qicon.h \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_dialog.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/cloud_upload_dialog.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
+ /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreeview.h \
@@ -304,12 +310,10 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractspinbox.h \
  /usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qregularexpression.h \
- /usr/include/x86_64-linux-gnu/qt5/QtGui/qicon.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qslider.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstyle.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabbar.h \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qrubberband.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtreewidgetitemiterator.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidgetItem \
@@ -871,8 +875,6 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_manager.cpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/coverage_gui.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMainWindow \
- /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qmainwindow.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDoubleSpinBox \
@@ -1864,6 +1866,7 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/obstacle_detector.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/robot_registry.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/transfer_manager.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/data_transfer_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \
@@ -1909,6 +1912,10 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_preset_manager.cpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/preset_manager.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_setup_screen.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/setup_screen.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_startup_screen.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/startup_screen.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/teleop_widget.hpp \
  /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp

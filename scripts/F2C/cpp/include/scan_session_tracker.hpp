@@ -61,6 +61,8 @@ struct GpsAccumulator {
 struct ScanSession {
     QString sessionId;          // Unique ID (timestamp-based)
     QString sectionName;        // Expected section name on robot
+    QString robotId;            // Canonical robot_id (e.g., "Roofus#001")
+    QString robotIdSlug;        // Machine-friendly (e.g., "roofus-001")
     QDateTime startTime;
     QDateTime endTime;
     
@@ -106,7 +108,8 @@ public:
     ~ScanSessionTracker() override;
     
     // Session lifecycle
-    void startSession(const QString& sectionName, const CoverageStats& plannedStats,
+    void startSession(const QString& sectionName, const QString& robotId, const QString& robotIdSlug,
+                      const CoverageStats& plannedStats,
                       double swathWidth, const QString& patternType);
     void endSession(double actualDurationSec, double avgSpeedMps, double totalTraveledM);
     bool isSessionActive() const { return sessionActive_; }

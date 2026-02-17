@@ -460,9 +460,19 @@ void DataTransferDialog::setDataPath(const QString& path) {
     dataPath_ = path;
 }
 
+void DataTransferDialog::setRobotDisplayName(const QString& displayName) {
+    robotDisplayName_ = displayName.trimmed();
+}
+
+void DataTransferDialog::setRobotIdSlug(const QString& slug) {
+    robotIdSlug_ = slug.trimmed();
+    loadSettings();
+    updateDestinationForCurrentDate();
+}
+
 void DataTransferDialog::setDefaultDestination(const QString& path) {
     defaultDestination_ = path;
-    txtDestination_->setText(path);
+    updateDestinationForCurrentDate();
 }
 
 void DataTransferDialog::showEvent(QShowEvent* event) {
@@ -509,6 +519,7 @@ void DataTransferDialog::onDateChanged() {
         return;
     }
     
+    updateDestinationForCurrentDate();
     treeWidget_->clear();
     expandedSections_.clear();
     
@@ -549,7 +560,7 @@ void DataTransferDialog::onDeselectAll() {
 }
 
 void DataTransferDialog::onBrowseDestination() {
-    QString startDir = txtDestination_->text();
+    QString startDir = defaultDestination_.isEmpty() ? txtDestination_->text() : defaultDestination_;
     if (startDir.isEmpty()) {
         startDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     }
@@ -560,13 +571,8 @@ void DataTransferDialog::onBrowseDestination() {
     );
     
     if (!dir.isEmpty()) {
-        // Append date folder to destination
-        QString fullPath = dir;
-        if (!currentDate_.isEmpty()) {
-            fullPath = QString("%1/%2").arg(dir, currentDate_);
-        }
-        txtDestination_->setText(fullPath);
         defaultDestination_ = dir;
+        updateDestinationForCurrentDate();
         saveSettings();
     }
 }
@@ -854,11 +860,14 @@ void DataTransferDialog::onRefreshTimer() {
 // =============================================================================
 
 void DataTransferDialog::updateConnectionStatus(bool connected, const QString& msg) {
+    const QString robotLabel = !robotDisplayName_.isEmpty()
+                                   ? robotDisplayName_
+                                   : (!robotIdSlug_.isEmpty() ? robotIdSlug_ : robotHost_);
     if (connected) {
-        lblConnectionStatus_->setText(QString("%1 ● %2").arg(robotHost_, msg));
+        lblConnectionStatus_->setText(QString("%1 ● %2").arg(robotLabel, msg));
         lblConnectionStatus_->setStyleSheet("font-weight: bold; color: #28a745;");
     } else {
-        lblConnectionStatus_->setText(QString("%1 ○ %2").arg(robotHost_, msg));
+        lblConnectionStatus_->setText(QString("%1 ○ %2").arg(robotLabel, msg));
         lblConnectionStatus_->setStyleSheet("font-weight: bold; color: #dc3545;");
     }
     
@@ -974,16 +983,36 @@ QList<DataTransferDialog::DownloadSelection> DataTransferDialog::getSelectedDown
 void DataTransferDialog::loadSettings() {
     QSettings settings("PilotControl", "BDRCoveragePlanner");
     
-    defaultDestination_ = settings.value("data_transfer/default_destination",
-        QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/robot_data"
-    ).toString();
-    
-    txtDestination_->setText(defaultDestination_);
+    const QString key = robotIdSlug_.isEmpty()
+                            ? "data_transfer/default_destination"
+                            : QString("data_transfer/default_destination/%1").arg(robotIdSlug_);
+    const QString defaultBase = robotIdSlug_.isEmpty()
+                                   ? (QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/robot_data")
+                                   : (QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/robot_data/" + robotIdSlug_);
+
+    defaultDestination_ = settings.value(key, defaultBase).toString();
+    updateDestinationForCurrentDate();
 }
 
 void DataTransferDialog::saveSettings() {
     QSettings settings("PilotControl", "BDRCoveragePlanner");
-    settings.setValue("data_transfer/default_destination", defaultDestination_);
+    const QString key = robotIdSlug_.isEmpty()
+                            ? "data_transfer/default_destination"
+                            : QString("data_transfer/default_destination/%1").arg(robotIdSlug_);
+    settings.setValue(key, defaultDestination_);
+}
+
+void DataTransferDialog::updateDestinationForCurrentDate() {
+    if (!txtDestination_) return;
+
+    const QString base = defaultDestination_.trimmed();
+    if (base.isEmpty()) return;
+
+    if (!currentDate_.isEmpty() && currentDate_ != "Loading..." && currentDate_ != "No data found") {
+        txtDestination_->setText(QString("%1/%2").arg(base, currentDate_));
+    } else {
+        txtDestination_->setText(base);
+    }
 }
 
 } // namespace f2c_cpp

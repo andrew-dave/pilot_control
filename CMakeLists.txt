@@ -302,6 +302,20 @@ install(
   RENAME tilt_calibration
 )
 
+# Install robot auth CLI (used by Coverage Planner over SSH)
+install(
+  PROGRAMS scripts/robot_auth_cli.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pilot_control_auth
+)
+
+# Install robot mission CLI (robot-enforced mission start)
+install(
+  PROGRAMS scripts/robot_mission_cli.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pilot_control_mission
+)
+
 # === Lint/Tests ===
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
