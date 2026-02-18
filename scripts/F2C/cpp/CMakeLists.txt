@@ -137,6 +137,19 @@ target_link_libraries(bdr_coverage_planner
     ${GST_LIBRARIES}
 )
 
+# -----------------------------------------------------------------------------
+# Runtime linking robustness (Fields2Cover transitive deps)
+#
+# Fields2Cover (especially when installed under /usr/local) may depend on
+# additional shared libraries (e.g., OR-Tools, matplot, steering_functions).
+# Those are transitive dependencies of libFields2Cover.so.
+#
+# With RUNPATH (new dtags), the executable's runpath is NOT used to resolve
+# transitive dependencies. Using an old-style RPATH makes the executable's
+# rpath apply transitively and avoids "libortools.so.9 not found" at startup.
+# -----------------------------------------------------------------------------
+target_link_options(bdr_coverage_planner PRIVATE "-Wl,--disable-new-dtags")
+
 # Link Fields2Cover if found
 if(Fields2Cover_FOUND)
     target_link_libraries(bdr_coverage_planner Fields2Cover::Fields2Cover)

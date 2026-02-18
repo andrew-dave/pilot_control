@@ -5,7 +5,6 @@
 
 #include "obstacle_detector.hpp"
 
-#include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
 #include <algorithm>
@@ -18,6 +17,7 @@
 #include <numeric>
 #include <random>
 #include <unordered_map>
+#include <utility>
 
 namespace f2c_cpp {
 
@@ -46,6 +46,30 @@ static void ensureCW(Polygon2D& ring) {
     if (signedArea2D(ring) > 0.0) {
         std::reverse(ring.begin(), ring.end());
     }
+}
+
+static double absArea2D(const Polygon2D& ring) {
+    return std::abs(signedArea2D(ring));
+}
+
+static Polygon2D rectFromBBox(
+    double xmin, double ymin, double xmax, double ymax,
+    double min_size, double margin) {
+    // Axis-aligned bbox rectangle with optional minimum size and margin.
+    const double cx = 0.5 * (xmin + xmax);
+    const double cy = 0.5 * (ymin + ymax);
+    const double w = std::max(min_size, (xmax - xmin)) + 2.0 * margin;
+    const double h = std::max(min_size, (ymax - ymin)) + 2.0 * margin;
+    const double hw = 0.5 * w;
+    const double hh = 0.5 * h;
+
+    Polygon2D poly;
+    poly.reserve(4);
+    poly.emplace_back(cx - hw, cy - hh);
+    poly.emplace_back(cx + hw, cy - hh);
+    poly.emplace_back(cx + hw, cy + hh);
+    poly.emplace_back(cx - hw, cy + hh);
+    return poly;
 }
 
 static bool pointInPolyRayCast(const Point2D& p, const Polygon2D& poly) {
@@ -249,6 +273,67 @@ static PointCloudPtr extractFootprintGround(
     }
 
     return ground;
+}
+
+// --------------------- Statistical outlier removal (Python-like) ------------
+
+static PointCloudPtr removeStatisticalOutliersMeanDist(
+    const PointCloudPtr& cloud,
+    int k,
+    double std_ratio) {
+    if (!cloud) return PointCloudPtr(new PointCloud);
+    const size_t n = cloud->size();
+    if (n == 0) return PointCloudPtr(new PointCloud);
+    if (k < 1) k = 1;
+    if (n < static_cast<size_t>(k + 1)) {
+        return cloud;  // match python: too few points => keep all
+    }
+
+    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
+    tree.setInputCloud(cloud);
+
+    const int K = k + 1;  // include self
+    std::vector<int> idx(K);
+    std::vector<float> dist2(K);
+
+    std::vector<double> mean_dists(n, 0.0);
+    for (size_t i = 0; i < n; ++i) {
+        const pcl::PointXYZ& p = cloud->points[i];
+        const int found = tree.nearestKSearch(p, K, idx, dist2);
+        if (found <= 1) {
+            mean_dists[i] = 0.0;
+            continue;
+        }
+        double sum = 0.0;
+        int cnt = 0;
+        for (int j = 1; j < found; ++j) {  // skip self (dist=0)
+            sum += std::sqrt(std::max(0.0f, dist2[j]));
+            cnt++;
+        }
+        mean_dists[i] = (cnt > 0) ? (sum / static_cast<double>(cnt)) : 0.0;
+    }
+
+    double mu = 0.0;
+    for (double v : mean_dists) mu += v;
+    mu /= std::max<size_t>(1, n);
+
+    double var = 0.0;
+    for (double v : mean_dists) {
+        const double d = v - mu;
+        var += d * d;
+    }
+    var /= std::max<size_t>(1, n);
+    const double sigma = std::sqrt(std::max(0.0, var));
+    const double threshold = mu + std_ratio * sigma;
+
+    PointCloudPtr out(new PointCloud);
+    out->reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        if (mean_dists[i] <= threshold) {
+            out->push_back(cloud->points[i]);
+        }
+    }
+    return out;
 }
 
 // --------------------------- DBSCAN (2D) ------------------------------------
@@ -994,6 +1079,148 @@ static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> groupRingsIntoS
     return shapes;
 }
 
+static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClusterGridLikePython(
+    const std::vector<Point2D>& pts2d,
+    double grid_cell_m,
+    double contour_cell_m,
+    double inflate_radius_m,
+    double smooth_radius_m,
+    double min_contour_area_m2) {
+    if (pts2d.empty() || grid_cell_m <= 0.0) return {};
+    const double padding = std::max(0.20, 2.0 * inflate_radius_m);
+    OccGrid occ = occupancyFromPoints(pts2d, grid_cell_m, padding);
+    occ = inflateOccupancy(occ, inflate_radius_m);
+    occ = closeOccupancyConservative(occ, smooth_radius_m);
+
+    // Optional contour coarsening (conservative max-pooling), matching python's contour_cell.
+    int factor = 1;
+    if (contour_cell_m > grid_cell_m) {
+        factor = std::max(1, static_cast<int>(std::lround(contour_cell_m / grid_cell_m)));
+    }
+    if (factor > 1) {
+        occ = maxpoolOccupancy(occ, factor);
+    }
+
+    std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ);
+    return groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+}
+
+static OccGrid rasterizeShapeToOccupancy(
+    const Obstacle2D& shape,
+    double cell_size,
+    double padding) {
+    OccGrid g;
+    g.cell = cell_size;
+    if (shape.outer.size() < 3 || cell_size <= 0.0) return g;
+
+    double minx = shape.outer[0].x, maxx = shape.outer[0].x;
+    double miny = shape.outer[0].y, maxy = shape.outer[0].y;
+    for (const auto& p : shape.outer) {
+        minx = std::min(minx, p.x);
+        maxx = std::max(maxx, p.x);
+        miny = std::min(miny, p.y);
+        maxy = std::max(maxy, p.y);
+    }
+    g.xmin = minx - padding;
+    g.ymin = miny - padding;
+    const double xmax = maxx + padding;
+    const double ymax = maxy + padding;
+
+    g.w = std::max(1, static_cast<int>(std::ceil((xmax - g.xmin) / cell_size)));
+    g.h = std::max(1, static_cast<int>(std::ceil((ymax - g.ymin) / cell_size)));
+    g.occ.assign(static_cast<size_t>(g.w) * static_cast<size_t>(g.h), 0);
+
+    for (int y = 0; y < g.h; ++y) {
+        const double wy = g.ymin + (static_cast<double>(y) + 0.5) * cell_size;
+        for (int x = 0; x < g.w; ++x) {
+            const double wx = g.xmin + (static_cast<double>(x) + 0.5) * cell_size;
+            const Point2D q(wx, wy);
+            if (!pointInPolyRayCast(q, shape.outer)) continue;
+            bool in_hole = false;
+            for (const auto& h : shape.holes) {
+                if (h.size() >= 3 && pointInPolyRayCast(q, h)) {
+                    in_hole = true;
+                    break;
+                }
+            }
+            if (!in_hole) {
+                g.occ[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)] = 1;
+            }
+        }
+    }
+    return g;
+}
+
+static void clearPreservedHolesFromOcc(
+    OccGrid& occ,
+    const std::vector<Polygon2D>& holes,
+    double cell_size,
+    double min_hole_area_m2) {
+    if (holes.empty() || occ.w <= 0 || occ.h <= 0) return;
+    for (int y = 0; y < occ.h; ++y) {
+        const double wy = occ.ymin + (static_cast<double>(y) + 0.5) * cell_size;
+        for (int x = 0; x < occ.w; ++x) {
+            if (!occAt(occ, x, y)) continue;
+            const double wx = occ.xmin + (static_cast<double>(x) + 0.5) * cell_size;
+            const Point2D q(wx, wy);
+            for (const auto& h : holes) {
+                if (h.size() < 3) continue;
+                if (absArea2D(h) < min_hole_area_m2) continue;
+                if (pointInPolyRayCast(q, h)) {
+                    occ.occ[static_cast<size_t>(y) * static_cast<size_t>(occ.w) + static_cast<size_t>(x)] = 0;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static std::vector<Obstacle2D> smoothShapesRollingDiskGrid(
+    const std::vector<Obstacle2D>& shapes,
+    double radius_m,
+    double grid_cell_m,
+    double contour_cell_m,
+    double min_contour_area_m2,
+    bool preserve_holes,
+    double preserve_holes_min_area_m2) {
+    if (radius_m <= 1e-9 || shapes.empty() || grid_cell_m <= 0.0) return shapes;
+    std::vector<Obstacle2D> out;
+    out.reserve(shapes.size());
+
+    for (const auto& sh : shapes) {
+        const double padding = std::max(0.20, 2.0 * radius_m);
+        OccGrid occ = rasterizeShapeToOccupancy(sh, grid_cell_m, padding);
+        if (occ.occ.empty()) {
+            out.push_back(sh);
+            continue;
+        }
+        OccGrid occ2 = closeOccupancyConservative(occ, radius_m);
+        if (preserve_holes && !sh.holes.empty()) {
+            clearPreservedHolesFromOcc(occ2, sh.holes, grid_cell_m, preserve_holes_min_area_m2);
+        }
+        int factor = 1;
+        if (contour_cell_m > grid_cell_m) {
+            factor = std::max(1, static_cast<int>(std::lround(contour_cell_m / grid_cell_m)));
+        }
+        if (factor > 1) {
+            occ2 = maxpoolOccupancy(occ2, factor);
+        }
+        std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ2);
+        auto grouped = groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+        if (grouped.empty()) {
+            out.push_back(sh);
+            continue;
+        }
+        for (auto& g : grouped) {
+            Obstacle2D obs;
+            obs.outer = std::move(g.first);
+            obs.holes = std::move(g.second);
+            out.push_back(std::move(obs));
+        }
+    }
+    return out;
+}
+
 }  // namespace
 
 ObstacleDetectionResult detectObstaclesAuto(
@@ -1104,15 +1331,10 @@ ObstacleDetectionResult detectObstaclesAuto(
     // ------------------------------------------------------------------
     // 5. Statistical outlier removal (PCL SOR)
     // ------------------------------------------------------------------
-    PointCloudPtr obstacle_clean(new PointCloud);
-    if (!obstacle_raw->empty()) {
-        pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
-        sor.setInputCloud(obstacle_raw);
-        sor.setMeanK(std::max(1, params.outlier_k));
-        sor.setStddevMulThresh(params.outlier_std);
-        sor.filter(*obstacle_clean);
-    }
-    res.stats.obstacle_points_after_outlier = obstacle_clean->size();
+    // Python-like filter based on mean kNN distance statistics.
+    PointCloudPtr obstacle_clean = removeStatisticalOutliersMeanDist(
+        obstacle_raw, params.outlier_k, params.outlier_std);
+    res.stats.obstacle_points_after_outlier = obstacle_clean ? obstacle_clean->size() : 0;
 
     // ------------------------------------------------------------------
     // 6. 2D projection + DBSCAN
@@ -1130,9 +1352,14 @@ ObstacleDetectionResult detectObstaclesAuto(
 
     std::vector<std::vector<Point2D>> clusters;
     clusters.resize(static_cast<size_t>(n_clusters));
+    std::vector<Point2D> noise_pts;
+    noise_pts.reserve(obs_xy.size());
     for (size_t i = 0; i < obs_xy.size(); ++i) {
         int l = labels[i];
-        if (l < 0) continue;
+        if (l < 0) {
+            noise_pts.push_back(obs_xy[i]);
+            continue;
+        }
         clusters[static_cast<size_t>(l)].push_back(obs_xy[i]);
     }
 
@@ -1200,6 +1427,88 @@ ObstacleDetectionResult detectObstaclesAuto(
         res.obstacles = std::move(micro_obstacles);
         res.success = true;
         return res;
+    }
+
+    // ------------------------------------------------------------------
+    // 6b. Preserve micro obstacles (tiny but dense) + recover from noise
+    // ------------------------------------------------------------------
+    std::vector<Obstacle2D> micro_obstacles;
+    if (params.micro_enable) {
+        auto isMicroCluster = [&](const std::vector<Point2D>& pts) -> bool {
+            if (static_cast<int>(pts.size()) < params.micro_min_pts) return false;
+            double xmin = pts.front().x, xmax = pts.front().x;
+            double ymin = pts.front().y, ymax = pts.front().y;
+            for (const auto& p : pts) {
+                xmin = std::min(xmin, p.x);
+                xmax = std::max(xmax, p.x);
+                ymin = std::min(ymin, p.y);
+                ymax = std::max(ymax, p.y);
+            }
+            const double span_x = xmax - xmin;
+            const double span_y = ymax - ymin;
+            if (std::max(span_x, span_y) > params.micro_max_span_m) return false;
+            const double area = std::max(span_x, 1e-6) * std::max(span_y, 1e-6);
+            const double density = static_cast<double>(pts.size()) / area;
+            return density >= params.micro_min_density;
+        };
+
+        // Split micro from normal clusters
+        std::vector<std::vector<Point2D>> normal_clusters;
+        normal_clusters.reserve(cluster_list.size());
+        for (const auto& cl : cluster_list) {
+            if (isMicroCluster(cl)) {
+                double xmin = cl.front().x, xmax = cl.front().x;
+                double ymin = cl.front().y, ymax = cl.front().y;
+                for (const auto& p : cl) {
+                    xmin = std::min(xmin, p.x);
+                    xmax = std::max(xmax, p.x);
+                    ymin = std::min(ymin, p.y);
+                    ymax = std::max(ymax, p.y);
+                }
+                Obstacle2D micro;
+                micro.outer = rectFromBBox(
+                    xmin, ymin, xmax, ymax,
+                    params.micro_min_size_m,
+                    params.micro_margin_m);
+                micro_obstacles.push_back(std::move(micro));
+            } else {
+                normal_clusters.push_back(cl);
+            }
+        }
+        cluster_list.swap(normal_clusters);
+
+        // Recover micro obstacles from noise using tighter DBSCAN
+        if (static_cast<int>(noise_pts.size()) >= params.micro_min_pts) {
+            std::vector<int> micro_labels = dbscan2D(
+                noise_pts, params.micro_noise_eps_m, params.micro_min_pts);
+            int max_ml = -1;
+            for (int l : micro_labels) max_ml = std::max(max_ml, l);
+            const int micro_clusters = max_ml + 1;
+            std::vector<std::vector<Point2D>> mcs(static_cast<size_t>(micro_clusters));
+            for (size_t i = 0; i < noise_pts.size(); ++i) {
+                const int l = micro_labels[i];
+                if (l < 0) continue;
+                mcs[static_cast<size_t>(l)].push_back(noise_pts[i]);
+            }
+            for (const auto& mc : mcs) {
+                if (mc.empty()) continue;
+                if (!isMicroCluster(mc)) continue;
+                double xmin = mc.front().x, xmax = mc.front().x;
+                double ymin = mc.front().y, ymax = mc.front().y;
+                for (const auto& p : mc) {
+                    xmin = std::min(xmin, p.x);
+                    xmax = std::max(xmax, p.x);
+                    ymin = std::min(ymin, p.y);
+                    ymax = std::max(ymax, p.y);
+                }
+                Obstacle2D micro;
+                micro.outer = rectFromBBox(
+                    xmin, ymin, xmax, ymax,
+                    params.micro_min_size_m,
+                    params.micro_margin_m);
+                micro_obstacles.push_back(std::move(micro));
+            }
+        }
     }
 
     // ------------------------------------------------------------------
