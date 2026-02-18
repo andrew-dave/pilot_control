@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp
+CMAKE_SOURCE_DIR = /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build
+CMAKE_BINARY_DIR = /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/bdr_coverage_planner.dir/depend.make
@@ -73,274 +73,274 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: ../resources.qrc
 bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: CMakeFiles/bdr_coverage_planner_autogen.dir/AutoRcc_resources_EWIEGA46WW_Info.json
 bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: ../assets/bdr_logo.png
 bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp: /usr/lib/qt5/bin/rcc
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic RCC for resources.qrc"
-	/usr/bin/cmake -E cmake_autorcc /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/bdr_coverage_planner_autogen.dir/AutoRcc_resources_EWIEGA46WW_Info.json Release
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic RCC for resources.qrc"
+	/usr/bin/cmake -E cmake_autorcc /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/bdr_coverage_planner_autogen.dir/AutoRcc_resources_EWIEGA46WW_Info.json Release
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o: bdr_coverage_planner_autogen/mocs_compilation.cpp
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp > CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp > CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/mocs_compilation.cpp -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilation.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage_pipeline.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp > CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp > CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp > CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp > CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_gui.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o: ../src/setup_screen.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp > CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp > CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/setup_screen.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/setup_screen.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o: ../src/app_shell.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp > CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp > CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/app_shell.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/app_shell.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o: ../src/startup_screen.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp > CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp > CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: ../src/obstacle_detector.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp > CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp > CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o: ../src/robot_registry.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp > CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp > CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/robot_registry.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/robot_registry.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_manager.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/transfer_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o: ../src/data_transfer_dialog.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o: ../src/preset_manager.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/preset_manager.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o: ../src/preset_dialog.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/preset_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/preset_dialog.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o: ../src/teleop_widget.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp > CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp > CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/teleop_widget.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o: ../src/network_monitor.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp > CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp > CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/network_monitor.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/network_monitor.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o: ../src/cloud_upload_manager.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp > CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_manager.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_manager.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: ../src/scan_session_tracker.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp > CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp > CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/scan_session_tracker.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o: ../src/cloud_upload_dialog.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp > CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/cloud_upload_dialog.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp
 CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp > CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp > CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/main.cpp -o CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.s
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: CMakeFiles/bdr_coverage_planner.dir/flags.make
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o: CMakeFiles/bdr_coverage_planner.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -c /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -MF CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o.d -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.o -c /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp > CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp > CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.i
 
 CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp -o CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp.s
 
 # Object files for target bdr_coverage_planner
 bdr_coverage_planner_OBJECTS = \
@@ -391,7 +391,7 @@ bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Concurrent.so.5.15.3
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libQt5Network.so.5.15.3
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_io.so
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libpcl_filters.so
-bdr_coverage_planner: /home/avenblake/pilot_ws/install/fields2cover/lib/libFields2Cover.so
+bdr_coverage_planner: /usr/local/lib/libFields2Cover.so
 bdr_coverage_planner: /opt/ros/humble/lib/librclcpp.so
 bdr_coverage_planner: /opt/ros/humble/lib/libament_index_cpp.so
 bdr_coverage_planner: /opt/ros/humble/lib/libbuiltin_interfaces__rosidl_generator_c.so
@@ -834,7 +834,7 @@ bdr_coverage_planner: /opt/ros/humble/lib/libstd_msgs__rosidl_generator_py.so
 bdr_coverage_planner: /opt/ros/humble/lib/liblibstatistics_collector.so
 bdr_coverage_planner: /opt/ros/humble/lib/librcl.so
 bdr_coverage_planner: /opt/ros/humble/lib/libtracetools.so
-bdr_coverage_planner: /usr/lib/libgdal.so
+bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libgdal.so
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libm.so
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libgmpxx.so
 bdr_coverage_planner: /usr/lib/x86_64-linux-gnu/libmpfr.so
@@ -906,7 +906,7 @@ bdr_coverage_planner: /opt/ros/humble/lib/libaction_msgs__rosidl_typesupport_fas
 bdr_coverage_planner: /opt/ros/humble/lib/libbuiltin_interfaces__rosidl_typesupport_fastrtps_cpp.so
 bdr_coverage_planner: /opt/ros/humble/lib/libunique_identifier_msgs__rosidl_typesupport_fastrtps_cpp.so
 bdr_coverage_planner: /opt/ros/humble/lib/librosidl_typesupport_fastrtps_cpp.so
-bdr_coverage_planner: /opt/ros/humble/lib/libfastcdr.so.1.0.29
+bdr_coverage_planner: /opt/ros/humble/lib/libfastcdr.so.1.0.24
 bdr_coverage_planner: /opt/ros/humble/lib/librmw.so
 bdr_coverage_planner: /opt/ros/humble/lib/libtf2_msgs__rosidl_typesupport_introspection_cpp.so
 bdr_coverage_planner: /opt/ros/humble/lib/libgeometry_msgs__rosidl_typesupport_introspection_cpp.so
@@ -947,7 +947,7 @@ bdr_coverage_planner: /opt/ros/humble/lib/libunique_identifier_msgs__rosidl_gene
 bdr_coverage_planner: /opt/ros/humble/lib/librosidl_runtime_c.so
 bdr_coverage_planner: /opt/ros/humble/lib/librcutils.so
 bdr_coverage_planner: CMakeFiles/bdr_coverage_planner.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Linking CXX executable bdr_coverage_planner"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Linking CXX executable bdr_coverage_planner"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/bdr_coverage_planner.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -959,6 +959,6 @@ CMakeFiles/bdr_coverage_planner.dir/clean:
 .PHONY : CMakeFiles/bdr_coverage_planner.dir/clean
 
 CMakeFiles/bdr_coverage_planner.dir/depend: bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp
-	cd /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/bdr_coverage_planner.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/CMakeFiles/bdr_coverage_planner.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/bdr_coverage_planner.dir/depend
 

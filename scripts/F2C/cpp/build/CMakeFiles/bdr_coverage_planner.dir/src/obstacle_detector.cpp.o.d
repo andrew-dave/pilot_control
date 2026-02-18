@@ -1,8 +1,8 @@
 CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/obstacle_detector.cpp \
  /usr/include/stdc-predef.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
  /usr/include/c++/11/string \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -695,40 +695,9 @@ CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: \
  /usr/include/boost/mpl/aux_/has_size.hpp \
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
- /usr/include/pcl-1.12/pcl/filters/statistical_outlier_removal.h \
- /usr/include/pcl-1.12/pcl/filters/filter_indices.h \
- /usr/include/pcl-1.12/pcl/filters/filter.h \
- /usr/include/pcl-1.12/pcl/pcl_base.h \
- /usr/include/pcl-1.12/pcl/PointIndices.h \
- /usr/include/pcl-1.12/pcl/PCLPointCloud2.h \
- /usr/include/boost/predef/other/endian.h \
- /usr/include/boost/predef/version_number.h \
- /usr/include/boost/predef/make.h /usr/include/boost/predef/detail/test.h \
- /usr/include/boost/predef/library/c/gnu.h \
- /usr/include/boost/predef/library/c/_prefix.h \
- /usr/include/boost/predef/detail/_cassert.h \
- /usr/include/boost/predef/os/macos.h /usr/include/boost/predef/os/ios.h \
- /usr/include/boost/predef/os/bsd.h \
- /usr/include/boost/predef/os/bsd/bsdi.h \
- /usr/include/boost/predef/os/bsd/dragonfly.h \
- /usr/include/boost/predef/os/bsd/free.h \
- /usr/include/boost/predef/os/bsd/open.h \
- /usr/include/boost/predef/os/bsd/net.h \
- /usr/include/boost/predef/platform/android.h \
- /usr/include/pcl-1.12/pcl/common/io.h /usr/include/c++/11/numeric \
- /usr/include/c++/11/bits/stl_numeric.h \
- /usr/include/c++/11/pstl/glue_numeric_defs.h \
- /usr/include/pcl-1.12/pcl/PolygonMesh.h \
- /usr/include/pcl-1.12/pcl/Vertices.h /usr/include/c++/11/locale \
- /usr/include/c++/11/bits/locale_facets_nonio.h /usr/include/c++/11/ctime \
- /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/11/bits/codecvt.h \
- /usr/include/c++/11/bits/locale_facets_nonio.tcc \
- /usr/include/c++/11/bits/locale_conv.h \
- /usr/include/pcl-1.12/pcl/common/impl/io.hpp \
- /usr/include/pcl-1.12/pcl/conversions.h \
- /usr/include/pcl-1.12/pcl/PCLImage.h \
+ /usr/include/pcl-1.12/pcl/kdtree/kdtree_flann.h \
+ /usr/include/pcl-1.12/pcl/kdtree/kdtree.h \
+ /usr/include/pcl-1.12/pcl/point_representation.h \
  /usr/include/pcl-1.12/pcl/for_each_type.h \
  /usr/include/boost/mpl/is_sequence.hpp \
  /usr/include/boost/mpl/remove_if.hpp \
@@ -747,89 +716,17 @@ CMakeFiles/bdr_coverage_planner.dir/src/obstacle_detector.cpp.o: \
  /usr/include/boost/mpl/aux_/clear_impl.hpp \
  /usr/include/boost/mpl/aux_/unwrap.hpp /usr/include/boost/ref.hpp \
  /usr/include/boost/core/ref.hpp /usr/include/boost/core/addressof.hpp \
- /usr/include/boost/foreach.hpp /usr/include/boost/noncopyable.hpp \
- /usr/include/boost/core/noncopyable.hpp /usr/include/boost/range/end.hpp \
- /usr/include/boost/range/config.hpp \
- /usr/include/boost/range/detail/implementation_help.hpp \
- /usr/include/boost/range/detail/common.hpp \
- /usr/include/boost/range/detail/sfinae.hpp \
- /usr/include/boost/type_traits/is_array.hpp \
- /usr/include/boost/type_traits/detail/yes_no_type.hpp \
- /usr/include/boost/type_traits/is_void.hpp \
- /usr/include/boost/range/iterator.hpp \
- /usr/include/boost/range/range_fwd.hpp \
- /usr/include/boost/range/mutable_iterator.hpp \
- /usr/include/boost/range/detail/extract_optional_type.hpp \
- /usr/include/boost/type_traits/remove_reference.hpp \
- /usr/include/boost/iterator/iterator_traits.hpp \
- /usr/include/c++/11/iterator /usr/include/c++/11/bits/stream_iterator.h \
- /usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp \
- /usr/include/boost/range/const_iterator.hpp \
- /usr/include/boost/type_traits/remove_const.hpp \
- /usr/include/boost/type_traits/is_const.hpp \
- /usr/include/boost/range/begin.hpp /usr/include/boost/range/rend.hpp \
- /usr/include/boost/range/reverse_iterator.hpp \
- /usr/include/boost/iterator/reverse_iterator.hpp \
- /usr/include/boost/iterator/iterator_adaptor.hpp \
- /usr/include/boost/static_assert.hpp \
- /usr/include/boost/core/use_default.hpp \
- /usr/include/boost/iterator/iterator_categories.hpp \
- /usr/include/boost/iterator/detail/config_def.hpp \
- /usr/include/boost/type_traits/is_convertible.hpp \
- /usr/include/boost/type_traits/intrinsics.hpp \
- /usr/include/boost/type_traits/detail/config.hpp \
- /usr/include/boost/version.hpp \
- /usr/include/boost/type_traits/is_complete.hpp \
- /usr/include/boost/type_traits/declval.hpp \
- /usr/include/boost/type_traits/add_rvalue_reference.hpp \
- /usr/include/boost/type_traits/is_reference.hpp \
- /usr/include/boost/type_traits/is_lvalue_reference.hpp \
- /usr/include/boost/type_traits/is_rvalue_reference.hpp \
- /usr/include/boost/type_traits/is_function.hpp \
- /usr/include/boost/type_traits/detail/is_function_cxx_11.hpp \
- /usr/include/boost/type_traits/is_arithmetic.hpp \
- /usr/include/boost/type_traits/is_integral.hpp \
- /usr/include/boost/type_traits/is_floating_point.hpp \
- /usr/include/boost/type_traits/is_abstract.hpp \
- /usr/include/boost/type_traits/add_lvalue_reference.hpp \
- /usr/include/boost/type_traits/add_reference.hpp \
- /usr/include/boost/iterator/detail/config_undef.hpp \
- /usr/include/boost/iterator/iterator_facade.hpp \
- /usr/include/boost/iterator/interoperable.hpp \
- /usr/include/boost/iterator/detail/facade_iterator_category.hpp \
- /usr/include/boost/detail/indirect_traits.hpp \
- /usr/include/boost/type_traits/is_pointer.hpp \
- /usr/include/boost/type_traits/is_class.hpp \
- /usr/include/boost/type_traits/is_volatile.hpp \
- /usr/include/boost/type_traits/is_member_function_pointer.hpp \
- /usr/include/boost/type_traits/detail/is_member_function_pointer_cxx_11.hpp \
- /usr/include/boost/type_traits/is_member_pointer.hpp \
- /usr/include/boost/type_traits/remove_cv.hpp \
- /usr/include/boost/type_traits/remove_pointer.hpp \
- /usr/include/boost/detail/select_type.hpp \
- /usr/include/boost/iterator/detail/enable_if.hpp \
- /usr/include/boost/type_traits/add_const.hpp \
- /usr/include/boost/type_traits/add_pointer.hpp \
- /usr/include/boost/type_traits/is_pod.hpp \
- /usr/include/boost/type_traits/is_scalar.hpp \
- /usr/include/boost/type_traits/is_enum.hpp \
- /usr/include/boost/range/rbegin.hpp \
- /usr/include/boost/type_traits/is_base_and_derived.hpp \
- /usr/include/boost/utility/addressof.hpp \
- /usr/include/boost/foreach_fwd.hpp \
- /usr/include/pcl-1.12/pcl/common/concatenate.h \
  /usr/include/pcl-1.12/pcl/common/copy_point.h \
  /usr/include/pcl-1.12/pcl/common/impl/copy_point.hpp \
- /usr/include/pcl-1.12/pcl/search/search.h \
- /usr/include/pcl-1.12/pcl/kdtree/kdtree_flann.h \
- /usr/include/pcl-1.12/pcl/kdtree/kdtree.h \
- /usr/include/pcl-1.12/pcl/point_representation.h \
+ /usr/include/pcl-1.12/pcl/common/concatenate.h \
  /usr/include/flann/util/params.h /usr/include/flann/util/any.h \
  /usr/include/flann/general.h /usr/include/flann/defines.h \
  /usr/include/flann/config.h /usr/include/c++/11/map \
  /usr/include/c++/11/bits/stl_tree.h /usr/include/c++/11/bits/stl_map.h \
  /usr/include/c++/11/bits/stl_multimap.h /usr/include/c++/11/deque \
  /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
- /usr/include/c++/11/random /usr/include/c++/11/bits/random.h \
+ /usr/include/c++/11/numeric /usr/include/c++/11/bits/stl_numeric.h \
+ /usr/include/c++/11/pstl/glue_numeric_defs.h /usr/include/c++/11/random \
+ /usr/include/c++/11/bits/random.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
  /usr/include/c++/11/bits/random.tcc

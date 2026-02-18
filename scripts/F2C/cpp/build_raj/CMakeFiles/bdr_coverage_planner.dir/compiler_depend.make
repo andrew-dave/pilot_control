@@ -1975,6 +1975,7 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
   /usr/include/boost/mpl/aux_/fold_impl.hpp \
   /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
   ../include/obstacle_detector.hpp \
+  ../include/robot_registry.hpp \
   ../include/transfer_manager.hpp \
   ../include/data_transfer_dialog.hpp \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \
@@ -20271,6 +20272,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /opt/ros/humble/include/tf2/tf2/exceptions.hpp:
 
+/usr/include/kdl/frames.inl:
+
 /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider:
@@ -21080,10 +21083,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/type_adapter.hpp:
 
 /usr/include/boost/range/mutable_iterator.hpp:
-
-/usr/include/boost/geometry/strategies/spherical/index.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/serialized_message.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdatastream.h:
 
@@ -25859,6 +25858,12 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QFormLayout:
 
+/usr/include/boost/geometry/strategies/spherical/index.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/serialized_message.hpp:
+
+../include/robot_registry.hpp:
+
 /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkInterface:
 
 ../include/transfer_manager.hpp:
@@ -26810,5 +26815,3 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp:
 /usr/include/boost/math/tools/atomic.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__type_support.hpp:
-
-/usr/include/kdl/frames.inl:

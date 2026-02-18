@@ -1863,6 +1863,7 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build_raj/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/obstacle_detector.hpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build_raj/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/robot_registry.hpp \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build_raj/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/transfer_manager.hpp \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build_raj/bdr_coverage_planner_autogen/6YEA5652QU/../../../include/data_transfer_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QCalendarWidget \

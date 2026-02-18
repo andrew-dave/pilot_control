@@ -1,4 +1,4 @@
-# Install script for directory: /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp
+# Install script for directory: /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -49,12 +49,12 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/bdr_coverage_planner"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/bdr_coverage_planner" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/bdr_coverage_planner")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/bdr_coverage_planner"
-         OLD_RPATH "/home/avenblake/pilot_ws/install/fields2cover/lib:/opt/ros/humble/lib:"
+         OLD_RPATH "/usr/local/lib:/opt/ros/humble/lib:"
          NEW_RPATH "")
     if(CMAKE_INSTALL_DO_STRIP)
       execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/bdr_coverage_planner")
@@ -70,5 +70,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
