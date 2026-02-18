@@ -6762,6 +6762,7 @@ void CoverageGUI::applyPreset(const PlanningPreset& preset) {
 bool CoverageGUI::hasValidLoginSession() const {
     if (session_token_.isEmpty()) return false;
     if (session_robot_id_.isEmpty()) return false;
+    if (!session_has_expiry_) return true;
     if (!session_expires_at_.isValid()) return false;
     return QDateTime::currentDateTimeUtc() < session_expires_at_.toUTC();
 }
@@ -6770,6 +6771,7 @@ void CoverageGUI::clearLoginSession(const QString& reason) {
     session_robot_id_.clear();
     session_token_.clear();
     session_expires_at_ = QDateTime();
+    session_has_expiry_ = false;
     session_scopes_.clear();
 
     if (login_countdown_timer_) {
@@ -6831,13 +6833,17 @@ void CoverageGUI::updateLoginUi() {
 
     if (lbl_login_expiry_) {
         if (authed) {
-            qint64 secs = QDateTime::currentDateTimeUtc().secsTo(session_expires_at_.toUTC());
-            if (secs < 0) secs = 0;
-            const int mm = static_cast<int>(secs / 60);
-            const int ss = static_cast<int>(secs % 60);
-            lbl_login_expiry_->setText(QString("Session expires in %1:%2")
-                                           .arg(mm, 2, 10, QChar('0'))
-                                           .arg(ss, 2, 10, QChar('0')));
+            if (session_has_expiry_) {
+                qint64 secs = QDateTime::currentDateTimeUtc().secsTo(session_expires_at_.toUTC());
+                if (secs < 0) secs = 0;
+                const int mm = static_cast<int>(secs / 60);
+                const int ss = static_cast<int>(secs % 60);
+                lbl_login_expiry_->setText(QString("Session expires in %1:%2")
+                                               .arg(mm, 2, 10, QChar('0'))
+                                               .arg(ss, 2, 10, QChar('0')));
+            } else {
+                lbl_login_expiry_->setText("Session does not expire");
+            }
         } else {
             lbl_login_expiry_->clear();
         }
@@ -6918,20 +6924,26 @@ bool CoverageGUI::loginToRobotOverSsh(const QString& robotId, const QString& pin
     const QString out_robot_id = obj.value("robot_id").toString().trimmed();
     const QString token = obj.value("token").toString().trimmed();
     const QString expires_at = obj.value("expires_at").toString().trimmed();
+    const bool expires_never = obj.value("expires_never").toBool(false);
 
-    if (token.isEmpty() || expires_at.isEmpty()) {
-        if (errorOut) *errorOut = "Robot auth response missing token/expires_at.";
+    if (token.isEmpty()) {
+        if (errorOut) *errorOut = "Robot auth response missing token.";
         return false;
     }
 
-    QDateTime exp = QDateTime::fromString(expires_at, Qt::ISODate);
-    if (!exp.isValid()) {
-        // Some producers emit ISO8601 with milliseconds; try that too.
-        exp = QDateTime::fromString(expires_at, Qt::ISODateWithMs);
-    }
-    if (!exp.isValid()) {
-        if (errorOut) *errorOut = "Robot auth response has invalid expires_at timestamp.";
-        return false;
+    QDateTime exp;
+    bool has_expiry = false;
+    if (!expires_never && !expires_at.isEmpty()) {
+        exp = QDateTime::fromString(expires_at, Qt::ISODate);
+        if (!exp.isValid()) {
+            // Some producers emit ISO8601 with milliseconds; try that too.
+            exp = QDateTime::fromString(expires_at, Qt::ISODateWithMs);
+        }
+        if (!exp.isValid()) {
+            if (errorOut) *errorOut = "Robot auth response has invalid expires_at timestamp.";
+            return false;
+        }
+        has_expiry = true;
     }
 
     QStringList scopes;
@@ -6945,7 +6957,8 @@ bool CoverageGUI::loginToRobotOverSsh(const QString& robotId, const QString& pin
     // Save session (in-memory only)
     session_robot_id_ = out_robot_id.isEmpty() ? robotId : out_robot_id;
     session_token_ = token;
-    session_expires_at_ = exp.toUTC();
+    session_has_expiry_ = has_expiry;
+    session_expires_at_ = has_expiry ? exp.toUTC() : QDateTime();
     session_scopes_ = scopes;
 
     return true;
@@ -7095,12 +7108,16 @@ void CoverageGUI::onRobotLoginClicked() {
         return;
     }
 
-    if (login_countdown_timer_) login_countdown_timer_->start();
+    if (login_countdown_timer_ && session_has_expiry_) login_countdown_timer_->start();
     updateLoginUi();
     setStatus(QString("✅ Logged in to %1").arg(session_robot_id_), 4000);
 }
 
 void CoverageGUI::onLoginCountdownTick() {
+    if (!session_has_expiry_) {
+        if (login_countdown_timer_) login_countdown_timer_->stop();
+        return;
+    }
     if (!hasValidLoginSession()) {
         clearLoginSession("Session expired. Logged out.");
         return;

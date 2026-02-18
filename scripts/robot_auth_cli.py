@@ -7,6 +7,7 @@ Implements:
 
 On success prints JSON to stdout:
   {"robot_id": "...", "token": "...", "expires_at": "2026-02-12T10:11:12Z", "scopes": ["mission:start"]}
+  If --ttl-sec is 0 or negative, the session does not expire and expires_at is empty.
 
 Security model:
   - robot_id must match /etc/pilot_robot_id
@@ -244,16 +245,26 @@ def cmd_login(args: argparse.Namespace) -> int:
         return 1
 
     iat = int(time.time())
-    exp = iat + int(args.ttl_sec)
+    ttl = int(args.ttl_sec)
     scopes = ["mission:start"]
 
-    payload = {"robot_id": robot_id_actual, "iat": iat, "exp": exp, "scopes": scopes}
+    payload = {"robot_id": robot_id_actual, "iat": iat, "scopes": scopes}
+    expires_at = ""
+    expires_never = ttl <= 0
+    if ttl > 0:
+        exp = iat + ttl
+        payload["exp"] = exp
+        expires_at = _iso_utc(exp)
+    else:
+        payload["exp"] = 0
+        payload["exp_disabled"] = True
     token = _sign_token(secret, payload)
 
     out = {
         "robot_id": robot_id_actual,
         "token": token,
-        "expires_at": _iso_utc(exp),
+        "expires_at": expires_at,
+        "expires_never": expires_never,
         "scopes": scopes,
     }
 
@@ -271,7 +282,8 @@ def build_parser() -> argparse.ArgumentParser:
     pin_group = login.add_mutually_exclusive_group(required=True)
     pin_group.add_argument("--pin", help="6-digit PIN (not recommended; visible in process list)")
     pin_group.add_argument("--pin-stdin", action="store_true", help="Read PIN from stdin")
-    login.add_argument("--ttl-sec", type=int, default=900, help="Session TTL in seconds (default: 900)")
+    login.add_argument("--ttl-sec", type=int, default=0,
+                       help="Session TTL in seconds (0 disables expiry; default: 0)")
     login.add_argument("--json", action="store_true", help="Reserved (JSON is always used on success)")
     login.set_defaults(func=cmd_login)
 

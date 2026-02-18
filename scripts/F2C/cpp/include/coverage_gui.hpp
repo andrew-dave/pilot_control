@@ -699,6 +699,7 @@ private:
     QString session_robot_id_;
     QString session_token_;
     QDateTime session_expires_at_;
+    bool session_has_expiry_ = false;
     QStringList session_scopes_;
 
     // Last uploaded waypoint CSV (for mission start)

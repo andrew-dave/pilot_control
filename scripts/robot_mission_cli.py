@@ -118,17 +118,21 @@ def cmd_start(args: argparse.Namespace) -> int:
         _eprint("Token robot_id does not match this robot")
         return 1
 
-    # Validate expiry
-    try:
-        exp = int(payload.get("exp"))
-    except Exception:
-        _eprint("Token missing/invalid exp")
-        return 1
+    # Validate expiry (exp <= 0 means no expiry)
+    exp = 0
+    exp_raw = payload.get("exp", None)
+    if exp_raw is not None:
+        try:
+            exp = int(exp_raw)
+        except Exception:
+            _eprint("Token missing/invalid exp")
+            return 1
 
-    now = int(time.time())
-    if exp <= now:
-        _eprint("Token expired")
-        return 1
+    if exp > 0:
+        now = int(time.time())
+        if exp <= now:
+            _eprint("Token expired")
+            return 1
 
     # Validate scope
     try:
@@ -179,12 +183,18 @@ def cmd_start(args: argparse.Namespace) -> int:
         _eprint(f"Failed to publish mission start: {e}")
         return 1
 
+    expires_at = ""
+    expires_never = exp <= 0
+    if exp > 0:
+        expires_at = dt.datetime.fromtimestamp(exp, tz=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+
     out = {
         "ok": True,
         "robot_id": robot_id_actual,
         "topic": args.topic,
         "csv_path": csv_path,
-        "expires_at": dt.datetime.fromtimestamp(exp, tz=dt.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "expires_at": expires_at,
+        "expires_never": expires_never,
     }
     sys.stdout.write(json.dumps(out, separators=(",", ":"), sort_keys=True) + "\n")
     return 0
