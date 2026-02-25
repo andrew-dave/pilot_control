@@ -596,6 +596,8 @@ def main(args=None):
             print('')
             print('[ERROR] Calibration failed or was interrupted')
             sys.exit(1)
+        
+        sys.exit(0)
 
 
 if __name__ == '__main__':

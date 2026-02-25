@@ -84,7 +84,7 @@ If this fails with "command not found", check:
   - The symlink in /usr/local/bin
   - PATH for non-interactive shells
   - That the package was built and installed
-
+r
 
 Step 7: Login from the Coverage Planner GUI
 --------------------------------------------
