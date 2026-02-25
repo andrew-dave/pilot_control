@@ -278,7 +278,7 @@ class OdomTiltCorrector(Node):
                 f'  Robot starts at (0, 0, 0) with yaw=0°')
             
             # Save transformation details
-            self._save_transformation(initial_yaw)
+            # self._save_transformation(initial_yaw)
 
         # ============ TRANSFORM POSITION ============
         # p_robot = R_init @ (p_lidar - p0_lidar)
