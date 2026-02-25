@@ -262,6 +262,7 @@ void VideoStreamWidget::hideEvent(QHideEvent* event) {
 namespace {
 
 constexpr double kWaypointDuplicateEpsilon = 1e-6;
+constexpr double kConnectorObstacleClearanceM = 0.3;
 
 PathStateList dedupePathStates(const PathStateList& path) {
     PathStateList filtered;
@@ -4739,7 +4740,8 @@ void CoverageGUI::generatePath() {
                     const Point2D goal = final_path.front().point;
                     const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
                     if (dist > 0.05) {
-                        PathStateList connector = computeObstacleAvoidingPath(start, goal);
+                        PathStateList connector = computeObstacleAvoidingPath(
+                            start, goal, -1.0, kConnectorObstacleClearanceM);
                         if (!connector.empty()) {
                             const auto& last = connector.back().point;
                             const auto& first = final_path.front().point;
@@ -5235,7 +5237,8 @@ void CoverageGUI::publishWaypoints() {
             const Point2D goal = export_path.front().point;
             const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
             if (dist > 0.05) {
-                PathStateList connector = computeObstacleAvoidingPath(start, goal);
+                PathStateList connector = computeObstacleAvoidingPath(
+                    start, goal, -1.0, kConnectorObstacleClearanceM);
                 if (!connector.empty()) {
                     if (!connector.empty() && !export_path.empty()) {
                         const auto& last = connector.back().point;
@@ -5294,29 +5297,13 @@ void CoverageGUI::planHomePath() {
     const Point2D start = pose_copy->point;
     const Point2D goal{0.0, 0.0};
 
-    const double headland = spin_headland_ ? spin_headland_->value() : 0.0;
-    const double step = std::max(0.02, headland / 10.0);
-    PathStateList home_path;
-    double used_clearance = headland;
-    bool found = false;
-
-    for (double clearance = headland; clearance >= -1e-9; clearance -= step) {
-        if (clearance < 0.0) {
-            clearance = 0.0;
-        }
-        home_path = computeObstacleAvoidingPath(start, goal, -1.0, clearance);
-        if (!home_path.empty()) {
-            used_clearance = clearance;
-            found = true;
-            break;
-        }
-        if (clearance <= 0.0) {
-            break;
-        }
-    }
-
-    if (!found) {
-        QMessageBox::warning(this, "Home Path", "Failed to generate a valid path to origin.");
+    PathStateList home_path = computeObstacleAvoidingPath(
+        start, goal, -1.0, kConnectorObstacleClearanceM);
+    if (home_path.empty()) {
+        QMessageBox::warning(
+            this, "Home Path",
+            QString("Failed to generate a valid path to origin with clearance %1 m.")
+                .arg(kConnectorObstacleClearanceM, 0, 'f', 2));
         return;
     }
 
@@ -5325,18 +5312,10 @@ void CoverageGUI::planHomePath() {
     syncPlannedPathCache();
     updateCoverageStats();
     refreshPlot();
-    if (used_clearance + 1e-6 < headland) {
-        setStatus(QString("Home path generated (%1 points, clearance %2 m; reduced from %3 m)")
-                      .arg(path_.size())
-                      .arg(used_clearance, 0, 'f', 2)
-                      .arg(headland, 0, 'f', 2),
-                  6000);
-    } else {
-        setStatus(QString("Home path generated (%1 points, clearance %2 m)")
-                      .arg(path_.size())
-                      .arg(used_clearance, 0, 'f', 2),
-                  6000);
-    }
+    setStatus(QString("Home path generated (%1 points, clearance %2 m)")
+                  .arg(path_.size())
+                  .arg(kConnectorObstacleClearanceM, 0, 'f', 2),
+              6000);
 }
 
 void CoverageGUI::publishCustomPath() {
