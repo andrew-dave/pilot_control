@@ -16,6 +16,9 @@
 #include <set>
 #include <map>
 #include <limits>
+#include <queue>
+#include <deque>
+#include <unordered_set>
 
 // Robust polygon ops (ROI intersection, obstacle clipping, validity checks)
 #include <boost/geometry.hpp>
@@ -23,6 +26,7 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_polygon.hpp>
 #include <boost/geometry/policies/is_valid/failing_reason_policy.hpp>
+#include <boost/geometry/algorithms/buffer.hpp>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -66,9 +70,15 @@ namespace bg = boost::geometry;
 using BgPoint = bg::model::d2::point_xy<double>;
 using BgPolygon = bg::model::polygon<BgPoint, /*ClockWise=*/false, /*Closed=*/true>;
 using BgMultiPolygon = bg::model::multi_polygon<BgPolygon>;
+using BgLineString = bg::model::linestring<BgPoint>;
 
 constexpr double kGeomEps = 1e-9;
 constexpr double kMinValidArea = 1e-10;  // m^2-ish (depends on input units)
+constexpr double kEdgeSampleMinLen = 1.0;
+constexpr double kEdgeSampleLongLen = 3.0;
+
+static PathStateList resamplePathStates(const PathStateList& in, double spacing_m);
+static PathStateList dedupePathStates(const PathStateList& path);
 
 static bool nearEqual(double a, double b, double eps = kGeomEps) {
     return std::fabs(a - b) <= eps;
@@ -191,6 +201,556 @@ static BgMultiPolygon bgDifference(const BgMultiPolygon& in, const BgPolygon& su
     return out;
 }
 
+static bool buildEffectiveFreeSpace(
+    const Polygon2D& boundary,
+    const Polygon2D* roi,
+    const std::vector<Obstacle2D>* obstacles,
+    BgMultiPolygon& out_free,
+    Polygon2D& out_primary_outer,
+    std::string& error,
+    double obstacle_clearance = 0.0) {
+
+    Polygon2D boundary_clean = sanitizePolygon2D(boundary);
+    if (boundary_clean.size() < 3) {
+        error = "Boundary polygon is too small (need >= 3 vertices)";
+        return false;
+    }
+
+    BgPolygon boundary_bg = toBgPolygon(boundary_clean);
+    {
+        std::string why;
+        if (!bgValidate(boundary_bg, why)) {
+            error = "Boundary polygon is invalid: " + why;
+            return false;
+        }
+    }
+
+    BgMultiPolygon work;
+    if (roi && !roi->empty()) {
+        Polygon2D roi_clean = sanitizePolygon2D(*roi);
+        if (roi_clean.size() < 3) {
+            error = "ROI polygon is too small (need >= 3 vertices)";
+            return false;
+        }
+        BgPolygon roi_bg = toBgPolygon(roi_clean);
+        {
+            std::string why;
+            if (!bgValidate(roi_bg, why)) {
+                error = "ROI polygon is invalid: " + why;
+                return false;
+            }
+        }
+        work = bgIntersection(boundary_bg, roi_bg);
+    } else {
+        work.push_back(boundary_bg);
+    }
+
+    // Drop tiny pieces (helps after intersection/difference)
+    BgMultiPolygon filtered;
+    for (auto& p : work) {
+        bg::correct(p);
+        if (std::fabs(bg::area(p)) > kMinValidArea) {
+            filtered.push_back(p);
+        }
+    }
+    work = filtered;
+    if (work.empty()) {
+        error = "ROI does not intersect the boundary (effective area is empty)";
+        return false;
+    }
+
+    auto bufferObstacle = [](const BgPolygon& poly, double dist) -> BgMultiPolygon {
+        BgMultiPolygon out;
+        if (dist <= 0.0) {
+            out.push_back(poly);
+            return out;
+        }
+        bg::strategy::buffer::distance_symmetric<double> distance_strategy(dist);
+        bg::strategy::buffer::join_round join_strategy(12);
+        bg::strategy::buffer::end_round end_strategy(12);
+        bg::strategy::buffer::point_circle circle_strategy(12);
+        bg::strategy::buffer::side_straight side_strategy;
+        bg::buffer(poly, out, distance_strategy, side_strategy, join_strategy, end_strategy, circle_strategy);
+        for (auto& p : out) {
+            bg::correct(p);
+        }
+        return out;
+    };
+
+    if (obstacles && !obstacles->empty()) {
+        for (size_t i = 0; i < obstacles->size(); ++i) {
+            const auto& obs_in = obstacles->at(i);
+            Polygon2D obs_outer_clean = sanitizePolygon2D(obs_in.outer);
+            if (obs_outer_clean.size() < 3) {
+                error = "Obstacle polygon #" + std::to_string(i + 1) + " is too small (need >= 3 vertices)";
+                return false;
+            }
+            Obstacle2D obs_clean{obs_outer_clean, obs_in.holes};
+            BgPolygon obs_bg = toBgPolygon(obs_clean);
+            {
+                std::string why;
+                if (!bgValidate(obs_bg, why)) {
+                    error = "Obstacle polygon #" + std::to_string(i + 1) + " is invalid: " + why;
+                    return false;
+                }
+            }
+            const double inflate = std::max(0.0, obstacle_clearance) + 1e-3;
+            BgMultiPolygon obs_polys = bufferObstacle(obs_bg, inflate);
+            for (const auto& obs_poly : obs_polys) {
+                work = bgDifference(work, obs_poly);
+                if (work.empty()) {
+                    error = "Obstacles removed all usable area";
+                    return false;
+                }
+            }
+            if (work.empty()) {
+                error = "Obstacles removed all usable area";
+                return false;
+            }
+        }
+    }
+
+    // Choose a primary polygon for node generation (largest area)
+    double best_area = -1.0;
+    BgPolygon const* best = nullptr;
+    for (const auto& p : work) {
+        double a = std::fabs(bg::area(p));
+        if (a > best_area) {
+            best_area = a;
+            best = &p;
+        }
+    }
+    if (!best) {
+        error = "Effective area is empty";
+        return false;
+    }
+    out_primary_outer = bgRingToPolygon2D(best->outer());
+    out_free = work;
+    return true;
+}
+
+static bool pointInFreeSpace(const Point2D& p, const BgMultiPolygon& free_space) {
+    BgPoint bp(p.x, p.y);
+    for (const auto& poly : free_space) {
+        if (bg::covered_by(bp, poly)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool segmentInFreeSpace(const Point2D& a, const Point2D& b, const BgMultiPolygon& free_space) {
+    BgLineString line;
+    line.push_back(BgPoint(a.x, a.y));
+    line.push_back(BgPoint(b.x, b.y));
+    for (const auto& poly : free_space) {
+        if (bg::covered_by(line, poly)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void appendRingVertices(
+    const BgPolygon& poly,
+    std::vector<Point2D>& nodes,
+    std::unordered_set<uint64_t>& seen,
+    double quant = 1e-6) {
+    auto add_point = [&](double x, double y) {
+        const int64_t qx = static_cast<int64_t>(std::llround(x / quant));
+        const int64_t qy = static_cast<int64_t>(std::llround(y / quant));
+        const uint64_t key = (static_cast<uint64_t>(qx) << 32) ^ static_cast<uint64_t>(qy);
+        if (seen.insert(key).second) {
+            nodes.emplace_back(x, y);
+        }
+    };
+
+    auto add_ring = [&](const auto& ring) {
+        const size_t n = ring.size();
+        if (n < 2) return;
+        for (const auto& pt : ring) {
+            add_point(bg::get<0>(pt), bg::get<1>(pt));
+        }
+        for (size_t i = 0; i < n; ++i) {
+            const auto& a = ring[i];
+            const auto& b = ring[(i + 1) % n];
+            const double ax = bg::get<0>(a);
+            const double ay = bg::get<1>(a);
+            const double bx = bg::get<0>(b);
+            const double by = bg::get<1>(b);
+            const double len = std::hypot(bx - ax, by - ay);
+            if (len < 1e-9) {
+                continue;
+            }
+            if (len >= kEdgeSampleMinLen) {
+                if (len >= kEdgeSampleLongLen) {
+                    add_point(ax + (bx - ax) / 3.0, ay + (by - ay) / 3.0);
+                    add_point(ax + 2.0 * (bx - ax) / 3.0, ay + 2.0 * (by - ay) / 3.0);
+                } else {
+                    add_point((ax + bx) * 0.5, (ay + by) * 0.5);
+                }
+            }
+        }
+    };
+
+    add_ring(poly.outer());
+    for (const auto& inner : poly.inners()) {
+        add_ring(inner);
+    }
+}
+
+static PathStateList pointsToPathStates(const std::vector<Point2D>& pts) {
+    PathStateList out;
+    if (pts.empty()) {
+        return out;
+    }
+    out.reserve(pts.size());
+    for (size_t i = 0; i < pts.size(); ++i) {
+        double heading = 0.0;
+        if (i + 1 < pts.size()) {
+            heading = std::atan2(pts[i + 1].y - pts[i].y, pts[i + 1].x - pts[i].x);
+        } else if (!out.empty()) {
+            heading = out.back().heading;
+        }
+        out.emplace_back(pts[i], heading);
+    }
+    return out;
+}
+
+static PathStateList planObstacleAvoidingPathInternal(
+    const Point2D& start,
+    const Point2D& goal,
+    const BgMultiPolygon& free_space,
+    double waypoint_spacing) {
+
+    PathStateList empty;
+    if (free_space.empty()) {
+        return empty;
+    }
+    if (!pointInFreeSpace(start, free_space) || !pointInFreeSpace(goal, free_space)) {
+        return empty;
+    }
+
+    if (segmentInFreeSpace(start, goal, free_space)) {
+        std::vector<Point2D> pts{start, goal};
+        PathStateList path = pointsToPathStates(pts);
+        return resamplePathStates(path, waypoint_spacing);
+    }
+
+    struct Cost {
+        int turns;
+        double length;
+    };
+    auto better = [](const Cost& a, const Cost& b) {
+        if (a.turns != b.turns) return a.turns < b.turns;
+        return a.length < b.length;
+    };
+
+    auto simplifyByVisibility = [&](const std::vector<Point2D>& pts) {
+        if (pts.size() <= 2) return pts;
+        std::vector<Point2D> out;
+        out.reserve(pts.size());
+        size_t i = 0;
+        out.push_back(pts[i]);
+        while (i + 1 < pts.size()) {
+            size_t j = pts.size() - 1;
+            for (size_t k = pts.size() - 1; k > i; --k) {
+                if (segmentInFreeSpace(pts[i], pts[k], free_space)) {
+                    j = k;
+                    break;
+                }
+            }
+            if (j == i) {
+                // Should not happen, but avoid infinite loop.
+                j = i + 1;
+            }
+            out.push_back(pts[j]);
+            i = j;
+        }
+        return out;
+    };
+
+    // Build a grid over the free-space island and run A*.
+    constexpr size_t kMaxGridCells = 250000;
+    double grid_res = (waypoint_spacing > 0.0) ? waypoint_spacing : 0.2;
+    grid_res = std::clamp(grid_res, 0.05, 1.0);
+
+    bg::model::box<BgPoint> bbox;
+    bool has_box = false;
+    for (const auto& poly : free_space) {
+        bg::model::box<BgPoint> b;
+        bg::envelope(poly, b);
+        if (!has_box) {
+            bbox = b;
+            has_box = true;
+        } else {
+            bg::expand(bbox, b);
+        }
+    }
+    if (!has_box) {
+        return empty;
+    }
+
+    double min_x = bg::get<bg::min_corner, 0>(bbox);
+    double min_y = bg::get<bg::min_corner, 1>(bbox);
+    double max_x = bg::get<bg::max_corner, 0>(bbox);
+    double max_y = bg::get<bg::max_corner, 1>(bbox);
+
+    while (true) {
+        // Pad by one cell so boundary points fall inside.
+        double pad = grid_res;
+        double dx = (max_x - min_x) + 2.0 * pad;
+        double dy = (max_y - min_y) + 2.0 * pad;
+        const int w = static_cast<int>(std::ceil(dx / grid_res));
+        const int h = static_cast<int>(std::ceil(dy / grid_res));
+        const size_t total = static_cast<size_t>(w) * static_cast<size_t>(h);
+        if (total <= kMaxGridCells || grid_res >= 1.0) {
+            min_x -= pad;
+            min_y -= pad;
+            max_x += pad;
+            max_y += pad;
+            break;
+        }
+        grid_res *= 1.5;
+    }
+
+    const int width = static_cast<int>(std::ceil((max_x - min_x) / grid_res));
+    const int height = static_cast<int>(std::ceil((max_y - min_y) / grid_res));
+    if (width <= 1 || height <= 1) {
+        return empty;
+    }
+
+    auto cellIndex = [&](int ix, int iy) {
+        return iy * width + ix;
+    };
+    auto cellCenter = [&](int ix, int iy) {
+        return Point2D(min_x + (ix + 0.5) * grid_res, min_y + (iy + 0.5) * grid_res);
+    };
+
+    std::vector<uint8_t> free_mask(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            Point2D p = cellCenter(x, y);
+            if (pointInFreeSpace(p, free_space)) {
+                free_mask[static_cast<size_t>(cellIndex(x, y))] = 1;
+            }
+        }
+    }
+
+    auto clampCell = [&](int ix, int iy) {
+        ix = std::clamp(ix, 0, width - 1);
+        iy = std::clamp(iy, 0, height - 1);
+        return std::pair<int, int>(ix, iy);
+    };
+
+    auto nearestCell = [&](const Point2D& p) {
+        int ix = static_cast<int>(std::floor((p.x - min_x) / grid_res));
+        int iy = static_cast<int>(std::floor((p.y - min_y) / grid_res));
+        return clampCell(ix, iy);
+    };
+
+    auto findNearestFree = [&](int sx, int sy, int& out_x, int& out_y) {
+        std::deque<int> q;
+        std::vector<uint8_t> visited(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
+        int start_idx = cellIndex(sx, sy);
+        q.push_back(start_idx);
+        visited[static_cast<size_t>(start_idx)] = 1;
+        const int dirs4[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        while (!q.empty()) {
+            int idx = q.front();
+            q.pop_front();
+            if (free_mask[static_cast<size_t>(idx)]) {
+                out_x = idx % width;
+                out_y = idx / width;
+                return true;
+            }
+            int cx = idx % width;
+            int cy = idx / width;
+            for (const auto& d : dirs4) {
+                int nx = cx + d[0];
+                int ny = cy + d[1];
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+                    continue;
+                }
+                int nidx = cellIndex(nx, ny);
+                if (visited[static_cast<size_t>(nidx)]) {
+                    continue;
+                }
+                visited[static_cast<size_t>(nidx)] = 1;
+                q.push_back(nidx);
+            }
+        }
+        return false;
+    };
+
+    auto start_cell = nearestCell(start);
+    auto goal_cell = nearestCell(goal);
+    int sx = start_cell.first;
+    int sy = start_cell.second;
+    int gx = goal_cell.first;
+    int gy = goal_cell.second;
+    if (!findNearestFree(sx, sy, sx, sy)) {
+        return empty;
+    }
+    if (!findNearestFree(gx, gy, gx, gy)) {
+        return empty;
+    }
+
+    const int start_idx = cellIndex(sx, sy);
+    const int goal_idx = cellIndex(gx, gy);
+    if (start_idx == goal_idx) {
+        std::vector<Point2D> pts{start, goal};
+        PathStateList path = pointsToPathStates(pts);
+        return resamplePathStates(path, waypoint_spacing);
+    }
+
+    const int dirs8[8][2] = {
+        {1,0},{-1,0},{0,1},{0,-1},
+        {1,1},{1,-1},{-1,1},{-1,-1}
+    };
+    const double diag = std::sqrt(2.0);
+
+    auto canStep = [&](int cx, int cy, int nx, int ny) {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) return false;
+        int nidx = cellIndex(nx, ny);
+        if (!free_mask[static_cast<size_t>(nidx)]) return false;
+        Point2D a = cellCenter(cx, cy);
+        Point2D b = cellCenter(nx, ny);
+        return segmentInFreeSpace(a, b, free_space);
+    };
+
+    const int dir_states = 9;  // 8 directions + 1 for "none"
+    const size_t cell_count = static_cast<size_t>(width) * static_cast<size_t>(height);
+    const size_t state_count = cell_count * dir_states;
+    std::vector<int> best_turns(state_count, std::numeric_limits<int>::max());
+    std::vector<double> best_len(state_count, std::numeric_limits<double>::infinity());
+    std::vector<int> parent_state(state_count, -1);
+
+    auto stateIndex = [&](int prev_dir, int cell_idx) {
+        return (prev_dir + 1) * static_cast<int>(cell_count) + cell_idx;
+    };
+
+    struct Node {
+        int prev_dir;
+        int cell_idx;
+        Cost cost;
+    };
+    struct Cmp {
+        bool operator()(const Node& a, const Node& b) const {
+            if (a.cost.turns != b.cost.turns) return a.cost.turns > b.cost.turns;
+            return a.cost.length > b.cost.length;
+        }
+    };
+
+    std::priority_queue<Node, std::vector<Node>, Cmp> pq;
+    const int start_state = stateIndex(-1, start_idx);
+    best_turns[static_cast<size_t>(start_state)] = 0;
+    best_len[static_cast<size_t>(start_state)] = 0.0;
+    parent_state[static_cast<size_t>(start_state)] = -1;
+    pq.push(Node{-1, start_idx, {0, 0.0}});
+
+    int goal_state = -1;
+
+    while (!pq.empty()) {
+        Node cur = pq.top();
+        pq.pop();
+        int cur_state = stateIndex(cur.prev_dir, cur.cell_idx);
+        if (cur.cost.turns != best_turns[static_cast<size_t>(cur_state)] ||
+            std::fabs(cur.cost.length - best_len[static_cast<size_t>(cur_state)]) > 1e-9) {
+            continue;
+        }
+        if (cur.cell_idx == goal_idx) {
+            goal_state = cur_state;
+            break;
+        }
+
+        int cx = cur.cell_idx % width;
+        int cy = cur.cell_idx / width;
+        for (int dir = 0; dir < 8; ++dir) {
+            int nx = cx + dirs8[dir][0];
+            int ny = cy + dirs8[dir][1];
+            if (!canStep(cx, cy, nx, ny)) {
+                continue;
+            }
+            int nidx = cellIndex(nx, ny);
+            int add_turn = (cur.prev_dir >= 0 && dir != cur.prev_dir) ? 1 : 0;
+            double step_len = (dir >= 4) ? diag * grid_res : grid_res;
+            Cost nc{cur.cost.turns + add_turn, cur.cost.length + step_len};
+            int nstate = stateIndex(dir, nidx);
+            if (better(nc, {best_turns[static_cast<size_t>(nstate)],
+                           best_len[static_cast<size_t>(nstate)]})) {
+                best_turns[static_cast<size_t>(nstate)] = nc.turns;
+                best_len[static_cast<size_t>(nstate)] = nc.length;
+                parent_state[static_cast<size_t>(nstate)] = cur_state;
+                pq.push(Node{dir, nidx, nc});
+            }
+        }
+    }
+
+    if (goal_state < 0) {
+        return empty;
+    }
+
+    std::vector<Point2D> rev_pts;
+    int cur_state = goal_state;
+    while (cur_state >= 0) {
+        int cell_idx = cur_state % static_cast<int>(cell_count);
+        int cx = cell_idx % width;
+        int cy = cell_idx / width;
+        rev_pts.push_back(cellCenter(cx, cy));
+        cur_state = parent_state[static_cast<size_t>(cur_state)];
+    }
+    std::reverse(rev_pts.begin(), rev_pts.end());
+
+    if (rev_pts.empty()) {
+        return empty;
+    }
+
+    Point2D start_center = rev_pts.front();
+    Point2D goal_center = rev_pts.back();
+    std::vector<Point2D> raw_pts = rev_pts;
+    raw_pts.front() = start;
+    raw_pts.back() = goal;
+    if (raw_pts.size() >= 2) {
+        if (!segmentInFreeSpace(raw_pts.front(), raw_pts[1], free_space)) {
+            raw_pts.insert(raw_pts.begin() + 1, start_center);
+        }
+        if (!segmentInFreeSpace(raw_pts[raw_pts.size() - 2], raw_pts.back(), free_space)) {
+            raw_pts.insert(raw_pts.end() - 1, goal_center);
+        }
+    }
+
+    std::vector<Point2D> simplified = simplifyByVisibility(raw_pts);
+    PathStateList path = pointsToPathStates(simplified);
+    return resamplePathStates(path, waypoint_spacing);
+}
+
+static PathStateList connectAnchorsWithFreeSpace(
+    const std::vector<Point2D>& anchors,
+    const BgMultiPolygon& free_space,
+    double waypoint_spacing) {
+    PathStateList combined;
+    if (anchors.size() < 2) {
+        return combined;
+    }
+    for (size_t i = 0; i + 1 < anchors.size(); ++i) {
+        PathStateList seg = planObstacleAvoidingPathInternal(
+            anchors[i], anchors[i + 1], free_space, waypoint_spacing);
+        if (seg.empty()) {
+            return PathStateList();
+        }
+        if (!combined.empty() && !seg.empty()) {
+            const auto& last = combined.back().point;
+            const auto& first = seg.front().point;
+            if (std::hypot(last.x - first.x, last.y - first.y) < 1e-6) {
+                seg.erase(seg.begin());
+            }
+        }
+        combined.insert(combined.end(), seg.begin(), seg.end());
+    }
+    return dedupePathStates(combined);
+}
+
 static double pathLengthMeters(const std::vector<Point2D>& pts) {
     if (pts.size() < 2) return 0.0;
     double len = 0.0;
@@ -199,6 +759,8 @@ static double pathLengthMeters(const std::vector<Point2D>& pts) {
     }
     return len;
 }
+
+static PathStateList dedupePathStates(const PathStateList& path);
 
 static PathStateList resamplePathStates(const PathStateList& in, double spacing_m) {
     if (spacing_m <= 0.0 || in.size() < 2) {
@@ -319,7 +881,8 @@ static bool buildEffectiveCellsFromROIAndObstacles(
     F2CCells& out_cells,
     Polygon2D& out_primary_outer,
     double& out_effective_area_m2,
-    std::string& error) {
+    std::string& error,
+    double obstacle_clearance = 0.0) {
 
     Polygon2D boundary_clean = sanitizePolygon2D(boundary);
     if (boundary_clean.size() < 3) {
@@ -370,6 +933,24 @@ static bool buildEffectiveCellsFromROIAndObstacles(
         return false;
     }
 
+    auto bufferObstacle = [](const BgPolygon& poly, double dist) -> BgMultiPolygon {
+        BgMultiPolygon out;
+        if (dist <= 0.0) {
+            out.push_back(poly);
+            return out;
+        }
+        bg::strategy::buffer::distance_symmetric<double> distance_strategy(dist);
+        bg::strategy::buffer::join_round join_strategy(12);
+        bg::strategy::buffer::end_round end_strategy(12);
+        bg::strategy::buffer::point_circle circle_strategy(12);
+        bg::strategy::buffer::side_straight side_strategy;
+        bg::buffer(poly, out, distance_strategy, side_strategy, join_strategy, end_strategy, circle_strategy);
+        for (auto& p : out) {
+            bg::correct(p);
+        }
+        return out;
+    };
+
     if (obstacles && !obstacles->empty()) {
         for (size_t i = 0; i < obstacles->size(); ++i) {
             const auto& obs_in = obstacles->at(i);
@@ -387,7 +968,15 @@ static bool buildEffectiveCellsFromROIAndObstacles(
                     return false;
                 }
             }
-            work = bgDifference(work, obs_bg);
+            const double inflate = std::max(0.0, obstacle_clearance) + 1e-3;
+            BgMultiPolygon obs_polys = bufferObstacle(obs_bg, inflate);
+            for (const auto& obs_poly : obs_polys) {
+                work = bgDifference(work, obs_poly);
+                if (work.empty()) {
+                    error = "Obstacles removed all usable area";
+                    return false;
+                }
+            }
             if (work.empty()) {
                 error = "Obstacles removed all usable area";
                 return false;
@@ -1176,95 +1765,6 @@ static bool pointInPolygon(const Point2D& p, const Polygon2D& poly) {
     return (crossings % 2) == 1;
 }
 
-// Helper: Check if line segment intersects polygon edge
-static bool segmentIntersectsPolygon(const Point2D& a, const Point2D& b, const Polygon2D& poly) {
-    // Check if either endpoint is inside the polygon
-    if (pointInPolygon(a, poly) || pointInPolygon(b, poly)) {
-        return true;
-    }
-    
-    // Check if line segment crosses any edge
-    for (size_t i = 0; i < poly.size(); ++i) {
-        const Point2D& p1 = poly[i];
-        const Point2D& p2 = poly[(i + 1) % poly.size()];
-        
-        // Line segment intersection test
-        double d1x = b.x - a.x, d1y = b.y - a.y;
-        double d2x = p2.x - p1.x, d2y = p2.y - p1.y;
-        double cross = d1x * d2y - d1y * d2x;
-        
-        if (std::abs(cross) < 1e-10) continue;  // Parallel
-        
-        double t = ((p1.x - a.x) * d2y - (p1.y - a.y) * d2x) / cross;
-        double u = ((p1.x - a.x) * d1y - (p1.y - a.y) * d1x) / cross;
-        
-        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Filter path to avoid obstacles - removes points inside obstacles
-// and adds intermediate points to go around them
-static PathStateList filterPathAroundObstacles(
-    const PathStateList& original_path,
-    const std::vector<Obstacle2D>& obstacles) {
-    
-    if (obstacles.empty() || original_path.empty()) {
-        return original_path;
-    }
-    
-    PathStateList filtered;
-    filtered.reserve(original_path.size());
-    
-    for (size_t i = 0; i < original_path.size(); ++i) {
-        const PathState& state = original_path[i];
-        
-        // Check if this point is inside any obstacle
-        bool inside_obstacle = false;
-        for (const auto& obs : obstacles) {
-            if (pointInPolygon(state.point, obs.outer)) {
-                bool in_hole = false;
-                for (const auto& hole : obs.holes) {
-                    if (pointInPolygon(state.point, hole)) {
-                        in_hole = true;
-                        break;
-                    }
-                }
-                if (!in_hole) {
-                inside_obstacle = true;
-                break;
-                }
-            }
-        }
-        
-        if (!inside_obstacle) {
-            // Check if segment from previous point crosses obstacle
-            if (!filtered.empty()) {
-                const Point2D& prev = filtered.back().point;
-                bool crosses_obstacle = false;
-                
-                for (const auto& obs : obstacles) {
-                    if (segmentIntersectsPolygon(prev, state.point, obs.outer)) {
-                        crosses_obstacle = true;
-                        break;
-                    }
-                }
-                
-                if (crosses_obstacle) {
-                    // Skip this point - it creates a path through obstacle
-                    // The axial turn path will be used as fallback
-                    continue;
-                }
-            }
-            filtered.push_back(state);
-        }
-    }
-    
-    return filtered;
-}
-
 #ifdef HAVE_FIELDS2COVER
 
 CoverageResult generateCoverage(const Polygon2D& boundary,
@@ -1283,7 +1783,8 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
         double effective_area_m2 = 0.0;
         std::string geom_error;
         if (!buildEffectiveCellsFromROIAndObstacles(
-                boundary, roi, obstacles, cells, effective_outer, effective_area_m2, geom_error)) {
+                boundary, roi, obstacles, cells, effective_outer, effective_area_m2, geom_error,
+                config.headland_width)) {
             result.error_message = geom_error;
             return result;
         }
@@ -1418,7 +1919,14 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                 route_planner.setStartAndEndPoint(
                     F2CPoint(config.start_point->x, config.start_point->y));
             }
+            // Use headland-cropped working area for routing so borders respect headland.
             F2CRoute f2c_route = route_planner.genRoute(working_area, swaths_by_cells_sorted);
+            auto route_line = f2c_route.asLineString();
+            // If the route is empty, fall back to the original cells (more permissive).
+            if (route_line.size() == 0 && working_area.size() != cells.size()) {
+                f2c_route = route_planner.genRoute(cells, swaths_by_cells_sorted);
+                route_line = f2c_route.asLineString();
+            }
             
             // Update swaths with sorted order
             result.swaths.clear();
@@ -1435,7 +1943,6 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
             }
             
             // Extract route waypoints
-            auto route_line = f2c_route.asLineString();
             for (size_t i = 0; i < route_line.size(); ++i) {
                 PathState state;
                 state.point = Point2D(route_line.getX(i), route_line.getY(i));
@@ -1445,30 +1952,21 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
             // Generate path
             reportProgress(70, "Generating path...");
             
-            // When obstacles are present, use axial turns because:
-            // 1. Dubins/smooth curves may cross obstacles during turns
-            // 2. Swaths already avoid obstacles (via interior rings)
-            // 3. Axial turns go directly between swath endpoints
-            bool use_axial = config.use_axial_turns || (obstacles && !obstacles->empty());
-            
-            if (use_axial) {
-                // For axial turns, use the route waypoints directly
-                // The route already contains the correct traversal order with proper
-                // direction for each swath (Boustrophedon alternates directions)
+            // Use path planner based on config
+            // "none" means straight lines (use route directly like axial turns)
+            const bool force_axial = config.use_axial_turns;
+            if (config.path_planner == "none" || force_axial) {
+                // Straight path - use route waypoints directly
                 if (!result.route.empty()) {
-                    // Route waypoints are already in correct order - use them as path
                     result.path = result.route;
-                    
                     // Calculate headings between consecutive waypoints
                     for (size_t i = 0; i < result.path.size(); ++i) {
                         double heading;
                         if (i + 1 < result.path.size()) {
-                            // Use direction to next point
                             double dx = result.path[i+1].point.x - result.path[i].point.x;
                             double dy = result.path[i+1].point.y - result.path[i].point.y;
                             heading = std::atan2(dy, dx);
                         } else if (i > 0) {
-                            // Last point - use same heading as arrival
                             heading = result.path[i-1].heading;
                         } else {
                             heading = 0;
@@ -1478,99 +1976,71 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                         result.path[i].vy = std::sin(heading);
                     }
                 } else {
-                    // Fallback: use stored swaths
                     result.path = swathsToAxialTurnPath(result.swaths);
                 }
             } else {
-                // Use path planner based on config
-                // "none" means straight lines (use route directly like axial turns)
-                if (config.path_planner == "none") {
-                    // Straight path - use route waypoints directly
-                    if (!result.route.empty()) {
-                        result.path = result.route;
-                        // Calculate headings between consecutive waypoints
-                        for (size_t i = 0; i < result.path.size(); ++i) {
-                            double heading;
-                            if (i + 1 < result.path.size()) {
-                                double dx = result.path[i+1].point.x - result.path[i].point.x;
-                                double dy = result.path[i+1].point.y - result.path[i].point.y;
-                                heading = std::atan2(dy, dx);
-                            } else if (i > 0) {
-                                heading = result.path[i-1].heading;
-                            } else {
-                                heading = 0;
-                            }
-                            result.path[i].heading = heading;
-                            result.path[i].vx = std::cos(heading);
-                            result.path[i].vy = std::sin(heading);
-                        }
+                // Use smooth curves (Dubins or Reeds-Shepp)
+                try {
+                    F2CRobot robot(config.swath_width, config.swath_width);
+                    robot.setMinTurningRadius(config.turn_radius);
+
+                    f2c::pp::PathPlanning pp;
+                    F2CPath f2c_path;
+
+                    // Select path planner based on config
+                    if (config.path_planner == "dubins") {
+                        f2c::pp::DubinsCurves planner;
+                        f2c_path = pp.planPath(robot, f2c_route, planner);
+                    } else if (config.path_planner == "dubins_cc") {
+                        f2c::pp::DubinsCurvesCC planner;
+                        f2c_path = pp.planPath(robot, f2c_route, planner);
+                    } else if (config.path_planner == "reeds") {
+                        f2c::pp::ReedsSheppCurves planner;
+                        f2c_path = pp.planPath(robot, f2c_route, planner);
+                    } else if (config.path_planner == "reeds_hc") {
+                        f2c::pp::ReedsSheppCurvesHC planner;
+                        f2c_path = pp.planPath(robot, f2c_route, planner);
                     } else {
-                        result.path = swathsToAxialTurnPath(result.swaths);
+                        // Default to Dubins
+                        f2c::pp::DubinsCurves planner;
+                        f2c_path = pp.planPath(robot, f2c_route, planner);
                     }
-                } else {
-                    // Use smooth curves (Dubins or Reeds-Shepp)
-                    try {
-                        F2CRobot robot(config.swath_width, config.swath_width);
-                        robot.setMinTurningRadius(config.turn_radius);
-                        
-                        f2c::pp::PathPlanning pp;
-                        F2CPath f2c_path;
-                        
-                        // Select path planner based on config
-                        if (config.path_planner == "dubins") {
-                            f2c::pp::DubinsCurves planner;
-                            f2c_path = pp.planPath(robot, f2c_route, planner);
-                        } else if (config.path_planner == "dubins_cc") {
-                            f2c::pp::DubinsCurvesCC planner;
-                            f2c_path = pp.planPath(robot, f2c_route, planner);
-                        } else if (config.path_planner == "reeds") {
-                            f2c::pp::ReedsSheppCurves planner;
-                            f2c_path = pp.planPath(robot, f2c_route, planner);
-                        } else if (config.path_planner == "reeds_hc") {
-                            f2c::pp::ReedsSheppCurvesHC planner;
-                            f2c_path = pp.planPath(robot, f2c_route, planner);
-                        } else {
-                            // Default to Dubins
-                            f2c::pp::DubinsCurves planner;
-                            f2c_path = pp.planPath(robot, f2c_route, planner);
-                        }
-                        
-                        // Extract path states from F2C path
-                        for (size_t i = 0; i < f2c_path.size(); ++i) {
-                            auto state = f2c_path.getState(i);
-                            PathState ps;
-                            ps.point = Point2D(state.point.getX(), state.point.getY());
-                            ps.heading = state.angle;
-                            ps.vx = std::cos(ps.heading);
-                            ps.vy = std::sin(ps.heading);
-                            result.path.push_back(ps);
-                        }
-                        
-                        // IMPORTANT: Ensure path ends at the last route waypoint
-                        // Smooth curve planners may not sample exactly at endpoints
-                        if (!result.path.empty() && !result.route.empty()) {
-                            const auto& last_route = result.route.back();
-                            const auto& last_path = result.path.back();
-                            double dx = last_route.point.x - last_path.point.x;
-                            double dy = last_route.point.y - last_path.point.y;
-                            double dist = std::sqrt(dx*dx + dy*dy);
-                            
-                            // If last path point differs from last route point by > 1cm, append it
-                            if (dist > 0.01) {
-                                PathState end_state;
-                                end_state.point = last_route.point;
-                                // Use heading from last path point
-                                end_state.heading = last_path.heading;
-                                end_state.vx = std::cos(end_state.heading);
-                                end_state.vy = std::sin(end_state.heading);
-                                result.path.push_back(end_state);
-                            }
-                        }
-                        
-                    } catch (const std::exception& e) {
-                        std::cerr << "Path planning warning: " << e.what() << std::endl;
-                        result.path = swathsToAxialTurnPath(result.swaths);
+
+                    // Extract path states from F2C path
+                    for (size_t i = 0; i < f2c_path.size(); ++i) {
+                        auto state = f2c_path.getState(i);
+                        PathState ps;
+                        ps.point = Point2D(state.point.getX(), state.point.getY());
+                        ps.heading = state.angle;
+                        ps.vx = std::cos(ps.heading);
+                        ps.vy = std::sin(ps.heading);
+                        result.path.push_back(ps);
                     }
+
+                    // IMPORTANT: Ensure path ends at the last route waypoint
+                    // Smooth curve planners may not sample exactly at endpoints
+                    if (!result.path.empty() && !result.route.empty()) {
+                        const auto& last_route = result.route.back();
+                        const auto& last_path = result.path.back();
+                        double dx = last_route.point.x - last_path.point.x;
+                        double dy = last_route.point.y - last_path.point.y;
+                        double dist = std::sqrt(dx*dx + dy*dy);
+
+                        // If last path point differs from last route point by > 1cm, append it
+                        if (dist > 0.01) {
+                            PathState end_state;
+                            end_state.point = last_route.point;
+                            // Use heading from last path point
+                            end_state.heading = last_path.heading;
+                            end_state.vx = std::cos(end_state.heading);
+                            end_state.vy = std::sin(end_state.heading);
+                            result.path.push_back(end_state);
+                        }
+                    }
+
+                } catch (const std::exception& e) {
+                    std::cerr << "Path planning warning: " << e.what() << std::endl;
+                    result.path = swathsToAxialTurnPath(result.swaths);
                 }
             }
 
@@ -1692,6 +2162,39 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
 }
 
 #endif // HAVE_FIELDS2COVER
+
+PathStateList planObstacleAvoidingPath(
+    const Point2D& start,
+    const Point2D& goal,
+    const Polygon2D& boundary,
+    const Polygon2D* roi,
+    const std::vector<Obstacle2D>* obstacles,
+    double waypoint_spacing,
+    double obstacle_clearance) {
+
+    BgMultiPolygon free_space;
+    Polygon2D primary_outer;
+    std::string error;
+    if (!buildEffectiveFreeSpace(boundary, roi, obstacles, free_space, primary_outer, error,
+                                 std::max(0.0, obstacle_clearance))) {
+        return {};
+    }
+
+    // Restrict to the connected island that contains the start position.
+    // This prevents paths from "jumping" across obstacles to other islands.
+    BgMultiPolygon start_island;
+    BgPoint bs(start.x, start.y);
+    for (const auto& poly : free_space) {
+        if (bg::covered_by(bs, poly)) {
+            start_island.push_back(poly);
+        }
+    }
+    if (start_island.empty()) {
+        return {};
+    }
+
+    return planObstacleAvoidingPathInternal(start, goal, start_island, waypoint_spacing);
+}
 
 // =============================================================================
 // Export Functions

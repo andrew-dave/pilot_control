@@ -235,6 +235,28 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                                 const std::vector<Obstacle2D>* obstacles = nullptr);
 
 /**
+ * @brief Plan an obstacle-avoiding path between two points using straight segments.
+ *
+ * The path minimizes the number of turns first, then total length (lexicographic).
+ * It operates in polygonal free space defined by boundary/ROI minus obstacles.
+ *
+ * @param start Start point (XY)
+ * @param goal Goal point (XY)
+ * @param boundary Main boundary polygon
+ * @param roi Optional region-of-interest polygon (restricts free space)
+ * @param obstacles Optional obstacles to avoid (treated as holes)
+ * @param waypoint_spacing Optional resampling spacing (0 to disable)
+ */
+PathStateList planObstacleAvoidingPath(
+    const Point2D& start,
+    const Point2D& goal,
+    const Polygon2D& boundary,
+    const Polygon2D* roi = nullptr,
+    const std::vector<Obstacle2D>* obstacles = nullptr,
+    double waypoint_spacing = 0.0,
+    double obstacle_clearance = 0.0);
+
+/**
  * @brief Generate swaths for axial-turn robots (direct swath corners)
  */
 PathStateList swathsToAxialTurnPath(const SwathList& swaths);

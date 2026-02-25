@@ -8,6 +8,7 @@
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
+  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/robot_registry.hpp \
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/teleop_widget.hpp \
   /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \

@@ -280,6 +280,32 @@ PathStateList dedupePathStates(const PathStateList& path) {
     return filtered;
 }
 
+static void dedupePathWithFlags(PathStateList& path, std::vector<int>& flags) {
+    if (path.size() != flags.size()) {
+        // Fallback: zero all flags if sizes are inconsistent.
+        flags.assign(path.size(), 0);
+    }
+    PathStateList filtered;
+    std::vector<int> filtered_flags;
+    filtered.reserve(path.size());
+    filtered_flags.reserve(path.size());
+    for (size_t i = 0; i < path.size(); ++i) {
+        const auto& state = path[i];
+        if (!filtered.empty()) {
+            double dx = state.point.x - filtered.back().point.x;
+            double dy = state.point.y - filtered.back().point.y;
+            if (std::fabs(dx) <= kWaypointDuplicateEpsilon &&
+                std::fabs(dy) <= kWaypointDuplicateEpsilon) {
+                continue;
+            }
+        }
+        filtered.push_back(state);
+        filtered_flags.push_back(flags[i]);
+    }
+    path = std::move(filtered);
+    flags = std::move(filtered_flags);
+}
+
 } // namespace
 
 // =============================================================================
@@ -1779,6 +1805,7 @@ void CoverageGUI::setupUI() {
     
     root_layout->addLayout(collapse_bar);
     root_layout->addWidget(main_splitter_, 1);
+    root_layout->addWidget(buildQuickActionsBar());
     
     setCentralWidget(central);
     
@@ -2950,6 +2977,23 @@ QWidget* CoverageGUI::buildF2CControls() {
     sep2->setFrameShape(QFrame::HLine);
     sep2->setFrameShadow(QFrame::Sunken);
     v->addWidget(sep2);
+
+    // Waypoint/DC options
+    chk_plan_to_first_ = new QCheckBox("Plan path to first point");
+    chk_plan_to_first_->setChecked(true);
+    chk_plan_to_first_->setToolTip(
+        "If enabled, compute an obstacle-avoiding connector from the robot\n"
+        "to the first waypoint (connector waypoints are tagged with DC=0)."
+    );
+    v->addWidget(chk_plan_to_first_);
+
+    chk_collect_data_ = new QCheckBox("Collect data");
+    chk_collect_data_->setChecked(true);
+    chk_collect_data_->setToolTip(
+        "If enabled, coverage path waypoints are tagged with DC=1 so the\n"
+        "autonomy controller will start data collection after reaching them."
+    );
+    v->addWidget(chk_collect_data_);
     
     // Generation buttons
     QPushButton* btn_swaths = new QPushButton("Generate Swaths");
@@ -3568,6 +3612,14 @@ QWidget* CoverageGUI::buildQuickActionsBar() {
     btn_quick_start_->setEnabled(false);
     connect(btn_quick_start_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
     layout->addWidget(btn_quick_start_);
+
+    btn_quick_home_ = new QPushButton("🏠 Home");
+    btn_quick_home_->setObjectName("btn_quick_home");
+    btn_quick_home_->setMinimumWidth(90);
+    btn_quick_home_->setMinimumHeight(36);
+    btn_quick_home_->setToolTip("Plan obstacle-avoiding path to origin (0,0)");
+    connect(btn_quick_home_, &QPushButton::clicked, this, &CoverageGUI::planHomePath);
+    layout->addWidget(btn_quick_home_);
     
     // Teleop button
     QPushButton* btn_teleop = new QPushButton("🎮 Teleop");
@@ -3622,6 +3674,16 @@ QWidget* CoverageGUI::buildQuickActionsBar() {
         }
         #btn_quick_start:disabled {
             background-color: #6c757d;
+        }
+        #btn_quick_home {
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #btn_quick_home:hover {
+            background-color: #138496;
         }
     )");
     
@@ -4663,12 +4725,54 @@ void CoverageGUI::generatePath() {
         } else {
             swaths_ = result.swaths;
             route_ = result.route;
-            path_ = result.path;
+            PathStateList final_path = result.path;
+            bool added_connector = false;
+            const bool plan_to_first = chk_plan_to_first_ ? chk_plan_to_first_->isChecked() : true;
+            if (plan_to_first && !final_path.empty()) {
+                std::optional<PathState> pose_copy;
+                {
+                    std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+                    pose_copy = robot_pose_state_;
+                }
+                if (pose_copy.has_value()) {
+                    const Point2D start = pose_copy->point;
+                    const Point2D goal = final_path.front().point;
+                    const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
+                    if (dist > 0.05) {
+                        PathStateList connector = computeObstacleAvoidingPath(start, goal);
+                        if (!connector.empty()) {
+                            const auto& last = connector.back().point;
+                            const auto& first = final_path.front().point;
+                            if (std::hypot(last.x - first.x, last.y - first.y) < 1e-6) {
+                                final_path.erase(final_path.begin());
+                            }
+                            PathStateList combined = connector;
+                            combined.insert(combined.end(), final_path.begin(), final_path.end());
+                            final_path = dedupePathStates(combined);
+                            added_connector = true;
+                        } else {
+                            QMessageBox::warning(
+                                this, "Connector Failed",
+                                "Failed to plan a connector to the first waypoint.\n"
+                                "Showing the coverage path only.");
+                        }
+                    }
+                } else {
+                    QMessageBox::warning(
+                        this, "No Robot Pose",
+                        "Robot pose not available; cannot plan connector to first waypoint.");
+                }
+            }
+            path_ = final_path;
             effective_area_m2_ = result.effective_area_m2;
             syncPlannedPathCache();
             refreshPlot();
             updateCoverageStats();  // Update statistics after path generation
-            setStatus(QString("Generated path with %1 states").arg(path_.size()), 4000);
+            if (added_connector) {
+                setStatus(QString("Generated path with %1 states (incl. connector)").arg(path_.size()), 4000);
+            } else {
+                setStatus(QString("Generated path with %1 states").arg(path_.size()), 4000);
+            }
             // Auto-refresh scan segments if user has a distance set
             if (spin_scan_len_) {
                 generateScanSegments();
@@ -5009,7 +5113,8 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                                robot_trail_.back().y - state.point.y) > 0.03) {
                     robot_trail_.push_back(state.point);
                     robot_trail_states_.push_back(state);
-                    if (robot_trail_.size() > robot_trail_max_points_) {
+                    if (robot_trail_max_points_ > 0 &&
+                        robot_trail_.size() > robot_trail_max_points_) {
                         const size_t remove_n = robot_trail_.size() - robot_trail_max_points_;
                         robot_trail_.erase(robot_trail_.begin(), robot_trail_.begin() + remove_n);
                         if (robot_trail_states_.size() >= remove_n) {
@@ -5081,6 +5186,7 @@ void CoverageGUI::publishWaypoints() {
     }
     // Build export path (custom vs planned)
     PathStateList export_path;
+    std::vector<int> export_flags;
     QString mode_label;
 
     if (isCustomModeActive()) {
@@ -5098,6 +5204,7 @@ void CoverageGUI::publishWaypoints() {
             export_path.push_back(ps);
         }
         mode_label = "custom";
+        export_flags.assign(export_path.size(), 0);
 
         // Reset visited status for tracking
         custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
@@ -5109,15 +5216,57 @@ void CoverageGUI::publishWaypoints() {
         }
         export_path = dedupePathStates(path_);
         mode_label = "planned";
+        const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+        export_flags.assign(export_path.size(), collect_data ? 1 : 0);
     }
 
-    export_path = dedupePathStates(export_path);
+    dedupePathWithFlags(export_path, export_flags);
+
+    // If we're in planned mode, prepend a connector from current pose to first waypoint
+    const bool plan_to_first = chk_plan_to_first_ ? chk_plan_to_first_->isChecked() : true;
+    if (!isCustomModeActive() && plan_to_first && !export_path.empty()) {
+        std::optional<PathState> pose_copy;
+        {
+            std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+            pose_copy = robot_pose_state_;
+        }
+        if (pose_copy.has_value() && !polygon_.empty()) {
+            const Point2D start = pose_copy->point;
+            const Point2D goal = export_path.front().point;
+            const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
+            if (dist > 0.05) {
+                PathStateList connector = computeObstacleAvoidingPath(start, goal);
+                if (!connector.empty()) {
+                    if (!connector.empty() && !export_path.empty()) {
+                        const auto& last = connector.back().point;
+                        const auto& first = export_path.front().point;
+                        if (std::hypot(last.x - first.x, last.y - first.y) < 1e-6) {
+                            export_path.erase(export_path.begin());
+                            if (!export_flags.empty()) {
+                                export_flags.erase(export_flags.begin());
+                            }
+                        }
+                    }
+                    std::vector<int> combined_flags(connector.size(), 0);
+                    combined_flags.insert(combined_flags.end(), export_flags.begin(), export_flags.end());
+
+                    PathStateList combined = connector;
+                    combined.insert(combined.end(), export_path.begin(), export_path.end());
+                    export_path = std::move(combined);
+                    export_flags = std::move(combined_flags);
+                    dedupePathWithFlags(export_path, export_flags);
+                }
+            }
+        }
+    }
 
     std_msgs::msg::Float64MultiArray msg;
-    msg.data.reserve(export_path.size() * 2);
-    for (const auto& state : export_path) {
-        msg.data.push_back(state.point.x);
-        msg.data.push_back(state.point.y);
+    msg.data.reserve(export_path.size() * 3);
+    for (size_t i = 0; i < export_path.size(); ++i) {
+        msg.data.push_back(export_path[i].point.x);
+        msg.data.push_back(export_path[i].point.y);
+        int flag = (i < export_flags.size()) ? export_flags[i] : 0;
+        msg.data.push_back(static_cast<double>(flag));
     }
     waypoint_pub_->publish(msg);
     waypoints_published_ = true;
@@ -5125,6 +5274,69 @@ void CoverageGUI::publishWaypoints() {
     setStatus(QString("📡 Published %1 %2 waypoints").arg(export_path.size()).arg(mode_label), 5000);
     if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
     if (btn_quick_start_) btn_quick_start_->setEnabled(true);
+}
+
+void CoverageGUI::planHomePath() {
+    std::optional<PathState> pose_copy;
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        pose_copy = robot_pose_state_;
+    }
+    if (!pose_copy.has_value()) {
+        QMessageBox::warning(this, "No Robot Pose", "Robot pose not available yet.");
+        return;
+    }
+    if (polygon_.empty()) {
+        QMessageBox::warning(this, "No Map", "Compute hull first (boundary is required).");
+        return;
+    }
+
+    const Point2D start = pose_copy->point;
+    const Point2D goal{0.0, 0.0};
+
+    const double headland = spin_headland_ ? spin_headland_->value() : 0.0;
+    const double step = std::max(0.02, headland / 10.0);
+    PathStateList home_path;
+    double used_clearance = headland;
+    bool found = false;
+
+    for (double clearance = headland; clearance >= -1e-9; clearance -= step) {
+        if (clearance < 0.0) {
+            clearance = 0.0;
+        }
+        home_path = computeObstacleAvoidingPath(start, goal, -1.0, clearance);
+        if (!home_path.empty()) {
+            used_clearance = clearance;
+            found = true;
+            break;
+        }
+        if (clearance <= 0.0) {
+            break;
+        }
+    }
+
+    if (!found) {
+        QMessageBox::warning(this, "Home Path", "Failed to generate a valid path to origin.");
+        return;
+    }
+
+    clearCoverage();
+    path_ = home_path;
+    syncPlannedPathCache();
+    updateCoverageStats();
+    refreshPlot();
+    if (used_clearance + 1e-6 < headland) {
+        setStatus(QString("Home path generated (%1 points, clearance %2 m; reduced from %3 m)")
+                      .arg(path_.size())
+                      .arg(used_clearance, 0, 'f', 2)
+                      .arg(headland, 0, 'f', 2),
+                  6000);
+    } else {
+        setStatus(QString("Home path generated (%1 points, clearance %2 m)")
+                      .arg(path_.size())
+                      .arg(used_clearance, 0, 'f', 2),
+                  6000);
+    }
 }
 
 void CoverageGUI::publishCustomPath() {
@@ -6086,6 +6298,25 @@ void CoverageGUI::rebuildLiveOverlay() {
     }
     auto lines = buildLiveOverlayLines(*last_live_snapshot_);
     plot_->setLiveOverlay(enabled && !lines.empty(), lines);
+}
+
+PathStateList CoverageGUI::computeObstacleAvoidingPath(
+    const Point2D& start,
+    const Point2D& goal,
+    double spacing_override,
+    double clearance_override) const {
+    if (polygon_.empty()) {
+        return {};
+    }
+    const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
+    const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
+    const double spacing = (spacing_override >= 0.0)
+        ? spacing_override
+        : (spin_waypoint_spacing_ ? spin_waypoint_spacing_->value() : 0.0);
+    const double clearance = (clearance_override >= 0.0)
+        ? clearance_override
+        : (spin_headland_ ? spin_headland_->value() : 0.0);
+    return planObstacleAvoidingPath(start, goal, polygon_, roi_ptr, obs_ptr, spacing, clearance);
 }
 
 // =============================================================================

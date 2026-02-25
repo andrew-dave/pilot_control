@@ -1127,13 +1127,14 @@ class MPCAccelController(Node):
         self.path_initialized = False
 
         # Waypoint sequence state (CSV / F2C waypoints)
-        self.waypoints: List[Tuple[float, float]] = []
+        # Format: (x, y, dc_flag) where dc_flag is 0 or 1.
+        self.waypoints: List[Tuple[float, float, int]] = []
         self.current_waypoint_index: int = 0
         self.waypoint_navigation_active: bool = False
         self.previous_waypoint: Optional[Tuple[float, float]] = None
 
         # Pending waypoints received from F2C GUI (until "Start Navigation" pressed)
-        self.pending_waypoints: List[Tuple[float, float]] = []
+        self.pending_waypoints: List[Tuple[float, float, int]] = []
 
         # Heartbeat safety state
         # Tracks the last time we received a heartbeat from host_teleop (Zenoh bridge connection)
@@ -1254,16 +1255,10 @@ class MPCAccelController(Node):
                 "⚠️  Heartbeat safety monitoring DISABLED - robot will operate without connection check"
             )
 
-        # Log auto-DC status
-        if self.auto_dc_enabled:
-            self.get_logger().info(
-                f"✓ Autonomous data collection ENABLED "
-                f"(start_delay={self.auto_dc_start_delay:.1f}s, end_delay={self.auto_dc_end_delay:.1f}s)")
-            self.get_logger().info(
-                "  Toggle at runtime via: ros2 topic pub /mpc_auto_dc_enable std_msgs/Bool '{data: true}'")
-        else:
-            self.get_logger().info(
-                "  Autonomous data collection DISABLED (enable via /mpc_auto_dc_enable)")
+        # Log auto-DC status (tag-based control)
+        self.get_logger().info(
+            f"✓ Autonomous data collection uses per-waypoint tags "
+            f"(start_delay={self.auto_dc_start_delay:.1f}s, end_delay={self.auto_dc_end_delay:.1f}s)")
 
         # Publishers
         self.left_pub = self.create_publisher(ControlMessage, left_ctrl_topic, 10)
@@ -1300,7 +1295,7 @@ class MPCAccelController(Node):
         self.dc_resume_client = self.create_client(Trigger, "/dc/resume")
         self.dc_end_save_client = self.create_client(SetBool, "/dc/end_and_save")
 
-        # Auto-DC enable/disable subscriber (disabled by default)
+        # Auto-DC enable/disable subscriber (legacy toggle; tags now control DC)
         self.auto_dc_enable_sub = self.create_subscription(
             Bool,
             "/mpc_auto_dc_enable",
@@ -1525,12 +1520,12 @@ class MPCAccelController(Node):
     # Waypoint helpers (CSV + F2C)
     # -----------------------------
 
-    def _load_waypoints_from_csv(self, csv_file_path: str) -> List[Tuple[float, float]]:
+    def _load_waypoints_from_csv(self, csv_file_path: str) -> List[Tuple[float, float, int]]:
         """
         Load a list of (x, y) waypoints from a CSV file.
         CSV format: x,y per row (header row is allowed and skipped).
         """
-        waypoints: List[Tuple[float, float]] = []
+        waypoints: List[Tuple[float, float, int]] = []
         try:
             with open(csv_file_path, "r", newline="") as csvfile:
                 reader = csv.reader(csvfile)
@@ -1540,7 +1535,7 @@ class MPCAccelController(Node):
                     try:
                         x = float(row[0].strip())
                         y = float(row[1].strip())
-                        waypoints.append((x, y))
+                        waypoints.append((x, y, 0))
                     except (ValueError, IndexError):
                         if row_num == 0 and any(
                             keyword in " ".join(row).lower()
@@ -1583,7 +1578,7 @@ class MPCAccelController(Node):
             self.has_target = False
             return
 
-        wp_x, wp_y = self.waypoints[self.current_waypoint_index]
+        wp_x, wp_y, _ = self.waypoints[self.current_waypoint_index]
         self.target_x = float(wp_x)
         self.target_y = float(wp_y)
 
@@ -1665,7 +1660,9 @@ class MPCAccelController(Node):
     def f2c_waypoint_array_callback(self, msg: Float64MultiArray) -> None:
         """
         Callback for waypoint arrays from F2C GUI.
-        Format: [x1, y1, x2, y2, ...] (pairs of x,y coordinates)
+        Format:
+          - Triples: [x1, y1, dc1, x2, y2, dc2, ...]
+          - Legacy pairs: [x1, y1, x2, y2, ...] (dc flag defaults to 0)
 
         Behavior:
           - When receiving waypoint list: Store in pending_waypoints (don't start yet)
@@ -1683,25 +1680,31 @@ class MPCAccelController(Node):
                 self._start_pending_navigation()
                 return
 
-            if len(data) % 2 != 0:
+            waypoints_xyz: List[Tuple[float, float, int]] = []
+            if len(data) % 3 == 0:
+                num_waypoints = len(data) // 3
+                for i in range(0, len(data), 3):
+                    x, y, dc = data[i], data[i + 1], data[i + 2]
+                    dc_flag = 1 if float(dc) >= 0.5 else 0
+                    waypoints_xyz.append((float(x), float(y), dc_flag))
+            elif len(data) % 2 == 0:
+                num_waypoints = len(data) // 2
+                for i in range(0, len(data), 2):
+                    x, y = data[i], data[i + 1]
+                    waypoints_xyz.append((float(x), float(y), 0))
+            else:
                 self.get_logger().error(
-                    f"/f2c_waypoints length {len(data)} not divisible by 2; "
-                    f"expected [x1,y1, x2,y2, ...]"
+                    f"/f2c_waypoints length {len(data)} is not divisible by 2 or 3; "
+                    f"expected [x,y] pairs or [x,y,dc] triples"
                 )
                 return
 
-            num_waypoints = len(data) // 2
-            waypoints_xy: List[Tuple[float, float]] = []
-            for i in range(0, len(data), 2):
-                x, y = data[i], data[i + 1]
-                waypoints_xy.append((float(x), float(y)))
-
-            if not waypoints_xy:
+            if not waypoints_xyz:
                 self.get_logger().error("Parsed zero waypoints from /f2c_waypoints")
                 return
 
             # Store waypoints as pending (don't start navigation yet)
-            self.pending_waypoints = waypoints_xy
+            self.pending_waypoints = waypoints_xyz
 
             self.get_logger().info("")
             self.get_logger().info(
@@ -1722,8 +1725,8 @@ class MPCAccelController(Node):
             self.get_logger().info("")
 
             # Log first few waypoints for verification
-            for idx, (x, y) in enumerate(waypoints_xy[:5]):
-                self.get_logger().info(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}")
+            for idx, (x, y, dc) in enumerate(waypoints_xyz[:5]):
+                self.get_logger().info(f"  Waypoint {idx+1}: x={x:.2f}, y={y:.2f}, dc={dc}")
             if num_waypoints > 5:
                 self.get_logger().info(
                     f"  ... and {num_waypoints - 5} more waypoints"
@@ -1790,10 +1793,12 @@ class MPCAccelController(Node):
         self.get_logger().info(f"MPC autonomy {state} via /mpc_autonomy_enable")
 
     def _auto_dc_enable_callback(self, msg: Bool) -> None:
-        """Enable/disable autonomous data collection via /mpc_auto_dc_enable topic."""
+        """Legacy toggle; per-waypoint DC tags control collection now."""
         self.auto_dc_enabled = bool(msg.data)
         state = "ENABLED" if self.auto_dc_enabled else "DISABLED"
-        self.get_logger().info(f"Autonomous data collection {state} via /mpc_auto_dc_enable")
+        self.get_logger().info(
+            f"Legacy /mpc_auto_dc_enable {state} (per-waypoint tags still control DC)"
+        )
 
     # ----------------------------------------------------------------
     #  Autonomous Data Collection helpers
@@ -1880,7 +1885,7 @@ class MPCAccelController(Node):
             self.autonomy_enabled = True
             self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
 
-    def _dc_end_sequence(self):
+    def _dc_end_sequence(self, reenable_autonomy: bool = False):
         """
         Background thread: wait, then end and save data collection (complete).
         Called when the robot reaches the last waypoint in a set.
@@ -1903,6 +1908,10 @@ class MPCAccelController(Node):
             self.dc_active = False
             self.get_logger().info('AUTO-DC: Data collection ended and saved')
 
+            if reenable_autonomy:
+                self.autonomy_enabled = True
+                self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+
     def heartbeat_callback(self, msg: EmptyMsg) -> None:
         """
         Heartbeat callback from host_teleop via Zenoh bridge.
@@ -1920,7 +1929,7 @@ class MPCAccelController(Node):
                 "✓ Heartbeat RECOVERED - Zenoh bridge connection restored"
             )
             # Resume DC if it was paused by heartbeat loss
-            if self.auto_dc_enabled and self.dc_active and self.dc_paused_by_heartbeat:
+            if self.dc_active and self.dc_paused_by_heartbeat:
                 self.get_logger().info('AUTO-DC: Resuming data collection after heartbeat recovery')
                 self._call_dc_service_async(
                     self.dc_resume_client, Trigger.Request(), '/dc/resume')
@@ -1964,7 +1973,7 @@ class MPCAccelController(Node):
                     "🛑 SAFETY STOP: Sending zero velocities until heartbeat recovers"
                 )
                 # Pause DC on heartbeat loss
-                if self.auto_dc_enabled and self.dc_active and not self.dc_paused_by_heartbeat:
+                if self.dc_active and not self.dc_paused_by_heartbeat:
                     self.get_logger().info('AUTO-DC: Pausing data collection due to heartbeat loss')
                     self._call_dc_service_async(
                         self.dc_pause_client, Trigger.Request(), '/dc/pause')
@@ -2043,21 +2052,21 @@ class MPCAccelController(Node):
                     f"✅ Waypoint {self.current_waypoint_index + 1}/{len(self.waypoints)} "
                     f"reached at x={self.current_x:.3f}m, y={self.current_y:.3f}m"
                 )
-
-                # AUTO-DC: On reaching the FIRST waypoint, start data collection
-                if self.auto_dc_enabled and self.current_waypoint_index == 0:
-                    self.get_logger().info(
-                        'AUTO-DC: First waypoint reached — stopping robot to start DC')
+                # Per-waypoint DC tag: apply after reaching this waypoint
+                _, _, dc_flag = self.waypoints[self.current_waypoint_index]
+                if dc_flag == 1 and not self.dc_active:
+                    self.get_logger().info('AUTO-DC: Tag=1 — starting data collection')
                     self.autonomy_enabled = False
                     self.send_zero_velocity()
-                    # Advance index so the robot targets waypoint 2 when autonomy resumes
-                    self.previous_waypoint = (self.target_x, self.target_y)
-                    self.current_waypoint_index += 1
-                    self.has_target = False
-                    # Background thread: start DC, wait, re-enable autonomy
                     threading.Thread(
                         target=self._dc_start_sequence, daemon=True).start()
-                    return
+                elif dc_flag == 0 and self.dc_active:
+                    self.get_logger().info('AUTO-DC: Tag=0 — stopping data collection')
+                    self.autonomy_enabled = False
+                    self.send_zero_velocity()
+                    threading.Thread(
+                        target=self._dc_end_sequence, kwargs={"reenable_autonomy": True}, daemon=True
+                    ).start()
 
                 # Update previous waypoint and advance index
                 self.previous_waypoint = (self.target_x, self.target_y)
@@ -2078,10 +2087,10 @@ class MPCAccelController(Node):
                     f"(threshold: {self.target_reached_threshold:.3f} m)"
                 )
 
-                # AUTO-DC: On reaching the LAST waypoint, end and save DC
-                if self.auto_dc_enabled and self.dc_active:
+                # Final waypoint: ensure DC ends and saves if active.
+                if self.dc_active:
                     self.get_logger().info(
-                        'AUTO-DC: Last waypoint reached — will end DC shortly')
+                        'AUTO-DC: Final waypoint reached — ending DC shortly')
                     threading.Thread(
                         target=self._dc_end_sequence, daemon=True).start()
 

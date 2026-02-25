@@ -1801,9 +1801,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/boost/mpl/aux_/fold_impl.hpp \
  /usr/include/boost/mpl/aux_/preprocessed/gcc/fold_impl.hpp \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/obstacle_detector.hpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/robot_registry.hpp \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonObject \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QStringList \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QDateTime \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet /usr/include/c++/11/deque \
@@ -1821,7 +1824,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGridLayout \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qgridlayout.h \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_manager.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonObject \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/preset_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QInputDialog \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qinputdialog.h \
@@ -1884,7 +1886,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkrequest.h \
  /usr/include/x86_64-linux-gnu/qt5/QtNetwork/QNetworkAccessManager \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/network_monitor.hpp \
- /usr/include/x86_64-linux-gnu/qt5/QtCore/QList \
  /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/scan_session_tracker.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QMap \
  /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/nav_sat_fix.hpp \
@@ -1915,7 +1916,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QStandardPaths \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSignalBlocker \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QRegularExpression \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/QRegularExpressionValidator \
+ /usr/include/x86_64-linux-gnu/qt5/QtGui/qvalidator.h \
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QJsonDocument \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStyleFactory \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qstylefactory.h \
  /usr/include/c++/11/fstream \

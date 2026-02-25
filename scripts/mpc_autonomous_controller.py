@@ -1904,7 +1904,9 @@ class MPCAutonomousController(Node):
     def f2c_waypoint_array_callback(self, msg: Float64MultiArray) -> None:
         """
         Callback for waypoint arrays from F2C GUI.
-        Format: [x1, y1, x2, y2, ...] (pairs of x,y coordinates)
+        Format:
+          - Triples: [x1, y1, dc1, x2, y2, dc2, ...]
+          - Legacy pairs: [x1, y1, x2, y2, ...] (dc flag ignored)
         
         Behavior:
           - When receiving waypoint list: Store in pending_waypoints (don't start yet)
@@ -1922,17 +1924,23 @@ class MPCAutonomousController(Node):
                 self._start_pending_navigation()
                 return
 
-            if len(data) % 2 != 0:
+            waypoints_xy: List[Tuple[float, float]] = []
+            if len(data) % 3 == 0:
+                num_waypoints = len(data) // 3
+                for i in range(0, len(data), 3):
+                    x, y = data[i], data[i + 1]
+                    waypoints_xy.append((float(x), float(y)))
+            elif len(data) % 2 == 0:
+                num_waypoints = len(data) // 2
+                for i in range(0, len(data), 2):
+                    x, y = data[i], data[i + 1]
+                    waypoints_xy.append((float(x), float(y)))
+            else:
                 self.get_logger().error(
-                    f'/f2c_waypoints length {len(data)} not divisible by 2; expected [x1,y1, x2,y2, ...]'
+                    f'/f2c_waypoints length {len(data)} not divisible by 2 or 3; '
+                    f'expected [x1,y1] pairs or [x1,y1,dc] triples'
                 )
                 return
-
-            num_waypoints = len(data) // 2
-            waypoints_xy: List[Tuple[float, float]] = []
-            for i in range(0, len(data), 2):
-                x, y = data[i], data[i+1]
-                waypoints_xy.append((float(x), float(y)))
 
             if not waypoints_xy:
                 self.get_logger().error('Parsed zero waypoints from /f2c_waypoints')

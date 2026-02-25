@@ -48,8 +48,8 @@ struct ObstacleDetectionParams {
     double outlier_std = 1.5;
 
     // Clustering
-    double cluster_eps_m = 0.08;
-    int cluster_min_pts = 8;
+    double cluster_eps_m = 0.07;
+    int cluster_min_pts = 10;
 
     // Polygonization / chaining (defaults match current Python script)
     ObstaclePolygonMode polygon_mode = ObstaclePolygonMode::Grid;
@@ -76,9 +76,9 @@ struct ObstacleDetectionParams {
     double micro_max_span_m = 0.01;
     double micro_min_size_m = 0.01;
     double micro_margin_m = 0.002;
-    int micro_min_pts = 20;
+    int micro_min_pts = 22;
     double micro_min_density_pts_per_m2 = 200000.0;
-    double micro_noise_eps_m = 0.02;
+    double micro_noise_eps_m = 0.025;
 };
 
 struct ObstacleDetectionStats {

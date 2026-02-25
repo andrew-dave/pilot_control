@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <deque>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <numeric>
@@ -1165,12 +1166,21 @@ ObstacleDetectionResult detectObstaclesAuto(
             params.ground_z_max);
         if (fp_ground->size() < 10) {
             // Fallback: z-threshold
+            std::cout << "[ObstacleDetect] Ground: footprint sample too small ("
+                      << fp_ground->size() << "), falling back to z-threshold (z <= "
+                      << params.ground_z_max << ")\n";
             fp_ground->clear();
             for (const auto& pt : scoped_cloud->points) {
                 if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
             }
+        } else {
+            std::cout << "[ObstacleDetect] Ground: using footprint path (poses="
+                      << path.size() << ", points=" << fp_ground->size()
+                      << ", z_max=" << params.ground_z_max << ")\n";
         }
     } else {
+        std::cout << "[ObstacleDetect] Ground: no path provided, using z-threshold (z <= "
+                  << params.ground_z_max << ")\n";
         for (const auto& pt : scoped_cloud->points) {
             if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
         }
@@ -1179,11 +1189,16 @@ ObstacleDetectionResult detectObstaclesAuto(
 
     PlaneModel plane;
     if (fp_ground->size() < 20) {
+        std::cout << "[ObstacleDetect] Ground: using median-Z flat plane (n="
+                  << fp_ground->size() << ")\n";
         plane.nx = 0.0;
         plane.ny = 0.0;
         plane.nz = 1.0;
         plane.d = -medianZ(fp_ground);
     } else {
+        std::cout << "[ObstacleDetect] Ground: fitting RANSAC plane (n="
+                  << fp_ground->size() << ", iters=" << params.ransac_iters
+                  << ", thresh=" << params.ransac_thresh_m << ")\n";
         plane = fitPlaneRansac(fp_ground, params.ransac_iters, params.ransac_thresh_m);
     }
     res.stats.plane_nx = plane.nx;

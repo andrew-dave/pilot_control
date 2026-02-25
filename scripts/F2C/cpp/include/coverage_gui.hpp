@@ -353,6 +353,7 @@ private slots:
     void exportPathCSV();
     void publishWaypoints();
     void startNavigation();
+    void planHomePath();
     void clearRobotTrail();
     void onPathModeChanged();
     
@@ -388,6 +389,11 @@ private slots:
     // Coverage statistics
     void updateCoverageStats();
     CoverageStats computeStats() const;
+    PathStateList computeObstacleAvoidingPath(
+        const Point2D& start,
+        const Point2D& goal,
+        double spacing_override = -1.0,
+        double clearance_override = -1.0) const;
     
     // Workflow steps
     void updateWorkflowSteps();
@@ -634,6 +640,8 @@ private:
     QComboBox* combo_decomp_type_;
     QCheckBox* chk_axial_turns_;
     QDoubleSpinBox* spin_waypoint_spacing_ = nullptr;
+    QCheckBox* chk_plan_to_first_ = nullptr;
+    QCheckBox* chk_collect_data_ = nullptr;
     
     // Preset controls
     PresetManager* preset_manager_ = nullptr;
@@ -721,7 +729,7 @@ private:
     std::vector<Point2D> robot_trail_;
     std::vector<PathState> robot_trail_states_;
     std::vector<PathState> driven_path_snapshot_;
-    size_t robot_trail_max_points_ = 5000;
+    size_t robot_trail_max_points_ = 0;  // 0 = unlimited trail
     std::chrono::steady_clock::time_point last_robot_update_;
     QString robot_odom_topic_ = "/Odometry_tilt_corrected_diff";
     double robot_marker_size_m_ = 0.6;
@@ -816,6 +824,7 @@ private:
     QPushButton* btn_quick_generate_ = nullptr;
     QPushButton* btn_quick_publish_ = nullptr;
     QPushButton* btn_quick_start_ = nullptr;
+    QPushButton* btn_quick_home_ = nullptr;
     QLabel* lbl_quick_status_ = nullptr;
     
     // Collapsible sections (QToolBox)
