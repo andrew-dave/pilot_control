@@ -463,7 +463,7 @@ class TiltCalibration(Node):
         self.get_logger().info('='*60)
 
         self.calibration_success = True
-        rclpy.shutdown()
+        raise SystemExit  # Cleanly breaks out of the rclpy.spin() loop
 
     # ---------------- Save calibration ----------------
     def _save_calibration(self, R_map, R_align, R_flip, a_body, pitch_angle):
@@ -581,23 +581,27 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info('Calibration interrupted by user')
+    except SystemExit:
+        pass  # This is our clean exit signal from compute_calibration
     finally:
-        # Clean up
+        # 1. Save the success state
         calibration_success = node.calibration_success
-        node.destroy_node()
-        
-        # Stop LiDAR driver if we started it
+
+        # 2. Safely shut down ROS 2 context
+        if rclpy.ok():
+            node.destroy_node()
+            rclpy.shutdown()
+
+        # 3. Stop LiDAR driver subprocess to release the terminal
         if lidar_manager:
             lidar_manager.stop()
-        
-        rclpy.shutdown()
-        
+
+        # 4. Exit with the correct OS code for the Qt QProcess
         if not calibration_success:
-            print('')
-            print('[ERROR] Calibration failed or was interrupted')
+            print('\n[ERROR] Calibration failed or was interrupted')
             sys.exit(1)
-        
-        sys.exit(0)
+        else:
+            sys.exit(0)
 
 
 if __name__ == '__main__':
