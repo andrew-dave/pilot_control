@@ -991,6 +991,8 @@ class MPCAccelController(Node):
         # Autonomy / behavior flags
         self.declare_parameter("mpc_autonomy_enabled_default", False)
         self.declare_parameter("enable_yaw_gating", False)
+        self.declare_parameter("enable_turn_only_before_waypoint", True)
+        self.declare_parameter("turn_only_yaw_threshold_deg", 5.0)
 
         # Topic parameters
         self.declare_parameter("odometry_topic", "/Odometry_tilt_corrected_diff")
@@ -1067,6 +1069,12 @@ class MPCAccelController(Node):
         self.enable_yaw_gating: bool = bool(
             self.get_parameter("enable_yaw_gating").value
         )
+        self.enable_turn_only_before_waypoint: bool = bool(
+            self.get_parameter("enable_turn_only_before_waypoint").value
+        )
+        self.turn_only_yaw_threshold: float = math.radians(
+            float(self.get_parameter("turn_only_yaw_threshold_deg").value)
+        )
 
         # Topic names
         odom_topic = str(self.get_parameter("odometry_topic").value)
@@ -1135,6 +1143,9 @@ class MPCAccelController(Node):
 
         # Pending waypoints received from F2C GUI (until "Start Navigation" pressed)
         self.pending_waypoints: List[Tuple[float, float, int]] = []
+        self.yaw_align_active: bool = False
+        self.segment_target_x: float = 0.0
+        self.segment_target_y: float = 0.0
 
         # Heartbeat safety state
         # Tracks the last time we received a heartbeat from host_teleop (Zenoh bridge connection)
@@ -1371,6 +1382,7 @@ class MPCAccelController(Node):
         # Manual target pose clears any active waypoint navigation
         self.waypoint_navigation_active = False
         self.pending_waypoints = []
+        self.yaw_align_active = False
 
         self.target_x = float(data[0])
         self.target_y = float(data[1])
@@ -1579,8 +1591,10 @@ class MPCAccelController(Node):
             return
 
         wp_x, wp_y, _ = self.waypoints[self.current_waypoint_index]
-        self.target_x = float(wp_x)
-        self.target_y = float(wp_y)
+        self.segment_target_x = float(wp_x)
+        self.segment_target_y = float(wp_y)
+        self.target_x = self.segment_target_x
+        self.target_y = self.segment_target_y
 
         # Compute target yaw based on previous waypoint if available
         if self.previous_waypoint is not None:
@@ -1591,12 +1605,33 @@ class MPCAccelController(Node):
             # First waypoint: use current yaw as target yaw
             self.target_yaw = self.current_yaw
 
+        # Optional pre-turn phase with MPC yaw-only alignment.
+        if self.enable_turn_only_before_waypoint:
+            yaw_err = self.normalize_angle(self.target_yaw - self.current_yaw)
+            if abs(yaw_err) > self.turn_only_yaw_threshold:
+                self.yaw_align_active = True
+                # Degenerate path at current pose (no translation target).
+                self.target_x = self.current_x
+                self.target_y = self.current_y
+                self.path_start_x = self.current_x
+                self.path_start_y = self.current_y
+                self.path_start_yaw = self.current_yaw
+                self.path_initialized = True
+                self.has_target = True
+                self.target_reached = False
+                self.get_logger().info(
+                    f"↻ Yaw-align phase before waypoint {self.current_waypoint_index + 1}/"
+                    f"{len(self.waypoints)}: yaw_err={math.degrees(yaw_err):.1f}°"
+                )
+                return
+
         # Initialize path start at current pose for straight-line control
         self.path_start_x = self.current_x
         self.path_start_y = self.current_y
         self.path_start_yaw = self.current_yaw
         self.path_initialized = True
 
+        self.yaw_align_active = False
         self.has_target = True
         self.target_reached = False
 
@@ -1642,6 +1677,7 @@ class MPCAccelController(Node):
             self.waypoints = waypoints
             self.current_waypoint_index = 0
             self.waypoint_navigation_active = True
+            self.yaw_align_active = False
 
             # For first waypoint, use current position as previous waypoint so
             # the target yaw is along the line from current pose to first waypoint
@@ -1757,6 +1793,7 @@ class MPCAccelController(Node):
         self.pending_waypoints = []  # Clear pending
         self.current_waypoint_index = 0
         self.waypoint_navigation_active = True
+        self.yaw_align_active = False
         self.previous_waypoint = (self.current_x, self.current_y)
 
         # Start navigation to first waypoint
@@ -1781,6 +1818,98 @@ class MPCAccelController(Node):
             "╚═══════════════════════════════════════════════════════╝"
         )
         self.get_logger().info("")
+
+    def _activate_translation_after_yaw_align(self) -> None:
+        """Switch from yaw-only phase to normal translation for current waypoint."""
+        self.target_x = self.segment_target_x
+        self.target_y = self.segment_target_y
+        self.path_start_x = self.current_x
+        self.path_start_y = self.current_y
+        self.path_start_yaw = self.current_yaw
+        self.path_initialized = True
+        self.yaw_align_active = False
+        self.has_target = True
+        self.target_reached = False
+        self.v_cmd = 0.0
+        self.omega_cmd = 0.0
+        self.mpc.v_min = -self.max_linear_vel
+        self.mpc.v_max = self.max_linear_vel
+
+    def _run_yaw_align_mpc(self) -> bool:
+        """
+        Run yaw-only alignment using MPC.
+        Returns True when handled for this cycle.
+        """
+        yaw_err = self.normalize_angle(self.target_yaw - self.current_yaw)
+        if abs(yaw_err) <= self.turn_only_yaw_threshold:
+            self.send_zero_velocity()
+            self._activate_translation_after_yaw_align()
+            self.get_logger().info(
+                f"✓ Yaw align complete: yaw_err={math.degrees(yaw_err):.2f}°"
+            )
+            self.get_logger().info(
+                f"🎯 New waypoint target {self.current_waypoint_index + 1}/"
+                f"{len(self.waypoints)}: x={self.target_x:.2f}, y={self.target_y:.2f}, "
+                f"yaw_target={math.degrees(self.target_yaw):.1f}°"
+            )
+            return True
+
+        # Build yaw-only reference: zero translation and zero linear velocity refs.
+        ref_traj: List[np.ndarray] = []
+        for _ in range(self.mpc_horizon):
+            ref_traj.append(
+                np.array(
+                    [self.current_x, self.current_y, self.target_yaw, 0.0, 0.0, 0.0],
+                    dtype=float,
+                )
+            )
+
+        # Ensure lateral/longitudinal offsets do not influence yaw command.
+        err = np.array([0.0, 0.0, yaw_err], dtype=float)
+
+        # In yaw-only mode, freeze linear velocity state and bounds.
+        self.v_cmd = 0.0
+        self.mpc.v_min = 0.0
+        self.mpc.v_max = 0.0
+
+        du0, solve_ms, _ = self.mpc.solve(err, 0.0, self.omega_cmd, ref_traj)
+        dv = float(du0[0])
+        domega = float(du0[1])
+        del dv  # linear component intentionally ignored in yaw-only mode
+
+        self.v_cmd = 0.0
+        self.omega_cmd = float(
+            np.clip(self.omega_cmd + domega, -self.max_angular_vel, self.max_angular_vel)
+        )
+
+        # Convert body commands to wheel commands (same logic as normal control).
+        if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
+            omega_L_target = 0.0
+            omega_R_target = 0.0
+        else:
+            omega_L_target = (self.v_cmd / self.wheel_radius) - (
+                self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius)
+            )
+            omega_R_target = (self.v_cmd / self.wheel_radius) + (
+                self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius)
+            )
+
+        left_rps_target = omega_L_target / (2.0 * math.pi * self.gear_ratio)
+        right_rps_target = omega_R_target / (2.0 * math.pi * self.gear_ratio)
+
+        if self.ramp_compensation_enabled:
+            left_rps_eff, right_rps_eff = self.wheel_compensator.compensate(
+                left_rps_target, right_rps_target
+            )
+        else:
+            left_rps_eff = left_rps_target
+            right_rps_eff = right_rps_target
+
+        self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
+
+        if solve_ms is not None:
+            self.get_logger().debug(f"Yaw-align MPC solve time: {solve_ms:.3f} ms")
+        return True
 
     def autonomy_enable_callback(self, msg: Bool) -> None:
         """
@@ -2011,6 +2140,11 @@ class MPCAccelController(Node):
             self.send_zero_velocity()
             return
 
+        # In yaw-align mode we run MPC with translation frozen; skip line-distance stop logic.
+        if self.yaw_align_active:
+            self._run_yaw_align_mpc()
+            return
+
         # --- Stopping logic based on distance traveled along the path line ---
         path_dx = self.target_x - self.path_start_x
         path_dy = self.target_y - self.path_start_y
@@ -2159,6 +2293,10 @@ class MPCAccelController(Node):
         # This is "open-loop on velocity, closed-loop on position" - common in cascaded control.
         v_body = self.v_cmd
         omega_body = self.omega_cmd
+
+        # Normal segment tracking: keep default linear velocity bounds enabled.
+        self.mpc.v_min = -self.max_linear_vel
+        self.mpc.v_max = self.max_linear_vel
 
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
