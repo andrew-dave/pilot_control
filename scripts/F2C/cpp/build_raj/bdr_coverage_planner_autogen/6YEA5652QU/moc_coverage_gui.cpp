@@ -176,8 +176,8 @@ void f2c_cpp::VideoStreamWidget::streamStopped()
     QMetaObject::activate(this, &staticMetaObject, 2, nullptr);
 }
 struct qt_meta_stringdata_f2c_cpp__PlotWidget_t {
-    QByteArrayData data[16];
-    char stringdata0[209];
+    QByteArrayData data[19];
+    char stringdata0[249];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -201,7 +201,10 @@ QT_MOC_LITERAL(11, 147, 23), // "customWaypointRequested"
 QT_MOC_LITERAL(12, 171, 7), // "Point2D"
 QT_MOC_LITERAL(13, 179, 5), // "point"
 QT_MOC_LITERAL(14, 185, 18), // "rectangleCompleted"
-QT_MOC_LITERAL(15, 204, 4) // "rect"
+QT_MOC_LITERAL(15, 204, 4), // "rect"
+QT_MOC_LITERAL(16, 209, 22), // "measureDistanceUpdated"
+QT_MOC_LITERAL(17, 232, 10), // "distance_m"
+QT_MOC_LITERAL(18, 243, 5) // "valid"
 
     },
     "f2c_cpp::PlotWidget\0roiSelected\0\0"
@@ -209,7 +212,8 @@ QT_MOC_LITERAL(15, 204, 4) // "rect"
     "selectionCancelled\0obstacleSelectionChanged\0"
     "index\0obstacleDeleteRequested\0"
     "customWaypointRequested\0Point2D\0point\0"
-    "rectangleCompleted\0rect"
+    "rectangleCompleted\0rect\0measureDistanceUpdated\0"
+    "distance_m\0valid"
 };
 #undef QT_MOC_LITERAL
 
@@ -219,21 +223,22 @@ static const uint qt_meta_data_f2c_cpp__PlotWidget[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-       7,   14, // methods
+       8,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
-       7,       // signalCount
+       8,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   49,    2, 0x06 /* Public */,
-       5,    1,   52,    2, 0x06 /* Public */,
-       7,    0,   55,    2, 0x06 /* Public */,
-       8,    1,   56,    2, 0x06 /* Public */,
-      10,    1,   59,    2, 0x06 /* Public */,
-      11,    1,   62,    2, 0x06 /* Public */,
-      14,    1,   65,    2, 0x06 /* Public */,
+       1,    1,   54,    2, 0x06 /* Public */,
+       5,    1,   57,    2, 0x06 /* Public */,
+       7,    0,   60,    2, 0x06 /* Public */,
+       8,    1,   61,    2, 0x06 /* Public */,
+      10,    1,   64,    2, 0x06 /* Public */,
+      11,    1,   67,    2, 0x06 /* Public */,
+      14,    1,   70,    2, 0x06 /* Public */,
+      16,    2,   73,    2, 0x06 /* Public */,
 
  // signals: parameters
     QMetaType::Void, 0x80000000 | 3,    4,
@@ -243,6 +248,7 @@ static const uint qt_meta_data_f2c_cpp__PlotWidget[] = {
     QMetaType::Void, QMetaType::Int,    9,
     QMetaType::Void, 0x80000000 | 12,   13,
     QMetaType::Void, 0x80000000 | 3,   15,
+    QMetaType::Void, QMetaType::Double, QMetaType::Bool,   17,   18,
 
        0        // eod
 };
@@ -260,6 +266,7 @@ void f2c_cpp::PlotWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 4: _t->obstacleDeleteRequested((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 5: _t->customWaypointRequested((*reinterpret_cast< const Point2D(*)>(_a[1]))); break;
         case 6: _t->rectangleCompleted((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 7: _t->measureDistanceUpdated((*reinterpret_cast< double(*)>(_a[1])),(*reinterpret_cast< bool(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -313,6 +320,13 @@ void f2c_cpp::PlotWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
                 return;
             }
         }
+        {
+            using _t = void (PlotWidget::*)(double , bool );
+            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&PlotWidget::measureDistanceUpdated)) {
+                *result = 7;
+                return;
+            }
+        }
     }
 }
 
@@ -345,13 +359,13 @@ int f2c_cpp::PlotWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 7)
+        if (_id < 8)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 7;
+        _id -= 8;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 7)
+        if (_id < 8)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 7;
+        _id -= 8;
     }
     return _id;
 }
@@ -403,9 +417,16 @@ void f2c_cpp::PlotWidget::rectangleCompleted(const Polygon2D & _t1)
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))) };
     QMetaObject::activate(this, &staticMetaObject, 6, _a);
 }
+
+// SIGNAL 7
+void f2c_cpp::PlotWidget::measureDistanceUpdated(double _t1, bool _t2)
+{
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))), const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t2))) };
+    QMetaObject::activate(this, &staticMetaObject, 7, _a);
+}
 struct qt_meta_stringdata_f2c_cpp__CoverageGUI_t {
-    QByteArrayData data[97];
-    char stringdata0[1576];
+    QByteArrayData data[110];
+    char stringdata0[1777];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -420,102 +441,116 @@ QT_MOC_LITERAL(2, 36, 0), // ""
 QT_MOC_LITERAL(3, 37, 23), // "fetchLatestMapFromRobot"
 QT_MOC_LITERAL(4, 61, 22), // "loadPointCloudFromPath"
 QT_MOC_LITERAL(5, 84, 4), // "path"
-QT_MOC_LITERAL(6, 89, 19), // "onRobotLoginClicked"
-QT_MOC_LITERAL(7, 109, 16), // "onRobotIdChanged"
-QT_MOC_LITERAL(8, 126, 7), // "robotId"
-QT_MOC_LITERAL(9, 134, 20), // "onLoginCountdownTick"
-QT_MOC_LITERAL(10, 155, 15), // "applyHeightCrop"
-QT_MOC_LITERAL(11, 171, 15), // "applyDownsample"
-QT_MOC_LITERAL(12, 187, 11), // "computeHull"
-QT_MOC_LITERAL(13, 199, 15), // "simplifyPolygon"
-QT_MOC_LITERAL(14, 215, 16), // "showPointCloud3D"
-QT_MOC_LITERAL(15, 232, 18), // "toggleROISelection"
-QT_MOC_LITERAL(16, 251, 8), // "clearROI"
-QT_MOC_LITERAL(17, 260, 23), // "toggleObstacleSelection"
-QT_MOC_LITERAL(18, 284, 19), // "autoDetectObstacles"
-QT_MOC_LITERAL(19, 304, 22), // "deleteSelectedObstacle"
-QT_MOC_LITERAL(20, 327, 14), // "clearObstacles"
-QT_MOC_LITERAL(21, 342, 18), // "undoSelectionPoint"
-QT_MOC_LITERAL(22, 361, 15), // "finishSelection"
-QT_MOC_LITERAL(23, 377, 10), // "buildField"
-QT_MOC_LITERAL(24, 388, 14), // "generateSwaths"
-QT_MOC_LITERAL(25, 403, 13), // "generateRoute"
-QT_MOC_LITERAL(26, 417, 12), // "generatePath"
-QT_MOC_LITERAL(27, 430, 13), // "clearCoverage"
-QT_MOC_LITERAL(28, 444, 13), // "exportPathCSV"
-QT_MOC_LITERAL(29, 458, 16), // "publishWaypoints"
-QT_MOC_LITERAL(30, 475, 15), // "startNavigation"
-QT_MOC_LITERAL(31, 491, 15), // "clearRobotTrail"
-QT_MOC_LITERAL(32, 507, 17), // "onPathModeChanged"
-QT_MOC_LITERAL(33, 525, 13), // "onROISelected"
-QT_MOC_LITERAL(34, 539, 9), // "Polygon2D"
-QT_MOC_LITERAL(35, 549, 3), // "roi"
-QT_MOC_LITERAL(36, 553, 18), // "onObstacleSelected"
-QT_MOC_LITERAL(37, 572, 8), // "obstacle"
-QT_MOC_LITERAL(38, 581, 20), // "onSelectionCancelled"
-QT_MOC_LITERAL(39, 602, 25), // "onObstacleDeleteRequested"
-QT_MOC_LITERAL(40, 628, 5), // "index"
-QT_MOC_LITERAL(41, 634, 26), // "onObstacleSelectionChanged"
-QT_MOC_LITERAL(42, 661, 29), // "onAutoDetectObstaclesFinished"
-QT_MOC_LITERAL(43, 691, 18), // "updateDownsampleUI"
-QT_MOC_LITERAL(44, 710, 6), // "method"
-QT_MOC_LITERAL(45, 717, 16), // "tryReconnectROS2"
-QT_MOC_LITERAL(46, 734, 22), // "checkZenohBridgeStatus"
-QT_MOC_LITERAL(47, 757, 24), // "computeReprojectionError"
-QT_MOC_LITERAL(48, 782, 22), // "clearReprojectionError"
-QT_MOC_LITERAL(49, 805, 19), // "toggleRectangleMode"
-QT_MOC_LITERAL(50, 825, 20), // "onRectangleCompleted"
-QT_MOC_LITERAL(51, 846, 4), // "rect"
-QT_MOC_LITERAL(52, 851, 14), // "toggleDarkMode"
-QT_MOC_LITERAL(53, 866, 10), // "applyTheme"
-QT_MOC_LITERAL(54, 877, 19), // "updateCoverageStats"
-QT_MOC_LITERAL(55, 897, 12), // "computeStats"
-QT_MOC_LITERAL(56, 910, 13), // "CoverageStats"
-QT_MOC_LITERAL(57, 924, 19), // "updateWorkflowSteps"
-QT_MOC_LITERAL(58, 944, 21), // "onWorkflowStepClicked"
-QT_MOC_LITERAL(59, 966, 4), // "step"
-QT_MOC_LITERAL(60, 971, 21), // "updateLayerVisibility"
-QT_MOC_LITERAL(61, 993, 21), // "buildVideoPanelWidget"
-QT_MOC_LITERAL(62, 1015, 8), // "QWidget*"
-QT_MOC_LITERAL(63, 1024, 16), // "toggleVideoPanel"
-QT_MOC_LITERAL(64, 1041, 15), // "onCameraToggled"
-QT_MOC_LITERAL(65, 1057, 14), // "right_selected"
-QT_MOC_LITERAL(66, 1072, 15), // "playVideoStream"
-QT_MOC_LITERAL(67, 1088, 15), // "stopVideoStream"
-QT_MOC_LITERAL(68, 1104, 22), // "onCameraStatusReceived"
-QT_MOC_LITERAL(69, 1127, 32), // "std_msgs::msg::String::SharedPtr"
-QT_MOC_LITERAL(70, 1160, 3), // "msg"
-QT_MOC_LITERAL(71, 1164, 22), // "openDataTransferDialog"
-QT_MOC_LITERAL(72, 1187, 16), // "onTransferActive"
-QT_MOC_LITERAL(73, 1204, 6), // "active"
-QT_MOC_LITERAL(74, 1211, 18), // "onTransferProgress"
-QT_MOC_LITERAL(75, 1230, 7), // "percent"
-QT_MOC_LITERAL(76, 1238, 9), // "speedMBps"
-QT_MOC_LITERAL(77, 1248, 29), // "onShowTransferDialogRequested"
-QT_MOC_LITERAL(78, 1278, 25), // "onCancelTransferRequested"
-QT_MOC_LITERAL(79, 1304, 16), // "onPresetSelected"
-QT_MOC_LITERAL(80, 1321, 17), // "saveCurrentPreset"
-QT_MOC_LITERAL(81, 1339, 15), // "createNewPreset"
-QT_MOC_LITERAL(82, 1355, 17), // "openPresetManager"
-QT_MOC_LITERAL(83, 1373, 10), // "loadPreset"
-QT_MOC_LITERAL(84, 1384, 4), // "name"
-QT_MOC_LITERAL(85, 1389, 17), // "refreshPresetList"
-QT_MOC_LITERAL(86, 1407, 21), // "gatherCurrentSettings"
-QT_MOC_LITERAL(87, 1429, 14), // "PlanningPreset"
-QT_MOC_LITERAL(88, 1444, 11), // "applyPreset"
-QT_MOC_LITERAL(89, 1456, 6), // "preset"
-QT_MOC_LITERAL(90, 1463, 18), // "toggleTeleopWidget"
-QT_MOC_LITERAL(91, 1482, 21), // "onTeleopStatusMessage"
-QT_MOC_LITERAL(92, 1504, 7), // "message"
-QT_MOC_LITERAL(93, 1512, 19), // "onCloudUploadActive"
-QT_MOC_LITERAL(94, 1532, 16), // "startScanSession"
-QT_MOC_LITERAL(95, 1549, 11), // "sectionName"
-QT_MOC_LITERAL(96, 1561, 14) // "endScanSession"
+QT_MOC_LITERAL(6, 89, 30), // "alignLoadedMapToLatestRobotMap"
+QT_MOC_LITERAL(7, 120, 19), // "onRobotLoginClicked"
+QT_MOC_LITERAL(8, 140, 16), // "onRobotIdChanged"
+QT_MOC_LITERAL(9, 157, 7), // "robotId"
+QT_MOC_LITERAL(10, 165, 20), // "onLoginCountdownTick"
+QT_MOC_LITERAL(11, 186, 15), // "applyHeightCrop"
+QT_MOC_LITERAL(12, 202, 15), // "applyDownsample"
+QT_MOC_LITERAL(13, 218, 11), // "computeHull"
+QT_MOC_LITERAL(14, 230, 15), // "simplifyPolygon"
+QT_MOC_LITERAL(15, 246, 16), // "showPointCloud3D"
+QT_MOC_LITERAL(16, 263, 18), // "toggleROISelection"
+QT_MOC_LITERAL(17, 282, 8), // "clearROI"
+QT_MOC_LITERAL(18, 291, 23), // "toggleObstacleSelection"
+QT_MOC_LITERAL(19, 315, 19), // "autoDetectObstacles"
+QT_MOC_LITERAL(20, 335, 22), // "deleteSelectedObstacle"
+QT_MOC_LITERAL(21, 358, 14), // "clearObstacles"
+QT_MOC_LITERAL(22, 373, 18), // "undoSelectionPoint"
+QT_MOC_LITERAL(23, 392, 15), // "finishSelection"
+QT_MOC_LITERAL(24, 408, 10), // "buildField"
+QT_MOC_LITERAL(25, 419, 14), // "generateSwaths"
+QT_MOC_LITERAL(26, 434, 13), // "generateRoute"
+QT_MOC_LITERAL(27, 448, 12), // "generatePath"
+QT_MOC_LITERAL(28, 461, 13), // "clearCoverage"
+QT_MOC_LITERAL(29, 475, 13), // "exportPathCSV"
+QT_MOC_LITERAL(30, 489, 16), // "publishWaypoints"
+QT_MOC_LITERAL(31, 506, 15), // "startNavigation"
+QT_MOC_LITERAL(32, 522, 12), // "planHomePath"
+QT_MOC_LITERAL(33, 535, 15), // "clearRobotTrail"
+QT_MOC_LITERAL(34, 551, 17), // "onPathModeChanged"
+QT_MOC_LITERAL(35, 569, 13), // "onROISelected"
+QT_MOC_LITERAL(36, 583, 9), // "Polygon2D"
+QT_MOC_LITERAL(37, 593, 3), // "roi"
+QT_MOC_LITERAL(38, 597, 18), // "onObstacleSelected"
+QT_MOC_LITERAL(39, 616, 8), // "obstacle"
+QT_MOC_LITERAL(40, 625, 20), // "onSelectionCancelled"
+QT_MOC_LITERAL(41, 646, 17), // "toggleMeasureMode"
+QT_MOC_LITERAL(42, 664, 24), // "onMeasureDistanceUpdated"
+QT_MOC_LITERAL(43, 689, 10), // "distance_m"
+QT_MOC_LITERAL(44, 700, 5), // "valid"
+QT_MOC_LITERAL(45, 706, 25), // "onObstacleDeleteRequested"
+QT_MOC_LITERAL(46, 732, 5), // "index"
+QT_MOC_LITERAL(47, 738, 26), // "onObstacleSelectionChanged"
+QT_MOC_LITERAL(48, 765, 29), // "onAutoDetectObstaclesFinished"
+QT_MOC_LITERAL(49, 795, 18), // "updateDownsampleUI"
+QT_MOC_LITERAL(50, 814, 6), // "method"
+QT_MOC_LITERAL(51, 821, 16), // "tryReconnectROS2"
+QT_MOC_LITERAL(52, 838, 22), // "checkZenohBridgeStatus"
+QT_MOC_LITERAL(53, 861, 24), // "computeReprojectionError"
+QT_MOC_LITERAL(54, 886, 22), // "clearReprojectionError"
+QT_MOC_LITERAL(55, 909, 19), // "toggleRectangleMode"
+QT_MOC_LITERAL(56, 929, 20), // "onRectangleCompleted"
+QT_MOC_LITERAL(57, 950, 4), // "rect"
+QT_MOC_LITERAL(58, 955, 14), // "toggleDarkMode"
+QT_MOC_LITERAL(59, 970, 10), // "applyTheme"
+QT_MOC_LITERAL(60, 981, 19), // "updateCoverageStats"
+QT_MOC_LITERAL(61, 1001, 12), // "computeStats"
+QT_MOC_LITERAL(62, 1014, 13), // "CoverageStats"
+QT_MOC_LITERAL(63, 1028, 27), // "computeObstacleAvoidingPath"
+QT_MOC_LITERAL(64, 1056, 13), // "PathStateList"
+QT_MOC_LITERAL(65, 1070, 7), // "Point2D"
+QT_MOC_LITERAL(66, 1078, 5), // "start"
+QT_MOC_LITERAL(67, 1084, 4), // "goal"
+QT_MOC_LITERAL(68, 1089, 16), // "spacing_override"
+QT_MOC_LITERAL(69, 1106, 18), // "clearance_override"
+QT_MOC_LITERAL(70, 1125, 19), // "updateWorkflowSteps"
+QT_MOC_LITERAL(71, 1145, 21), // "onWorkflowStepClicked"
+QT_MOC_LITERAL(72, 1167, 4), // "step"
+QT_MOC_LITERAL(73, 1172, 21), // "updateLayerVisibility"
+QT_MOC_LITERAL(74, 1194, 21), // "buildVideoPanelWidget"
+QT_MOC_LITERAL(75, 1216, 8), // "QWidget*"
+QT_MOC_LITERAL(76, 1225, 16), // "toggleVideoPanel"
+QT_MOC_LITERAL(77, 1242, 15), // "onCameraToggled"
+QT_MOC_LITERAL(78, 1258, 14), // "right_selected"
+QT_MOC_LITERAL(79, 1273, 15), // "playVideoStream"
+QT_MOC_LITERAL(80, 1289, 15), // "stopVideoStream"
+QT_MOC_LITERAL(81, 1305, 22), // "onCameraStatusReceived"
+QT_MOC_LITERAL(82, 1328, 32), // "std_msgs::msg::String::SharedPtr"
+QT_MOC_LITERAL(83, 1361, 3), // "msg"
+QT_MOC_LITERAL(84, 1365, 22), // "openDataTransferDialog"
+QT_MOC_LITERAL(85, 1388, 16), // "onTransferActive"
+QT_MOC_LITERAL(86, 1405, 6), // "active"
+QT_MOC_LITERAL(87, 1412, 18), // "onTransferProgress"
+QT_MOC_LITERAL(88, 1431, 7), // "percent"
+QT_MOC_LITERAL(89, 1439, 9), // "speedMBps"
+QT_MOC_LITERAL(90, 1449, 29), // "onShowTransferDialogRequested"
+QT_MOC_LITERAL(91, 1479, 25), // "onCancelTransferRequested"
+QT_MOC_LITERAL(92, 1505, 16), // "onPresetSelected"
+QT_MOC_LITERAL(93, 1522, 17), // "saveCurrentPreset"
+QT_MOC_LITERAL(94, 1540, 15), // "createNewPreset"
+QT_MOC_LITERAL(95, 1556, 17), // "openPresetManager"
+QT_MOC_LITERAL(96, 1574, 10), // "loadPreset"
+QT_MOC_LITERAL(97, 1585, 4), // "name"
+QT_MOC_LITERAL(98, 1590, 17), // "refreshPresetList"
+QT_MOC_LITERAL(99, 1608, 21), // "gatherCurrentSettings"
+QT_MOC_LITERAL(100, 1630, 14), // "PlanningPreset"
+QT_MOC_LITERAL(101, 1645, 11), // "applyPreset"
+QT_MOC_LITERAL(102, 1657, 6), // "preset"
+QT_MOC_LITERAL(103, 1664, 18), // "toggleTeleopWidget"
+QT_MOC_LITERAL(104, 1683, 21), // "onTeleopStatusMessage"
+QT_MOC_LITERAL(105, 1705, 7), // "message"
+QT_MOC_LITERAL(106, 1713, 19), // "onCloudUploadActive"
+QT_MOC_LITERAL(107, 1733, 16), // "startScanSession"
+QT_MOC_LITERAL(108, 1750, 11), // "sectionName"
+QT_MOC_LITERAL(109, 1762, 14) // "endScanSession"
 
     },
     "f2c_cpp::CoverageGUI\0loadPointCloud\0"
     "\0fetchLatestMapFromRobot\0"
     "loadPointCloudFromPath\0path\0"
+    "alignLoadedMapToLatestRobotMap\0"
     "onRobotLoginClicked\0onRobotIdChanged\0"
     "robotId\0onLoginCountdownTick\0"
     "applyHeightCrop\0applyDownsample\0"
@@ -527,11 +562,13 @@ QT_MOC_LITERAL(96, 1561, 14) // "endScanSession"
     "finishSelection\0buildField\0generateSwaths\0"
     "generateRoute\0generatePath\0clearCoverage\0"
     "exportPathCSV\0publishWaypoints\0"
-    "startNavigation\0clearRobotTrail\0"
-    "onPathModeChanged\0onROISelected\0"
-    "Polygon2D\0roi\0onObstacleSelected\0"
-    "obstacle\0onSelectionCancelled\0"
-    "onObstacleDeleteRequested\0index\0"
+    "startNavigation\0planHomePath\0"
+    "clearRobotTrail\0onPathModeChanged\0"
+    "onROISelected\0Polygon2D\0roi\0"
+    "onObstacleSelected\0obstacle\0"
+    "onSelectionCancelled\0toggleMeasureMode\0"
+    "onMeasureDistanceUpdated\0distance_m\0"
+    "valid\0onObstacleDeleteRequested\0index\0"
     "onObstacleSelectionChanged\0"
     "onAutoDetectObstaclesFinished\0"
     "updateDownsampleUI\0method\0tryReconnectROS2\0"
@@ -540,10 +577,12 @@ QT_MOC_LITERAL(96, 1561, 14) // "endScanSession"
     "onRectangleCompleted\0rect\0toggleDarkMode\0"
     "applyTheme\0updateCoverageStats\0"
     "computeStats\0CoverageStats\0"
-    "updateWorkflowSteps\0onWorkflowStepClicked\0"
-    "step\0updateLayerVisibility\0"
-    "buildVideoPanelWidget\0QWidget*\0"
-    "toggleVideoPanel\0onCameraToggled\0"
+    "computeObstacleAvoidingPath\0PathStateList\0"
+    "Point2D\0start\0goal\0spacing_override\0"
+    "clearance_override\0updateWorkflowSteps\0"
+    "onWorkflowStepClicked\0step\0"
+    "updateLayerVisibility\0buildVideoPanelWidget\0"
+    "QWidget*\0toggleVideoPanel\0onCameraToggled\0"
     "right_selected\0playVideoStream\0"
     "stopVideoStream\0onCameraStatusReceived\0"
     "std_msgs::msg::String::SharedPtr\0msg\0"
@@ -568,7 +607,7 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      73,   14, // methods
+      80,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -576,86 +615,94 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,  379,    2, 0x08 /* Private */,
-       3,    0,  380,    2, 0x08 /* Private */,
-       4,    1,  381,    2, 0x08 /* Private */,
-       6,    0,  384,    2, 0x08 /* Private */,
-       7,    1,  385,    2, 0x08 /* Private */,
-       9,    0,  388,    2, 0x08 /* Private */,
-      10,    0,  389,    2, 0x08 /* Private */,
-      11,    0,  390,    2, 0x08 /* Private */,
-      12,    0,  391,    2, 0x08 /* Private */,
-      13,    0,  392,    2, 0x08 /* Private */,
-      14,    0,  393,    2, 0x08 /* Private */,
-      15,    0,  394,    2, 0x08 /* Private */,
-      16,    0,  395,    2, 0x08 /* Private */,
-      17,    0,  396,    2, 0x08 /* Private */,
-      18,    0,  397,    2, 0x08 /* Private */,
-      19,    0,  398,    2, 0x08 /* Private */,
-      20,    0,  399,    2, 0x08 /* Private */,
-      21,    0,  400,    2, 0x08 /* Private */,
-      22,    0,  401,    2, 0x08 /* Private */,
-      23,    0,  402,    2, 0x08 /* Private */,
-      24,    0,  403,    2, 0x08 /* Private */,
-      25,    0,  404,    2, 0x08 /* Private */,
-      26,    0,  405,    2, 0x08 /* Private */,
-      27,    0,  406,    2, 0x08 /* Private */,
-      28,    0,  407,    2, 0x08 /* Private */,
-      29,    0,  408,    2, 0x08 /* Private */,
-      30,    0,  409,    2, 0x08 /* Private */,
-      31,    0,  410,    2, 0x08 /* Private */,
-      32,    0,  411,    2, 0x08 /* Private */,
-      33,    1,  412,    2, 0x08 /* Private */,
-      36,    1,  415,    2, 0x08 /* Private */,
-      38,    0,  418,    2, 0x08 /* Private */,
-      39,    1,  419,    2, 0x08 /* Private */,
-      41,    1,  422,    2, 0x08 /* Private */,
-      42,    0,  425,    2, 0x08 /* Private */,
-      43,    1,  426,    2, 0x08 /* Private */,
-      45,    0,  429,    2, 0x08 /* Private */,
-      46,    0,  430,    2, 0x08 /* Private */,
-      47,    0,  431,    2, 0x08 /* Private */,
-      48,    0,  432,    2, 0x08 /* Private */,
-      49,    0,  433,    2, 0x08 /* Private */,
-      50,    1,  434,    2, 0x08 /* Private */,
-      52,    0,  437,    2, 0x08 /* Private */,
-      53,    0,  438,    2, 0x08 /* Private */,
-      54,    0,  439,    2, 0x08 /* Private */,
-      55,    0,  440,    2, 0x08 /* Private */,
-      57,    0,  441,    2, 0x08 /* Private */,
-      58,    1,  442,    2, 0x08 /* Private */,
-      60,    0,  445,    2, 0x08 /* Private */,
-      61,    0,  446,    2, 0x08 /* Private */,
-      63,    0,  447,    2, 0x08 /* Private */,
-      64,    1,  448,    2, 0x08 /* Private */,
-      66,    0,  451,    2, 0x08 /* Private */,
-      67,    0,  452,    2, 0x08 /* Private */,
-      68,    1,  453,    2, 0x08 /* Private */,
-      71,    0,  456,    2, 0x08 /* Private */,
-      72,    1,  457,    2, 0x08 /* Private */,
-      74,    2,  460,    2, 0x08 /* Private */,
-      77,    0,  465,    2, 0x08 /* Private */,
-      78,    0,  466,    2, 0x08 /* Private */,
-      79,    1,  467,    2, 0x08 /* Private */,
-      80,    0,  470,    2, 0x08 /* Private */,
-      81,    0,  471,    2, 0x08 /* Private */,
-      82,    0,  472,    2, 0x08 /* Private */,
-      83,    1,  473,    2, 0x08 /* Private */,
-      85,    0,  476,    2, 0x08 /* Private */,
-      86,    0,  477,    2, 0x08 /* Private */,
-      88,    1,  478,    2, 0x08 /* Private */,
-      90,    0,  481,    2, 0x08 /* Private */,
-      91,    1,  482,    2, 0x08 /* Private */,
-      93,    1,  485,    2, 0x08 /* Private */,
-      94,    1,  488,    2, 0x08 /* Private */,
-      96,    0,  491,    2, 0x08 /* Private */,
+       1,    0,  414,    2, 0x08 /* Private */,
+       3,    0,  415,    2, 0x08 /* Private */,
+       4,    1,  416,    2, 0x08 /* Private */,
+       6,    0,  419,    2, 0x08 /* Private */,
+       7,    0,  420,    2, 0x08 /* Private */,
+       8,    1,  421,    2, 0x08 /* Private */,
+      10,    0,  424,    2, 0x08 /* Private */,
+      11,    0,  425,    2, 0x08 /* Private */,
+      12,    0,  426,    2, 0x08 /* Private */,
+      13,    0,  427,    2, 0x08 /* Private */,
+      14,    0,  428,    2, 0x08 /* Private */,
+      15,    0,  429,    2, 0x08 /* Private */,
+      16,    0,  430,    2, 0x08 /* Private */,
+      17,    0,  431,    2, 0x08 /* Private */,
+      18,    0,  432,    2, 0x08 /* Private */,
+      19,    0,  433,    2, 0x08 /* Private */,
+      20,    0,  434,    2, 0x08 /* Private */,
+      21,    0,  435,    2, 0x08 /* Private */,
+      22,    0,  436,    2, 0x08 /* Private */,
+      23,    0,  437,    2, 0x08 /* Private */,
+      24,    0,  438,    2, 0x08 /* Private */,
+      25,    0,  439,    2, 0x08 /* Private */,
+      26,    0,  440,    2, 0x08 /* Private */,
+      27,    0,  441,    2, 0x08 /* Private */,
+      28,    0,  442,    2, 0x08 /* Private */,
+      29,    0,  443,    2, 0x08 /* Private */,
+      30,    0,  444,    2, 0x08 /* Private */,
+      31,    0,  445,    2, 0x08 /* Private */,
+      32,    0,  446,    2, 0x08 /* Private */,
+      33,    0,  447,    2, 0x08 /* Private */,
+      34,    0,  448,    2, 0x08 /* Private */,
+      35,    1,  449,    2, 0x08 /* Private */,
+      38,    1,  452,    2, 0x08 /* Private */,
+      40,    0,  455,    2, 0x08 /* Private */,
+      41,    0,  456,    2, 0x08 /* Private */,
+      42,    2,  457,    2, 0x08 /* Private */,
+      45,    1,  462,    2, 0x08 /* Private */,
+      47,    1,  465,    2, 0x08 /* Private */,
+      48,    0,  468,    2, 0x08 /* Private */,
+      49,    1,  469,    2, 0x08 /* Private */,
+      51,    0,  472,    2, 0x08 /* Private */,
+      52,    0,  473,    2, 0x08 /* Private */,
+      53,    0,  474,    2, 0x08 /* Private */,
+      54,    0,  475,    2, 0x08 /* Private */,
+      55,    0,  476,    2, 0x08 /* Private */,
+      56,    1,  477,    2, 0x08 /* Private */,
+      58,    0,  480,    2, 0x08 /* Private */,
+      59,    0,  481,    2, 0x08 /* Private */,
+      60,    0,  482,    2, 0x08 /* Private */,
+      61,    0,  483,    2, 0x08 /* Private */,
+      63,    4,  484,    2, 0x08 /* Private */,
+      63,    3,  493,    2, 0x28 /* Private | MethodCloned */,
+      63,    2,  500,    2, 0x28 /* Private | MethodCloned */,
+      70,    0,  505,    2, 0x08 /* Private */,
+      71,    1,  506,    2, 0x08 /* Private */,
+      73,    0,  509,    2, 0x08 /* Private */,
+      74,    0,  510,    2, 0x08 /* Private */,
+      76,    0,  511,    2, 0x08 /* Private */,
+      77,    1,  512,    2, 0x08 /* Private */,
+      79,    0,  515,    2, 0x08 /* Private */,
+      80,    0,  516,    2, 0x08 /* Private */,
+      81,    1,  517,    2, 0x08 /* Private */,
+      84,    0,  520,    2, 0x08 /* Private */,
+      85,    1,  521,    2, 0x08 /* Private */,
+      87,    2,  524,    2, 0x08 /* Private */,
+      90,    0,  529,    2, 0x08 /* Private */,
+      91,    0,  530,    2, 0x08 /* Private */,
+      92,    1,  531,    2, 0x08 /* Private */,
+      93,    0,  534,    2, 0x08 /* Private */,
+      94,    0,  535,    2, 0x08 /* Private */,
+      95,    0,  536,    2, 0x08 /* Private */,
+      96,    1,  537,    2, 0x08 /* Private */,
+      98,    0,  540,    2, 0x08 /* Private */,
+      99,    0,  541,    2, 0x08 /* Private */,
+     101,    1,  542,    2, 0x08 /* Private */,
+     103,    0,  545,    2, 0x08 /* Private */,
+     104,    1,  546,    2, 0x08 /* Private */,
+     106,    1,  549,    2, 0x08 /* Private */,
+     107,    1,  552,    2, 0x08 /* Private */,
+     109,    0,  555,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void, QMetaType::QString,    5,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::QString,    8,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,    9,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
@@ -680,49 +727,55 @@ static const uint qt_meta_data_f2c_cpp__CoverageGUI[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 34,   35,
-    QMetaType::Void, 0x80000000 | 34,   37,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Int,   40,
-    QMetaType::Void, QMetaType::Int,   40,
-    QMetaType::Void,
-    QMetaType::Void, QMetaType::QString,   44,
+    QMetaType::Void, 0x80000000 | 36,   37,
+    QMetaType::Void, 0x80000000 | 36,   39,
     QMetaType::Void,
     QMetaType::Void,
+    QMetaType::Void, QMetaType::Double, QMetaType::Bool,   43,   44,
+    QMetaType::Void, QMetaType::Int,   46,
+    QMetaType::Void, QMetaType::Int,   46,
     QMetaType::Void,
-    QMetaType::Void,
-    QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 34,   51,
+    QMetaType::Void, QMetaType::QString,   50,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
-    0x80000000 | 56,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Int,   59,
+    QMetaType::Void,
+    QMetaType::Void, 0x80000000 | 36,   57,
+    QMetaType::Void,
+    QMetaType::Void,
     QMetaType::Void,
     0x80000000 | 62,
+    0x80000000 | 64, 0x80000000 | 65, 0x80000000 | 65, QMetaType::Double, QMetaType::Double,   66,   67,   68,   69,
+    0x80000000 | 64, 0x80000000 | 65, 0x80000000 | 65, QMetaType::Double,   66,   67,   68,
+    0x80000000 | 64, 0x80000000 | 65, 0x80000000 | 65,   66,   67,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Bool,   65,
+    QMetaType::Void, QMetaType::Int,   72,
     QMetaType::Void,
+    0x80000000 | 75,
     QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 69,   70,
-    QMetaType::Void,
-    QMetaType::Void, QMetaType::Bool,   73,
-    QMetaType::Void, QMetaType::Int, QMetaType::Double,   75,   76,
-    QMetaType::Void,
-    QMetaType::Void,
-    QMetaType::Void, QMetaType::Int,   40,
+    QMetaType::Void, QMetaType::Bool,   78,
     QMetaType::Void,
     QMetaType::Void,
+    QMetaType::Void, 0x80000000 | 82,   83,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::QString,   84,
+    QMetaType::Void, QMetaType::Bool,   86,
+    QMetaType::Void, QMetaType::Int, QMetaType::Double,   88,   89,
     QMetaType::Void,
-    0x80000000 | 87,
-    QMetaType::Void, 0x80000000 | 87,   89,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::QString,   92,
-    QMetaType::Void, QMetaType::Bool,   73,
-    QMetaType::Void, QMetaType::QString,   95,
+    QMetaType::Void, QMetaType::Int,   46,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,   97,
+    QMetaType::Void,
+    0x80000000 | 100,
+    QMetaType::Void, 0x80000000 | 100,  102,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,  105,
+    QMetaType::Void, QMetaType::Bool,   86,
+    QMetaType::Void, QMetaType::QString,  108,
     QMetaType::Void,
 
        0        // eod
@@ -737,79 +790,89 @@ void f2c_cpp::CoverageGUI::qt_static_metacall(QObject *_o, QMetaObject::Call _c,
         case 0: _t->loadPointCloud(); break;
         case 1: _t->fetchLatestMapFromRobot(); break;
         case 2: _t->loadPointCloudFromPath((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 3: _t->onRobotLoginClicked(); break;
-        case 4: _t->onRobotIdChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 5: _t->onLoginCountdownTick(); break;
-        case 6: _t->applyHeightCrop(); break;
-        case 7: _t->applyDownsample(); break;
-        case 8: _t->computeHull(); break;
-        case 9: _t->simplifyPolygon(); break;
-        case 10: _t->showPointCloud3D(); break;
-        case 11: _t->toggleROISelection(); break;
-        case 12: _t->clearROI(); break;
-        case 13: _t->toggleObstacleSelection(); break;
-        case 14: _t->autoDetectObstacles(); break;
-        case 15: _t->deleteSelectedObstacle(); break;
-        case 16: _t->clearObstacles(); break;
-        case 17: _t->undoSelectionPoint(); break;
-        case 18: _t->finishSelection(); break;
-        case 19: _t->buildField(); break;
-        case 20: _t->generateSwaths(); break;
-        case 21: _t->generateRoute(); break;
-        case 22: _t->generatePath(); break;
-        case 23: _t->clearCoverage(); break;
-        case 24: _t->exportPathCSV(); break;
-        case 25: _t->publishWaypoints(); break;
-        case 26: _t->startNavigation(); break;
-        case 27: _t->clearRobotTrail(); break;
-        case 28: _t->onPathModeChanged(); break;
-        case 29: _t->onROISelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
-        case 30: _t->onObstacleSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
-        case 31: _t->onSelectionCancelled(); break;
-        case 32: _t->onObstacleDeleteRequested((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 33: _t->onObstacleSelectionChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 34: _t->onAutoDetectObstaclesFinished(); break;
-        case 35: _t->updateDownsampleUI((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 36: _t->tryReconnectROS2(); break;
-        case 37: _t->checkZenohBridgeStatus(); break;
-        case 38: _t->computeReprojectionError(); break;
-        case 39: _t->clearReprojectionError(); break;
-        case 40: _t->toggleRectangleMode(); break;
-        case 41: _t->onRectangleCompleted((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
-        case 42: _t->toggleDarkMode(); break;
-        case 43: _t->applyTheme(); break;
-        case 44: _t->updateCoverageStats(); break;
-        case 45: { CoverageStats _r = _t->computeStats();
+        case 3: _t->alignLoadedMapToLatestRobotMap(); break;
+        case 4: _t->onRobotLoginClicked(); break;
+        case 5: _t->onRobotIdChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 6: _t->onLoginCountdownTick(); break;
+        case 7: _t->applyHeightCrop(); break;
+        case 8: _t->applyDownsample(); break;
+        case 9: _t->computeHull(); break;
+        case 10: _t->simplifyPolygon(); break;
+        case 11: _t->showPointCloud3D(); break;
+        case 12: _t->toggleROISelection(); break;
+        case 13: _t->clearROI(); break;
+        case 14: _t->toggleObstacleSelection(); break;
+        case 15: _t->autoDetectObstacles(); break;
+        case 16: _t->deleteSelectedObstacle(); break;
+        case 17: _t->clearObstacles(); break;
+        case 18: _t->undoSelectionPoint(); break;
+        case 19: _t->finishSelection(); break;
+        case 20: _t->buildField(); break;
+        case 21: _t->generateSwaths(); break;
+        case 22: _t->generateRoute(); break;
+        case 23: _t->generatePath(); break;
+        case 24: _t->clearCoverage(); break;
+        case 25: _t->exportPathCSV(); break;
+        case 26: _t->publishWaypoints(); break;
+        case 27: _t->startNavigation(); break;
+        case 28: _t->planHomePath(); break;
+        case 29: _t->clearRobotTrail(); break;
+        case 30: _t->onPathModeChanged(); break;
+        case 31: _t->onROISelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 32: _t->onObstacleSelected((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 33: _t->onSelectionCancelled(); break;
+        case 34: _t->toggleMeasureMode(); break;
+        case 35: _t->onMeasureDistanceUpdated((*reinterpret_cast< double(*)>(_a[1])),(*reinterpret_cast< bool(*)>(_a[2]))); break;
+        case 36: _t->onObstacleDeleteRequested((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 37: _t->onObstacleSelectionChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 38: _t->onAutoDetectObstaclesFinished(); break;
+        case 39: _t->updateDownsampleUI((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 40: _t->tryReconnectROS2(); break;
+        case 41: _t->checkZenohBridgeStatus(); break;
+        case 42: _t->computeReprojectionError(); break;
+        case 43: _t->clearReprojectionError(); break;
+        case 44: _t->toggleRectangleMode(); break;
+        case 45: _t->onRectangleCompleted((*reinterpret_cast< const Polygon2D(*)>(_a[1]))); break;
+        case 46: _t->toggleDarkMode(); break;
+        case 47: _t->applyTheme(); break;
+        case 48: _t->updateCoverageStats(); break;
+        case 49: { CoverageStats _r = _t->computeStats();
             if (_a[0]) *reinterpret_cast< CoverageStats*>(_a[0]) = std::move(_r); }  break;
-        case 46: _t->updateWorkflowSteps(); break;
-        case 47: _t->onWorkflowStepClicked((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 48: _t->updateLayerVisibility(); break;
-        case 49: { QWidget* _r = _t->buildVideoPanelWidget();
+        case 50: { PathStateList _r = _t->computeObstacleAvoidingPath((*reinterpret_cast< const Point2D(*)>(_a[1])),(*reinterpret_cast< const Point2D(*)>(_a[2])),(*reinterpret_cast< double(*)>(_a[3])),(*reinterpret_cast< double(*)>(_a[4])));
+            if (_a[0]) *reinterpret_cast< PathStateList*>(_a[0]) = std::move(_r); }  break;
+        case 51: { PathStateList _r = _t->computeObstacleAvoidingPath((*reinterpret_cast< const Point2D(*)>(_a[1])),(*reinterpret_cast< const Point2D(*)>(_a[2])),(*reinterpret_cast< double(*)>(_a[3])));
+            if (_a[0]) *reinterpret_cast< PathStateList*>(_a[0]) = std::move(_r); }  break;
+        case 52: { PathStateList _r = _t->computeObstacleAvoidingPath((*reinterpret_cast< const Point2D(*)>(_a[1])),(*reinterpret_cast< const Point2D(*)>(_a[2])));
+            if (_a[0]) *reinterpret_cast< PathStateList*>(_a[0]) = std::move(_r); }  break;
+        case 53: _t->updateWorkflowSteps(); break;
+        case 54: _t->onWorkflowStepClicked((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 55: _t->updateLayerVisibility(); break;
+        case 56: { QWidget* _r = _t->buildVideoPanelWidget();
             if (_a[0]) *reinterpret_cast< QWidget**>(_a[0]) = std::move(_r); }  break;
-        case 50: _t->toggleVideoPanel(); break;
-        case 51: _t->onCameraToggled((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 52: _t->playVideoStream(); break;
-        case 53: _t->stopVideoStream(); break;
-        case 54: _t->onCameraStatusReceived((*reinterpret_cast< const std_msgs::msg::String::SharedPtr(*)>(_a[1]))); break;
-        case 55: _t->openDataTransferDialog(); break;
-        case 56: _t->onTransferActive((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 57: _t->onTransferProgress((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< double(*)>(_a[2]))); break;
-        case 58: _t->onShowTransferDialogRequested(); break;
-        case 59: _t->onCancelTransferRequested(); break;
-        case 60: _t->onPresetSelected((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 61: _t->saveCurrentPreset(); break;
-        case 62: _t->createNewPreset(); break;
-        case 63: _t->openPresetManager(); break;
-        case 64: _t->loadPreset((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 65: _t->refreshPresetList(); break;
-        case 66: { PlanningPreset _r = _t->gatherCurrentSettings();
+        case 57: _t->toggleVideoPanel(); break;
+        case 58: _t->onCameraToggled((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 59: _t->playVideoStream(); break;
+        case 60: _t->stopVideoStream(); break;
+        case 61: _t->onCameraStatusReceived((*reinterpret_cast< const std_msgs::msg::String::SharedPtr(*)>(_a[1]))); break;
+        case 62: _t->openDataTransferDialog(); break;
+        case 63: _t->onTransferActive((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 64: _t->onTransferProgress((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< double(*)>(_a[2]))); break;
+        case 65: _t->onShowTransferDialogRequested(); break;
+        case 66: _t->onCancelTransferRequested(); break;
+        case 67: _t->onPresetSelected((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 68: _t->saveCurrentPreset(); break;
+        case 69: _t->createNewPreset(); break;
+        case 70: _t->openPresetManager(); break;
+        case 71: _t->loadPreset((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 72: _t->refreshPresetList(); break;
+        case 73: { PlanningPreset _r = _t->gatherCurrentSettings();
             if (_a[0]) *reinterpret_cast< PlanningPreset*>(_a[0]) = std::move(_r); }  break;
-        case 67: _t->applyPreset((*reinterpret_cast< const PlanningPreset(*)>(_a[1]))); break;
-        case 68: _t->toggleTeleopWidget(); break;
-        case 69: _t->onTeleopStatusMessage((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 70: _t->onCloudUploadActive((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 71: _t->startScanSession((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 72: _t->endScanSession(); break;
+        case 74: _t->applyPreset((*reinterpret_cast< const PlanningPreset(*)>(_a[1]))); break;
+        case 75: _t->toggleTeleopWidget(); break;
+        case 76: _t->onTeleopStatusMessage((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 77: _t->onCloudUploadActive((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 78: _t->startScanSession((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 79: _t->endScanSession(); break;
         default: ;
         }
     }
@@ -844,13 +907,13 @@ int f2c_cpp::CoverageGUI::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 73)
+        if (_id < 80)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 73;
+        _id -= 80;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 73)
+        if (_id < 80)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 73;
+        _id -= 80;
     }
     return _id;
 }

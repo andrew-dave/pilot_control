@@ -32,7 +32,7 @@ endif()
 
 # Find PCL (no visualization component to avoid Qt/VTK conflicts)
 # 3D viewing is done via external viewers (pcl_viewer, Open3D, CloudCompare)
-find_package(PCL 1.10 REQUIRED COMPONENTS common io filters)
+find_package(PCL 1.10 REQUIRED COMPONENTS common io filters registration)
 find_package(Eigen3 REQUIRED)
 find_package(Fields2Cover QUIET)
 
@@ -128,6 +128,7 @@ set(PCL_FILTERED_LIBS
     ${PCL_COMMON_LIBRARIES}
     ${PCL_IO_LIBRARIES}
     ${PCL_FILTERS_LIBRARIES}
+    ${PCL_REGISTRATION_LIBRARIES}
 )
 
 target_link_libraries(bdr_coverage_planner

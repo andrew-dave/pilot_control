@@ -810,134 +810,201 @@ static std::vector<Obstacle2D> smoothShapesRollingDiskGrid(
     return out;
 }
 
-struct Edge {
-    int x0, y0;
-    int x1, y1;
-};
-
-static inline uint64_t packV(int x, int y) {
-    return (static_cast<uint64_t>(static_cast<uint32_t>(x)) << 32) | static_cast<uint32_t>(y);
-}
-
 static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
-    std::vector<Edge> edges;
-    edges.reserve(static_cast<size_t>(g.w) * static_cast<size_t>(g.h));
-
-    // Build directed boundary edges with "occupied" on the left.
-    for (int y = 0; y < g.h; ++y) {
-        for (int x = 0; x < g.w; ++x) {
-            if (!occAt(g, x, y)) continue;
-
-            // Corners in vertex-grid coordinates
-            int vx0 = x;
-            int vx1 = x + 1;
-            int vy0 = y;
-            int vy1 = y + 1;
-
-            // Neighbour checks (N,S,E,W)
-            bool n_occ = occAt(g, x, y + 1);
-            bool s_occ = occAt(g, x, y - 1);
-            bool e_occ = occAt(g, x + 1, y);
-            bool w_occ = occAt(g, x - 1, y);
-
-            if (!n_occ) {
-                // top: (vx1,vy1)->(vx0,vy1)
-                edges.push_back({vx1, vy1, vx0, vy1});
-            }
-            if (!s_occ) {
-                // bottom: (vx0,vy0)->(vx1,vy0)
-                edges.push_back({vx0, vy0, vx1, vy0});
-            }
-            if (!e_occ) {
-                // right: (vx1,vy0)->(vx1,vy1)
-                edges.push_back({vx1, vy0, vx1, vy1});
-            }
-            if (!w_occ) {
-                // left: (vx0,vy1)->(vx0,vy0)
-                edges.push_back({vx0, vy1, vx0, vy0});
-            }
-        }
-    }
-
-    // Map start vertex -> outgoing edges
-    std::unordered_map<uint64_t, std::vector<int>> out_map;
-    out_map.reserve(edges.size() * 2);
-    for (int i = 0; i < static_cast<int>(edges.size()); ++i) {
-        out_map[packV(edges[i].x0, edges[i].y0)].push_back(i);
-    }
-
-    std::vector<uint8_t> used(edges.size(), 0);
-    std::vector<Polygon2D> rings;
-
-    auto dirOf = [&](const Edge& e) -> std::pair<int, int> {
-        return {e.x1 - e.x0, e.y1 - e.y0};
+    struct Segment {
+        Point2D a;
+        Point2D b;
     };
-    auto rotCCW = [&](std::pair<int, int> d) -> std::pair<int, int> { return {-d.second, d.first}; };
-    auto rotCW  = [&](std::pair<int, int> d) -> std::pair<int, int> { return {d.second, -d.first}; };
-
-    for (int start_e = 0; start_e < static_cast<int>(edges.size()); ++start_e) {
-        if (used[start_e]) continue;
-
-        const Edge& e0 = edges[start_e];
-        int sx = e0.x0, sy = e0.y0;
-        int cx = sx, cy = sy;
-        std::pair<int, int> cdir = dirOf(e0);
-
-        std::vector<std::pair<int, int>> verts;
-        verts.reserve(256);
-        verts.emplace_back(cx, cy);
-
-        int curr_e = start_e;
-        while (true) {
-            used[curr_e] = 1;
-            const Edge& ce = edges[curr_e];
-            cx = ce.x1;
-            cy = ce.y1;
-            if (cx == sx && cy == sy) {
-                break;
-            }
-            verts.emplace_back(cx, cy);
-
-            auto it = out_map.find(packV(cx, cy));
-            if (it == out_map.end()) {
-                break;
-            }
-            const auto& candidates = it->second;
-
-            // Choose next edge by left-hand rule: left, straight, right, back.
-            std::array<std::pair<int, int>, 4> prefs = {rotCCW(cdir), cdir, rotCW(cdir), std::make_pair(-cdir.first, -cdir.second)};
-            int next_e = -1;
-            for (const auto& pd : prefs) {
-                for (int ei : candidates) {
-                    if (used[ei]) continue;
-                    auto d = dirOf(edges[ei]);
-                    if (d == pd) {
-                        next_e = ei;
-                        break;
-                    }
-                }
-                if (next_e != -1) break;
-            }
-            if (next_e == -1) {
-                break;
-            }
-            curr_e = next_e;
-            cdir = dirOf(edges[curr_e]);
+    struct Key {
+        int64_t x = 0;
+        int64_t y = 0;
+        bool operator==(const Key& o) const { return x == o.x && y == o.y; }
+    };
+    struct KeyHash {
+        size_t operator()(const Key& k) const {
+            return static_cast<size_t>((static_cast<uint64_t>(k.x) * 1315423911ULL) ^
+                                       (static_cast<uint64_t>(k.y) + 0x9e3779b97f4a7c15ULL));
         }
+    };
 
-        if (verts.size() < 3) {
+    std::vector<Polygon2D> rings;
+    if (g.w <= 0 || g.h <= 0 || g.occ.empty()) {
+        return rings;
+    }
+
+    constexpr double iso = 0.5;
+    const double snap = std::max(1e-9, g.cell * 1e-6);
+    const double close_tol = snap * 8.0;
+
+    auto toKey = [&](const Point2D& p) -> Key {
+        return Key{
+            static_cast<int64_t>(std::llround(p.x / snap)),
+            static_cast<int64_t>(std::llround(p.y / snap))
+        };
+    };
+
+    auto sampleValue = [&](int cx, int cy) -> double {
+        // Marching-squares samples live on cell centers; outside grid is empty.
+        return occAt(g, cx, cy) ? 1.0 : 0.0;
+    };
+
+    auto interp = [&](const Point2D& p0, const Point2D& p1, double v0, double v1) -> Point2D {
+        double t = 0.5;
+        const double dv = v1 - v0;
+        if (std::abs(dv) > 1e-12) {
+            t = (iso - v0) / dv;
+        }
+        t = std::clamp(t, 0.0, 1.0);
+        return Point2D(p0.x + (p1.x - p0.x) * t, p0.y + (p1.y - p0.y) * t);
+    };
+
+    auto samplePos = [](int cx, int cy) -> Point2D {
+        return Point2D(static_cast<double>(cx) + 0.5, static_cast<double>(cy) + 0.5);
+    };
+
+    std::vector<Segment> segments;
+    segments.reserve(static_cast<size_t>(g.w) * static_cast<size_t>(g.h) * 2);
+
+    // Marching squares over 2x2 blocks of occupancy-cell samples.
+    // This preserves tiny occupied islands better than averaged vertex fields.
+    for (int y = -1; y < g.h; ++y) {
+        for (int x = -1; x < g.w; ++x) {
+            const double v0 = sampleValue(x, y);         // bottom-left
+            const double v1 = sampleValue(x + 1, y);     // bottom-right
+            const double v2 = sampleValue(x + 1, y + 1); // top-right
+            const double v3 = sampleValue(x, y + 1);     // top-left
+
+            const int c0 = (v0 > iso) ? 1 : 0;
+            const int c1 = (v1 > iso) ? 1 : 0;
+            const int c2 = (v2 > iso) ? 1 : 0;
+            const int c3 = (v3 > iso) ? 1 : 0;
+            const int idx = c0 | (c1 << 1) | (c2 << 2) | (c3 << 3);
+            if (idx == 0 || idx == 15) {
+                continue;
+            }
+
+            const Point2D p0 = samplePos(x, y);
+            const Point2D p1 = samplePos(x + 1, y);
+            const Point2D p2 = samplePos(x + 1, y + 1);
+            const Point2D p3 = samplePos(x, y + 1);
+
+            const Point2D e0 = interp(p0, p1, v0, v1); // bottom
+            const Point2D e1 = interp(p1, p2, v1, v2); // right
+            const Point2D e2 = interp(p2, p3, v2, v3); // top
+            const Point2D e3 = interp(p3, p0, v3, v0); // left
+
+            auto addSeg = [&](const Point2D& a, const Point2D& b) {
+                if (std::hypot(a.x - b.x, a.y - b.y) > 1e-12) {
+                    segments.push_back(Segment{a, b});
+                }
+            };
+
+            switch (idx) {
+                case 1:  addSeg(e3, e0); break;
+                case 2:  addSeg(e0, e1); break;
+                case 3:  addSeg(e3, e1); break;
+                case 4:  addSeg(e1, e2); break;
+                case 5: {
+                    const double center = 0.25 * (v0 + v1 + v2 + v3);
+                    if (center > iso) { addSeg(e3, e0); addSeg(e2, e1); }
+                    else              { addSeg(e3, e2); addSeg(e0, e1); }
+                    break;
+                }
+                case 6:  addSeg(e0, e2); break;
+                case 7:  addSeg(e3, e2); break;
+                case 8:  addSeg(e2, e3); break;
+                case 9:  addSeg(e0, e2); break;
+                case 10: {
+                    const double center = 0.25 * (v0 + v1 + v2 + v3);
+                    if (center > iso) { addSeg(e0, e3); addSeg(e1, e2); }
+                    else              { addSeg(e0, e1); addSeg(e2, e3); }
+                    break;
+                }
+                case 11: addSeg(e1, e2); break;
+                case 12: addSeg(e1, e3); break;
+                case 13: addSeg(e0, e1); break;
+                case 14: addSeg(e3, e0); break;
+                default: break;
+            }
+        }
+    }
+
+    if (segments.empty()) {
+        return rings;
+    }
+
+    std::unordered_map<Key, std::vector<std::pair<int, int>>, KeyHash> endpoint_map;
+    endpoint_map.reserve(segments.size() * 2);
+    for (int i = 0; i < static_cast<int>(segments.size()); ++i) {
+        endpoint_map[toKey(segments[static_cast<size_t>(i)].a)].push_back({i, 0});
+        endpoint_map[toKey(segments[static_cast<size_t>(i)].b)].push_back({i, 1});
+    }
+
+    std::vector<uint8_t> used(segments.size(), 0);
+    auto toWorld = [&](const Point2D& p) -> Point2D {
+        return Point2D(g.xmin + p.x * g.cell, g.ymin + p.y * g.cell);
+    };
+
+    for (int si = 0; si < static_cast<int>(segments.size()); ++si) {
+        if (used[static_cast<size_t>(si)]) {
             continue;
         }
+        used[static_cast<size_t>(si)] = 1;
 
-        // Convert to world coordinates at grid vertices.
         Polygon2D ring;
-        ring.reserve(verts.size());
-        for (const auto& v : verts) {
-            double wx = g.xmin + static_cast<double>(v.first) * g.cell;
-            double wy = g.ymin + static_cast<double>(v.second) * g.cell;
-            ring.emplace_back(wx, wy);
+        ring.reserve(128);
+        Point2D start = segments[static_cast<size_t>(si)].a;
+        Point2D curr = segments[static_cast<size_t>(si)].b;
+        ring.push_back(toWorld(start));
+        ring.push_back(toWorld(curr));
+
+        int guard = 0;
+        const int guard_max = static_cast<int>(segments.size()) * 2 + 16;
+        bool closed = false;
+        while (++guard <= guard_max) {
+            if (std::hypot(curr.x - start.x, curr.y - start.y) <= close_tol) {
+                closed = true;
+                break;
+            }
+            auto it = endpoint_map.find(toKey(curr));
+            if (it == endpoint_map.end()) {
+                break;
+            }
+
+            int next_seg = -1;
+            int next_end = -1;
+            for (const auto& ent : it->second) {
+                const int seg_idx = ent.first;
+                const int end_idx = ent.second;
+                if (used[static_cast<size_t>(seg_idx)]) continue;
+                next_seg = seg_idx;
+                next_end = end_idx;
+                break;
+            }
+
+            if (next_seg < 0) {
+                break;
+            }
+            used[static_cast<size_t>(next_seg)] = 1;
+            const Segment& s = segments[static_cast<size_t>(next_seg)];
+            const Point2D nxt = (next_end == 0) ? s.b : s.a;
+            curr = nxt;
+            ring.push_back(toWorld(curr));
         }
-        rings.push_back(std::move(ring));
+
+        if (!closed && ring.size() >= 4) {
+            // Defensive close for tiny numerical cracks.
+            const Point2D& first = ring.front();
+            const Point2D& last = ring.back();
+            if (std::hypot(last.x - first.x, last.y - first.y) <= close_tol * g.cell) {
+                ring.back() = first;  // close cleanly for downstream cleaning.
+                closed = true;
+            }
+        }
+
+        if (closed && ring.size() >= 4) {
+            rings.push_back(std::move(ring));
+        }
     }
 
     return rings;
@@ -1493,6 +1560,42 @@ ObstacleDetectionResult detectObstaclesAuto(
                 params.min_contour_area_m2);
 
             if (!shapes.empty()) {
+                auto pointInAnyShape = [&](const Point2D& p) -> bool {
+                    for (const auto& sh : shapes) {
+                        if (!pointInPolyRayCast(p, sh.first)) continue;
+                        bool in_hole = false;
+                        for (const auto& h : sh.second) {
+                            if (pointInPolyRayCast(p, h)) {
+                                in_hole = true;
+                                break;
+                            }
+                        }
+                        if (!in_hole) return true;
+                    }
+                    return false;
+                };
+
+                // Preserve tiny/disconnected source clusters that can be dropped by contour cleanup.
+                for (int ci : idxs) {
+                    const auto& cpts = ck[static_cast<size_t>(ci)].pts;
+                    if (cpts.empty()) continue;
+                    bool covered = false;
+                    const size_t stride = std::max<size_t>(1, cpts.size() / 12);
+                    for (size_t k = 0; k < cpts.size(); k += stride) {
+                        if (pointInAnyShape(cpts[k])) {
+                            covered = true;
+                            break;
+                        }
+                    }
+                    if (!covered && pointInAnyShape(cpts.back())) {
+                        covered = true;
+                    }
+                    if (covered) continue;
+
+                    Polygon2D tiny = rectFromBbox(cpts, std::max(0.02, 0.75 * grid_cell_m), 0.0);
+                    shapes.emplace_back(std::move(tiny), std::vector<Polygon2D>{});
+                }
+
                 for (auto& sh : shapes) {
                     Obstacle2D obs;
                     obs.outer = std::move(sh.first);

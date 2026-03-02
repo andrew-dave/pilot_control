@@ -56,6 +56,7 @@
 #include <optional>
 #include <mutex>
 #include <chrono>
+#include <Eigen/Core>
 
 // GStreamer for video streaming
 #include <gst/gst.h>
@@ -162,6 +163,7 @@ public:
     void setSwaths(const SwathList& swaths);
     void setRoute(const PathStateList& route);
     void setPath(const PathStateList& path);
+    void setPathConnectorPrefixCount(int count);
     void setRobotPose(const std::optional<PathState>& pose);
     void setRobotTrail(const std::vector<Point2D>& trail);
     void setRobotMarkerSize(double size_meters);
@@ -210,6 +212,9 @@ public:
     void finishSelection();
     void cancelSelection();
     void undoLastPoint();
+    void setMeasureMode(bool enabled);
+    bool isMeasureMode() const { return measure_mode_; }
+    void clearMeasurePoints();
     
     bool isSelecting() const { return selecting_; }
     Polygon2D getSelectedPolygon() const;
@@ -224,6 +229,7 @@ signals:
     void obstacleDeleteRequested(int index);
     void customWaypointRequested(const Point2D& point);
     void rectangleCompleted(const Polygon2D& rect);
+    void measureDistanceUpdated(double distance_m, bool valid);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -244,6 +250,7 @@ private:
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
+    int path_connector_prefix_count_ = 0;
     std::optional<PathState> robot_pose_;
     std::vector<Point2D> robot_trail_;
     double robot_marker_size_ = 0.6;
@@ -284,6 +291,8 @@ private:
     bool selecting_roi_ = false;  // true = ROI, false = obstacle
     std::vector<Point2D> selection_points_;
     QPointF cursor_pos_;
+    bool measure_mode_ = false;
+    std::vector<Point2D> measure_points_;
 
     // Obstacle selection
     int selected_obstacle_idx_ = -1;  // -1 = none
@@ -317,6 +326,8 @@ private slots:
     void loadPointCloud();
     void fetchLatestMapFromRobot();
     void loadPointCloudFromPath(const QString& path);
+    void alignLoadedMapToLatestRobotMap();
+    void loadTrailFromRosbag();
 
     // Robot login
     void onRobotLoginClicked();
@@ -354,6 +365,7 @@ private slots:
     void publishWaypoints();
     void startNavigation();
     void planHomePath();
+    void onGoToClicked();
     void clearRobotTrail();
     void onPathModeChanged();
     
@@ -361,12 +373,15 @@ private slots:
     void onROISelected(const Polygon2D& roi);
     void onObstacleSelected(const Polygon2D& obstacle);
     void onSelectionCancelled();
+    void toggleMeasureMode();
+    void onMeasureDistanceUpdated(double distance_m, bool valid);
     void onObstacleDeleteRequested(int index);
     void onObstacleSelectionChanged(int index);
     void onAutoDetectObstaclesFinished();
     
     // UI updates
     void updateDownsampleUI(const QString& method);
+    void onTransitPathPlanningFinished();
     
     // ROS2 reconnection
     void tryReconnectROS2();
@@ -486,6 +501,15 @@ private:
     // Async point cloud loading
     void loadPointCloudAsync(const QString& path);
     void onPointCloudLoaded();
+    bool fetchLatestMapFileForAlignment(QString* localPathOut, QString* errorOut);
+    PointCloudPtr downsampleForAlignment(
+        const PointCloudPtr& cloud,
+        double voxelSize) const;
+    double estimateAlignmentError(
+        const PointCloudPtr& source,
+        const PointCloudPtr& target,
+        const Eigen::Matrix4f& transform) const;
+    void applyAlignmentTransformToLoadedData(const Eigen::Matrix4f& transform);
     
     // Status/Progress
     void setStatus(const QString& text, int timeout_ms = 0);
@@ -528,6 +552,7 @@ private:
     void publishSelectedScanSegments();
     void startSelectedScanSegments();
     void setActiveScanSegmentFromList(int idx);
+    void startTransitPathPlanning(const Point2D& start, const Point2D& goal, bool is_home);
     
     // UI helpers for collapsible panes
     QWidget* buildLeftMiniPalette();
@@ -560,6 +585,12 @@ private:
         bool completed = false;
     };
 
+    enum class TransitPlanKind {
+        None = 0,
+        Home,
+        GoTo
+    };
+
     // Main widgets
     PlotWidget* plot_;
     QStatusBar* status_bar_;
@@ -574,6 +605,13 @@ private:
     QLabel* lbl_robot_status_;
     QLineEdit* txt_robot_topic_;
     QDoubleSpinBox* spin_robot_marker_size_;
+    QPushButton* btn_load_trail_bag_ = nullptr;
+    QComboBox* combo_align_mode_ = nullptr;
+    QPushButton* btn_align_loaded_map_ = nullptr;
+    QLabel* lbl_alignment_status_ = nullptr;
+    QDoubleSpinBox* spin_align_tx_ = nullptr;
+    QDoubleSpinBox* spin_align_ty_ = nullptr;
+    QDoubleSpinBox* spin_align_yaw_deg_ = nullptr;
 
     // Robot login controls
     QComboBox* combo_robot_id_ = nullptr;
@@ -595,6 +633,7 @@ private:
     QLabel* lbl_custom_status_ = nullptr;
     QPushButton* btn_publish_waypoints_ = nullptr;
     QPushButton* btn_start_navigation_ = nullptr;
+    QPushButton* btn_go_to_ = nullptr;
     QDoubleSpinBox* spin_scan_len_ = nullptr;
     QListWidget* list_scan_segments_ = nullptr;
     QPushButton* btn_make_segments_ = nullptr;
@@ -662,7 +701,9 @@ private:
     QPushButton* btn_auto_detect_obstacles_ = nullptr;
     QPushButton* btn_delete_selected_obstacle_ = nullptr;
     QPushButton* btn_obstacle_clear_;
+    QPushButton* btn_measure_ = nullptr;
     QLabel* lbl_obstacles_;
+    QLabel* lbl_measure_ = nullptr;
     
     // State
     PointCloudPtr pcd_points_;
@@ -672,10 +713,15 @@ private:
     Polygon2D roi_polygon_;
     std::vector<Obstacle2D> obstacles_;
     QFutureWatcher<ObstacleDetectionResult>* obstacle_detect_watcher_ = nullptr;
+    QFutureWatcher<PathStateList>* transit_plan_watcher_ = nullptr;
+    TransitPlanKind transit_plan_kind_ = TransitPlanKind::None;
+    Point2D transit_plan_goal_{0.0, 0.0};
     bool auto_detect_obstacles_running_ = false;
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
+    int path_connector_prefix_count_ = 0;
+    bool planned_path_is_home_ = false;
     double effective_area_m2_ = 0.0;  // From backend: (boundary ∩ ROI) − obstacles
     QString loaded_file_;
 
@@ -729,12 +775,14 @@ private:
     std::vector<Point2D> robot_trail_;
     std::vector<PathState> robot_trail_states_;
     std::vector<PathState> driven_path_snapshot_;
+    Eigen::Matrix4f alignment_transform_total_ = Eigen::Matrix4f::Identity();
     size_t robot_trail_max_points_ = 0;  // 0 = unlimited trail
     std::chrono::steady_clock::time_point last_robot_update_;
     QString robot_odom_topic_ = "/Odometry_tilt_corrected_diff";
     double robot_marker_size_m_ = 0.6;
     bool fit_view_pending_ = false;
     bool custom_draw_enabled_ = false;
+    bool goto_pick_mode_ = false;
     std::vector<Point2D> custom_waypoints_;
     std::vector<bool> custom_waypoints_visited_;
     double custom_waypoint_reach_tol_ = 0.10;

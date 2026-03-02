@@ -43,6 +43,10 @@
 // PCL for 3D point cloud preview
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/registration/icp.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -281,6 +285,52 @@ PathStateList dedupePathStates(const PathStateList& path) {
     return filtered;
 }
 
+static bool pointsAreDedupedEquivalent(const Point2D& a, const Point2D& b) {
+    return std::fabs(a.x - b.x) <= kWaypointDuplicateEpsilon &&
+           std::fabs(a.y - b.y) <= kWaypointDuplicateEpsilon;
+}
+
+static int countLeadingConnectorFlags(const std::vector<int>& flags) {
+    int count = 0;
+    while (count < static_cast<int>(flags.size()) && flags[static_cast<size_t>(count)] == 0) {
+        ++count;
+    }
+    return count;
+}
+
+// Build dc flags for planned paths using a boundary-inclusive split:
+// - connector-only prefix stays dc=0
+// - collection starts at the connector->coverage boundary point
+//   (last connector point / first coverage point in shared-boundary cases)
+static std::vector<int> buildPlannedDataCollectionFlags(
+    size_t path_size,
+    bool collect_data,
+    bool is_home_path,
+    int connector_prefix_count) {
+    std::vector<int> flags(path_size, 0);
+    if (path_size == 0 || is_home_path || !collect_data) {
+        return flags;
+    }
+
+    flags.assign(path_size, 1);
+    if (connector_prefix_count <= 0) {
+        return flags;
+    }
+
+    const size_t prefix = std::min<size_t>(
+        static_cast<size_t>(connector_prefix_count), path_size);
+    if (prefix >= path_size) {
+        std::fill(flags.begin(), flags.end(), 0);
+        return flags;
+    }
+
+    const size_t dc_start_idx = prefix - 1;  // include boundary point in collection
+    if (dc_start_idx > 0) {
+        std::fill(flags.begin(), flags.begin() + static_cast<std::ptrdiff_t>(dc_start_idx), 0);
+    }
+    return flags;
+}
+
 static void dedupePathWithFlags(PathStateList& path, std::vector<int>& flags) {
     if (path.size() != flags.size()) {
         // Fallback: zero all flags if sizes are inconsistent.
@@ -305,6 +355,24 @@ static void dedupePathWithFlags(PathStateList& path, std::vector<int>& flags) {
     }
     path = std::move(filtered);
     flags = std::move(filtered_flags);
+}
+
+static bool savePathWithFlagsToCSV(
+    const PathStateList& path,
+    const std::vector<int>& flags,
+    const QString& filename) {
+    std::ofstream file(filename.toStdString());
+    if (!file.is_open()) {
+        return false;
+    }
+    file << "x,y,dc\n";
+    const size_t n = std::min(path.size(), flags.size());
+    for (size_t i = 0; i < n; ++i) {
+        file << std::fixed << std::setprecision(6)
+             << path[i].point.x << "," << path[i].point.y << ","
+             << flags[i] << "\n";
+    }
+    return true;
 }
 
 } // namespace
@@ -365,6 +433,20 @@ void PlotWidget::setRoute(const PathStateList& route) {
 
 void PlotWidget::setPath(const PathStateList& path) {
     path_ = path;
+    if (path_connector_prefix_count_ > static_cast<int>(path_.size())) {
+        path_connector_prefix_count_ = static_cast<int>(path_.size());
+    }
+    if (path_connector_prefix_count_ < 0) {
+        path_connector_prefix_count_ = 0;
+    }
+    update();
+}
+
+void PlotWidget::setPathConnectorPrefixCount(int count) {
+    path_connector_prefix_count_ = std::max(0, count);
+    if (path_connector_prefix_count_ > static_cast<int>(path_.size())) {
+        path_connector_prefix_count_ = static_cast<int>(path_.size());
+    }
     update();
 }
 
@@ -506,6 +588,7 @@ void PlotWidget::clearAll() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+    path_connector_prefix_count_ = 0;
     robot_pose_.reset();
     robot_trail_.clear();
     custom_waypoints_.clear();
@@ -520,6 +603,9 @@ void PlotWidget::clearAll() {
     reproj_lines_.clear();
     hovered_reproj_index_ = -1;
     selection_points_.clear();
+    measure_points_.clear();
+    measure_mode_ = false;
+    emit measureDistanceUpdated(0.0, false);
     selecting_ = false;
     selected_obstacle_idx_ = -1;
     emit obstacleSelectionChanged(-1);
@@ -537,7 +623,11 @@ void PlotWidget::clearObstacles() {
 }
 void PlotWidget::clearSwaths() { swaths_.clear(); update(); }
 void PlotWidget::clearRoute() { route_.clear(); update(); }
-void PlotWidget::clearPath() { path_.clear(); update(); }
+void PlotWidget::clearPath() {
+    path_.clear();
+    path_connector_prefix_count_ = 0;
+    update();
+}
 
 void PlotWidget::resetView() {
     updateDataBounds();
@@ -556,6 +646,9 @@ void PlotWidget::zoomOut() {
 }
 
 void PlotWidget::startROISelection() {
+    measure_mode_ = false;
+    measure_points_.clear();
+    emit measureDistanceUpdated(0.0, false);
     selecting_ = true;
     selecting_roi_ = true;
     selection_points_.clear();
@@ -564,6 +657,9 @@ void PlotWidget::startROISelection() {
 }
 
 void PlotWidget::startObstacleSelection() {
+    measure_mode_ = false;
+    measure_points_.clear();
+    emit measureDistanceUpdated(0.0, false);
     selecting_ = true;
     selecting_roi_ = false;
     selection_points_.clear();
@@ -605,6 +701,24 @@ void PlotWidget::undoLastPoint() {
         selection_points_.pop_back();
         update();
     }
+}
+
+void PlotWidget::setMeasureMode(bool enabled) {
+    measure_mode_ = enabled;
+    measure_points_.clear();
+    if (measure_mode_) {
+        setCursor(Qt::CrossCursor);
+    } else if (!selecting_ && !drawing_rectangle_ && !panning_) {
+        setCursor(Qt::ArrowCursor);
+    }
+    emit measureDistanceUpdated(0.0, false);
+    update();
+}
+
+void PlotWidget::clearMeasurePoints() {
+    measure_points_.clear();
+    emit measureDistanceUpdated(0.0, false);
+    update();
 }
 
 Polygon2D PlotWidget::getSelectedPolygon() const {
@@ -811,11 +925,23 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     
     // Draw path
     if (!path_.empty()) {
-        painter.setPen(QPen(Qt::red, 1.5));
-        for (size_t i = 1; i < path_.size(); ++i) {
-            QPointF p1 = worldToScreen(path_[i-1].point);
-            QPointF p2 = worldToScreen(path_[i].point);
-            painter.drawLine(p1, p2);
+        const int split_idx = std::clamp(path_connector_prefix_count_, 0, static_cast<int>(path_.size()));
+        if (split_idx > 1) {
+                painter.setPen(QPen(QColor(255, 165, 0), 3.0, Qt::DashLine, Qt::RoundCap));  // connector segment (orange)
+            for (int i = 1; i < split_idx; ++i) {
+                QPointF p1 = worldToScreen(path_[static_cast<size_t>(i - 1)].point);
+                QPointF p2 = worldToScreen(path_[static_cast<size_t>(i)].point);
+                painter.drawLine(p1, p2);
+            }
+        }
+        if (path_.size() >= 2 && static_cast<size_t>(split_idx) < path_.size()) {
+            painter.setPen(QPen(Qt::red, 1.5, Qt::SolidLine, Qt::RoundCap));  // coverage segment
+            const size_t start_i = std::max<size_t>(1, static_cast<size_t>(split_idx));
+            for (size_t i = start_i; i < path_.size(); ++i) {
+                QPointF p1 = worldToScreen(path_[i - 1].point);
+                QPointF p2 = worldToScreen(path_[i].point);
+                painter.drawLine(p1, p2);
+            }
         }
         
         // Start and end markers
@@ -908,6 +1034,19 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         for (size_t i = 1; i < robot_trail_.size(); ++i) {
             painter.drawLine(worldToScreen(robot_trail_[i-1]),
                              worldToScreen(robot_trail_[i]));
+        }
+    }
+
+    // Re-draw connector on top so it is not hidden by scan/custom overlays.
+    if (!path_.empty()) {
+        const int split_idx = std::clamp(path_connector_prefix_count_, 0, static_cast<int>(path_.size()));
+        if (split_idx > 1) {
+            painter.setPen(QPen(QColor(255, 165, 0), 4.0, Qt::DashLine, Qt::RoundCap));  // orange connector overlay
+            for (int i = 1; i < split_idx; ++i) {
+                QPointF p1 = worldToScreen(path_[static_cast<size_t>(i - 1)].point);
+                QPointF p2 = worldToScreen(path_[static_cast<size_t>(i)].point);
+                painter.drawLine(p1, p2);
+            }
         }
     }
     
@@ -1041,6 +1180,29 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         for (const auto& p : selection_points_) {
             QPointF sp = worldToScreen(p);
             painter.drawEllipse(sp, 4, 4);
+        }
+    }
+
+    // Draw measurement helper
+    if (measure_mode_ || !measure_points_.empty()) {
+        painter.setPen(QPen(QColor(0, 170, 255), 2, Qt::DashLine));
+        painter.setBrush(QColor(0, 170, 255));
+        for (const auto& p : measure_points_) {
+            painter.drawEllipse(worldToScreen(p), 4, 4);
+        }
+        if (measure_points_.size() == 1) {
+            painter.drawLine(worldToScreen(measure_points_[0]), cursor_pos_);
+        } else if (measure_points_.size() >= 2) {
+            QPointF p1 = worldToScreen(measure_points_[0]);
+            QPointF p2 = worldToScreen(measure_points_[1]);
+            painter.drawLine(p1, p2);
+            const double dist = std::hypot(
+                measure_points_[1].x - measure_points_[0].x,
+                measure_points_[1].y - measure_points_[0].y);
+            QPointF mid = (p1 + p2) * 0.5;
+            painter.setPen(dark_mode_ ? Qt::white : Qt::black);
+            painter.setFont(QFont("Sans Serif", 9, QFont::Bold));
+            painter.drawText(mid + QPointF(8, -6), QString("%1 m").arg(dist, 0, 'f', 3));
         }
     }
     
@@ -1244,6 +1406,23 @@ static bool polygonEdgesIntersectLocal(const Polygon2D& a, const Polygon2D& b) {
 
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
+        if (measure_mode_) {
+            Point2D world = screenToWorld(event->pos());
+            if (measure_points_.size() >= 2) {
+                measure_points_.clear();
+            }
+            measure_points_.push_back(world);
+            if (measure_points_.size() >= 2) {
+                const double dist = std::hypot(
+                    measure_points_[1].x - measure_points_[0].x,
+                    measure_points_[1].y - measure_points_[0].y);
+                emit measureDistanceUpdated(dist, true);
+            } else {
+                emit measureDistanceUpdated(0.0, false);
+            }
+            update();
+            return;
+        }
         if (custom_draw_mode_) {
             Point2D world = screenToWorld(event->pos());
             emit customWaypointRequested(world);
@@ -1327,7 +1506,9 @@ void PlotWidget::mousePressEvent(QMouseEvent* event) {
             setCursor(Qt::ClosedHandCursor);
         }
     } else if (event->button() == Qt::RightButton) {
-        if (drawing_rectangle_) {
+        if (measure_mode_) {
+            clearMeasurePoints();
+        } else if (drawing_rectangle_) {
             cancelRectangleMode();
         } else if (selecting_) {
             finishSelection();
@@ -1392,7 +1573,7 @@ void PlotWidget::mouseMoveEvent(QMouseEvent* event) {
         offset_x_ = pan_offset_x_ + (event->pos().x() - pan_start_.x());
         offset_y_ = pan_offset_y_ + (event->pos().y() - pan_start_.y());
         update();
-    } else if (selecting_) {
+    } else if (selecting_ || measure_mode_) {
         update();  // Redraw preview line
     }
     
@@ -1591,6 +1772,11 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     obstacle_detect_watcher_ = new QFutureWatcher<ObstacleDetectionResult>(this);
     connect(obstacle_detect_watcher_, &QFutureWatcher<ObstacleDetectionResult>::finished,
             this, &CoverageGUI::onAutoDetectObstaclesFinished);
+
+    // Initialize async transit path planner (home / GO TO)
+    transit_plan_watcher_ = new QFutureWatcher<PathStateList>(this);
+    connect(transit_plan_watcher_, &QFutureWatcher<PathStateList>::finished,
+            this, &CoverageGUI::onTransitPathPlanningFinished);
     
     // Load dark mode preference (reuse settings from above)
     dark_mode_ = settings.value("dark_mode", false).toBool();
@@ -1701,8 +1887,7 @@ void CoverageGUI::setupUI() {
     controls_scroll->setWidgetResizable(true);
     controls_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     controls_scroll->setMinimumWidth(390);
-    controls_scroll->setMaximumWidth(420);
-    controls_scroll->setFixedWidth(390);  // Fixed width to prevent layout issues
+    controls_scroll->setMaximumWidth(16777215);  // Allow splitter-driven expansion
     
     QWidget* controls_container = new QWidget();
     QVBoxLayout* controls_layout = new QVBoxLayout(controls_container);
@@ -1749,9 +1934,18 @@ void CoverageGUI::setupUI() {
     QPushButton* btn_zoom_out = new QPushButton("-");
     btn_zoom_in->setFixedWidth(30);
     btn_zoom_out->setFixedWidth(30);
+    btn_measure_ = new QPushButton("Measure");
+    btn_measure_->setCheckable(true);
+    btn_measure_->setToolTip(
+        "Click two points on the map to measure Euclidean distance.\n"
+        "Right-click to clear points."
+    );
+    lbl_measure_ = new QLabel("Distance: -");
     toolbar->addWidget(btn_reset_view);
     toolbar->addWidget(btn_zoom_in);
     toolbar->addWidget(btn_zoom_out);
+    toolbar->addWidget(btn_measure_);
+    toolbar->addWidget(lbl_measure_);
     toolbar->addStretch();
     
     // Dark mode toggle
@@ -1774,6 +1968,7 @@ void CoverageGUI::setupUI() {
     connect(btn_reset_view, &QPushButton::clicked, plot_, &PlotWidget::resetView);
     connect(btn_zoom_in, &QPushButton::clicked, plot_, &PlotWidget::zoomIn);
     connect(btn_zoom_out, &QPushButton::clicked, plot_, &PlotWidget::zoomOut);
+    connect(btn_measure_, &QPushButton::clicked, this, &CoverageGUI::toggleMeasureMode);
     connect(btn_dark_mode_, &QPushButton::toggled, this, &CoverageGUI::toggleDarkMode);
     
     // RIGHT: full panel (layers + video) and mini palette
@@ -1834,6 +2029,7 @@ void CoverageGUI::setupConnections() {
     connect(plot_, &PlotWidget::obstacleSelectionChanged, this, &CoverageGUI::onObstacleSelectionChanged);
     connect(plot_, &PlotWidget::customWaypointRequested, this, &CoverageGUI::onPlotCustomWaypoint);
     connect(plot_, &PlotWidget::rectangleCompleted, this, &CoverageGUI::onRectangleCompleted);
+    connect(plot_, &PlotWidget::measureDistanceUpdated, this, &CoverageGUI::onMeasureDistanceUpdated);
     
     // Path mode switching
     if (radio_mode_f2c_) {
@@ -1842,6 +2038,15 @@ void CoverageGUI::setupConnections() {
     
     if (btn_custom_draw_) {
         connect(btn_custom_draw_, &QPushButton::toggled, this, [this](bool checked) {
+            if (checked && btn_measure_ && btn_measure_->isChecked()) {
+                btn_measure_->setChecked(false);
+                if (plot_) {
+                    plot_->setMeasureMode(false);
+                }
+                if (lbl_measure_) {
+                    lbl_measure_->setText("Distance: -");
+                }
+            }
             custom_draw_enabled_ = checked;
             plot_->setCustomDrawMode(checked && isCustomModeActive());
             if (checked) {
@@ -2457,6 +2662,53 @@ QGroupBox* CoverageGUI::buildFileControls() {
         });
     }
     v->addWidget(btn_fetch);
+
+    // Map alignment controls (loaded map -> current robot frame).
+    QHBoxLayout* align_row = new QHBoxLayout();
+    align_row->addWidget(new QLabel("Alignment:"));
+    combo_align_mode_ = new QComboBox();
+    combo_align_mode_->addItem("Initial guess + ICP refinement", "guess_icp");
+    combo_align_mode_->setToolTip(
+        "Alignment mode used when fitting loaded map to the latest robot map.\n"
+        "Initial guess is entered manually (tx, ty, yaw).\n"
+        "The alignment workflow fetches the latest robot map automatically.");
+    align_row->addWidget(combo_align_mode_, 1);
+    v->addLayout(align_row);
+
+    QHBoxLayout* guess_row = new QHBoxLayout();
+    guess_row->addWidget(new QLabel("Guess tx (m):"));
+    spin_align_tx_ = new QDoubleSpinBox();
+    spin_align_tx_->setRange(-1000.0, 1000.0);
+    spin_align_tx_->setDecimals(3);
+    spin_align_tx_->setSingleStep(0.1);
+    spin_align_tx_->setValue(0.0);
+    guess_row->addWidget(spin_align_tx_);
+    guess_row->addWidget(new QLabel("ty (m):"));
+    spin_align_ty_ = new QDoubleSpinBox();
+    spin_align_ty_->setRange(-1000.0, 1000.0);
+    spin_align_ty_->setDecimals(3);
+    spin_align_ty_->setSingleStep(0.1);
+    spin_align_ty_->setValue(0.0);
+    guess_row->addWidget(spin_align_ty_);
+    guess_row->addWidget(new QLabel("yaw (deg):"));
+    spin_align_yaw_deg_ = new QDoubleSpinBox();
+    spin_align_yaw_deg_->setRange(-180.0, 180.0);
+    spin_align_yaw_deg_->setDecimals(2);
+    spin_align_yaw_deg_->setSingleStep(1.0);
+    spin_align_yaw_deg_->setValue(0.0);
+    guess_row->addWidget(spin_align_yaw_deg_);
+    v->addLayout(guess_row);
+
+    btn_align_loaded_map_ = new QPushButton("Align Loaded Map to Current Frame");
+    btn_align_loaded_map_->setToolTip(
+        "Fetch latest map from robot and align currently loaded map to it.\n"
+        "Recompute hull/obstacles/path after alignment.");
+    connect(btn_align_loaded_map_, &QPushButton::clicked, this, &CoverageGUI::alignLoadedMapToLatestRobotMap);
+    v->addWidget(btn_align_loaded_map_);
+
+    lbl_alignment_status_ = new QLabel("Alignment: not run");
+    lbl_alignment_status_->setStyleSheet("color: #666; font-size: 10px;");
+    v->addWidget(lbl_alignment_status_);
     
     lbl_file_ = new QLabel("No file loaded");
     v->addWidget(lbl_file_);
@@ -2555,6 +2807,10 @@ QGroupBox* CoverageGUI::buildRobotTrackingControls() {
     
     btn_clear_robot_trail_ = new QPushButton("Clear trail");
     btn_clear_robot_trail_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    btn_load_trail_bag_ = new QPushButton("Load Trail from Rosbag");
+    btn_load_trail_bag_->setToolTip(
+        "Import odometry trail from a rosbag2 folder.\n"
+        "Imported trail is transformed with the same map alignment transform.");
     
     lbl_robot_status_ = new QLabel();
     lbl_robot_status_->setStyleSheet("color: #a66f00; font-size: 10px;");
@@ -2564,6 +2820,7 @@ QGroupBox* CoverageGUI::buildRobotTrackingControls() {
         refreshPlot();
     });
     connect(btn_clear_robot_trail_, &QPushButton::clicked, this, &CoverageGUI::clearRobotTrail);
+    connect(btn_load_trail_bag_, &QPushButton::clicked, this, &CoverageGUI::loadTrailFromRosbag);
     connect(txt_robot_topic_, &QLineEdit::editingFinished, this, [this]() {
         QString trimmed = txt_robot_topic_->text().trimmed();
         if (trimmed.isEmpty()) {
@@ -2589,6 +2846,7 @@ QGroupBox* CoverageGUI::buildRobotTrackingControls() {
     
     layout->addWidget(chk_show_robot_);
     layout->addWidget(btn_clear_robot_trail_);
+    layout->addWidget(btn_load_trail_bag_);
     layout->addWidget(lbl_robot_status_);
     
     return box;
@@ -2930,7 +3188,7 @@ QWidget* CoverageGUI::buildF2CControls() {
     
     lbl_roi_ = new QLabel("ROI: none");
     v->addWidget(lbl_roi_);
-    
+
     // Obstacle controls
     QHBoxLayout* obstacle_box = new QHBoxLayout();
     btn_obstacle_ = new QPushButton("Add Obstacle");
@@ -3153,6 +3411,14 @@ QGroupBox* CoverageGUI::buildExportControls() {
     btn_start_navigation_->setEnabled(false);  // Initially disabled
     connect(btn_start_navigation_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
     v->addWidget(btn_start_navigation_);
+
+    btn_go_to_ = new QPushButton("🎯 GO TO (Pick on Map)");
+    btn_go_to_->setCheckable(true);
+    btn_go_to_->setToolTip(
+        "Click to arm GO TO mode, then click a destination point on the map.\n"
+        "Planner will build an obstacle-avoiding path from current robot pose.");
+    connect(btn_go_to_, &QPushButton::clicked, this, &CoverageGUI::onGoToClicked);
+    v->addWidget(btn_go_to_);
 
     // Reprojection error analysis section
     QFrame* sep = new QFrame();
@@ -3752,6 +4018,7 @@ void CoverageGUI::refreshPlot() {
     // Set route and path
     plot_->setRoute(show_path ? route_ : PathStateList());
     plot_->setPath(show_path ? path_ : PathStateList());
+    plot_->setPathConnectorPrefixCount(show_path ? path_connector_prefix_count_ : 0);
     plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
     plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty() && show_path);
 
@@ -3842,6 +4109,291 @@ void CoverageGUI::clearRobotTrail() {
         driven_path_snapshot_.clear();
     }
     refreshPlot();
+}
+
+void CoverageGUI::loadTrailFromRosbag() {
+    QString bag_dir = QFileDialog::getExistingDirectory(
+        this, "Select rosbag2 folder", QDir::homePath());
+    if (bag_dir.isEmpty()) {
+        return;
+    }
+
+    QString topic = robot_odom_topic_.trimmed();
+    if (topic.isEmpty()) {
+        topic = "/Odometry_tilt_corrected_diff";
+    }
+
+    const QString temp_csv = "/tmp/bdr_rosbag_trail.csv";
+    const QString py_code = R"PY(
+import csv
+import math
+import os
+import glob
+import shutil
+import subprocess
+import sys
+import tempfile
+
+def eprint(*args):
+    print(*args, file=sys.stderr)
+
+try:
+    from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
+    from rclpy.serialization import deserialize_message
+    from rosidl_runtime_py.utilities import get_message
+except Exception as ex:
+    eprint(f"Missing ROS Python modules: {ex}")
+    sys.exit(10)
+
+bag = sys.argv[1]
+topic = sys.argv[2]
+out_csv = sys.argv[3]
+
+def has_zstd_segments(bag_dir):
+    if not os.path.isdir(bag_dir):
+        return False
+    try:
+        names = os.listdir(bag_dir)
+    except Exception:
+        return False
+    for n in names:
+        if n.endswith(".mcap.zstd") or n.endswith(".db3.zstd"):
+            return True
+    return False
+
+def patch_metadata_for_decompressed_files(metadata_path):
+    if not os.path.exists(metadata_path):
+        return
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    out = []
+    in_rel_paths = False
+    rel_indent = None
+    for ln in lines:
+        stripped = ln.lstrip()
+        indent = len(ln) - len(stripped)
+
+        if stripped.startswith("compression_mode:"):
+            out.append("  compression_mode: NONE\n")
+            in_rel_paths = False
+            continue
+        if stripped.startswith("compression_format:"):
+            out.append("  compression_format: ''\n")
+            in_rel_paths = False
+            continue
+        if stripped.startswith("relative_file_paths:"):
+            out.append(ln)
+            in_rel_paths = True
+            rel_indent = indent
+            continue
+
+        if in_rel_paths:
+            if indent <= rel_indent and stripped and not stripped.startswith("-"):
+                in_rel_paths = False
+            elif stripped.startswith("- "):
+                # Convert e.g. rosbag_0.mcap.zstd -> rosbag_0.mcap
+                entry = stripped[2:].strip()
+                if entry.endswith(".zstd"):
+                    entry = entry[:-5]
+                out.append((" " * indent) + "- " + entry + "\n")
+                continue
+
+        out.append(ln)
+
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+def decompress_with_zstd(src_path, dst_path):
+    # Try system zstd first
+    cmd = ["zstd", "-d", "-f", src_path, "-o", dst_path]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc.returncode == 0 and os.path.exists(dst_path):
+        return
+
+    # Fallback to python zstandard module if available
+    try:
+        import zstandard as zstd
+        with open(src_path, "rb") as fin, open(dst_path, "wb") as fout:
+            dctx = zstd.ZstdDecompressor()
+            dctx.copy_stream(fin, fout)
+        return
+    except Exception as ex:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(
+            f"Failed to decompress '{os.path.basename(src_path)}'. "
+            f"Install 'zstd' CLI or python 'zstandard'. "
+            f"zstd error: {err}; python error: {ex}"
+        )
+
+def prepare_bag_uri(uri):
+    # rosbag2_py on this distro cannot directly open FILE-compressed segments.
+    # Make a temporary decompressed copy of *.zstd files and patch metadata.
+    if not has_zstd_segments(uri):
+        return uri, None
+
+    tmp_root = tempfile.mkdtemp(prefix="bdr_rosbag_decompress_")
+    tmp_bag = os.path.join(tmp_root, os.path.basename(os.path.normpath(uri)))
+    shutil.copytree(uri, tmp_bag)
+
+    zstd_files = glob.glob(os.path.join(tmp_bag, "*.zstd"))
+    if not zstd_files:
+        return tmp_bag, tmp_root
+
+    for src in zstd_files:
+        dst = src[:-5]  # remove ".zstd"
+        decompress_with_zstd(src, dst)
+
+    patch_metadata_for_decompressed_files(os.path.join(tmp_bag, "metadata.yaml"))
+    return tmp_bag, tmp_root
+
+def open_reader(storage_id):
+    reader = SequentialReader()
+    reader.open(StorageOptions(uri=bag, storage_id=storage_id), ConverterOptions('', ''))
+    return reader
+
+tmp_cleanup = None
+try:
+    bag, tmp_cleanup = prepare_bag_uri(bag)
+except Exception as ex:
+    eprint(str(ex))
+    sys.exit(14)
+
+reader = None
+last_err = None
+for sid in ("sqlite3", "mcap", ""):
+    try:
+        reader = open_reader(sid)
+        break
+    except Exception as ex:
+        last_err = ex
+
+if reader is None:
+    eprint(f"Failed to open rosbag: {last_err}")
+    sys.exit(11)
+
+topic_types = {t.name: t.type for t in reader.get_all_topics_and_types()}
+if topic not in topic_types:
+    eprint(f"Topic not found in bag: {topic}")
+    sys.exit(12)
+
+msg_type = get_message(topic_types[topic])
+rows = []
+while reader.has_next():
+    tname, data, stamp = reader.read_next()
+    if tname != topic:
+        continue
+    msg = deserialize_message(data, msg_type)
+    x = float(msg.pose.pose.position.x)
+    y = float(msg.pose.pose.position.y)
+    q = msg.pose.pose.orientation
+    siny = 2.0 * (q.w * q.z + q.x * q.y)
+    cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+    yaw = math.atan2(siny, cosy)
+    rows.append((x, y, yaw, int(stamp)))
+
+if not rows:
+    eprint(f"No messages found on topic: {topic}")
+    sys.exit(13)
+
+with open(out_csv, "w", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["x", "y", "yaw", "stamp"])
+    w.writerows(rows)
+
+if tmp_cleanup:
+    try:
+        shutil.rmtree(tmp_cleanup, ignore_errors=True)
+    except Exception:
+        pass
+)PY";
+
+    showProgress(true, "Loading trail from rosbag...");
+    QProcess proc;
+    proc.start("python3", QStringList() << "-c" << py_code << bag_dir << topic << temp_csv);
+    if (!proc.waitForFinished(600000)) {
+        showProgress(false);
+        QMessageBox::warning(this, "Trail Import Failed", "Timed out while reading/decompressing rosbag.");
+        return;
+    }
+    if (proc.exitCode() != 0) {
+        showProgress(false);
+        QString err = QString::fromUtf8(proc.readAllStandardError()).trimmed();
+        if (err.isEmpty()) {
+            err = "Unknown error reading rosbag.";
+        }
+        QMessageBox::warning(this, "Trail Import Failed", err);
+        return;
+    }
+
+    std::ifstream in(temp_csv.toStdString());
+    if (!in.is_open()) {
+        showProgress(false);
+        QMessageBox::warning(this, "Trail Import Failed", "Could not read extracted trail CSV.");
+        return;
+    }
+
+    std::string line;
+    std::getline(in, line);  // header
+    std::vector<PathState> imported_states;
+    imported_states.reserve(5000);
+
+    while (std::getline(in, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        std::stringstream ss(line);
+        std::string sx, sy, syaw, sstamp;
+        if (!std::getline(ss, sx, ',')) continue;
+        if (!std::getline(ss, sy, ',')) continue;
+        if (!std::getline(ss, syaw, ',')) continue;
+        std::getline(ss, sstamp, ',');
+        try {
+            double x = std::stod(sx);
+            double y = std::stod(sy);
+            double yaw = std::stod(syaw);
+
+            Eigen::Vector4f p(static_cast<float>(x), static_cast<float>(y), 0.0f, 1.0f);
+            Eigen::Vector4f pt = alignment_transform_total_ * p;
+            const double rot_yaw = std::atan2(
+                static_cast<double>(alignment_transform_total_(1, 0)),
+                static_cast<double>(alignment_transform_total_(0, 0)));
+            const double yaw_t = yaw + rot_yaw;
+
+            PathState st;
+            st.point = Point2D(pt.x(), pt.y());
+            st.heading = yaw_t;
+            st.vx = std::cos(yaw_t);
+            st.vy = std::sin(yaw_t);
+            imported_states.push_back(st);
+        } catch (...) {
+            continue;
+        }
+    }
+
+    if (imported_states.empty()) {
+        showProgress(false);
+        QMessageBox::warning(this, "Trail Import Failed", "No valid trail points were parsed.");
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+        robot_trail_states_ = imported_states;
+        robot_trail_.clear();
+        robot_trail_.reserve(imported_states.size());
+        for (const auto& st : imported_states) {
+            robot_trail_.push_back(st.point);
+        }
+        driven_path_snapshot_ = robot_trail_states_;
+    }
+
+    showProgress(false);
+    refreshPlot();
+    setStatus(QString("Loaded %1 trail points from rosbag (%2)")
+                  .arg(imported_states.size())
+                  .arg(QFileInfo(bag_dir).fileName()),
+              6000);
 }
 
 void CoverageGUI::fetchLatestMapFromRobot() {
@@ -3990,6 +4542,349 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     setStatus("Map saved: " + local_path);
 }
 
+bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString* errorOut) {
+    const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
+    const QString display_robot = using_registry && !active_robot_id_.isEmpty()
+                                      ? active_robot_id_
+                                      : robot_host_;
+    const QString ssh_opts = pinned_known_hosts_file_.isEmpty()
+                                 ? "-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no"
+                                 : QString("-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=yes "
+                                           "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
+                                       .arg(pinned_known_hosts_file_);
+
+    showProgress(true, QString("Alignment: finding latest map on %1...").arg(display_robot));
+
+    QString find_cmd = QString(
+        "ssh %1 %2@%3 "
+        "\"find %4 -name '*.pcd' -type f -printf '%T@ %p\\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-\""
+    ).arg(ssh_opts, robot_user_, robot_host_, robot_data_path_);
+
+    QProcess find_process;
+    find_process.start("bash", QStringList() << "-c" << find_cmd);
+    if (!find_process.waitForFinished(10000) || find_process.exitCode() != 0) {
+        showProgress(false);
+        if (errorOut) {
+            *errorOut = QString("Could not query latest robot map via SSH.\n%1")
+                            .arg(QString::fromUtf8(find_process.readAllStandardError()).trimmed());
+        }
+        return false;
+    }
+
+    QString remote_path = QString::fromUtf8(find_process.readAllStandardOutput()).trimmed();
+    if (remote_path.isEmpty()) {
+        showProgress(false);
+        if (errorOut) {
+            *errorOut = "No .pcd map files found on robot under " + robot_data_path_;
+        }
+        return false;
+    }
+
+    QDate today = QDate::currentDate();
+    QString day_folder = today.toString("MMMM_dd_yyyy");
+    QString local_dir = local_map_base_ + "/" + day_folder;
+    QDir().mkpath(local_dir);
+
+    QFileInfo remote_info(remote_path);
+    QString local_path = local_dir + "/" + remote_info.fileName();
+    bool use_existing = QFileInfo::exists(local_path) && QFileInfo(local_path).size() > 0;
+
+    if (!use_existing) {
+        showProgress(true, "Alignment: downloading " + remote_info.fileName());
+        QString scp_cmd = QString(
+            "scp %1 %2@%3:\"%4\" \"%5\""
+        ).arg(
+            pinned_known_hosts_file_.isEmpty()
+                ? "-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no"
+                : QString("-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=yes "
+                          "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
+                      .arg(pinned_known_hosts_file_),
+            robot_user_, robot_host_, remote_path, local_path);
+
+        QProcess scp_process;
+        scp_process.start("bash", QStringList() << "-c" << scp_cmd);
+        if (!scp_process.waitForFinished(180000) || scp_process.exitCode() != 0) {
+            showProgress(false);
+            if (errorOut) {
+                *errorOut = QString("Failed to download latest map.\n%1")
+                                .arg(QString::fromUtf8(scp_process.readAllStandardError()).trimmed());
+            }
+            return false;
+        }
+    }
+
+    showProgress(false);
+    QFileInfo local_info(local_path);
+    if (!local_info.exists() || local_info.size() <= 0) {
+        if (errorOut) {
+            *errorOut = "Latest map download completed but local file is invalid: " + local_path;
+        }
+        return false;
+    }
+
+    if (localPathOut) {
+        *localPathOut = local_path;
+    }
+    return true;
+}
+
+PointCloudPtr CoverageGUI::downsampleForAlignment(const PointCloudPtr& cloud, double voxelSize) const {
+    if (!cloud || cloud->empty() || voxelSize <= 0.0) {
+        return cloud;
+    }
+    PointCloudPtr ds(new PointCloud);
+    pcl::VoxelGrid<pcl::PointXYZ> vg;
+    vg.setInputCloud(cloud);
+    vg.setLeafSize(static_cast<float>(voxelSize),
+                   static_cast<float>(voxelSize),
+                   static_cast<float>(voxelSize));
+    vg.filter(*ds);
+    return ds;
+}
+
+double CoverageGUI::estimateAlignmentError(
+    const PointCloudPtr& source,
+    const PointCloudPtr& target,
+    const Eigen::Matrix4f& transform) const {
+    if (!source || !target || source->empty() || target->empty()) {
+        return std::numeric_limits<double>::infinity();
+    }
+
+    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
+    tree.setInputCloud(target);
+
+    const size_t max_samples = 5000;
+    const size_t step = std::max<size_t>(1, source->size() / max_samples);
+    std::vector<int> idx(1);
+    std::vector<float> d2(1);
+    double sum = 0.0;
+    size_t count = 0;
+
+    for (size_t i = 0; i < source->size(); i += step) {
+        const auto& p = source->points[i];
+        Eigen::Vector4f pt(p.x, p.y, p.z, 1.0f);
+        Eigen::Vector4f q = transform * pt;
+        pcl::PointXYZ query(q.x(), q.y(), q.z());
+        if (tree.nearestKSearch(query, 1, idx, d2) > 0) {
+            sum += std::sqrt(std::max(0.0f, d2[0]));
+            count++;
+        }
+    }
+    if (count == 0) {
+        return std::numeric_limits<double>::infinity();
+    }
+    return sum / static_cast<double>(count);
+}
+
+void CoverageGUI::applyAlignmentTransformToLoadedData(const Eigen::Matrix4f& transform) {
+    if (!pcd_points_ || pcd_points_->empty()) {
+        return;
+    }
+
+    pcl::transformPointCloud(*pcd_points_, *pcd_points_, transform);
+    if (filtered_points_ && filtered_points_.get() != pcd_points_.get()) {
+        pcl::transformPointCloud(*filtered_points_, *filtered_points_, transform);
+    } else {
+        filtered_points_ = pcd_points_;
+    }
+
+    // Clear any derived planning artifacts; they must be recomputed in the aligned frame.
+    polygon_.clear();
+    roi_polygon_.clear();
+    obstacles_.clear();
+    clearCoverage();
+    custom_waypoints_.clear();
+    custom_waypoints_visited_.clear();
+    refreshCustomPathUI();
+    if (btn_delete_selected_obstacle_) {
+        btn_delete_selected_obstacle_->setEnabled(false);
+    }
+    if (lbl_roi_) {
+        lbl_roi_->setText("ROI: none");
+    }
+    if (lbl_obstacles_) {
+        lbl_obstacles_->setText("Obstacles: 0");
+    }
+    if (lbl_reproj_status_) {
+        lbl_reproj_status_->setText("No reprojection computed");
+    }
+
+    xy_2d_.clear();
+    xy_2d_.reserve(filtered_points_ ? filtered_points_->size() : 0);
+    if (filtered_points_) {
+        for (const auto& pt : filtered_points_->points) {
+            xy_2d_.emplace_back(pt.x, pt.y);
+        }
+    }
+
+    alignment_transform_total_ = transform * alignment_transform_total_;
+
+    plot_->clearAll();
+    scheduleFitToView();
+    refreshPlot();
+}
+
+void CoverageGUI::alignLoadedMapToLatestRobotMap() {
+    if (!pcd_points_ || pcd_points_->empty()) {
+        QMessageBox::warning(this, "No Loaded Map",
+                             "Load a planning map first, then run alignment.");
+        return;
+    }
+
+    QString latest_path;
+    QString fetch_error;
+    if (!fetchLatestMapFileForAlignment(&latest_path, &fetch_error)) {
+        QMessageBox::warning(
+            this, "Alignment Fetch Failed",
+            "Could not fetch the latest robot map for alignment.\n\n" + fetch_error +
+                "\n\nTip: verify robot connectivity, then retry.");
+        return;
+    }
+
+    PointCloudPtr target_cloud;
+    try {
+        target_cloud = loadPointCloudFile(latest_path.toStdString());
+    } catch (const std::exception& e) {
+        QMessageBox::warning(this, "Alignment Failed",
+                             QString("Failed to load latest robot map:\n%1").arg(e.what()));
+        return;
+    }
+
+    // Alignment uses raw loaded cloud (pcd_points_), not GUI-cropped/filtered cloud.
+    PointCloudPtr eval_source_ds = downsampleForAlignment(pcd_points_, 0.15);
+    PointCloudPtr eval_target_ds = downsampleForAlignment(target_cloud, 0.15);
+    if (!eval_source_ds || !eval_target_ds || eval_source_ds->size() < 50 || eval_target_ds->size() < 50) {
+        QMessageBox::warning(this, "Alignment Failed",
+                             "Not enough points for alignment after downsampling.");
+        return;
+    }
+
+    showProgress(true, "Applying manual initial guess...");
+    const double tx_guess = spin_align_tx_ ? spin_align_tx_->value() : 0.0;
+    const double ty_guess = spin_align_ty_ ? spin_align_ty_->value() : 0.0;
+    const double yaw_guess_deg = spin_align_yaw_deg_ ? spin_align_yaw_deg_->value() : 0.0;
+    const double yaw_guess_rad = yaw_guess_deg * M_PI / 180.0;
+
+    Eigen::Matrix4f initial = Eigen::Matrix4f::Identity();
+    initial(0, 0) = static_cast<float>(std::cos(yaw_guess_rad));
+    initial(0, 1) = static_cast<float>(-std::sin(yaw_guess_rad));
+    initial(1, 0) = static_cast<float>(std::sin(yaw_guess_rad));
+    initial(1, 1) = static_cast<float>(std::cos(yaw_guess_rad));
+    initial(0, 3) = static_cast<float>(tx_guess);
+    initial(1, 3) = static_cast<float>(ty_guess);
+
+    QString guess_debug = QString("Manual initial guess: yaw=%1 deg, tx=%2 m, ty=%3 m")
+                              .arg(yaw_guess_deg, 0, 'f', 2)
+                              .arg(tx_guess, 0, 'f', 2)
+                              .arg(ty_guess, 0, 'f', 2);
+
+    Eigen::Matrix4f final_tf = initial;
+    QString method = combo_align_mode_ ? combo_align_mode_->currentData().toString() : "guess_icp";
+    bool icp_converged = false;
+    double icp_score = std::numeric_limits<double>::quiet_NaN();
+    QString stage_report;
+
+    const double pre_err = estimateAlignmentError(eval_source_ds, eval_target_ds, Eigen::Matrix4f::Identity());
+    const double guess_err = estimateAlignmentError(eval_source_ds, eval_target_ds, initial);
+
+    if (method == "guess_icp") {
+        // Multi-scale ICP improves capture range and final precision.
+        struct IcpStage {
+            double voxel;
+            double max_corr;
+            int max_iter;
+        };
+        const std::vector<IcpStage> stages = {
+            {0.35, 3.0, 80},  // coarse
+            {0.18, 1.8, 60},  // medium
+            {0.10, 0.9, 50},  // fine
+        };
+
+        Eigen::Matrix4f current_tf = initial;
+        bool all_stages_ok = true;
+
+        for (size_t i = 0; i < stages.size(); ++i) {
+            const auto& st = stages[i];
+            showProgress(true, QString("Running ICP (%1/%2, voxel=%3 m)...")
+                                   .arg(i + 1)
+                                   .arg(stages.size())
+                                   .arg(st.voxel, 0, 'f', 2));
+
+            PointCloudPtr stage_source = downsampleForAlignment(pcd_points_, st.voxel);
+            PointCloudPtr stage_target = downsampleForAlignment(target_cloud, st.voxel);
+            if (!stage_source || !stage_target || stage_source->size() < 50 || stage_target->size() < 50) {
+                all_stages_ok = false;
+                stage_report += QString("\nStage %1 skipped (insufficient points at voxel=%2)")
+                                    .arg(i + 1)
+                                    .arg(st.voxel, 0, 'f', 2);
+                continue;
+            }
+
+            pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+            icp.setInputSource(stage_source);
+            icp.setInputTarget(stage_target);
+            icp.setUseReciprocalCorrespondences(true);
+            icp.setMaximumIterations(st.max_iter);
+            icp.setMaxCorrespondenceDistance(st.max_corr);
+            icp.setRANSACOutlierRejectionThreshold(st.max_corr * 0.25);
+            icp.setTransformationEpsilon(1e-9);
+            icp.setEuclideanFitnessEpsilon(1e-5);
+
+            PointCloud aligned;
+            icp.align(aligned, current_tf);
+            const bool ok = icp.hasConverged();
+            const double fit = icp.getFitnessScore();
+            if (ok && std::isfinite(fit)) {
+                current_tf = icp.getFinalTransformation();
+                stage_report += QString("\nStage %1: converged=yes, fitness=%2")
+                                    .arg(i + 1)
+                                    .arg(fit, 0, 'f', 5);
+                icp_score = fit;
+            } else {
+                all_stages_ok = false;
+                stage_report += QString("\nStage %1: converged=no").arg(i + 1);
+            }
+        }
+
+        icp_converged = all_stages_ok;
+        if (std::isfinite(icp_score)) {
+            final_tf = current_tf;
+        }
+    }
+
+    const double final_err = estimateAlignmentError(eval_source_ds, eval_target_ds, final_tf);
+    applyAlignmentTransformToLoadedData(final_tf);
+    showProgress(false);
+
+    const double yaw_deg = std::atan2(final_tf(1, 0), final_tf(0, 0)) * 180.0 / M_PI;
+    const double tx = final_tf(0, 3);
+    const double ty = final_tf(1, 3);
+    const QString status = QString("Alignment done (manual guess + ICP): yaw=%1 deg, tx=%2 m, ty=%3 m")
+                               .arg(yaw_deg, 0, 'f', 2)
+                               .arg(tx, 0, 'f', 2)
+                               .arg(ty, 0, 'f', 2);
+    if (lbl_alignment_status_) {
+        lbl_alignment_status_->setText(status);
+        lbl_alignment_status_->setStyleSheet("color: #2e7d32; font-size: 10px;");
+    }
+
+    QString details = guess_debug + "\n";
+    details += QString("Error (mean NN): before=%1 m, initial=%2 m, final=%3 m")
+                   .arg(pre_err, 0, 'f', 3)
+                   .arg(guess_err, 0, 'f', 3)
+                   .arg(final_err, 0, 'f', 3);
+    details += QString("\nICP: converged=%1, fitness=%2")
+                   .arg(icp_converged ? "yes" : "no")
+                   .arg(std::isfinite(icp_score) ? QString::number(icp_score, 'f', 4) : "n/a");
+    if (!stage_report.isEmpty()) {
+        details += "\n" + stage_report;
+    }
+    details += "\n\nNext: recompute hull/obstacles/path in the aligned frame.";
+
+    QMessageBox::information(this, "Map Alignment Complete", details);
+    setStatus(status, 7000);
+}
+
 void CoverageGUI::loadPointCloudFromPath(const QString& path) {
     showProgress(true, "Loading point cloud...");
     
@@ -4007,6 +4902,7 @@ void CoverageGUI::loadPointCloudFromPath(const QString& path) {
         swaths_.clear();
         route_.clear();
         path_.clear();
+        alignment_transform_total_ = Eigen::Matrix4f::Identity();
 
         // Snapshot driven path at map-load time (used for obstacle detection)
         {
@@ -4016,6 +4912,10 @@ void CoverageGUI::loadPointCloudFromPath(const QString& path) {
         
         lbl_roi_->setText("ROI: none");
         lbl_obstacles_->setText("Obstacles: 0");
+        if (lbl_alignment_status_) {
+            lbl_alignment_status_->setText("Alignment: not run");
+            lbl_alignment_status_->setStyleSheet("color: #666; font-size: 10px;");
+        }
         
         plot_->clearAll();
         
@@ -4400,6 +5300,15 @@ void CoverageGUI::toggleROISelection() {
             btn_roi_->setChecked(false);
             return;
         }
+        if (btn_measure_ && btn_measure_->isChecked()) {
+            btn_measure_->setChecked(false);
+        }
+        if (plot_) {
+            plot_->setMeasureMode(false);
+        }
+        if (lbl_measure_) {
+            lbl_measure_->setText("Distance: -");
+        }
         btn_obstacle_->setChecked(false);
         plot_->startROISelection();
         lbl_roi_->setText("ROI: selecting points...");
@@ -4425,12 +5334,64 @@ void CoverageGUI::toggleObstacleSelection() {
             btn_obstacle_->setChecked(false);
             return;
         }
+        if (btn_measure_ && btn_measure_->isChecked()) {
+            btn_measure_->setChecked(false);
+        }
+        if (plot_) {
+            plot_->setMeasureMode(false);
+        }
+        if (lbl_measure_) {
+            lbl_measure_->setText("Distance: -");
+        }
         btn_roi_->setChecked(false);
         plot_->startObstacleSelection();
         setStatus("Drawing obstacle polygon...");
     } else {
         plot_->cancelSelection();
     }
+}
+
+void CoverageGUI::toggleMeasureMode() {
+    if (!plot_ || !btn_measure_) return;
+    const bool enabled = btn_measure_->isChecked();
+    if (enabled) {
+        // Disable conflicting selection modes.
+        if (btn_roi_) btn_roi_->setChecked(false);
+        if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        if (btn_rectangle_ && btn_rectangle_->isChecked()) {
+            btn_rectangle_->setChecked(false);
+            plot_->cancelRectangleMode();
+        }
+        if (btn_custom_draw_ && btn_custom_draw_->isChecked()) {
+            btn_custom_draw_->setChecked(false);
+            custom_draw_enabled_ = false;
+            plot_->setCustomDrawMode(false);
+        }
+        if (plot_->isSelecting()) {
+            plot_->cancelSelection();
+        }
+        plot_->setMeasureMode(true);
+        if (lbl_measure_) {
+            lbl_measure_->setText("Distance: select first point");
+        }
+        setStatus("Measure mode enabled: click two points on the map", 4000);
+    } else {
+        plot_->setMeasureMode(false);
+        if (lbl_measure_) {
+            lbl_measure_->setText("Distance: -");
+        }
+        setStatus("Measure mode disabled", 3000);
+    }
+}
+
+void CoverageGUI::onMeasureDistanceUpdated(double distance_m, bool valid) {
+    if (!lbl_measure_) return;
+    if (!valid) {
+        lbl_measure_->setText("Distance: select second point");
+        return;
+    }
+    lbl_measure_->setText(QString("Distance: %1 m").arg(distance_m, 0, 'f', 3));
+    setStatus(QString("Measured distance: %1 m").arg(distance_m, 0, 'f', 3), 3000);
 }
 
 void CoverageGUI::autoDetectObstacles() {
@@ -4694,6 +5655,8 @@ void CoverageGUI::generateRoute() {
             route_ = result.route;
             effective_area_m2_ = result.effective_area_m2;
             path_.clear();
+            path_connector_prefix_count_ = 0;
+            planned_path_is_home_ = false;
             refreshPlot();
             updateCoverageStats();
             setStatus(QString("Generated route with %1 waypoints").arg(route_.size()), 4000);
@@ -4727,6 +5690,7 @@ void CoverageGUI::generatePath() {
             swaths_ = result.swaths;
             route_ = result.route;
             PathStateList final_path = result.path;
+            int connector_prefix_count = 0;
             bool added_connector = false;
             const bool plan_to_first = chk_plan_to_first_ ? chk_plan_to_first_->isChecked() : true;
             if (plan_to_first && !final_path.empty()) {
@@ -4737,27 +5701,57 @@ void CoverageGUI::generatePath() {
                 }
                 if (pose_copy.has_value()) {
                     const Point2D start = pose_copy->point;
-                    const Point2D goal = final_path.front().point;
-                    const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
-                    if (dist > 0.05) {
+                    PathStateList best_connector;
+                    size_t connect_idx = 0;
+                    bool found_connector = false;
+                    for (size_t i = 0; i < final_path.size(); ++i) {
+                        const Point2D goal = final_path[i].point;
+                        const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
+                        if (dist <= 0.05) {
+                            connect_idx = i;
+                            found_connector = true;
+                            break;
+                        }
                         PathStateList connector = computeObstacleAvoidingPath(
                             start, goal, -1.0, kConnectorObstacleClearanceM);
                         if (!connector.empty()) {
-                            const auto& last = connector.back().point;
-                            const auto& first = final_path.front().point;
-                            if (std::hypot(last.x - first.x, last.y - first.y) < 1e-6) {
-                                final_path.erase(final_path.begin());
+                            best_connector = std::move(connector);
+                            connect_idx = i;
+                            found_connector = true;
+                            break;
+                        }
+                    }
+                    if (found_connector && connect_idx < final_path.size()) {
+                        PathStateList tail(
+                            final_path.begin() + static_cast<std::ptrdiff_t>(connect_idx),
+                            final_path.end());
+                        if (!best_connector.empty()) {
+                            const auto& last = best_connector.back().point;
+                            const auto& first = tail.front().point;
+                            if (pointsAreDedupedEquivalent(last, first)) {
+                                tail.erase(tail.begin());
                             }
-                            PathStateList combined = connector;
-                            combined.insert(combined.end(), final_path.begin(), final_path.end());
-                            final_path = dedupePathStates(combined);
+                            PathStateList combined = best_connector;
+                            combined.insert(combined.end(), tail.begin(), tail.end());
+                            std::vector<int> combined_flags(best_connector.size(), 0);
+                            combined_flags.insert(combined_flags.end(), tail.size(), 1);
+                            dedupePathWithFlags(combined, combined_flags);
+                            connector_prefix_count = 0;
+                            while (connector_prefix_count < static_cast<int>(combined_flags.size()) &&
+                                   combined_flags[static_cast<size_t>(connector_prefix_count)] == 0) {
+                                ++connector_prefix_count;
+                            }
+                            final_path = std::move(combined);
                             added_connector = true;
                         } else {
-                            QMessageBox::warning(
-                                this, "Connector Failed",
-                                "Failed to plan a connector to the first waypoint.\n"
-                                "Showing the coverage path only.");
+                            final_path = std::move(tail);
                         }
+                    } else {
+                        QMessageBox::warning(
+                            this, "Connector Failed",
+                            QString("Failed to plan a connector with clearance %1 m.\n"
+                                    "Showing the coverage path only.")
+                                .arg(kConnectorObstacleClearanceM, 0, 'f', 2));
                     }
                 } else {
                     QMessageBox::warning(
@@ -4766,12 +5760,19 @@ void CoverageGUI::generatePath() {
                 }
             }
             path_ = final_path;
+            path_connector_prefix_count_ = added_connector
+                ? std::clamp(connector_prefix_count, 0, static_cast<int>(path_.size()))
+                : 0;
+            planned_path_is_home_ = false;
             effective_area_m2_ = result.effective_area_m2;
             syncPlannedPathCache();
             refreshPlot();
             updateCoverageStats();  // Update statistics after path generation
             if (added_connector) {
-                setStatus(QString("Generated path with %1 states (incl. connector)").arg(path_.size()), 4000);
+                setStatus(QString("Generated path with %1 states (incl. connector: %2 points)")
+                              .arg(path_.size())
+                              .arg(path_connector_prefix_count_),
+                          5000);
             } else {
                 setStatus(QString("Generated path with %1 states").arg(path_.size()), 4000);
             }
@@ -5005,6 +6006,8 @@ void CoverageGUI::clearCoverage() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+    path_connector_prefix_count_ = 0;
+    planned_path_is_home_ = false;
     effective_area_m2_ = 0.0;
     plot_->clearSwaths();
     plot_->clearRoute();
@@ -5023,7 +6026,9 @@ void CoverageGUI::clearCoverage() {
 void CoverageGUI::exportPathCSV() {
     // Determine which path to export based on mode
     PathStateList export_path;
+    std::vector<int> export_flags;
     QString mode_label;
+    const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
     
     if (isCustomModeActive()) {
         if (custom_waypoints_.empty()) {
@@ -5040,15 +6045,20 @@ void CoverageGUI::exportPathCSV() {
             ps.vy = 0;
             export_path.push_back(ps);
         }
+        export_flags.assign(export_path.size(), collect_data ? 1 : 0);
         mode_label = "custom";
     } else {
     if (path_.empty()) {
             QMessageBox::warning(this, "Warning", "Generate a coverage path first.");
         return;
         }
-        export_path = path_;
+        export_path = dedupePathStates(path_);
+        export_flags = buildPlannedDataCollectionFlags(
+            export_path.size(), collect_data, planned_path_is_home_, path_connector_prefix_count_);
         mode_label = "planned";
     }
+
+    dedupePathWithFlags(export_path, export_flags);
     
     QString filename = QFileDialog::getSaveFileName(this, "Save Path CSV", "", "CSV (*.csv)");
     if (filename.isEmpty()) return;
@@ -5057,7 +6067,7 @@ void CoverageGUI::exportPathCSV() {
         filename += ".csv";
     }
     
-    if (savePathToCSV(export_path, filename.toStdString())) {
+    if (savePathWithFlagsToCSV(export_path, export_flags, filename)) {
         QMessageBox::information(this, "Export", 
                                 QString("Saved %1 %2 waypoints").arg(export_path.size()).arg(mode_label));
         setStatus("Path exported", 4000);
@@ -5190,6 +6200,8 @@ void CoverageGUI::publishWaypoints() {
     PathStateList export_path;
     std::vector<int> export_flags;
     QString mode_label;
+    const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+    int planned_connector_prefix_count = 0;
 
     if (isCustomModeActive()) {
         if (custom_waypoints_.size() < 2) {
@@ -5206,7 +6218,7 @@ void CoverageGUI::publishWaypoints() {
             export_path.push_back(ps);
         }
         mode_label = "custom";
-        export_flags.assign(export_path.size(), 0);
+        export_flags.assign(export_path.size(), collect_data ? 1 : 0);
 
         // Reset visited status for tracking
         custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
@@ -5218,15 +6230,21 @@ void CoverageGUI::publishWaypoints() {
         }
         export_path = dedupePathStates(path_);
         mode_label = "planned";
-        const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+        planned_connector_prefix_count = std::max(0, path_connector_prefix_count_);
         export_flags.assign(export_path.size(), collect_data ? 1 : 0);
+        if (!planned_path_is_home_ && collect_data && planned_connector_prefix_count > 0 && !export_flags.empty()) {
+            const size_t prefix = std::min<size_t>(
+                static_cast<size_t>(planned_connector_prefix_count), export_flags.size());
+            std::fill(export_flags.begin(), export_flags.begin() + static_cast<std::ptrdiff_t>(prefix), 0);
+        }
     }
 
     dedupePathWithFlags(export_path, export_flags);
 
     // If we're in planned mode, prepend a connector from current pose to first waypoint
     const bool plan_to_first = chk_plan_to_first_ ? chk_plan_to_first_->isChecked() : true;
-    if (!isCustomModeActive() && plan_to_first && !export_path.empty()) {
+    const bool allow_connector_prepend = !planned_path_is_home_ && path_connector_prefix_count_ <= 0;
+    if (!isCustomModeActive() && plan_to_first && allow_connector_prepend && !export_path.empty()) {
         std::optional<PathState> pose_copy;
         {
             std::lock_guard<std::mutex> lock(robot_pose_mutex_);
@@ -5243,7 +6261,7 @@ void CoverageGUI::publishWaypoints() {
                     if (!connector.empty() && !export_path.empty()) {
                         const auto& last = connector.back().point;
                         const auto& first = export_path.front().point;
-                        if (std::hypot(last.x - first.x, last.y - first.y) < 1e-6) {
+                        if (pointsAreDedupedEquivalent(last, first)) {
                             export_path.erase(export_path.begin());
                             if (!export_flags.empty()) {
                                 export_flags.erase(export_flags.begin());
@@ -5258,9 +6276,15 @@ void CoverageGUI::publishWaypoints() {
                     export_path = std::move(combined);
                     export_flags = std::move(combined_flags);
                     dedupePathWithFlags(export_path, export_flags);
+                    planned_connector_prefix_count = countLeadingConnectorFlags(export_flags);
                 }
             }
         }
+    }
+
+    if (!isCustomModeActive()) {
+        export_flags = buildPlannedDataCollectionFlags(
+            export_path.size(), collect_data, planned_path_is_home_, planned_connector_prefix_count);
     }
 
     std_msgs::msg::Float64MultiArray msg;
@@ -5296,26 +6320,7 @@ void CoverageGUI::planHomePath() {
 
     const Point2D start = pose_copy->point;
     const Point2D goal{0.0, 0.0};
-
-    PathStateList home_path = computeObstacleAvoidingPath(
-        start, goal, -1.0, kConnectorObstacleClearanceM);
-    if (home_path.empty()) {
-        QMessageBox::warning(
-            this, "Home Path",
-            QString("Failed to generate a valid path to origin with clearance %1 m.")
-                .arg(kConnectorObstacleClearanceM, 0, 'f', 2));
-        return;
-    }
-
-    clearCoverage();
-    path_ = home_path;
-    syncPlannedPathCache();
-    updateCoverageStats();
-    refreshPlot();
-    setStatus(QString("Home path generated (%1 points, clearance %2 m)")
-                  .arg(path_.size())
-                  .arg(kConnectorObstacleClearanceM, 0, 'f', 2),
-              6000);
+    startTransitPathPlanning(start, goal, /*is_home=*/true);
 }
 
 void CoverageGUI::publishCustomPath() {
@@ -5339,6 +6344,14 @@ void CoverageGUI::onPathModeChanged() {
     refreshCustomPathUI();
     syncPlannedPathCache();
     updateCoverageStats();
+    if (goto_pick_mode_ && btn_go_to_ && btn_go_to_->isChecked()) {
+        goto_pick_mode_ = false;
+        {
+            QSignalBlocker blocker(btn_go_to_);
+            btn_go_to_->setChecked(false);
+        }
+        setStatus("GO TO point-pick cancelled (mode changed).", 3000);
+    }
     refreshPlot();
 }
 
@@ -5359,11 +6372,75 @@ void CoverageGUI::setCustomModeActive(bool active) {
         }
     }
     
-    plot_->setCustomDrawMode(active && custom_draw_enabled_);
+    // GO TO pick mode also uses map click capture.
+    if (goto_pick_mode_) {
+        plot_->setCustomDrawMode(true);
+    } else {
+        plot_->setCustomDrawMode(active && custom_draw_enabled_);
+    }
     plot_->setShowCustomPath(active && !custom_waypoints_.empty());
 }
 
+void CoverageGUI::onGoToClicked() {
+    if (!btn_go_to_) {
+        return;
+    }
+
+    const bool enabled = btn_go_to_->isChecked();
+    goto_pick_mode_ = enabled;
+
+    if (enabled) {
+        if (!plot_) {
+            goto_pick_mode_ = false;
+            btn_go_to_->setChecked(false);
+            return;
+        }
+        // GO TO and custom-draw both consume map clicks; disable custom draw while armed.
+        if (custom_draw_enabled_) {
+            custom_draw_enabled_ = false;
+            if (btn_custom_draw_) {
+                QSignalBlocker blocker(btn_custom_draw_);
+                btn_custom_draw_->setChecked(false);
+            }
+        }
+        plot_->setCustomDrawMode(true);
+        setStatus("GO TO armed: click destination on map.", 5000);
+    } else {
+        goto_pick_mode_ = false;
+        setCustomModeActive(isCustomModeActive());
+        setStatus("GO TO cancelled.", 3000);
+    }
+}
+
 void CoverageGUI::onPlotCustomWaypoint(const Point2D& point) {
+    if (goto_pick_mode_) {
+        goto_pick_mode_ = false;
+        if (btn_go_to_) {
+            QSignalBlocker blocker(btn_go_to_);
+            btn_go_to_->setChecked(false);
+        }
+        setCustomModeActive(isCustomModeActive());
+
+        std::optional<PathState> pose_copy;
+        {
+            std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+            pose_copy = robot_pose_state_;
+        }
+        if (!pose_copy.has_value()) {
+            QMessageBox::warning(this, "No Robot Pose", "Robot pose not available yet.");
+            return;
+        }
+        if (polygon_.empty()) {
+            QMessageBox::warning(this, "No Map", "Compute hull first (boundary is required).");
+            return;
+        }
+
+        const Point2D start = pose_copy->point;
+        const Point2D goal = point;
+        startTransitPathPlanning(start, goal, /*is_home=*/false);
+        return;
+    }
+
     if (!isCustomModeActive() || !custom_draw_enabled_) {
         return;
     }
@@ -5785,6 +6862,7 @@ void CoverageGUI::onPointCloudLoaded() {
     swaths_.clear();
     route_.clear();
     path_.clear();
+    alignment_transform_total_ = Eigen::Matrix4f::Identity();
 
     // Snapshot driven path at map-load time (used for obstacle detection)
     {
@@ -5794,6 +6872,10 @@ void CoverageGUI::onPointCloudLoaded() {
     
     lbl_roi_->setText("ROI: none");
     lbl_obstacles_->setText("Obstacles: 0");
+    if (lbl_alignment_status_) {
+        lbl_alignment_status_->setText("Alignment: not run");
+        lbl_alignment_status_->setStyleSheet("color: #666; font-size: 10px;");
+    }
     
     plot_->clearAll();
     
@@ -6287,7 +7369,8 @@ PathStateList CoverageGUI::computeObstacleAvoidingPath(
     if (polygon_.empty()) {
         return {};
     }
-    const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
+    // Connector/home planning should not be clipped by ROI; use full boundary.
+    const Polygon2D* roi_ptr = nullptr;
     const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
     const double spacing = (spacing_override >= 0.0)
         ? spacing_override
@@ -6296,6 +7379,89 @@ PathStateList CoverageGUI::computeObstacleAvoidingPath(
         ? clearance_override
         : (spin_headland_ ? spin_headland_->value() : 0.0);
     return planObstacleAvoidingPath(start, goal, polygon_, roi_ptr, obs_ptr, spacing, clearance);
+}
+
+void CoverageGUI::startTransitPathPlanning(const Point2D& start, const Point2D& goal, bool is_home) {
+    if (!transit_plan_watcher_) {
+        return;
+    }
+    if (transit_plan_watcher_->isRunning()) {
+        setStatus("Path planning already in progress. Please wait...", 3000);
+        return;
+    }
+
+    transit_plan_kind_ = is_home ? TransitPlanKind::Home : TransitPlanKind::GoTo;
+    transit_plan_goal_ = goal;
+
+    const Polygon2D boundary = polygon_;
+    const std::vector<Obstacle2D> obstacles_copy = obstacles_;
+    const double spacing = spin_waypoint_spacing_ ? spin_waypoint_spacing_->value() : 0.0;
+    const double clearance = kConnectorObstacleClearanceM;
+
+    showProgress(true, is_home ? "Planning home path..." : "Planning GO TO path...");
+    progress_bar_->setRange(0, 0);
+    if (btn_quick_home_) btn_quick_home_->setEnabled(false);
+    if (btn_go_to_) btn_go_to_->setEnabled(false);
+
+    auto future = QtConcurrent::run([start, goal, boundary, obstacles_copy, spacing, clearance]() -> PathStateList {
+        const std::vector<Obstacle2D>* obs_ptr = obstacles_copy.empty() ? nullptr : &obstacles_copy;
+        return planObstacleAvoidingPath(start, goal, boundary, nullptr, obs_ptr, spacing, clearance);
+    });
+    transit_plan_watcher_->setFuture(future);
+}
+
+void CoverageGUI::onTransitPathPlanningFinished() {
+    showProgress(false);
+    progress_bar_->setRange(0, 100);
+    progress_bar_->setValue(0);
+    if (btn_quick_home_) btn_quick_home_->setEnabled(true);
+    if (btn_go_to_) btn_go_to_->setEnabled(true);
+
+    if (!transit_plan_watcher_) {
+        transit_plan_kind_ = TransitPlanKind::None;
+        return;
+    }
+
+    PathStateList planned_path = transit_plan_watcher_->result();
+    const TransitPlanKind kind = transit_plan_kind_;
+    transit_plan_kind_ = TransitPlanKind::None;
+
+    if (planned_path.empty()) {
+        if (kind == TransitPlanKind::Home) {
+            QMessageBox::warning(
+                this, "Home Path",
+                QString("Failed to generate a valid path to origin with clearance %1 m.")
+                    .arg(kConnectorObstacleClearanceM, 0, 'f', 2));
+        } else if (kind == TransitPlanKind::GoTo) {
+            QMessageBox::warning(
+                this, "GO TO Path",
+                QString("Failed to generate a valid path to clicked point with clearance %1 m.")
+                    .arg(kConnectorObstacleClearanceM, 0, 'f', 2));
+        }
+        return;
+    }
+
+    clearCoverage();
+    path_ = std::move(planned_path);
+    path_connector_prefix_count_ = 0;
+    // Treat both HOME and GO TO as transit paths for data-collection flags.
+    planned_path_is_home_ = true;
+    syncPlannedPathCache();
+    updateCoverageStats();
+    refreshPlot();
+
+    if (kind == TransitPlanKind::Home) {
+        setStatus(QString("Home path generated (%1 points, clearance %2 m)")
+                      .arg(path_.size())
+                      .arg(kConnectorObstacleClearanceM, 0, 'f', 2),
+                  6000);
+    } else if (kind == TransitPlanKind::GoTo) {
+        setStatus(QString("GO TO path generated (%1 points) to (%2, %3)")
+                      .arg(path_.size())
+                      .arg(transit_plan_goal_.x, 0, 'f', 2)
+                      .arg(transit_plan_goal_.y, 0, 'f', 2),
+                  6000);
+    }
 }
 
 // =============================================================================
@@ -6422,6 +7588,13 @@ void CoverageGUI::toggleRectangleMode() {
         // Cancel any other selection modes
         if (btn_roi_) btn_roi_->setChecked(false);
         if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        if (btn_measure_ && btn_measure_->isChecked()) {
+            btn_measure_->setChecked(false);
+            plot_->setMeasureMode(false);
+            if (lbl_measure_) {
+                lbl_measure_->setText("Distance: -");
+            }
+        }
         plot_->cancelSelection();
         
         plot_->startRectangleMode();
