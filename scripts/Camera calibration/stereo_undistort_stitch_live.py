@@ -220,6 +220,37 @@ def apply_right_rotation(img, rotate180):
     return img
 
 
+def calibration_sanity(cfg):
+    w, h = cfg["imsize"]
+    k1 = cfg["K1"]
+    k2 = cfg["K2"]
+    d1 = np.array(cfg["D1"]).reshape(-1)
+    d2 = np.array(cfg["D2"]).reshape(-1)
+
+    issues = []
+    for name, k in (("left", k1), ("right", k2)):
+        fx = float(k[0, 0])
+        fy = float(k[1, 1])
+        if not (0.3 * w <= fx <= 5.0 * w):
+            issues.append(f"{name} fx={fx:.1f} out of range")
+        if not (0.3 * h <= fy <= 5.0 * h):
+            issues.append(f"{name} fy={fy:.1f} out of range")
+
+    d1_max = float(np.max(np.abs(d1))) if d1.size else 0.0
+    d2_max = float(np.max(np.abs(d2))) if d2.size else 0.0
+    if d1_max > 5.0:
+        issues.append(f"left distortion max={d1_max:.2f} too high")
+    if d2_max > 5.0:
+        issues.append(f"right distortion max={d2_max:.2f} too high")
+
+    if cfg.get("T") is not None:
+        baseline = float(np.linalg.norm(cfg["T"].reshape(-1)))
+        if not (0.02 <= baseline <= 1.0):
+            issues.append(f"baseline={baseline:.3f}m out of expected range")
+
+    return issues
+
+
 def _scale_k(k, sx, sy):
     ks = k.copy().astype(np.float64)
     ks[0, 0] *= sx
@@ -412,6 +443,14 @@ def main():
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
+    sanity_issues = calibration_sanity(cfg)
+    if sanity_issues:
+        print("[WARN] Calibration appears invalid:")
+        for it in sanity_issues:
+            print(f"  - {it}")
+        print("[WARN] For safety, using milder undistortion defaults for this run.")
+        args.distortion_scale = min(args.distortion_scale, 0.2)
+        args.undistort_alpha = max(args.undistort_alpha, 0.9)
     right_rotate_180 = read_right_rotation_hint(Path(calib_path))
 
     print(f"[INFO] Using calibration: {calib_path}")

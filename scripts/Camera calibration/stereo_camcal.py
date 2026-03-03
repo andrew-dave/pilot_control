@@ -26,8 +26,8 @@ REQ_HEIGHT = 1080
 REQ_FPS = 30.0
 REQ_FOURCC = "MJPG"
 FPS_TOL = 2.0
-PATTERN_COLS = 5
-PATTERN_ROWS = 5
+PATTERN_COLS = 10
+PATTERN_ROWS = 7
 PATTERN_CANDIDATES = [
     (5, 5),
     (6, 6),
@@ -48,6 +48,7 @@ DETECT_MAX_DIM = 960
 SLOW_DETECT_PERIOD = 10
 AUTO_PATTERN_CHECK_PERIOD = 5
 RIGHT_ROTATE_180 = True
+AUTO_PATTERN_SWITCH_ENABLED = False
 
 
 def fourcc_to_str(v: float) -> str:
@@ -272,6 +273,48 @@ def choose_right_rotation_for_session(pairs, pattern_size):
     return (rot_ok > raw_ok), raw_ok, rot_ok
 
 
+def validate_calibration(k_l, d_l, k_r, d_r, rms_l, rms_r, stereo_rms, t_vec, imsize):
+    w, h = imsize
+    problems = []
+
+    fx_l, fy_l = float(k_l[0, 0]), float(k_l[1, 1])
+    fx_r, fy_r = float(k_r[0, 0]), float(k_r[1, 1])
+    cx_l, cy_l = float(k_l[0, 2]), float(k_l[1, 2])
+    cx_r, cy_r = float(k_r[0, 2]), float(k_r[1, 2])
+    baseline = float(np.linalg.norm(t_vec.reshape(-1)))
+
+    if rms_l > 3.0:
+        problems.append(f"Left RMS too high: {rms_l:.4f}px")
+    if rms_r > 3.0:
+        problems.append(f"Right RMS too high: {rms_r:.4f}px")
+    if stereo_rms > 5.0:
+        problems.append(f"Stereo RMS too high: {stereo_rms:.4f}px")
+
+    for name, fx, fy in (("left", fx_l, fy_l), ("right", fx_r, fy_r)):
+        if not (0.3 * w <= fx <= 5.0 * w):
+            problems.append(f"{name} fx out of expected range: {fx:.2f}")
+        if not (0.3 * h <= fy <= 5.0 * h):
+            problems.append(f"{name} fy out of expected range: {fy:.2f}")
+
+    for name, cx, cy in (("left", cx_l, cy_l), ("right", cx_r, cy_r)):
+        if not (-0.5 * w <= cx <= 1.5 * w):
+            problems.append(f"{name} cx out of expected range: {cx:.2f}")
+        if not (-0.5 * h <= cy <= 1.5 * h):
+            problems.append(f"{name} cy out of expected range: {cy:.2f}")
+
+    d_l_max = float(np.max(np.abs(np.array(d_l).reshape(-1)))) if len(d_l) else 0.0
+    d_r_max = float(np.max(np.abs(np.array(d_r).reshape(-1)))) if len(d_r) else 0.0
+    if d_l_max > 5.0:
+        problems.append(f"Left distortion too large (max abs coeff): {d_l_max:.4f}")
+    if d_r_max > 5.0:
+        problems.append(f"Right distortion too large (max abs coeff): {d_r_max:.4f}")
+
+    if not (0.02 <= baseline <= 1.0):
+        problems.append(f"Baseline out of expected range: {baseline:.4f} m")
+
+    return problems
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
@@ -484,6 +527,14 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
     print(f"Rectify alpha:          {rectify_alpha:.2f}")
     print(f"ROI left: {roi1}, ROI right: {roi2}")
 
+    problems = validate_calibration(k_l, d_l, k_r, d_r, rms_l, rms_r, stereo_rms, t, imsize)
+    if problems:
+        print("\n[ERROR] Calibration sanity checks failed. Not saving outputs.")
+        for p in problems:
+            print(f"  - {p}")
+        print("[HINT] Re-capture pairs with stable board visibility and consistent pattern size.")
+        return 1
+
     out_left = session_dir / "lcamera_calib.yaml"
     out_right = session_dir / "rcamera_calib.yaml"
     out_stereo = session_dir / "stereo_extrinsics.yaml"
@@ -623,7 +674,7 @@ def capture_mode(session_dir: Path, square_size: float):
                 miss_streak = 0
             else:
                 miss_streak += 1
-                if miss_streak % AUTO_PATTERN_CHECK_PERIOD == 0:
+                if AUTO_PATTERN_SWITCH_ENABLED and miss_streak % AUTO_PATTERN_CHECK_PERIOD == 0:
                     auto_pat = auto_select_pattern(gray_l, gray_r)
                     if auto_pat is not None and auto_pat != pattern_size:
                         pattern_size = auto_pat
