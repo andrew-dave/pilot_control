@@ -353,6 +353,21 @@ def choose_right_corner_order(imgpoints_l, imgpoints_r, pattern_size):
     return best, med
 
 
+def align_right_corners_to_left(c_l, c_r, pattern_size):
+    modes = ["as_is", "flip_lr", "flip_ud", "flip_both"]
+    best_mode = "as_is"
+    best_err = 1e9
+    best_c = c_r
+    for m in modes:
+        c_rm = c_r if m == "as_is" else reorder_corners(c_r, pattern_size, m)
+        e = homography_pair_error(c_l, c_rm)
+        if e < best_err:
+            best_err = e
+            best_mode = m
+            best_c = c_rm
+    return best_c, best_mode, best_err
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
@@ -479,6 +494,8 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
     imgpoints_r = []
     imsize = None
     used = 0
+    order_counts = {"as_is": 0, "flip_lr": 0, "flip_ud": 0, "flip_both": 0}
+    order_errors = []
 
     print(f"[INFO] Reading {len(pairs)} saved stereo pairs from {pairs_dir}")
     for left_path, right_path in pairs:
@@ -503,9 +520,14 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
             print(f"[WARN] Checkerboard not detected in both views for {left_path.name}; skipped")
             continue
 
+        corners_r_aligned, mode_used, align_err = align_right_corners_to_left(
+            corners_l, corners_r, pattern_size
+        )
         objpoints.append(objp.copy())
         imgpoints_l.append(corners_l)
-        imgpoints_r.append(corners_r)
+        imgpoints_r.append(corners_r_aligned)
+        order_counts[mode_used] += 1
+        order_errors.append(align_err)
         used += 1
 
     if used < MIN_PAIRS:
@@ -516,19 +538,13 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
     # and produce unstable stereo extrinsics for this setup.
     calib_flags = 0
     term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 120, 1e-7)
-
-    right_order_mode, right_order_scores = choose_right_corner_order(
-        imgpoints_l, imgpoints_r, pattern_size
-    )
+    med_align = float(np.median(order_errors)) if order_errors else 0.0
     print(
-        "[INFO] Right corner-order check (median px): "
-        + ", ".join([f"{k}={v:.3f}" for k, v in right_order_scores.items()])
-        + f" -> using {right_order_mode}"
+        "[INFO] Per-pair right corner alignment counts: "
+        f"as_is={order_counts['as_is']}, flip_lr={order_counts['flip_lr']}, "
+        f"flip_ud={order_counts['flip_ud']}, flip_both={order_counts['flip_both']} "
+        f"(median pair align err={med_align:.3f}px)"
     )
-    if right_order_mode != "as_is":
-        imgpoints_r = [
-            reorder_corners(c, pattern_size, right_order_mode) for c in imgpoints_r
-        ]
 
     print(f"[INFO] Calibrating LEFT intrinsics with {used} pairs...")
     rms_l, k_l, d_l, _, _ = cv2.calibrateCamera(
