@@ -1170,10 +1170,11 @@ private:
     // PANORAMA stream branch (left + right blended in compositor)
     if (stream_panorama) {
       // Keep panorama path lightweight to avoid stalls under CPU load.
+      // Approximate feather blend using overlap + alpha on right pad.
       const int pano_fps = 20;
-      const int pano_w = 240;
+      const int pano_w = 300;
       const int pano_h = 360;
-      const int pano_overlap = 0;  // side-by-side for robust streaming
+      const int pano_overlap = 120;
       const int pano_out_w = (pano_w * 2) - pano_overlap;
       oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
@@ -1185,7 +1186,8 @@ private:
           << "! videoflip method=rotate-180 "
           << "! videoconvert ! video/x-raw,format=I420 ! mix.sink_1 "
           << " videomixer name=mix background=black "
-          << "sink_0::xpos=0 sink_0::ypos=0 sink_1::xpos=" << (pano_w - pano_overlap) << " sink_1::ypos=0 "
+          << "sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1.0 "
+          << "sink_1::xpos=" << (pano_w - pano_overlap) << " sink_1::ypos=0 sink_1::alpha=0.70 "
           << "! queue leaky=downstream max-size-buffers=10 max-size-bytes=0 max-size-time=0 "
           << "! videoconvert ! video/x-raw,width=" << pano_out_w << ",height=" << pano_h
           << ",framerate=" << pano_fps << "/1 ";
