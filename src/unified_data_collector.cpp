@@ -1241,6 +1241,9 @@ private:
     loop_thread_ = std::thread([this]() {
       g_main_context_push_thread_default(context_);
       bus_watch_id_ = gst_bus_add_watch(bus_, &UnifiedDataCollector::bus_func, this);
+      if (!bus_watch_id_) {
+        RCLCPP_WARN(this->get_logger(), "Failed to add GStreamer bus watch");
+      }
       auto ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
       if (ret == GST_STATE_CHANGE_FAILURE) {
         RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING - check camera devices and network");
@@ -1250,10 +1253,9 @@ private:
         RCLCPP_INFO(this->get_logger(), "GStreamer pipeline started successfully");
       }
       g_main_loop_run(loop_);
-      if (bus_watch_id_) {
-        g_source_remove(bus_watch_id_);
-        bus_watch_id_ = 0;
-      }
+      // Bus watch lifecycle is tied to the context/loop. Avoid explicit
+      // g_source_remove here, which can race during rapid pipeline rebuilds.
+      bus_watch_id_ = 0;
       g_main_context_pop_thread_default(context_);
     });
   }
