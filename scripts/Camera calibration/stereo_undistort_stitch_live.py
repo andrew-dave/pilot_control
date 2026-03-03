@@ -36,6 +36,7 @@ REQ_FPS = 30.0
 REQ_FOURCC = "MJPG"
 FPS_TOL = 2.0
 R_DATA_BASE = Path("/R_DATA/stereo_calibration")
+RIGHT_ROTATE_180_DEFAULT = True
 
 
 def fourcc_to_str(v: float) -> str:
@@ -203,6 +204,22 @@ def resolve_calibration(calib_file_arg):
     return path, cfg
 
 
+def read_right_rotation_hint(calib_path: Path):
+    meta = calib_path.parent / "right_rotation_180.txt"
+    if meta.exists():
+        try:
+            return meta.read_text().strip() == "1"
+        except Exception:
+            pass
+    return RIGHT_ROTATE_180_DEFAULT
+
+
+def apply_right_rotation(img, rotate180):
+    if rotate180:
+        return cv2.rotate(img, cv2.ROTATE_180)
+    return img
+
+
 def _scale_k(k, sx, sy):
     ks = k.copy().astype(np.float64)
     ks[0, 0] *= sx
@@ -352,10 +369,12 @@ def main():
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
+    right_rotate_180 = read_right_rotation_hint(Path(calib_path))
 
     print(f"[INFO] Using calibration: {calib_path}")
     print(f"[INFO] Left device:  {LEFT_DEVICE}")
     print(f"[INFO] Right device: {RIGHT_DEVICE}")
+    print(f"[INFO] Right camera rotate180: {right_rotate_180}")
     print(f"[INFO] Capture mode: {REQ_WIDTH}x{REQ_HEIGHT}@{REQ_FPS:.0f} {REQ_FOURCC}")
 
     cap_l, info_l = open_camera(LEFT_DEVICE)
@@ -377,6 +396,7 @@ def main():
         cap_l.release()
         cap_r.release()
         sys.exit(1)
+    frame_r0 = apply_right_rotation(frame_r0, right_rotate_180)
 
     out_w = min(frame_l0.shape[1], frame_r0.shape[1])
     out_h = min(frame_l0.shape[0], frame_r0.shape[0])
@@ -406,6 +426,7 @@ def main():
                 print("[WARN] Frame read failed; retrying...")
                 time.sleep(0.05)
                 continue
+            frame_r = apply_right_rotation(frame_r, right_rotate_180)
 
             if frame_l.shape[1] != out_w or frame_l.shape[0] != out_h:
                 frame_l = cv2.resize(frame_l, (out_w, out_h), interpolation=cv2.INTER_AREA)

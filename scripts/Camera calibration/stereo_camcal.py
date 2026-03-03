@@ -47,6 +47,7 @@ RIGHT_CAMERA_NAME = "right_camera"
 DETECT_MAX_DIM = 960
 SLOW_DETECT_PERIOD = 10
 AUTO_PATTERN_CHECK_PERIOD = 5
+RIGHT_ROTATE_180 = True
 
 
 def fourcc_to_str(v: float) -> str:
@@ -224,6 +225,53 @@ def auto_select_pattern(gray_l, gray_r):
     return None
 
 
+def apply_right_rotation(img, rotate180):
+    if rotate180:
+        return cv2.rotate(img, cv2.ROTATE_180)
+    return img
+
+
+def write_right_rotation_metadata(session_dir: Path, rotate180: bool):
+    meta = session_dir / "right_rotation_180.txt"
+    meta.write_text("1\n" if rotate180 else "0\n")
+
+
+def read_right_rotation_metadata(session_dir: Path):
+    meta = session_dir / "right_rotation_180.txt"
+    if not meta.exists():
+        return None
+    try:
+        return meta.read_text().strip() == "1"
+    except Exception:
+        return None
+
+
+def choose_right_rotation_for_session(pairs, pattern_size):
+    # Pick one right-image orientation for the whole calibration session.
+    check_pairs = pairs[: min(len(pairs), 20)]
+    raw_ok = 0
+    rot_ok = 0
+    for left_path, right_path in check_pairs:
+        left = cv2.imread(str(left_path))
+        right = cv2.imread(str(right_path))
+        if left is None or right is None:
+            continue
+        g_l = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
+        g_r_raw = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
+        g_r_rot = cv2.rotate(g_r_raw, cv2.ROTATE_180)
+
+        found_l, _ = find_corners(g_l, pattern_size, allow_slow=False)
+        if not found_l:
+            continue
+        found_raw, _ = find_corners(g_r_raw, pattern_size, allow_slow=False)
+        found_rot, _ = find_corners(g_r_rot, pattern_size, allow_slow=False)
+        if found_raw:
+            raw_ok += 1
+        if found_rot:
+            rot_ok += 1
+    return (rot_ok > raw_ok), raw_ok, rot_ok
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
@@ -330,6 +378,17 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
 
     if pattern_size is None:
         pattern_size = read_pattern_metadata(session_dir)
+    rot_meta = read_right_rotation_metadata(session_dir)
+    if rot_meta is None:
+        right_rotate_180, raw_ok, rot_ok = choose_right_rotation_for_session(pairs, pattern_size)
+        print(
+            f"[INFO] Right-camera orientation check: raw_ok={raw_ok}, rot180_ok={rot_ok} "
+            f"-> using rotate180={right_rotate_180}"
+        )
+    else:
+        right_rotate_180 = bool(rot_meta)
+        print(f"[INFO] Using session right-camera rotate180={right_rotate_180}")
+    write_right_rotation_metadata(session_dir, right_rotate_180)
     objp = np.zeros((pattern_size[0] * pattern_size[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
     objp *= square_size
@@ -347,6 +406,7 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
         if left is None or right is None:
             print(f"[WARN] Unreadable pair: {left_path.name}")
             continue
+        right = apply_right_rotation(right, right_rotate_180)
 
         g_l = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
         g_r = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
@@ -516,10 +576,12 @@ def capture_mode(session_dir: Path, square_size: float):
 
     print(f"[INFO] Opened LEFT  {dev_l} ({info_l})")
     print(f"[INFO] Opened RIGHT {dev_r} ({info_r})")
+    print(f"[INFO] Right camera rotate180 for calibration: {RIGHT_ROTATE_180}")
 
     pair_count = len(list_pairs(pairs_dir))
     pattern_size = (PATTERN_COLS, PATTERN_ROWS)
     write_pattern_metadata(session_dir, pattern_size)
+    write_right_rotation_metadata(session_dir, RIGHT_ROTATE_180)
     miss_streak = 0
     frame_idx = 0
 
@@ -538,6 +600,7 @@ def capture_mode(session_dir: Path, square_size: float):
                 time.sleep(0.05)
                 continue
 
+            frame_r = apply_right_rotation(frame_r, RIGHT_ROTATE_180)
             gray_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2GRAY)
             gray_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2GRAY)
             do_slow = (frame_idx % SLOW_DETECT_PERIOD == 0)
