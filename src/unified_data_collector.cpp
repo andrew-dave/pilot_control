@@ -1176,19 +1176,19 @@ private:
       const int pano_h = 360;
       const int pano_overlap = 120;
       const int pano_out_w = (pano_w * 2) - pano_overlap;
-      oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
+      oss << " T_left. ! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
+          << "! videorate drop-only=true ! video/x-raw,framerate=" << pano_fps << "/1 "
           << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
           << "! videoconvert ! video/x-raw,format=I420 ! mix.sink_0 "
-          << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
+          << " T_right. ! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
+          << "! videorate drop-only=true ! video/x-raw,framerate=" << pano_fps << "/1 "
           << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
           << "! videoflip method=rotate-180 "
           << "! videoconvert ! video/x-raw,format=I420 ! mix.sink_1 "
           << " videomixer name=mix background=black "
           << "sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1.0 "
           << "sink_1::xpos=" << (pano_w - pano_overlap) << " sink_1::ypos=0 sink_1::alpha=0.70 "
-          << "! queue leaky=downstream max-size-buffers=10 max-size-bytes=0 max-size-time=0 "
+          << "! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
           << "! videoconvert ! video/x-raw,width=" << pano_out_w << ",height=" << pano_h
           << ",framerate=" << pano_fps << "/1 ";
       if (cfg_.stream_use_hw_encoder) {
