@@ -315,6 +315,44 @@ def validate_calibration(k_l, d_l, k_r, d_r, rms_l, rms_r, stereo_rms, t_vec, im
     return problems
 
 
+def reorder_corners(corners, pattern_size, mode):
+    cols, rows = pattern_size
+    arr = np.array(corners, dtype=np.float32).reshape(rows, cols, 2)
+    if mode == "flip_lr":
+        arr = arr[:, ::-1, :]
+    elif mode == "flip_ud":
+        arr = arr[::-1, :, :]
+    elif mode == "flip_both":
+        arr = arr[::-1, ::-1, :]
+    return arr.reshape(rows * cols, 1, 2)
+
+
+def homography_pair_error(c_l, c_r):
+    p_l = c_l.reshape(-1, 2)
+    p_r = c_r.reshape(-1, 2)
+    if p_l.shape[0] < 4:
+        return 1e9
+    h, _ = cv2.findHomography(p_r, p_l, method=0)
+    if h is None:
+        return 1e9
+    proj = cv2.perspectiveTransform(p_r.reshape(-1, 1, 2), h).reshape(-1, 2)
+    err = np.linalg.norm(proj - p_l, axis=1)
+    return float(np.median(err))
+
+
+def choose_right_corner_order(imgpoints_l, imgpoints_r, pattern_size):
+    modes = ["as_is", "flip_lr", "flip_ud", "flip_both"]
+    scores = {m: [] for m in modes}
+    for c_l, c_r in zip(imgpoints_l, imgpoints_r):
+        for m in modes:
+            c_rm = c_r if m == "as_is" else reorder_corners(c_r, pattern_size, m)
+            e = homography_pair_error(c_l, c_rm)
+            scores[m].append(e)
+    med = {m: (float(np.median(v)) if v else 1e9) for m, v in scores.items()}
+    best = min(med, key=med.get)
+    return best, med
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
@@ -474,8 +512,23 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
         print(f"Only {used} usable pairs; need at least {MIN_PAIRS}.")
         return 1
 
-    calib_flags = cv2.CALIB_RATIONAL_MODEL
+    # Use standard 5-coefficient distortion model; rational model can overfit
+    # and produce unstable stereo extrinsics for this setup.
+    calib_flags = 0
     term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 120, 1e-7)
+
+    right_order_mode, right_order_scores = choose_right_corner_order(
+        imgpoints_l, imgpoints_r, pattern_size
+    )
+    print(
+        "[INFO] Right corner-order check (median px): "
+        + ", ".join([f"{k}={v:.3f}" for k, v in right_order_scores.items()])
+        + f" -> using {right_order_mode}"
+    )
+    if right_order_mode != "as_is":
+        imgpoints_r = [
+            reorder_corners(c, pattern_size, right_order_mode) for c in imgpoints_r
+        ]
 
     print(f"[INFO] Calibrating LEFT intrinsics with {used} pairs...")
     rms_l, k_l, d_l, _, _ = cv2.calibrateCamera(
