@@ -1172,20 +1172,22 @@ private:
       oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=20/1 "
           << "! videoscale ! video/x-raw,width=480,height=360 "
-          << "! videoconvert ! comp.sink_0 "
+          << "! videoconvert ! video/x-raw,format=I420 ! comp.sink_0 "
           << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=20/1 "
           << "! videoscale ! video/x-raw,width=480,height=360 "
           << "! videoflip method=rotate-180 "
-          << "! videoconvert ! comp.sink_1 "
-          << " compositor name=comp background=black sink_0::xpos=0 sink_1::xpos=360 "
-          << "! videoconvert ";
+          << "! videoconvert ! video/x-raw,format=I420 ! comp.sink_1 "
+          << " compositor name=comp background=black ignore-inactive-pads=true "
+          << "sink_0::xpos=0 sink_0::ypos=0 sink_1::xpos=360 sink_1::ypos=0 "
+          << "! queue leaky=downstream max-size-buffers=10 max-size-bytes=0 max-size-time=0 "
+          << "! videoconvert ! video/x-raw,width=840,height=360,framerate=20/1 ";
       if (cfg_.stream_use_hw_encoder) {
-        oss << "! video/x-raw,format=NV12 "
+        oss << "! videoconvert ! video/x-raw,format=NV12 "
             << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
             << " keyframe-period=20 tune=low-power ";
       } else {
-        oss << "! video/x-raw,format=I420 "
+        oss << "! videoconvert ! video/x-raw,format=I420 "
             << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps
             << " key-int-max=20 bframes=0 byte-stream=true threads=2 ";
       }
