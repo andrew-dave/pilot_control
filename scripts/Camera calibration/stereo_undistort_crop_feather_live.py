@@ -190,32 +190,51 @@ def crop_border(img, crop_px):
     return img[c:h - c, c:w - c]
 
 
-def estimate_overlap_px(left, right):
+def estimate_overlap_and_shift(left, right, max_vshift=80):
     gl = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
     gr = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
     h = gl.shape[0]
-    gl = gl[int(0.15 * h):int(0.85 * h), :]
-    gr = gr[int(0.15 * h):int(0.85 * h), :]
+    y0 = int(0.15 * h)
+    y1 = int(0.85 * h)
+    gl = gl[y0:y1, :]
+    gr = gr[y0:y1, :]
     wl = gl.shape[1]
     wr = gr.shape[1]
     tpl_w = max(100, int(0.30 * wr))
     search_w = max(tpl_w + 100, int(0.55 * wl))
     if search_w >= wl or tpl_w >= search_w:
-        return None, 0.0
+        return None, 0, 0.0
     template = cv2.GaussianBlur(gr[:, :tpl_w], (5, 5), 0)
-    search = cv2.GaussianBlur(gl[:, wl - search_w:], (5, 5), 0)
+    search_full = cv2.GaussianBlur(gl[:, wl - search_w:], (5, 5), 0)
+
+    # Restrict vertical search to avoid bad matches.
+    pad = int(min(max_vshift, search_full.shape[0] // 4))
+    if pad > 0:
+        search = search_full
+    else:
+        search = search_full
+
     res = cv2.matchTemplate(search, template, cv2.TM_CCOEFF_NORMED)
     _, score, _, max_loc = cv2.minMaxLoc(res)
     if score < 0.18:
-        return None, score
+        return None, 0, score
     x_match = (wl - search_w) + int(max_loc[0])
+    y_shift = int(max_loc[1])  # right must be shifted down by y_shift in the cropped band
+    y_shift -= 0  # explicit no-op for readability
+    # Convert shift to full-image coordinates (same because both cropped equally).
+    y_shift = int(max_loc[1])
+    # Since template starts at row 0 and search at row 0 in cropped views, center around zero.
+    y_shift = y_shift - 0
+    # Bound y shift.
+    y_shift = int(np.clip(y_shift, -max_vshift, max_vshift))
+
     overlap = wl - x_match
     if overlap < 60 or overlap > int(0.95 * min(wl, wr)):
-        return None, score
-    return int(overlap), score
+        return None, 0, score
+    return int(overlap), y_shift, score
 
 
-def stitch_feather(left, right, overlap_px):
+def stitch_feather(left, right, overlap_px, y_shift=0, feather_width=40):
     if left.shape[0] != right.shape[0]:
         h = min(left.shape[0], right.shape[0])
         wl = int(round(left.shape[1] * (h / left.shape[0])))
@@ -223,17 +242,49 @@ def stitch_feather(left, right, overlap_px):
         left = cv2.resize(left, (wl, h), interpolation=cv2.INTER_AREA)
         right = cv2.resize(right, (wr, h), interpolation=cv2.INTER_AREA)
 
+    # Apply small vertical shift to right image on a padded canvas.
+    if y_shift != 0:
+        h, w = right.shape[:2]
+        shifted = np.zeros_like(right)
+        if y_shift > 0:
+            shifted[y_shift:, :] = right[:h - y_shift, :]
+        else:
+            ys = -y_shift
+            shifted[:h - ys, :] = right[ys:, :]
+        right = shifted
+
     wl, wr = left.shape[1], right.shape[1]
     ov = int(np.clip(overlap_px, 1, min(wl, wr) - 1))
     out_w = wl + wr - ov
     out = np.zeros((left.shape[0], out_w, 3), dtype=left.dtype)
     out[:, :wl] = left
 
-    l_ov = left[:, wl - ov:wl].astype(np.float32)
-    r_ov = right[:, :ov].astype(np.float32)
-    a = np.linspace(1.0, 0.0, ov, dtype=np.float32)[None, :, None]
-    b = 1.0 - a
-    out[:, wl - ov:wl] = (l_ov * a + r_ov * b).astype(left.dtype)
+    # Choose seam near best overlap region but keep feather narrow to reduce ghosting.
+    l_ov = left[:, wl - ov:wl]
+    r_ov = right[:, :ov]
+    diff = np.mean(np.abs(l_ov.astype(np.float32) - r_ov.astype(np.float32)), axis=(0, 2))
+    if diff.size >= 9:
+        k = np.ones(9, dtype=np.float32) / 9.0
+        smooth = np.convolve(diff, k, mode="same")
+    else:
+        smooth = diff
+    seam = int(np.argmin(smooth))
+    fw = int(np.clip(feather_width, 4, ov - 1))
+    s0 = max(0, seam - fw // 2)
+    s1 = min(ov, s0 + fw)
+    s0 = max(0, s1 - fw)
+
+    # Left-dominant region
+    out[:, wl - ov:wl - ov + s0] = l_ov[:, :s0]
+    # Narrow feather zone
+    if s1 > s0:
+        lf = l_ov[:, s0:s1].astype(np.float32)
+        rf = r_ov[:, s0:s1].astype(np.float32)
+        a = np.linspace(1.0, 0.0, s1 - s0, dtype=np.float32)[None, :, None]
+        b = 1.0 - a
+        out[:, wl - ov + s0:wl - ov + s1] = (lf * a + rf * b).astype(left.dtype)
+    # Right-dominant overlap tail
+    out[:, wl - ov + s1:wl] = r_ov[:, s1:ov]
     out[:, wl:] = right[:, ov:]
     return out
 
@@ -251,6 +302,7 @@ def main():
     ap.add_argument("--distortion-scale", type=float, default=0.5, help="Scale distortion coefficients [0..1].")
     ap.add_argument("--crop-px", type=int, default=24, help="Pixels cropped from each border after undistort.")
     ap.add_argument("--overlap-px", type=int, default=-1, help="Feather overlap in pixels; -1 for auto.")
+    ap.add_argument("--feather-width", type=int, default=40, help="Blend width in overlap (smaller reduces ghosting).")
     ap.add_argument("--refresh-overlap-every", type=int, default=30, help="Auto-overlap refresh period in frames.")
     args = ap.parse_args()
 
@@ -299,6 +351,7 @@ def main():
     fps_disp = 0.0
     frame_idx = 0
     overlap = max(100, out_w // 8) if args.overlap_px <= 0 else int(args.overlap_px)
+    y_shift = 0
     overlap_score = 0.0
 
     try:
@@ -322,12 +375,13 @@ def main():
             und_r = crop_border(und_r, args.crop_px)
 
             if args.overlap_px <= 0 and (frame_idx % max(1, args.refresh_overlap_every) == 0):
-                ov, sc = estimate_overlap_px(und_l, und_r)
+                ov, ys, sc = estimate_overlap_and_shift(und_l, und_r)
                 if ov is not None:
                     overlap = ov
+                    y_shift = ys
                     overlap_score = sc
 
-            merged = stitch_feather(und_l, und_r, overlap)
+            merged = stitch_feather(und_l, und_r, overlap, y_shift=y_shift, feather_width=args.feather_width)
 
             fps_count += 1
             now = time.time()
@@ -337,7 +391,7 @@ def main():
                 fps_last = now
 
             put_text(merged, f"FPS ~ {fps_disp:.1f}", 28)
-            put_text(merged, f"overlap={overlap}px score={overlap_score:.2f}", 56)
+            put_text(merged, f"overlap={overlap}px yshift={y_shift}px score={overlap_score:.2f}", 56)
             put_text(merged, f"alpha={args.undistort_alpha:.2f} dist_scale={args.distortion_scale:.2f} crop={args.crop_px}px", 84)
             put_text(merged, "q: quit, r: re-estimate overlap, +/-: overlap", 112)
             cv2.imshow("stereo_crop_feather", merged)
@@ -346,9 +400,10 @@ def main():
             if key in (ord("q"), 27):
                 break
             if key == ord("r"):
-                ov, sc = estimate_overlap_px(und_l, und_r)
+                ov, ys, sc = estimate_overlap_and_shift(und_l, und_r)
                 if ov is not None:
                     overlap = ov
+                    y_shift = ys
                     overlap_score = sc
             if key in (ord("+"), ord("=")):
                 overlap = min(overlap + 10, min(und_l.shape[1], und_r.shape[1]) - 2)
