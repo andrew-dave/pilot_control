@@ -307,7 +307,28 @@ def estimate_horizontal_offset(left, right):
     return x_start, score
 
 
-def stitch_frames(left, right, x_start):
+def estimate_best_layout(left, right):
+    # Layout A: left image on the left, right image on the right.
+    x_a, s_a = estimate_horizontal_offset(left, right)
+    # Layout B: right image on the left, left image on the right.
+    x_b, s_b = estimate_horizontal_offset(right, left)
+
+    if x_a is None and x_b is None:
+        return {"left_first": True, "x_start": None, "score": 0.0}
+    if x_b is None:
+        return {"left_first": True, "x_start": x_a, "score": s_a}
+    if x_a is None:
+        return {"left_first": False, "x_start": x_b, "score": s_b}
+    if s_b > s_a:
+        return {"left_first": False, "x_start": x_b, "score": s_b}
+    return {"left_first": True, "x_start": x_a, "score": s_a}
+
+
+def stitch_frames(left, right, x_start, left_first=True):
+    if not left_first:
+        # Reuse the same stitching math by swapping inputs.
+        return stitch_frames(right, left, x_start, left_first=True)
+
     if left.shape[0] != right.shape[0]:
         h = min(left.shape[0], right.shape[0])
         wl = int(round(left.shape[1] * (h / left.shape[0])))
@@ -416,6 +437,8 @@ def main():
     fps_disp = 0.0
     cached_x_start = None
     cached_score = 0.0
+    cached_left_first = True
+    force_layout = None  # None=auto, True=left-first, False=right-first
     bad_map_count = 0
 
     try:
@@ -448,16 +471,19 @@ def main():
                 (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(cfg, (out_w, out_h), prefer_rectify=False)
                 cached_x_start = None
                 cached_score = 0.0
+                cached_left_first = True
                 bad_map_count = 0
                 continue
 
             if frame_idx % max(1, args.refresh_homography_every) == 0:
-                x_start, score = estimate_horizontal_offset(und_l, und_r)
-                if x_start is not None:
-                    cached_x_start = x_start
-                    cached_score = score
+                layout = estimate_best_layout(und_l, und_r)
+                if layout["x_start"] is not None:
+                    cached_x_start = layout["x_start"]
+                    cached_score = layout["score"]
+                    cached_left_first = layout["left_first"]
 
-            merged = stitch_frames(und_l, und_r, cached_x_start)
+            use_left_first = cached_left_first if force_layout is None else force_layout
+            merged = stitch_frames(und_l, und_r, cached_x_start, left_first=use_left_first)
 
             fps_count += 1
             now = time.time()
@@ -471,8 +497,14 @@ def main():
             if cached_x_start is not None:
                 align_txt = f"x_start={cached_x_start} score={cached_score:.2f}"
             put_text(merged, align_txt, y=58)
-            put_text(merged, f"map={map_mode} nonblack L/R={ratio_l:.2f}/{ratio_r:.2f}", y=86)
-            put_text(merged, "q: quit, r: reset overlap", y=114)
+            layout_txt = "layout=auto"
+            if force_layout is None:
+                layout_txt = f"layout=auto ({'L->R' if cached_left_first else 'R->L'})"
+            else:
+                layout_txt = f"layout=forced ({'L->R' if force_layout else 'R->L'})"
+            put_text(merged, layout_txt, y=86)
+            put_text(merged, f"map={map_mode} nonblack L/R={ratio_l:.2f}/{ratio_r:.2f}", y=114)
+            put_text(merged, "q: quit, r: reset overlap, f: toggle forced layout, a: auto layout", y=142)
             cv2.imshow("stereo_merged", merged)
 
             key = cv2.waitKey(1) & 0xFF
@@ -481,6 +513,13 @@ def main():
             if key == ord("r"):
                 cached_x_start = None
                 cached_score = 0.0
+            if key == ord("f"):
+                if force_layout is None:
+                    force_layout = (not cached_left_first)
+                else:
+                    force_layout = not force_layout
+            if key == ord("a"):
+                force_layout = None
             frame_idx += 1
 
     finally:
