@@ -124,16 +124,16 @@ def load_camera_yaml(path):
 def load_from_npz(path):
     d = np.load(str(path))
     w, h = [int(x) for x in d["image_size"]]
+    r = d["R"] if "R" in d else None
+    t = d["T"] if "T" in d else None
     return {
         "imsize": (w, h),
         "K1": d["K1"],
         "D1": d["D1"].reshape(-1),
         "K2": d["K2"],
         "D2": d["D2"].reshape(-1),
-        "R1": d["R1"],
-        "R2": d["R2"],
-        "P1": d["P1"],
-        "P2": d["P2"],
+        "R": r,
+        "T": t,
     }
 
 
@@ -156,16 +156,16 @@ def load_from_stereo_yaml(path):
 
     w = int(s["image_width"])
     h = int(s["image_height"])
+    r = _yaml_matrix(s["R"]) if "R" in s else None
+    t = _yaml_matrix(s["T"]).reshape(3, 1) if "T" in s else None
     return {
         "imsize": (w, h),
         "K1": k1,
         "D1": d1,
         "K2": k2,
         "D2": d2,
-        "R1": _yaml_matrix(s["R1"]),
-        "R2": _yaml_matrix(s["R2"]),
-        "P1": _yaml_matrix(s["P1"]),
-        "P2": _yaml_matrix(s["P2"]),
+        "R": r,
+        "T": t,
     }
 
 
@@ -203,19 +203,47 @@ def resolve_calibration(calib_file_arg):
     return path, cfg
 
 
-def build_maps(cfg):
-    w, h = cfg["imsize"]
-    # Use original intrinsics as new camera matrix for preview to avoid
-    # aggressive crop/zoom artifacts from rectified projection matrices.
-    new_k1 = cfg["K1"]
-    new_k2 = cfg["K2"]
-    m1l, m2l = cv2.initUndistortRectifyMap(
-        cfg["K1"], cfg["D1"], cfg["R1"], new_k1, (w, h), cv2.CV_16SC2
-    )
-    m1r, m2r = cv2.initUndistortRectifyMap(
-        cfg["K2"], cfg["D2"], cfg["R2"], new_k2, (w, h), cv2.CV_16SC2
-    )
-    return (m1l, m2l), (m1r, m2r)
+def _scale_k(k, sx, sy):
+    ks = k.copy().astype(np.float64)
+    ks[0, 0] *= sx
+    ks[0, 2] *= sx
+    ks[1, 1] *= sy
+    ks[1, 2] *= sy
+    return ks
+
+
+def build_maps(cfg, out_size, prefer_rectify=True):
+    cw, ch = cfg["imsize"]
+    ow, oh = out_size
+    sx = float(ow) / float(cw)
+    sy = float(oh) / float(ch)
+
+    k1 = _scale_k(cfg["K1"], sx, sy)
+    k2 = _scale_k(cfg["K2"], sx, sy)
+    d1 = cfg["D1"]
+    d2 = cfg["D2"]
+
+    if prefer_rectify and cfg.get("R") is not None and cfg.get("T") is not None:
+        r1, r2, p1, p2, _, _, _ = cv2.stereoRectify(
+            k1,
+            d1,
+            k2,
+            d2,
+            (ow, oh),
+            cfg["R"],
+            cfg["T"],
+            flags=cv2.CALIB_ZERO_DISPARITY,
+            alpha=0.0,
+        )
+        m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, r1, p1[:, :3], (ow, oh), cv2.CV_16SC2)
+        m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, r2, p2[:, :3], (ow, oh), cv2.CV_16SC2)
+        return (m1l, m2l), (m1r, m2r), "rectified"
+
+    new_k1, _ = cv2.getOptimalNewCameraMatrix(k1, d1, (ow, oh), alpha=0.0, newImgSize=(ow, oh))
+    new_k2, _ = cv2.getOptimalNewCameraMatrix(k2, d2, (ow, oh), alpha=0.0, newImgSize=(ow, oh))
+    m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, None, new_k1, (ow, oh), cv2.CV_16SC2)
+    m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, None, new_k2, (ow, oh), cv2.CV_16SC2)
+    return (m1l, m2l), (m1r, m2r), "undistort-only"
 
 
 def estimate_horizontal_offset(left, right):
@@ -298,6 +326,11 @@ def put_text(img, text, y=30):
     cv2.putText(img, text, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
 
 
+def non_black_ratio(img):
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return float(np.count_nonzero(g > 3)) / float(g.size)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Live undistort + stitch using latest stereo calibration.")
     ap.add_argument(
@@ -337,7 +370,24 @@ def main():
     print(f"[INFO] Opened left camera  ({info_l})")
     print(f"[INFO] Opened right camera ({info_r})")
 
-    (map1_l, map2_l), (map1_r, map2_r) = build_maps(cfg)
+    ok_l, frame_l0 = cap_l.read()
+    ok_r, frame_r0 = cap_r.read()
+    if not ok_l or not ok_r:
+        print("ERROR: could not read initial frames from both cameras.", file=sys.stderr)
+        cap_l.release()
+        cap_r.release()
+        sys.exit(1)
+
+    out_w = min(frame_l0.shape[1], frame_r0.shape[1])
+    out_h = min(frame_l0.shape[0], frame_r0.shape[0])
+    if (out_w, out_h) != cfg["imsize"]:
+        print(
+            f"[INFO] Calibration image size {cfg['imsize'][0]}x{cfg['imsize'][1]} "
+            f"-> runtime size {out_w}x{out_h} (auto-scaled intrinsics)"
+        )
+
+    (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(cfg, (out_w, out_h), prefer_rectify=True)
+    print(f"[INFO] Map mode: {map_mode}")
     cv2.namedWindow("stereo_merged", cv2.WINDOW_NORMAL)
 
     frame_idx = 0
@@ -346,6 +396,7 @@ def main():
     fps_disp = 0.0
     cached_x_start = None
     cached_score = 0.0
+    bad_map_count = 0
 
     try:
         while True:
@@ -356,8 +407,28 @@ def main():
                 time.sleep(0.05)
                 continue
 
+            if frame_l.shape[1] != out_w or frame_l.shape[0] != out_h:
+                frame_l = cv2.resize(frame_l, (out_w, out_h), interpolation=cv2.INTER_AREA)
+            if frame_r.shape[1] != out_w or frame_r.shape[0] != out_h:
+                frame_r = cv2.resize(frame_r, (out_w, out_h), interpolation=cv2.INTER_AREA)
+
             und_l = cv2.remap(frame_l, map1_l, map2_l, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
             und_r = cv2.remap(frame_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+            ratio_l = non_black_ratio(und_l)
+            ratio_r = non_black_ratio(und_r)
+            if ratio_l < 0.05 or ratio_r < 0.05:
+                bad_map_count += 1
+            else:
+                bad_map_count = 0
+
+            if bad_map_count >= 5 and map_mode != "undistort-only":
+                print("[WARN] Rectified maps appear invalid (mostly black). Falling back to undistort-only maps.")
+                (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(cfg, (out_w, out_h), prefer_rectify=False)
+                cached_x_start = None
+                cached_score = 0.0
+                bad_map_count = 0
+                continue
 
             if frame_idx % max(1, args.refresh_homography_every) == 0:
                 x_start, score = estimate_horizontal_offset(und_l, und_r)
@@ -379,7 +450,8 @@ def main():
             if cached_x_start is not None:
                 align_txt = f"x_start={cached_x_start} score={cached_score:.2f}"
             put_text(merged, align_txt, y=58)
-            put_text(merged, "q: quit, r: reset overlap", y=86)
+            put_text(merged, f"map={map_mode} nonblack L/R={ratio_l:.2f}/{ratio_r:.2f}", y=86)
+            put_text(merged, "q: quit, r: reset overlap", y=114)
             cv2.imshow("stereo_merged", merged)
 
             key = cv2.waitKey(1) & 0xFF
