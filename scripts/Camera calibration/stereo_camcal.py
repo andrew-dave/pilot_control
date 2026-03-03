@@ -34,6 +34,10 @@ PATTERN_CANDIDATES = [
     (11, 8),
     (10, 7),
     (9, 6),
+    (8, 6),
+    (7, 6),
+    (6, 6),
+    (5, 5),
 ]
 MIN_PAIRS = 12
 RECTIFY_ALPHA = 0.0
@@ -42,6 +46,7 @@ LEFT_CAMERA_NAME = "left_camera"
 RIGHT_CAMERA_NAME = "right_camera"
 DETECT_MAX_DIM = 960
 SLOW_DETECT_PERIOD = 10
+AUTO_PATTERN_CHECK_PERIOD = 30
 
 
 def fourcc_to_str(v: float) -> str:
@@ -520,6 +525,7 @@ def capture_mode(session_dir: Path, square_size: float):
         f"[INFO] Checkerboard expected inner corners: {pattern_size[0]}x{pattern_size[1]} "
         f"(columns x rows), square size={square_size} m"
     )
+    print(f"[INFO] Auto-pattern candidates: {PATTERN_CANDIDATES}")
 
     try:
         while True:
@@ -552,7 +558,7 @@ def capture_mode(session_dir: Path, square_size: float):
                 miss_streak = 0
             else:
                 miss_streak += 1
-                if miss_streak % 120 == 0:
+                if miss_streak % AUTO_PATTERN_CHECK_PERIOD == 0:
                     auto_pat = auto_select_pattern(gray_l, gray_r)
                     if auto_pat is not None and auto_pat != pattern_size:
                         pattern_size = auto_pat
