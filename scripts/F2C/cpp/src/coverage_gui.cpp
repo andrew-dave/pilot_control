@@ -2313,8 +2313,10 @@ void CoverageGUI::stopVideoStream() {
     }
 }
 
-void CoverageGUI::onCameraToggled(bool right_selected) {
-    Q_UNUSED(right_selected);
+void CoverageGUI::onCameraToggled(bool checked) {
+    // Ignore "unchecked" transitions to avoid publishing stale mode
+    // when exclusive radio buttons switch.
+    if (!checked) return;
     QString camera = "left";
     if (radio_cam_panorama_ && radio_cam_panorama_->isChecked()) {
         camera = "panorama";

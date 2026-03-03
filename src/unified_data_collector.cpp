@@ -768,6 +768,10 @@ private:
       want_mode = 0;
     }
     int current_mode = streaming_camera_mode_.load();
+    const char* req_mode_name = (want_mode == 2) ? "PANORAMA" : ((want_mode == 1) ? "RIGHT" : "LEFT");
+    const char* cur_mode_name = (current_mode == 2) ? "PANORAMA" : ((current_mode == 1) ? "RIGHT" : "LEFT");
+    RCLCPP_INFO(this->get_logger(), "Camera select request='%s' parsed=%s current=%s",
+                camera.c_str(), req_mode_name, cur_mode_name);
     
     if (want_mode == current_mode) {
       const char* mode_name = (want_mode == 2) ? "PANORAMA" : ((want_mode == 1) ? "RIGHT" : "LEFT");
