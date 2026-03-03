@@ -1169,19 +1169,26 @@ private:
     
     // PANORAMA stream branch (left + right blended in compositor)
     if (stream_panorama) {
+      // Keep panorama path lightweight to avoid stalls under CPU load.
+      const int pano_fps = 15;
+      const int pano_w = 320;
+      const int pano_h = 240;
+      const int pano_overlap = 80;  // pixels
+      const int pano_out_w = (pano_w * 2) - pano_overlap;
       oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=20/1 "
-          << "! videoscale ! video/x-raw,width=480,height=360 "
+          << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
+          << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
           << "! videoconvert ! video/x-raw,format=I420 ! comp.sink_0 "
           << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-          << "! videorate ! video/x-raw,framerate=20/1 "
-          << "! videoscale ! video/x-raw,width=480,height=360 "
+          << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
+          << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
           << "! videoflip method=rotate-180 "
           << "! videoconvert ! video/x-raw,format=I420 ! comp.sink_1 "
           << " compositor name=comp background=black ignore-inactive-pads=true "
-          << "sink_0::xpos=0 sink_0::ypos=0 sink_1::xpos=360 sink_1::ypos=0 "
+          << "sink_0::xpos=0 sink_0::ypos=0 sink_1::xpos=" << (pano_w - pano_overlap) << " sink_1::ypos=0 "
           << "! queue leaky=downstream max-size-buffers=10 max-size-bytes=0 max-size-time=0 "
-          << "! videoconvert ! video/x-raw,width=840,height=360,framerate=20/1 ";
+          << "! videoconvert ! video/x-raw,width=" << pano_out_w << ",height=" << pano_h
+          << ",framerate=" << pano_fps << "/1 ";
       if (cfg_.stream_use_hw_encoder) {
         oss << "! videoconvert ! video/x-raw,format=NV12 "
             << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
