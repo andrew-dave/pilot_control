@@ -129,17 +129,44 @@ def open_camera(preferred_dev, preferred_idx, width, height, fps, fourcc, strict
 
 
 def find_corners(gray, pattern_size):
-    flags = (
-        cv2.CALIB_CB_ADAPTIVE_THRESH
-        | cv2.CALIB_CB_NORMALIZE_IMAGE
-        | cv2.CALIB_CB_FAST_CHECK
-    )
-    found, corners = cv2.findChessboardCorners(gray, pattern_size, flags)
-    if not found:
-        return False, None
-    term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 50, 1e-4)
-    cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), term)
-    return True, corners
+    h, w = gray.shape[:2]
+    max_dim = max(h, w)
+    scale = 1.0
+    if max_dim > 1280:
+        scale = 1280.0 / float(max_dim)
+        work = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    else:
+        work = gray
+
+    # Contrast normalization helps when lighting is uneven.
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    work_eq = clahe.apply(work)
+
+    def _classic(img):
+        flags = cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE
+        return cv2.findChessboardCorners(img, pattern_size, flags)
+
+    def _sb(img):
+        flags = cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_EXHAUSTIVE
+        return cv2.findChessboardCornersSB(img, pattern_size, flags)
+
+    # Multi-stage detection: fast/cheap first, then more exhaustive fallback.
+    for detector, img in (
+        (_classic, work_eq),
+        (_classic, work),
+        (_sb, work_eq),
+        (_sb, work),
+    ):
+        found, corners = detector(img)
+        if found:
+            corners = corners.astype(np.float32)
+            if scale != 1.0:
+                corners /= scale
+            term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 50, 1e-4)
+            cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), term)
+            return True, corners
+
+    return False, None
 
 
 def draw_hud(frame, pair_count, text_lines):
@@ -435,6 +462,12 @@ def capture_mode(session_dir: Path, square_size: float):
 
     pair_count = len(list_pairs(pairs_dir))
     pattern_size = (PATTERN_COLS, PATTERN_ROWS)
+    miss_streak = 0
+
+    print(
+        f"[INFO] Checkerboard expected inner corners: {PATTERN_COLS}x{PATTERN_ROWS} "
+        f"(columns x rows), square size={square_size} m"
+    )
 
     try:
         while True:
@@ -461,6 +494,16 @@ def capture_mode(session_dir: Path, square_size: float):
             status_r = "RIGHT board: OK" if found_r else "RIGHT board: not found"
             can_save = found_l and found_r
             status_pair = "PAIR ready: YES" if can_save else "PAIR ready: NO"
+            if can_save:
+                miss_streak = 0
+            else:
+                miss_streak += 1
+                if miss_streak % 120 == 0:
+                    print(
+                        "[HINT] Checkerboard not found in both views. "
+                        "Confirm inner-corner count is 13x9, keep full board visible, "
+                        "avoid motion blur/glare, and vary distance/tilt."
+                    )
 
             vis_l = draw_hud(vis_l, pair_count, [status_l, status_pair, f"LEFT mode: {info_l}"])
             vis_r = draw_hud(vis_r, pair_count, [status_r, status_pair, f"RIGHT mode: {info_r}"])
