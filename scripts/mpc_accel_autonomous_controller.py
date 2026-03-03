@@ -1600,7 +1600,11 @@ class MPCAccelController(Node):
         if self.previous_waypoint is not None:
             dx = self.target_x - self.previous_waypoint[0]
             dy = self.target_y - self.previous_waypoint[1]
-            self.target_yaw = math.atan2(dy, dx)
+            if math.hypot(dx, dy) > 1e-6:
+                self.target_yaw = math.atan2(dy, dx)
+            else:
+                # Degenerate segment (same point): keep current heading.
+                self.target_yaw = self.current_yaw
         else:
             # First waypoint: use current yaw as target yaw
             self.target_yaw = self.current_yaw
@@ -1823,8 +1827,15 @@ class MPCAccelController(Node):
         """Switch from yaw-only phase to normal translation for current waypoint."""
         self.target_x = self.segment_target_x
         self.target_y = self.segment_target_y
-        self.path_start_x = self.current_x
-        self.path_start_y = self.current_y
+        # Preserve segment geometry from waypoint-to-waypoint planning:
+        # use the original segment start (previous waypoint/current pose at segment start)
+        # instead of the post-turn odometry pose, which may drift during in-place turns.
+        if self.previous_waypoint is not None:
+            self.path_start_x = float(self.previous_waypoint[0])
+            self.path_start_y = float(self.previous_waypoint[1])
+        else:
+            self.path_start_x = self.current_x
+            self.path_start_y = self.current_y
         self.path_start_yaw = self.current_yaw
         self.path_initialized = True
         self.yaw_align_active = False

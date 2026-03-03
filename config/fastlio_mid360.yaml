@@ -24,9 +24,9 @@
 
     mapping:
       # acc_cov: 0.03
-      acc_cov: 0.001
+      acc_cov: 0.005 #0.001
       # gyr_cov: 0.003
-      gyr_cov: 0.00000123
+      gyr_cov: 0.000006 #0.00000123
       b_acc_cov: 0.00001
       b_gyr_cov: 0.0000001
       fov_degree: 360.0
