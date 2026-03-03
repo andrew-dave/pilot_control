@@ -81,6 +81,7 @@ struct Config {
   std::string stream_host     = "172.16.10.121";
   int stream_port            = 5600;
   int stream_bitrate_kbps    = 800;   // Conservative for FPV at 480x360@25fps
+  bool stream_use_hw_encoder = false; // Use software encoder by default (more robust headless)
   int rtp_mtu               = 1400;  // Larger MTU for efficiency
   bool use_mjpeg_pipeline    = true;
   int cap_w                 = 1920;
@@ -527,6 +528,7 @@ private:
     this->declare_parameter<std::string>("stream_host", cfg_.stream_host);
     this->declare_parameter<int>("stream_port", cfg_.stream_port);
     this->declare_parameter<int>("stream_bitrate_kbps", cfg_.stream_bitrate_kbps);
+    this->declare_parameter<bool>("stream_use_hw_encoder", cfg_.stream_use_hw_encoder);
     this->declare_parameter<int>("rtp_mtu", cfg_.rtp_mtu);
     this->declare_parameter<bool>("use_mjpeg_pipeline", cfg_.use_mjpeg_pipeline);
     this->declare_parameter<int>("cap_w", cfg_.cap_w);
@@ -564,6 +566,7 @@ private:
     this->get_parameter("stream_host", cfg_.stream_host);
     this->get_parameter("stream_port", cfg_.stream_port);
     this->get_parameter("stream_bitrate_kbps", cfg_.stream_bitrate_kbps);
+    this->get_parameter("stream_use_hw_encoder", cfg_.stream_use_hw_encoder);
     this->get_parameter("rtp_mtu", cfg_.rtp_mtu);
     this->get_parameter("use_mjpeg_pipeline", cfg_.use_mjpeg_pipeline);
     this->get_parameter("cap_w", cfg_.cap_w);
@@ -1082,6 +1085,8 @@ private:
                 cfg_.use_mjpeg_pipeline ? "MJPEG" : "RAW",
                 cfg_.cap_w, cfg_.cap_h, cfg_.cap_fps,
                 stream_panorama ? "PANORAMA" : (stream_right ? "RIGHT" : "LEFT"));
+    RCLCPP_INFO(this->get_logger(), "Encoder: %s",
+                cfg_.stream_use_hw_encoder ? "vaapih264enc (hardware)" : "x264enc (software)");
     
     // LEFT camera
     if (cfg_.use_mjpeg_pipeline) {
@@ -1100,15 +1105,21 @@ private:
     // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
     // - vaapih264enc requires NV12 format (VA-API preferred format)
     // - 480x360@20fps: Lower res for smooth FPV driving
-    oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=20/1 "
-        << "! videoscale ! video/x-raw,width=480,height=360 "
-        << "! videoconvert ! video/x-raw,format=NV12 "
-        << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
-        << " keyframe-period=20 tune=low-power "
-        << "! h264parse config-interval=1 "
-        << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
-        << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
+      oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
+          << "! videorate ! video/x-raw,framerate=20/1 "
+          << "! videoscale ! video/x-raw,width=480,height=360 ";
+      if (cfg_.stream_use_hw_encoder) {
+        oss << "! videoconvert ! video/x-raw,format=NV12 "
+            << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
+            << " keyframe-period=20 tune=low-power ";
+      } else {
+        oss << "! videoconvert ! video/x-raw,format=I420 "
+            << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps
+            << " key-int-max=20 bframes=0 byte-stream=true threads=2 ";
+      }
+      oss << "! h264parse config-interval=1 "
+          << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
+          << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
 
     // LEFT frame capture branch (appsink)
@@ -1137,11 +1148,17 @@ private:
       oss << " T_right. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=20/1 "
           << "! videoscale ! video/x-raw,width=480,height=360 "
-          << "! videoflip method=rotate-180 "  // Rotate 180° for upside-down camera
-          << "! videoconvert ! video/x-raw,format=NV12 "
-          << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps 
-          << " keyframe-period=20 tune=low-power "
-          << "! h264parse config-interval=1 "
+          << "! videoflip method=rotate-180 ";  // Rotate 180° for upside-down camera
+      if (cfg_.stream_use_hw_encoder) {
+        oss << "! videoconvert ! video/x-raw,format=NV12 "
+            << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
+            << " keyframe-period=20 tune=low-power ";
+      } else {
+        oss << "! videoconvert ! video/x-raw,format=I420 "
+            << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps
+            << " key-int-max=20 bframes=0 byte-stream=true threads=2 ";
+      }
+      oss << "! h264parse config-interval=1 "
           << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
@@ -1158,9 +1175,17 @@ private:
           << "! videoflip method=rotate-180 "
           << "! videoconvert ! comp.sink_1 "
           << " compositor name=comp background=black sink_0::xpos=0 sink_1::xpos=360 "
-          << "! videoconvert ! video/x-raw,format=NV12 "
-          << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
-          << " keyframe-period=20 tune=low-power "
+          << "! videoconvert ";
+      if (cfg_.stream_use_hw_encoder) {
+        oss << "! video/x-raw,format=NV12 "
+            << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
+            << " keyframe-period=20 tune=low-power ";
+      } else {
+        oss << "! video/x-raw,format=I420 "
+            << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps
+            << " key-int-max=20 bframes=0 byte-stream=true threads=2 ";
+      }
+      oss
           << "! h264parse config-interval=1 "
           << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";

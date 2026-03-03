@@ -162,6 +162,7 @@ def generate_launch_description():
             'stream_host': '192.168.168.100', # TODO: change to 10.105.41.180 (R), 192.168.168.102 (R) / 10.105.41.193 (A), 192.168.168.100 (A)
             'stream_port': 5600, # TODO: change to 5602 (R) / 5600 (A)
             'stream_bitrate_kbps': 800,   # FPV optimized at 480x360@25fps
+            'stream_use_hw_encoder': False,  # More robust when LattePanda is headless/HDMI disconnected
             'rtp_mtu': 1400,  # Larger MTU for efficiency
             
             # Video capture settings
