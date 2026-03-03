@@ -50,6 +50,18 @@ AUTO_PATTERN_CHECK_PERIOD = 5
 RIGHT_ROTATE_180 = True
 AUTO_PATTERN_SWITCH_ENABLED = False
 
+# ----- Measured stereo mount priors (used as stereoCalibrate initial guess) -----
+# Baseline measured center-to-center.
+MEASURED_BASELINE_M = 0.128
+# Reported angle between camera optical z-axes. 230° is equivalent to -130°.
+MEASURED_Z_AXIS_ANGLE_DEG = 230.0
+# Additional relative pitch/roll guess (degrees), if known.
+MEASURED_REL_PITCH_DEG = 0.0
+MEASURED_REL_ROLL_DEG = 0.0
+# Baseline direction in LEFT camera frame (unit-ish direction; scaled by baseline).
+# +X means right camera is to the right of left camera.
+MEASURED_T_DIR = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+
 
 def fourcc_to_str(v: float) -> str:
     v = int(v)
@@ -368,6 +380,36 @@ def align_right_corners_to_left(c_l, c_r, pattern_size):
     return best_c, best_mode, best_err
 
 
+def euler_zyx_to_rotation(yaw_deg, pitch_deg, roll_deg):
+    # ZYX intrinsic order (yaw around Z, pitch around Y, roll around X).
+    y = np.deg2rad(float(yaw_deg))
+    p = np.deg2rad(float(pitch_deg))
+    r = np.deg2rad(float(roll_deg))
+    cz, sz = np.cos(y), np.sin(y)
+    cy, sy = np.cos(p), np.sin(p)
+    cx, sx = np.cos(r), np.sin(r)
+
+    rz = np.array([[cz, -sz, 0.0], [sz, cz, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64)
+    ry = np.array([[cy, 0.0, sy], [0.0, 1.0, 0.0], [-sy, 0.0, cy]], dtype=np.float64)
+    rx = np.array([[1.0, 0.0, 0.0], [0.0, cx, -sx], [0.0, sx, cx]], dtype=np.float64)
+    return rz @ ry @ rx
+
+
+def initial_extrinsic_guess_from_measurements():
+    # Convert reported z-axis angle to a wrapped yaw-like guess.
+    # 230° becomes -130° equivalent.
+    yaw = ((MEASURED_Z_AXIS_ANGLE_DEG + 180.0) % 360.0) - 180.0
+    r_guess = euler_zyx_to_rotation(yaw, MEASURED_REL_PITCH_DEG, MEASURED_REL_ROLL_DEG)
+
+    t_dir = np.array(MEASURED_T_DIR, dtype=np.float64).reshape(3)
+    n = float(np.linalg.norm(t_dir))
+    if n < 1e-9:
+        t_dir = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+        n = 1.0
+    t_guess = (t_dir / n) * float(MEASURED_BASELINE_M)
+    return r_guess, t_guess.reshape(3, 1), yaw
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
@@ -559,7 +601,12 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
     print(f"[INFO] RIGHT RMS: {rms_r:.6f} px")
 
     print("[INFO] Running stereo calibration (fixing intrinsics)...")
-    stereo_flags = cv2.CALIB_FIX_INTRINSIC
+    r_init, t_init, yaw_guess = initial_extrinsic_guess_from_measurements()
+    print(
+        f"[INFO] Initial extrinsic guess: baseline={MEASURED_BASELINE_M:.3f}m, "
+        f"yaw={yaw_guess:.1f}deg, pitch={MEASURED_REL_PITCH_DEG:.1f}deg, roll={MEASURED_REL_ROLL_DEG:.1f}deg"
+    )
+    stereo_flags = cv2.CALIB_FIX_INTRINSIC | cv2.CALIB_USE_EXTRINSIC_GUESS
     stereo_rms, k_l, d_l, k_r, d_r, r, t, e, f = cv2.stereoCalibrate(
         objpoints,
         imgpoints_l,
@@ -569,6 +616,8 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
         k_r,
         d_r,
         imsize,
+        r_init,
+        t_init,
         criteria=term,
         flags=stereo_flags,
     )
