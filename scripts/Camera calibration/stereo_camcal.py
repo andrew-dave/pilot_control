@@ -598,11 +598,10 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
 
     problems = validate_calibration(k_l, d_l, k_r, d_r, rms_l, rms_r, stereo_rms, t, imsize)
     if problems:
-        print("\n[ERROR] Calibration sanity checks failed. Not saving outputs.")
+        print("\n[WARN] Calibration sanity checks failed. Saving outputs anyway.")
         for p in problems:
             print(f"  - {p}")
-        print("[HINT] Re-capture pairs with stable board visibility and consistent pattern size.")
-        return 1
+        print("[HINT] Treat these outputs as low-confidence; consider re-capturing/calibrating again.")
 
     out_left = session_dir / "lcamera_calib.yaml"
     out_right = session_dir / "rcamera_calib.yaml"
