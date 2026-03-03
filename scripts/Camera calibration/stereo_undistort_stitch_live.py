@@ -205,96 +205,92 @@ def resolve_calibration(calib_file_arg):
 
 def build_maps(cfg):
     w, h = cfg["imsize"]
+    # Use original intrinsics as new camera matrix for preview to avoid
+    # aggressive crop/zoom artifacts from rectified projection matrices.
+    new_k1 = cfg["K1"]
+    new_k2 = cfg["K2"]
     m1l, m2l = cv2.initUndistortRectifyMap(
-        cfg["K1"], cfg["D1"], cfg["R1"], cfg["P1"][:, :3], (w, h), cv2.CV_16SC2
+        cfg["K1"], cfg["D1"], cfg["R1"], new_k1, (w, h), cv2.CV_16SC2
     )
     m1r, m2r = cv2.initUndistortRectifyMap(
-        cfg["K2"], cfg["D2"], cfg["R2"], cfg["P2"][:, :3], (w, h), cv2.CV_16SC2
+        cfg["K2"], cfg["D2"], cfg["R2"], new_k2, (w, h), cv2.CV_16SC2
     )
     return (m1l, m2l), (m1r, m2r)
 
 
-def compute_homography_and_warp(base, other):
-    gray_base = cv2.cvtColor(base, cv2.COLOR_BGR2GRAY)
-    gray_other = cv2.cvtColor(other, cv2.COLOR_BGR2GRAY)
-    orb = cv2.ORB_create(3000)
-    kpb, desb = orb.detectAndCompute(gray_base, None)
-    kpo, deso = orb.detectAndCompute(gray_other, None)
-    if desb is None or deso is None or len(kpb) < 12 or len(kpo) < 12:
-        return None
+def estimate_horizontal_offset(left, right):
+    # Estimate where right[:,0] should start in left image coordinates.
+    gl = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
+    gr = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
 
-    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    knn = matcher.knnMatch(deso, desb, k=2)
-    good = []
-    for m, n in knn:
-        if m.distance < 0.75 * n.distance:
-            good.append(m)
-    if len(good) < 12:
-        return None
+    h = gl.shape[0]
+    y0 = int(0.15 * h)
+    y1 = int(0.85 * h)
+    gl = gl[y0:y1, :]
+    gr = gr[y0:y1, :]
 
-    src_pts = np.float32([kpo[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kpb[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
-    hmat, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 3.0)
-    if hmat is None:
-        return None
+    scale = 1.0
+    if max(gl.shape) > 960:
+        scale = 0.5
+        gl = cv2.resize(gl, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        gr = cv2.resize(gr, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
-    hb, wb = base.shape[:2]
-    ho, wo = other.shape[:2]
-    corners_o = np.float32([[0, 0], [wo, 0], [wo, ho], [0, ho]]).reshape(-1, 1, 2)
-    corners_o_warp = cv2.perspectiveTransform(corners_o, hmat)
-    corners_b = np.float32([[0, 0], [wb, 0], [wb, hb], [0, hb]]).reshape(-1, 1, 2)
-    all_c = np.concatenate((corners_b, corners_o_warp), axis=0)
-    x_min, y_min = np.floor(all_c.min(axis=0).ravel()).astype(int)
-    x_max, y_max = np.ceil(all_c.max(axis=0).ravel()).astype(int)
+    wl = gl.shape[1]
+    wr = gr.shape[1]
+    tpl_w = max(120, int(0.35 * wr))
+    search_w = max(tpl_w + 80, int(0.60 * wl))
+    if search_w >= wl:
+        search_w = wl - 1
+    if tpl_w >= search_w:
+        return None, 0.0
 
-    tx = -x_min if x_min < 0 else 0
-    ty = -y_min if y_min < 0 else 0
-    tmat = np.array([[1, 0, tx], [0, 1, ty], [0, 0, 1]], dtype=np.float64)
-    size = (x_max - x_min, y_max - y_min)
+    template = cv2.GaussianBlur(gr[:, :tpl_w], (5, 5), 0)
+    search = cv2.GaussianBlur(gl[:, wl - search_w :], (5, 5), 0)
+    res = cv2.matchTemplate(search, template, cv2.TM_CCOEFF_NORMED)
+    _, score, _, max_loc = cv2.minMaxLoc(res)
+    if score < 0.20:
+        return None, score
 
-    warped_o = cv2.warpPerspective(other, tmat @ hmat, size)
-    base_canvas = np.zeros((size[1], size[0], 3), dtype=base.dtype)
-    base_canvas[ty:ty + hb, tx:tx + wb] = base
+    x_in_search = int(max_loc[0])
+    x_start_scaled = (wl - search_w) + x_in_search
+    x_start = int(round(x_start_scaled / scale))
 
-    mask_b = np.zeros((size[1], size[0]), dtype=np.uint8)
-    mask_o = np.zeros((size[1], size[0]), dtype=np.uint8)
-    mask_b[ty:ty + hb, tx:tx + wb] = 255
-    mask_o[warped_o.sum(axis=2) > 0] = 255
-
-    overlap = cv2.bitwise_and(mask_b, mask_o)
-    if np.count_nonzero(overlap) == 0:
-        merged = np.where(mask_o[..., None] > 0, warped_o, base_canvas)
-        return merged
-
-    dist_b = cv2.distanceTransform((mask_b > 0).astype(np.uint8), cv2.DIST_L2, 5)
-    dist_o = cv2.distanceTransform((mask_o > 0).astype(np.uint8), cv2.DIST_L2, 5)
-    wbw = dist_b / (dist_b + dist_o + 1e-6)
-    wow = 1.0 - wbw
-    merged = (base_canvas * wbw[..., None] + warped_o * wow[..., None]).astype(base.dtype)
-    return merged
+    overlap = left.shape[1] - x_start
+    max_reasonable = int(0.95 * min(left.shape[1], right.shape[1]))
+    if overlap < 60 or overlap > max_reasonable:
+        return None, score
+    return x_start, score
 
 
-def stitch_frames(left, right, cached_h=None):
-    if cached_h is not None:
-        hmat, tmat, size = cached_h
-        warped_o = cv2.warpPerspective(right, tmat @ hmat, size)
-        out = np.zeros((size[1], size[0], 3), dtype=left.dtype)
-        hb, wb = left.shape[:2]
-        tx = int(tmat[0, 2])
-        ty = int(tmat[1, 2])
-        out[ty:ty + hb, tx:tx + wb] = left
-        mask = warped_o.sum(axis=2) > 0
-        out[mask] = warped_o[mask]
-        return out
+def stitch_frames(left, right, x_start):
+    if left.shape[0] != right.shape[0]:
+        h = min(left.shape[0], right.shape[0])
+        wl = int(round(left.shape[1] * (h / left.shape[0])))
+        wr = int(round(right.shape[1] * (h / right.shape[0])))
+        left = cv2.resize(left, (wl, h), interpolation=cv2.INTER_AREA)
+        right = cv2.resize(right, (wr, h), interpolation=cv2.INTER_AREA)
 
-    merged = compute_homography_and_warp(left, right)
-    if merged is None:
-        h = max(left.shape[0], right.shape[0])
-        canvas = np.zeros((h, left.shape[1] + right.shape[1], 3), dtype=left.dtype)
-        canvas[: left.shape[0], : left.shape[1]] = left
-        canvas[: right.shape[0], left.shape[1] : left.shape[1] + right.shape[1]] = right
-        return canvas
-    return merged
+    if x_start is None:
+        return np.hstack((left, right))
+
+    wl = left.shape[1]
+    wr = right.shape[1]
+    x_start = int(np.clip(x_start, 0, wl - 1))
+    overlap = wl - x_start
+    if overlap <= 0 or overlap > min(wl, wr):
+        return np.hstack((left, right))
+
+    out_w = wl + wr - overlap
+    out = np.zeros((left.shape[0], out_w, 3), dtype=left.dtype)
+    out[:, :wl] = left
+
+    left_ov = left[:, x_start:wl].astype(np.float32)
+    right_ov = right[:, :overlap].astype(np.float32)
+    alpha = np.linspace(1.0, 0.0, overlap, dtype=np.float32)[None, :, None]
+    beta = 1.0 - alpha
+    out[:, x_start:wl] = (left_ov * alpha + right_ov * beta).astype(left.dtype)
+    out[:, wl:] = right[:, overlap:]
+    return out
 
 
 def put_text(img, text, y=30):
@@ -314,7 +310,7 @@ def main():
         "--refresh-homography-every",
         type=int,
         default=30,
-        help="Re-estimate homography every N frames (default 30).",
+        help="Re-estimate left/right overlap every N frames (default 30).",
     )
     args = ap.parse_args()
 
@@ -348,7 +344,8 @@ def main():
     fps_last = time.time()
     fps_count = 0
     fps_disp = 0.0
-    cached = None
+    cached_x_start = None
+    cached_score = 0.0
 
     try:
         while True:
@@ -363,37 +360,12 @@ def main():
             und_r = cv2.remap(frame_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
             if frame_idx % max(1, args.refresh_homography_every) == 0:
-                # Compute cached geometry from current frame pair.
-                gray_l = cv2.cvtColor(und_l, cv2.COLOR_BGR2GRAY)
-                gray_r = cv2.cvtColor(und_r, cv2.COLOR_BGR2GRAY)
-                orb = cv2.ORB_create(3000)
-                kpb, desb = orb.detectAndCompute(gray_l, None)
-                kpo, deso = orb.detectAndCompute(gray_r, None)
-                cached = None
-                if desb is not None and deso is not None and len(kpb) >= 12 and len(kpo) >= 12:
-                    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-                    knn = matcher.knnMatch(deso, desb, k=2)
-                    good = [m for m, n in knn if m.distance < 0.75 * n.distance]
-                    if len(good) >= 12:
-                        src_pts = np.float32([kpo[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
-                        dst_pts = np.float32([kpb[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
-                        hmat, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 3.0)
-                        if hmat is not None:
-                            hb, wb = und_l.shape[:2]
-                            ho, wo = und_r.shape[:2]
-                            corners_o = np.float32([[0, 0], [wo, 0], [wo, ho], [0, ho]]).reshape(-1, 1, 2)
-                            corners_o_warp = cv2.perspectiveTransform(corners_o, hmat)
-                            corners_b = np.float32([[0, 0], [wb, 0], [wb, hb], [0, hb]]).reshape(-1, 1, 2)
-                            all_c = np.concatenate((corners_b, corners_o_warp), axis=0)
-                            x_min, y_min = np.floor(all_c.min(axis=0).ravel()).astype(int)
-                            x_max, y_max = np.ceil(all_c.max(axis=0).ravel()).astype(int)
-                            tx = -x_min if x_min < 0 else 0
-                            ty = -y_min if y_min < 0 else 0
-                            tmat = np.array([[1, 0, tx], [0, 1, ty], [0, 0, 1]], dtype=np.float64)
-                            size = (x_max - x_min, y_max - y_min)
-                            cached = (hmat, tmat, size)
+                x_start, score = estimate_horizontal_offset(und_l, und_r)
+                if x_start is not None:
+                    cached_x_start = x_start
+                    cached_score = score
 
-            merged = stitch_frames(und_l, und_r, cached_h=cached)
+            merged = stitch_frames(und_l, und_r, cached_x_start)
 
             fps_count += 1
             now = time.time()
@@ -403,14 +375,19 @@ def main():
                 fps_last = now
 
             put_text(merged, f"FPS ~ {fps_disp:.1f}")
-            put_text(merged, "q: quit, r: reset homography", y=58)
+            align_txt = "overlap: unknown"
+            if cached_x_start is not None:
+                align_txt = f"x_start={cached_x_start} score={cached_score:.2f}"
+            put_text(merged, align_txt, y=58)
+            put_text(merged, "q: quit, r: reset overlap", y=86)
             cv2.imshow("stereo_merged", merged)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
                 break
             if key == ord("r"):
-                cached = None
+                cached_x_start = None
+                cached_score = 0.0
             frame_idx += 1
 
     finally:
