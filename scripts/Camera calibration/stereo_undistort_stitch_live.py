@@ -229,7 +229,15 @@ def _scale_k(k, sx, sy):
     return ks
 
 
-def build_maps(cfg, out_size, prefer_rectify=True):
+def _common_new_k(k1, d1, k2, d2, size, alpha):
+    ow, oh = size
+    n1, _ = cv2.getOptimalNewCameraMatrix(k1, d1, (ow, oh), alpha=alpha, newImgSize=(ow, oh))
+    n2, _ = cv2.getOptimalNewCameraMatrix(k2, d2, (ow, oh), alpha=alpha, newImgSize=(ow, oh))
+    f = float(min(n1[0, 0], n1[1, 1], n2[0, 0], n2[1, 1]))
+    return np.array([[f, 0.0, ow * 0.5], [0.0, f, oh * 0.5], [0.0, 0.0, 1.0]], dtype=np.float64)
+
+
+def build_maps(cfg, out_size, prefer_rectify=True, undistort_alpha=0.8, distortion_scale=0.6):
     cw, ch = cfg["imsize"]
     ow, oh = out_size
     sx = float(ow) / float(cw)
@@ -237,8 +245,10 @@ def build_maps(cfg, out_size, prefer_rectify=True):
 
     k1 = _scale_k(cfg["K1"], sx, sy)
     k2 = _scale_k(cfg["K2"], sx, sy)
-    d1 = cfg["D1"]
-    d2 = cfg["D2"]
+    d1 = np.array(cfg["D1"], dtype=np.float64).reshape(-1)
+    d2 = np.array(cfg["D2"], dtype=np.float64).reshape(-1)
+    d1 = d1 * float(distortion_scale)
+    d2 = d2 * float(distortion_scale)
 
     if prefer_rectify and cfg.get("R") is not None and cfg.get("T") is not None:
         r1, r2, p1, p2, _, _, _ = cv2.stereoRectify(
@@ -250,16 +260,16 @@ def build_maps(cfg, out_size, prefer_rectify=True):
             cfg["R"],
             cfg["T"],
             flags=cv2.CALIB_ZERO_DISPARITY,
-            alpha=0.0,
+            alpha=float(undistort_alpha),
         )
-        m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, r1, p1[:, :3], (ow, oh), cv2.CV_16SC2)
-        m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, r2, p2[:, :3], (ow, oh), cv2.CV_16SC2)
+        common_k = _common_new_k(k1, d1, k2, d2, (ow, oh), alpha=float(undistort_alpha))
+        m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, r1, common_k, (ow, oh), cv2.CV_16SC2)
+        m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, r2, common_k, (ow, oh), cv2.CV_16SC2)
         return (m1l, m2l), (m1r, m2r), "rectified"
 
-    new_k1, _ = cv2.getOptimalNewCameraMatrix(k1, d1, (ow, oh), alpha=0.0, newImgSize=(ow, oh))
-    new_k2, _ = cv2.getOptimalNewCameraMatrix(k2, d2, (ow, oh), alpha=0.0, newImgSize=(ow, oh))
-    m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, None, new_k1, (ow, oh), cv2.CV_16SC2)
-    m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, None, new_k2, (ow, oh), cv2.CV_16SC2)
+    common_k = _common_new_k(k1, d1, k2, d2, (ow, oh), alpha=float(undistort_alpha))
+    m1l, m2l = cv2.initUndistortRectifyMap(k1, d1, None, common_k, (ow, oh), cv2.CV_16SC2)
+    m1r, m2r = cv2.initUndistortRectifyMap(k2, d2, None, common_k, (ow, oh), cv2.CV_16SC2)
     return (m1l, m2l), (m1r, m2r), "undistort-only"
 
 
@@ -383,6 +393,18 @@ def main():
         default=30,
         help="Re-estimate left/right overlap every N frames (default 30).",
     )
+    ap.add_argument(
+        "--undistort-alpha",
+        type=float,
+        default=0.8,
+        help="Undistort FOV retention [0..1], higher keeps more FOV (default 0.8).",
+    )
+    ap.add_argument(
+        "--distortion-scale",
+        type=float,
+        default=0.6,
+        help="Scale distortion coefficients [0..1]. Lower reduces fisheye effect (default 0.6).",
+    )
     args = ap.parse_args()
 
     try:
@@ -427,7 +449,13 @@ def main():
             f"-> runtime size {out_w}x{out_h} (auto-scaled intrinsics)"
         )
 
-    (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(cfg, (out_w, out_h), prefer_rectify=True)
+    (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(
+        cfg,
+        (out_w, out_h),
+        prefer_rectify=True,
+        undistort_alpha=args.undistort_alpha,
+        distortion_scale=args.distortion_scale,
+    )
     print(f"[INFO] Map mode: {map_mode}")
     cv2.namedWindow("stereo_merged", cv2.WINDOW_NORMAL)
 
@@ -468,7 +496,13 @@ def main():
 
             if bad_map_count >= 5 and map_mode != "undistort-only":
                 print("[WARN] Rectified maps appear invalid (mostly black). Falling back to undistort-only maps.")
-                (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(cfg, (out_w, out_h), prefer_rectify=False)
+                (map1_l, map2_l), (map1_r, map2_r), map_mode = build_maps(
+                    cfg,
+                    (out_w, out_h),
+                    prefer_rectify=False,
+                    undistort_alpha=args.undistort_alpha,
+                    distortion_scale=args.distortion_scale,
+                )
                 cached_x_start = None
                 cached_score = 0.0
                 cached_left_first = True
