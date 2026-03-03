@@ -1170,10 +1170,10 @@ private:
     // PANORAMA stream branch (left + right blended in compositor)
     if (stream_panorama) {
       // Keep panorama path lightweight to avoid stalls under CPU load.
-      const int pano_fps = 15;
-      const int pano_w = 320;
-      const int pano_h = 240;
-      const int pano_overlap = 80;  // pixels
+      const int pano_fps = 20;
+      const int pano_w = 240;
+      const int pano_h = 360;
+      const int pano_overlap = 0;  // side-by-side for robust streaming
       const int pano_out_w = (pano_w * 2) - pano_overlap;
       oss << " T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
           << "! videorate ! video/x-raw,framerate=" << pano_fps << "/1 "
