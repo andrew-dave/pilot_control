@@ -28,11 +28,20 @@ REQ_FOURCC = "MJPG"
 FPS_TOL = 2.0
 PATTERN_COLS = 13
 PATTERN_ROWS = 9
+PATTERN_CANDIDATES = [
+    (13, 9),
+    (12, 8),
+    (11, 8),
+    (10, 7),
+    (9, 6),
+]
 MIN_PAIRS = 12
 RECTIFY_ALPHA = 0.0
 R_DATA_BASE = Path("/R_DATA/stereo_calibration")
 LEFT_CAMERA_NAME = "left_camera"
 RIGHT_CAMERA_NAME = "right_camera"
+DETECT_MAX_DIM = 960
+SLOW_DETECT_PERIOD = 10
 
 
 def fourcc_to_str(v: float) -> str:
@@ -128,12 +137,12 @@ def open_camera(preferred_dev, preferred_idx, width, height, fps, fourcc, strict
     return None, None, "no candidate devices matched requested mode"
 
 
-def find_corners(gray, pattern_size):
+def find_corners(gray, pattern_size, allow_slow=True):
     h, w = gray.shape[:2]
     max_dim = max(h, w)
     scale = 1.0
-    if max_dim > 1280:
-        scale = 1280.0 / float(max_dim)
+    if max_dim > DETECT_MAX_DIM:
+        scale = float(DETECT_MAX_DIM) / float(max_dim)
         work = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     else:
         work = gray
@@ -150,13 +159,21 @@ def find_corners(gray, pattern_size):
         flags = cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_EXHAUSTIVE
         return cv2.findChessboardCornersSB(img, pattern_size, flags)
 
-    # Multi-stage detection: fast/cheap first, then more exhaustive fallback.
-    for detector, img in (
+    # Fast stages every frame.
+    stages = [
         (_classic, work_eq),
         (_classic, work),
-        (_sb, work_eq),
-        (_sb, work),
-    ):
+    ]
+    # Slower exhaustive stages only when explicitly requested.
+    if allow_slow:
+        stages.extend(
+            [
+                (_sb, work_eq),
+                (_sb, work),
+            ]
+        )
+
+    for detector, img in stages:
         found, corners = detector(img)
         if found:
             corners = corners.astype(np.float32)
@@ -169,15 +186,47 @@ def find_corners(gray, pattern_size):
     return False, None
 
 
+def write_pattern_metadata(session_dir: Path, pattern_size):
+    meta_path = session_dir / "pattern_size.txt"
+    with open(meta_path, "w") as f:
+        f.write(f"{pattern_size[0]} {pattern_size[1]}\n")
+
+
+def read_pattern_metadata(session_dir: Path):
+    meta_path = session_dir / "pattern_size.txt"
+    if not meta_path.exists():
+        return (PATTERN_COLS, PATTERN_ROWS)
+    try:
+        text = meta_path.read_text().strip()
+        cols_str, rows_str = text.split()
+        cols = int(cols_str)
+        rows = int(rows_str)
+        if cols >= 3 and rows >= 3:
+            return (cols, rows)
+    except Exception:
+        pass
+    return (PATTERN_COLS, PATTERN_ROWS)
+
+
+def auto_select_pattern(gray_l, gray_r):
+    for cand in PATTERN_CANDIDATES:
+        found_l, _ = find_corners(gray_l, cand, allow_slow=False)
+        found_r, _ = find_corners(gray_r, cand, allow_slow=False)
+        if found_l and found_r:
+            return cand
+    return None
+
+
 def draw_hud(frame, pair_count, text_lines):
     h, w = frame.shape[:2]
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (w, 145), (0, 0, 0), -1)
-    frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
     lines = [
         "S: save pair (both checkerboards required)  C: calibrate  Q: quit",
         f"Saved stereo pairs: {pair_count}",
     ] + text_lines
+    panel_h = min(h, 12 + 24 * len(lines))
+    cv2.rectangle(overlay, (0, 0), (w, panel_h), (0, 0, 0), -1)
+    frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
     for i, line in enumerate(lines):
         cv2.putText(
             frame,
@@ -265,14 +314,15 @@ def get_latest_session_dir(base_dir: Path):
     return sessions[-1]
 
 
-def calibrate_from_pairs(session_dir: Path, square_size: float):
+def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=None):
     pairs_dir = session_dir / "pairs"
     pairs = list_pairs(pairs_dir)
     if len(pairs) < MIN_PAIRS:
         print(f"Need at least {MIN_PAIRS} stereo pairs; found {len(pairs)} in {pairs_dir}")
         return 1
 
-    pattern_size = (PATTERN_COLS, PATTERN_ROWS)
+    if pattern_size is None:
+        pattern_size = read_pattern_metadata(session_dir)
     objp = np.zeros((pattern_size[0] * pattern_size[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
     objp *= square_size
@@ -299,8 +349,8 @@ def calibrate_from_pairs(session_dir: Path, square_size: float):
             print(f"[WARN] Size mismatch in pair {left_path.name}; skipping")
             continue
 
-        found_l, corners_l = find_corners(g_l, pattern_size)
-        found_r, corners_r = find_corners(g_r, pattern_size)
+        found_l, corners_l = find_corners(g_l, pattern_size, allow_slow=True)
+        found_r, corners_r = find_corners(g_r, pattern_size, allow_slow=True)
         if not (found_l and found_r):
             print(f"[WARN] Checkerboard not detected in both views for {left_path.name}; skipped")
             continue
@@ -462,10 +512,12 @@ def capture_mode(session_dir: Path, square_size: float):
 
     pair_count = len(list_pairs(pairs_dir))
     pattern_size = (PATTERN_COLS, PATTERN_ROWS)
+    write_pattern_metadata(session_dir, pattern_size)
     miss_streak = 0
+    frame_idx = 0
 
     print(
-        f"[INFO] Checkerboard expected inner corners: {PATTERN_COLS}x{PATTERN_ROWS} "
+        f"[INFO] Checkerboard expected inner corners: {pattern_size[0]}x{pattern_size[1]} "
         f"(columns x rows), square size={square_size} m"
     )
 
@@ -480,8 +532,10 @@ def capture_mode(session_dir: Path, square_size: float):
 
             gray_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2GRAY)
             gray_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2GRAY)
-            found_l, corners_l = find_corners(gray_l, pattern_size)
-            found_r, corners_r = find_corners(gray_r, pattern_size)
+            do_slow = (frame_idx % SLOW_DETECT_PERIOD == 0)
+            found_l, corners_l = find_corners(gray_l, pattern_size, allow_slow=do_slow)
+            found_r, corners_r = find_corners(gray_r, pattern_size, allow_slow=do_slow)
+            frame_idx += 1
 
             vis_l = frame_l.copy()
             vis_r = frame_r.copy()
@@ -499,14 +553,20 @@ def capture_mode(session_dir: Path, square_size: float):
             else:
                 miss_streak += 1
                 if miss_streak % 120 == 0:
+                    auto_pat = auto_select_pattern(gray_l, gray_r)
+                    if auto_pat is not None and auto_pat != pattern_size:
+                        pattern_size = auto_pat
+                        write_pattern_metadata(session_dir, pattern_size)
+                        print(f"[INFO] Auto-switched checkerboard pattern to {pattern_size[0]}x{pattern_size[1]} inner corners")
                     print(
                         "[HINT] Checkerboard not found in both views. "
-                        "Confirm inner-corner count is 13x9, keep full board visible, "
+                        f"Current inner-corner pattern is {pattern_size[0]}x{pattern_size[1]}. "
+                        "Keep full board visible, "
                         "avoid motion blur/glare, and vary distance/tilt."
                     )
 
-            vis_l = draw_hud(vis_l, pair_count, [status_l, status_pair, f"LEFT mode: {info_l}"])
-            vis_r = draw_hud(vis_r, pair_count, [status_r, status_pair, f"RIGHT mode: {info_r}"])
+            vis_l = draw_hud(vis_l, pair_count, [status_l, status_pair, f"Pattern: {pattern_size[0]}x{pattern_size[1]}", f"LEFT mode: {info_l}"])
+            vis_r = draw_hud(vis_r, pair_count, [status_r, status_pair, f"Pattern: {pattern_size[0]}x{pattern_size[1]}", f"RIGHT mode: {info_r}"])
 
             cv2.imshow("stereo_left", vis_l)
             cv2.imshow("stereo_right", vis_r)
@@ -534,7 +594,7 @@ def capture_mode(session_dir: Path, square_size: float):
         cap_r.release()
         cv2.destroyAllWindows()
 
-    return calibrate_from_pairs(session_dir, square_size)
+    return calibrate_from_pairs(session_dir, square_size, pattern_size=pattern_size)
 
 
 def parse_args():
@@ -566,8 +626,10 @@ def main():
             print(f"ERROR: no calibration session found under {R_DATA_BASE}", file=sys.stderr)
             print("Run with --mode capture first to collect stereo pairs.", file=sys.stderr)
             sys.exit(1)
+        pat = read_pattern_metadata(session_dir)
         print(f"[INFO] Using latest calibration session: {session_dir}")
-        rc = calibrate_from_pairs(session_dir, args.square_size)
+        print(f"[INFO] Using checkerboard pattern: {pat[0]}x{pat[1]} inner corners")
+        rc = calibrate_from_pairs(session_dir, args.square_size, pattern_size=pat)
     sys.exit(rc)
 
 
