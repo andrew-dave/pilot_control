@@ -26,18 +26,18 @@ REQ_HEIGHT = 1080
 REQ_FPS = 30.0
 REQ_FOURCC = "MJPG"
 FPS_TOL = 2.0
-PATTERN_COLS = 13
-PATTERN_ROWS = 9
+PATTERN_COLS = 5
+PATTERN_ROWS = 5
 PATTERN_CANDIDATES = [
-    (13, 9),
-    (12, 8),
-    (11, 8),
-    (10, 7),
-    (9, 6),
-    (8, 6),
-    (7, 6),
-    (6, 6),
     (5, 5),
+    (6, 6),
+    (7, 6),
+    (8, 6),
+    (9, 6),
+    (10, 7),
+    (11, 8),
+    (12, 8),
+    (13, 9),
 ]
 MIN_PAIRS = 12
 RECTIFY_ALPHA = 0.0
@@ -46,7 +46,7 @@ LEFT_CAMERA_NAME = "left_camera"
 RIGHT_CAMERA_NAME = "right_camera"
 DETECT_MAX_DIM = 960
 SLOW_DETECT_PERIOD = 10
-AUTO_PATTERN_CHECK_PERIOD = 30
+AUTO_PATTERN_CHECK_PERIOD = 5
 
 
 def fourcc_to_str(v: float) -> str:
@@ -215,8 +215,10 @@ def read_pattern_metadata(session_dir: Path):
 
 def auto_select_pattern(gray_l, gray_r):
     for cand in PATTERN_CANDIDATES:
-        found_l, _ = find_corners(gray_l, cand, allow_slow=False)
-        found_r, _ = find_corners(gray_r, cand, allow_slow=False)
+        # Use slow fallback during pattern probing so we don't get stuck
+        # on a wrong default pattern in difficult lighting.
+        found_l, _ = find_corners(gray_l, cand, allow_slow=True)
+        found_r, _ = find_corners(gray_r, cand, allow_slow=True)
         if found_l and found_r:
             return cand
     return None
