@@ -883,6 +883,7 @@ private:
     VideoStreamWidget* video_widget_ = nullptr;
     QPushButton* btn_view_fov_ = nullptr;
     QRadioButton* radio_cam_left_ = nullptr;
+    QRadioButton* radio_cam_panorama_ = nullptr;
     QRadioButton* radio_cam_right_ = nullptr;
     QSpinBox* spin_video_port_ = nullptr;
     QPushButton* btn_video_play_ = nullptr;

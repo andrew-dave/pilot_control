@@ -302,8 +302,8 @@ def main():
     ap.add_argument("--distortion-scale", type=float, default=0.5, help="Scale distortion coefficients [0..1].")
     ap.add_argument("--crop-px", type=int, default=24, help="Pixels cropped from each border after undistort.")
     ap.add_argument("--overlap-px", type=int, default=-1, help="Feather overlap in pixels; -1 for auto.")
-    ap.add_argument("--feather-width", type=int, default=40, help="Blend width in overlap (smaller reduces ghosting).")
-    ap.add_argument("--refresh-overlap-every", type=int, default=30, help="Auto-overlap refresh period in frames.")
+    ap.add_argument("--feather-width", type=int, default=900, help="Blend width in overlap.")
+    ap.add_argument("--refresh-overlap-every", type=int, default=0, help="Auto-overlap refresh period in frames (0 disables).")
     args = ap.parse_args()
 
     try:
@@ -354,6 +354,17 @@ def main():
     y_shift = 0
     overlap_score = 0.0
 
+    if args.overlap_px <= 0:
+        und_l0 = cv2.remap(f0_l, map1_l, map2_l, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_r0 = cv2.remap(f0_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_l0 = crop_border(und_l0, args.crop_px)
+        und_r0 = crop_border(und_r0, args.crop_px)
+        ov0, ys0, sc0 = estimate_overlap_and_shift(und_l0, und_r0)
+        if ov0 is not None:
+            overlap = ov0
+            y_shift = ys0
+            overlap_score = sc0
+
     try:
         while True:
             ok_l, frame_l = cap_l.read()
@@ -374,7 +385,7 @@ def main():
             und_l = crop_border(und_l, args.crop_px)
             und_r = crop_border(und_r, args.crop_px)
 
-            if args.overlap_px <= 0 and (frame_idx % max(1, args.refresh_overlap_every) == 0):
+            if args.overlap_px <= 0 and args.refresh_overlap_every > 0 and (frame_idx % max(1, args.refresh_overlap_every) == 0):
                 ov, ys, sc = estimate_overlap_and_shift(und_l, und_r)
                 if ov is not None:
                     overlap = ov

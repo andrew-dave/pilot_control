@@ -2185,14 +2185,17 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
     QHBoxLayout* cam_selector = new QHBoxLayout();
     cam_selector->addWidget(new QLabel("Camera:"));
     radio_cam_left_ = new QRadioButton("Left");
+    radio_cam_panorama_ = new QRadioButton("Panorama");
     radio_cam_right_ = new QRadioButton("Right");
     radio_cam_left_->setChecked(true);
     
     QButtonGroup* cam_group = new QButtonGroup(this);
     cam_group->addButton(radio_cam_left_);
+    cam_group->addButton(radio_cam_panorama_);
     cam_group->addButton(radio_cam_right_);
     
     cam_selector->addWidget(radio_cam_left_);
+    cam_selector->addWidget(radio_cam_panorama_);
     cam_selector->addWidget(radio_cam_right_);
     cam_selector->addStretch();
     dock_layout->addLayout(cam_selector);
@@ -2246,6 +2249,8 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
     connect(btn_video_play_, &QPushButton::clicked, this, &CoverageGUI::playVideoStream);
     connect(btn_video_stop_, &QPushButton::clicked, this, &CoverageGUI::stopVideoStream);
     
+    connect(radio_cam_left_, &QRadioButton::toggled, this, &CoverageGUI::onCameraToggled);
+    connect(radio_cam_panorama_, &QRadioButton::toggled, this, &CoverageGUI::onCameraToggled);
     connect(radio_cam_right_, &QRadioButton::toggled, this, &CoverageGUI::onCameraToggled);
     
     connect(video_widget_, &VideoStreamWidget::streamStarted, this, [this]() {
@@ -2309,7 +2314,13 @@ void CoverageGUI::stopVideoStream() {
 }
 
 void CoverageGUI::onCameraToggled(bool right_selected) {
-    QString camera = right_selected ? "right" : "left";
+    Q_UNUSED(right_selected);
+    QString camera = "left";
+    if (radio_cam_panorama_ && radio_cam_panorama_->isChecked()) {
+        camera = "panorama";
+    } else if (radio_cam_right_ && radio_cam_right_->isChecked()) {
+        camera = "right";
+    }
     
     // Lazily create publisher if not yet available
     if (ros_initialized_ && ros_node_ && !camera_select_pub_) {
@@ -2353,10 +2364,13 @@ void CoverageGUI::onCameraStatusReceived(const std_msgs::msg::String::SharedPtr 
     QMetaObject::invokeMethod(this, [this, camera]() {
         // Update radio button to match actual streaming camera
         bool is_right = (camera == "right");
+        bool is_panorama = (camera == "panorama");
         QSignalBlocker blocker_left(radio_cam_left_);
+        QSignalBlocker blocker_panorama(radio_cam_panorama_);
         QSignalBlocker blocker_right(radio_cam_right_);
-        radio_cam_left_->setChecked(!is_right);
-        radio_cam_right_->setChecked(is_right);
+        if (radio_cam_left_) radio_cam_left_->setChecked(!is_right && !is_panorama);
+        if (radio_cam_panorama_) radio_cam_panorama_->setChecked(is_panorama);
+        if (radio_cam_right_) radio_cam_right_->setChecked(is_right);
         
         setStatus(QString("Streaming: %1 camera").arg(camera));
     }, Qt::QueuedConnection);
