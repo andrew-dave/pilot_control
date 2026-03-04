@@ -308,7 +308,18 @@ def estimate_overlap_rectified(left, right):
     return int(overlap), score
 
 
-def stitch_rectified(left, right, overlap_px, feather_width):
+def estimate_seam_in_overlap(left, right, overlap_px):
+    wl, wr = left.shape[1], right.shape[1]
+    ov = int(np.clip(overlap_px, 1, min(wl, wr) - 1))
+    l_ov = left[:, wl - ov:wl]
+    r_ov = right[:, :ov]
+    diff = np.mean(np.abs(l_ov.astype(np.float32) - r_ov.astype(np.float32)), axis=(0, 2))
+    if diff.size >= 9:
+        diff = np.convolve(diff, np.ones(9, dtype=np.float32) / 9.0, mode="same")
+    return int(np.argmin(diff))
+
+
+def stitch_rectified(left, right, overlap_px, feather_width, seam_idx=None):
     if left.shape[0] != right.shape[0]:
         h = min(left.shape[0], right.shape[0])
         wl = int(round(left.shape[1] * (h / left.shape[0])))
@@ -324,10 +335,10 @@ def stitch_rectified(left, right, overlap_px, feather_width):
 
     l_ov = left[:, wl - ov:wl]
     r_ov = right[:, :ov]
-    diff = np.mean(np.abs(l_ov.astype(np.float32) - r_ov.astype(np.float32)), axis=(0, 2))
-    if diff.size >= 9:
-        diff = np.convolve(diff, np.ones(9, dtype=np.float32) / 9.0, mode="same")
-    seam = int(np.argmin(diff))
+    if seam_idx is None:
+        seam = estimate_seam_in_overlap(left, right, ov)
+    else:
+        seam = int(np.clip(seam_idx, 0, ov - 1))
     fw = int(np.clip(feather_width, 8, ov - 1))
     s0 = max(0, seam - fw // 2)
     s1 = min(ov, s0 + fw)
@@ -358,6 +369,7 @@ def main():
     ap.add_argument("--crop-px", type=int, default=16, help="Extra crop inset after valid ROI.")
     ap.add_argument("--overlap-px", type=int, default=-1, help="Overlap in pixels; -1 estimates once at startup.")
     ap.add_argument("--feather-width", type=int, default=120, help="Feather width in overlap.")
+    ap.add_argument("--dynamic-seam", action="store_true", help="Recompute seam each frame (can cause twitch).")
     ap.add_argument("--output-scale", type=float, default=0.65, help="Scale final panorama output [0.2..1.0] for FPS.")
     ap.add_argument("--perf-mode", action="store_true", help="Use low-latency profile.")
     args = ap.parse_args()
@@ -446,6 +458,7 @@ def main():
         ov, sc = estimate_overlap_rectified(und_l0, und_r0)
         overlap = ov if ov is not None else max(60, und_l0.shape[1] // 6)
         overlap_score = sc
+    seam_fixed = estimate_seam_in_overlap(und_l0, und_r0, overlap)
 
     cv2.namedWindow("stereo_known_extrinsic_stitch", cv2.WINDOW_NORMAL)
     fps_last = time.time()
@@ -472,7 +485,8 @@ def main():
             und_l = crop_rect(und_l, common_roi)
             und_r = crop_rect(und_r, common_roi)
 
-            merged = stitch_rectified(und_l, und_r, overlap, args.feather_width)
+            seam_use = None if args.dynamic_seam else seam_fixed
+            merged = stitch_rectified(und_l, und_r, overlap, args.feather_width, seam_idx=seam_use)
             if args.output_scale < 0.999:
                 sw = int(max(2, round(merged.shape[1] * args.output_scale)))
                 sh = int(max(2, round(merged.shape[0] * args.output_scale)))
@@ -499,10 +513,13 @@ def main():
                 if ov is not None:
                     overlap = ov
                     overlap_score = sc
+                    seam_fixed = estimate_seam_in_overlap(und_l, und_r, overlap)
             if key in (ord("+"), ord("=")):
                 overlap = min(overlap + 10, min(und_l.shape[1], und_r.shape[1]) - 2)
+                seam_fixed = estimate_seam_in_overlap(und_l, und_r, overlap)
             if key in (ord("-"), ord("_")):
                 overlap = max(overlap - 10, 20)
+                seam_fixed = estimate_seam_in_overlap(und_l, und_r, overlap)
     finally:
         cap_l.release()
         cap_r.release()
