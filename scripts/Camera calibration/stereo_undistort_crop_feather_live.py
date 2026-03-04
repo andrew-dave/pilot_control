@@ -113,6 +113,26 @@ def load_camera_yaml(path):
     return k, dist
 
 
+def load_manual_extrinsic_yaml(path):
+    if yaml is None:
+        raise RuntimeError("PyYAML required for YAML loading. Install with: pip install pyyaml")
+    with open(path, "r") as f:
+        d = yaml.safe_load(f)
+    yaw = float(d.get("yaw_deg", 90.0))
+    pitch = float(d.get("pitch_deg", 0.0))
+    roll = float(d.get("roll_deg", 0.0))
+    baseline = float(d.get("baseline_m", 0.128))
+    r_block = d.get("r_lr", None)
+    t_block = d.get("t_lr_m", None)
+    r_lr = None
+    t_lr = None
+    if isinstance(r_block, dict) and "data" in r_block:
+        r_lr = np.array(r_block["data"], dtype=np.float64).reshape(3, 3)
+    if isinstance(t_block, dict) and "data" in t_block:
+        t_lr = np.array(t_block["data"], dtype=np.float64).reshape(3, 1)
+    return yaw, pitch, roll, baseline, r_lr, t_lr
+
+
 def load_intrinsics_from_calib(calib_file):
     p = Path(calib_file).expanduser().resolve()
     if p.suffix.lower() == ".npz":
@@ -166,6 +186,19 @@ def scale_k(k, sx, sy):
     ks[1, 1] *= sy
     ks[1, 2] *= sy
     return ks
+
+
+def euler_zyx_to_rotation(yaw_deg, pitch_deg, roll_deg):
+    y = np.deg2rad(float(yaw_deg))
+    p = np.deg2rad(float(pitch_deg))
+    r = np.deg2rad(float(roll_deg))
+    cz, sz = np.cos(y), np.sin(y)
+    cy, sy = np.cos(p), np.sin(p)
+    cx, sx = np.cos(r), np.sin(r)
+    rz = np.array([[cz, -sz, 0.0], [sz, cz, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64)
+    ry = np.array([[cy, 0.0, sy], [0.0, 1.0, 0.0], [-sy, 0.0, cy]], dtype=np.float64)
+    rx = np.array([[1.0, 0.0, 0.0], [0.0, cx, -sx], [0.0, sx, cx]], dtype=np.float64)
+    return rz @ ry @ rx
 
 
 def build_mono_map(k, d, calib_size, out_size, alpha=0.9, distortion_scale=0.5):
@@ -289,6 +322,55 @@ def stitch_feather(left, right, overlap_px, y_shift=0, feather_width=40):
     return out
 
 
+def stitch_by_manual_rotation(left, right, r_lr, feather_width=120):
+    h, w = left.shape[:2]
+    # Virtual camera for rotation homography.
+    f = float(max(w, h))
+    k = np.array([[f, 0.0, w * 0.5], [0.0, f, h * 0.5], [0.0, 0.0, 1.0]], dtype=np.float64)
+    hmat = k @ r_lr @ np.linalg.inv(k)
+
+    corners_r = np.float32([[0, 0], [w, 0], [w, h], [0, h]]).reshape(-1, 1, 2)
+    corners_rw = cv2.perspectiveTransform(corners_r, hmat)
+    corners_l = np.float32([[0, 0], [w, 0], [w, h], [0, h]]).reshape(-1, 1, 2)
+    all_c = np.concatenate((corners_l, corners_rw), axis=0)
+    x_min, y_min = np.floor(all_c.min(axis=0).ravel()).astype(int)
+    x_max, y_max = np.ceil(all_c.max(axis=0).ravel()).astype(int)
+    tx = -x_min if x_min < 0 else 0
+    ty = -y_min if y_min < 0 else 0
+    tmat = np.array([[1.0, 0.0, tx], [0.0, 1.0, ty], [0.0, 0.0, 1.0]], dtype=np.float64)
+    out_w = int(x_max - x_min)
+    out_h = int(y_max - y_min)
+    if out_w <= 0 or out_h <= 0:
+        return np.hstack((left, right))
+
+    right_warp = cv2.warpPerspective(right, tmat @ hmat, (out_w, out_h))
+    out = np.zeros((out_h, out_w, 3), dtype=left.dtype)
+    out[ty:ty + h, tx:tx + w] = left
+
+    mask_l = np.zeros((out_h, out_w), dtype=np.uint8)
+    mask_r = np.zeros((out_h, out_w), dtype=np.uint8)
+    mask_l[ty:ty + h, tx:tx + w] = 255
+    mask_r[right_warp.sum(axis=2) > 0] = 255
+    overlap = (mask_l > 0) & (mask_r > 0)
+    out[mask_r > 0] = right_warp[mask_r > 0]
+
+    if np.count_nonzero(overlap) > 0:
+        ys, xs = np.where(overlap)
+        x0 = int(xs.min())
+        x1 = int(xs.max()) + 1
+        fw = int(np.clip(feather_width, 4, max(5, x1 - x0)))
+        cx = (x0 + x1) // 2
+        b0 = max(x0, cx - fw // 2)
+        b1 = min(x1, b0 + fw)
+        b0 = max(x0, b1 - fw)
+        if b1 > b0:
+            l = out[:, b0:b1].astype(np.float32)
+            r = right_warp[:, b0:b1].astype(np.float32)
+            a = np.linspace(1.0, 0.0, b1 - b0, dtype=np.float32)[None, :, None]
+            out[:, b0:b1] = (l * a + r * (1.0 - a)).astype(out.dtype)
+    return out
+
+
 def put_text(img, text, y):
     cv2.putText(img, text, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 0, 0), 3, cv2.LINE_AA)
     cv2.putText(img, text, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 2, cv2.LINE_AA)
@@ -304,6 +386,8 @@ def main():
     ap.add_argument("--overlap-px", type=int, default=-1, help="Feather overlap in pixels; -1 for auto.")
     ap.add_argument("--feather-width", type=int, default=900, help="Blend width in overlap.")
     ap.add_argument("--refresh-overlap-every", type=int, default=0, help="Auto-overlap refresh period in frames (0 disables).")
+    ap.add_argument("--use-manual-extrinsic", action="store_true", help="Use manual rotation extrinsic stitching instead of overlap estimator.")
+    ap.add_argument("--manual-extrinsic-yaml", type=str, default="/home/raj/BDR/pilot_ws/src/pilot_control/config/manual_stereo_extrinsics.yaml", help="Manual extrinsics YAML (yaw/pitch/roll/baseline).")
     args = ap.parse_args()
 
     try:
@@ -316,6 +400,18 @@ def main():
     right_rot180 = read_right_rotation_hint(calib_path)
     print(f"[INFO] Calibration: {calib_path}")
     print(f"[INFO] Right camera rotate180: {right_rot180}")
+    manual_r = None
+    manual_baseline = 0.0
+    if args.use_manual_extrinsic:
+        try:
+            yaw, pitch, roll, manual_baseline, r_from_yaml, _ = load_manual_extrinsic_yaml(args.manual_extrinsic_yaml)
+            manual_r = r_from_yaml if r_from_yaml is not None else euler_zyx_to_rotation(yaw, pitch, roll)
+            print(
+                f"[INFO] Manual extrinsic enabled: yaw={yaw:.1f} pitch={pitch:.1f} roll={roll:.1f} baseline={manual_baseline:.3f}m"
+            )
+        except Exception as e:
+            print(f"ERROR loading manual extrinsics: {e}", file=sys.stderr)
+            sys.exit(1)
 
     cap_l, info_l = open_camera(LEFT_DEVICE)
     if cap_l is None:
@@ -385,14 +481,17 @@ def main():
             und_l = crop_border(und_l, args.crop_px)
             und_r = crop_border(und_r, args.crop_px)
 
-            if args.overlap_px <= 0 and args.refresh_overlap_every > 0 and (frame_idx % max(1, args.refresh_overlap_every) == 0):
+            if (not args.use_manual_extrinsic) and args.overlap_px <= 0 and args.refresh_overlap_every > 0 and (frame_idx % max(1, args.refresh_overlap_every) == 0):
                 ov, ys, sc = estimate_overlap_and_shift(und_l, und_r)
                 if ov is not None:
                     overlap = ov
                     y_shift = ys
                     overlap_score = sc
 
-            merged = stitch_feather(und_l, und_r, overlap, y_shift=y_shift, feather_width=args.feather_width)
+            if args.use_manual_extrinsic and manual_r is not None:
+                merged = stitch_by_manual_rotation(und_l, und_r, manual_r, feather_width=args.feather_width)
+            else:
+                merged = stitch_feather(und_l, und_r, overlap, y_shift=y_shift, feather_width=args.feather_width)
 
             fps_count += 1
             now = time.time()
@@ -402,7 +501,10 @@ def main():
                 fps_last = now
 
             put_text(merged, f"FPS ~ {fps_disp:.1f}", 28)
-            put_text(merged, f"overlap={overlap}px yshift={y_shift}px score={overlap_score:.2f}", 56)
+            if args.use_manual_extrinsic:
+                put_text(merged, f"manual extrinsic baseline={manual_baseline:.3f}m", 56)
+            else:
+                put_text(merged, f"overlap={overlap}px yshift={y_shift}px score={overlap_score:.2f}", 56)
             put_text(merged, f"alpha={args.undistort_alpha:.2f} dist_scale={args.distortion_scale:.2f} crop={args.crop_px}px", 84)
             put_text(merged, "q: quit, r: re-estimate overlap, +/-: overlap", 112)
             cv2.imshow("stereo_crop_feather", merged)
@@ -410,7 +512,7 @@ def main():
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
                 break
-            if key == ord("r"):
+            if key == ord("r") and (not args.use_manual_extrinsic):
                 ov, ys, sc = estimate_overlap_and_shift(und_l, und_r)
                 if ov is not None:
                     overlap = ov

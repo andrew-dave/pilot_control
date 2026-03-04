@@ -1,0 +1,12 @@
+yaw_deg: 90.0
+pitch_deg: 0.0
+roll_deg: 0.0
+baseline_m: 0.128
+r_lr:
+  rows: 3
+  cols: 3
+  data: [0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+t_lr_m:
+  rows: 3
+  cols: 1
+  data: [0.128, 0.0, 0.0]
