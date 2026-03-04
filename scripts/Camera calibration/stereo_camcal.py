@@ -606,21 +606,44 @@ def calibrate_from_pairs(session_dir: Path, square_size: float, pattern_size=Non
         f"[INFO] Initial extrinsic guess: baseline={MEASURED_BASELINE_M:.3f}m, "
         f"yaw={yaw_guess:.1f}deg, pitch={MEASURED_REL_PITCH_DEG:.1f}deg, roll={MEASURED_REL_ROLL_DEG:.1f}deg"
     )
-    stereo_flags = cv2.CALIB_FIX_INTRINSIC | cv2.CALIB_USE_EXTRINSIC_GUESS
-    stereo_rms, k_l, d_l, k_r, d_r, r, t, e, f = cv2.stereoCalibrate(
-        objpoints,
-        imgpoints_l,
-        imgpoints_r,
-        k_l,
-        d_l,
-        k_r,
-        d_r,
-        imsize,
-        r_init,
-        t_init,
-        criteria=term,
-        flags=stereo_flags,
-    )
+    stereo_flags = cv2.CALIB_FIX_INTRINSIC
+    try_guess = hasattr(cv2, "CALIB_USE_EXTRINSIC_GUESS")
+    if try_guess:
+        stereo_flags |= cv2.CALIB_USE_EXTRINSIC_GUESS
+    try:
+        stereo_rms, k_l, d_l, k_r, d_r, r, t, e, f = cv2.stereoCalibrate(
+            objpoints,
+            imgpoints_l,
+            imgpoints_r,
+            k_l,
+            d_l,
+            k_r,
+            d_r,
+            imsize,
+            r_init,
+            t_init,
+            criteria=term,
+            flags=stereo_flags,
+        )
+    except cv2.error as ex:
+        # OpenCV 4.5.x Python bindings may reject CALIB_USE_EXTRINSIC_GUESS
+        # for stereoCalibrate; gracefully fall back.
+        if "does not support CALIB_USE_EXTRINSIC_GUESS" not in str(ex):
+            raise
+        print("[WARN] OpenCV build does not support CALIB_USE_EXTRINSIC_GUESS in stereoCalibrate; retrying without it.")
+        stereo_flags = cv2.CALIB_FIX_INTRINSIC
+        stereo_rms, k_l, d_l, k_r, d_r, r, t, e, f = cv2.stereoCalibrate(
+            objpoints,
+            imgpoints_l,
+            imgpoints_r,
+            k_l,
+            d_l,
+            k_r,
+            d_r,
+            imsize,
+            criteria=term,
+            flags=stereo_flags,
+        )
 
     rectify_alpha = RECTIFY_ALPHA
     r1, r2, p1, p2, q, roi1, roi2 = cv2.stereoRectify(
