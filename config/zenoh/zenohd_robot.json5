@@ -9,7 +9,41 @@
   listen: { endpoints: { router: ["tcp/0.0.0.0:7447"] } },
 
   plugins: {
-    ros2dds: {}
+    ros2dds: {
+      // Only bridge the interfaces required for BDR_CP field operations.
+      // This prevents high-bandwidth LiDAR/map topics from saturating the Microhard link.
+      allow: {
+        // Robot -> Laptop topics
+        publishers: [
+          "^/stream_status$",
+          "^/Odometry_tilt_corrected_diff$",
+          "^/left/controller_status$",
+          "^/right/controller_status$"
+        ],
+
+        // Laptop -> Robot topics
+        subscribers: [
+          "^/cmd_vel$",
+          "^/stream_target_ip$",
+          "^/host_teleop/heartbeat$",
+          "^/mpc_autonomy_enable$"
+        ],
+
+        // Laptop service clients -> Robot service servers
+        service_servers: [
+          "^/video_record_set$",
+          "^/save_raw_map$",
+          "^/left/request_axis_state$",
+          "^/right/request_axis_state$",
+          "^/gpr/request_axis_state$",
+          "^/gpr_power_off$"
+        ],
+
+        service_clients: [],
+        action_servers: [],
+        action_clients: []
+      }
+    }
   }
 }
 
