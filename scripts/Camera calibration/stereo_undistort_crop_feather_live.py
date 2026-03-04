@@ -371,6 +371,123 @@ def stitch_by_manual_rotation(left, right, r_lr, feather_width=120):
     return out
 
 
+def _mask_bbox(mask_u8):
+    ys, xs = np.where(mask_u8 > 0)
+    if ys.size == 0 or xs.size == 0:
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+
+
+def build_manual_stitcher(frame_shape, r_lr, feather_width, output_scale):
+    h, w = frame_shape[:2]
+    f = float(max(w, h))
+    k = np.array([[f, 0.0, w * 0.5], [0.0, f, h * 0.5], [0.0, 0.0, 1.0]], dtype=np.float64)
+    hmat = k @ r_lr @ np.linalg.inv(k)
+
+    corners_r = np.float32([[0, 0], [w, 0], [w, h], [0, h]]).reshape(-1, 1, 2)
+    corners_rw = cv2.perspectiveTransform(corners_r, hmat)
+    corners_l = np.float32([[0, 0], [w, 0], [w, h], [0, h]]).reshape(-1, 1, 2)
+    all_c = np.concatenate((corners_l, corners_rw), axis=0)
+    x_min, y_min = np.floor(all_c.min(axis=0).ravel()).astype(int)
+    x_max, y_max = np.ceil(all_c.max(axis=0).ravel()).astype(int)
+    tx = -x_min if x_min < 0 else 0
+    ty = -y_min if y_min < 0 else 0
+    out_w = int(x_max - x_min)
+    out_h = int(y_max - y_min)
+    if out_w <= 1 or out_h <= 1:
+        return None
+    m_right = np.array([[1.0, 0.0, tx], [0.0, 1.0, ty], [0.0, 0.0, 1.0]], dtype=np.float64) @ hmat
+
+    left_mask = np.zeros((out_h, out_w), dtype=np.uint8)
+    left_mask[ty:ty + h, tx:tx + w] = 255
+    ones = np.full((h, w), 255, dtype=np.uint8)
+    right_mask = cv2.warpPerspective(ones, m_right, (out_w, out_h), flags=cv2.INTER_NEAREST)
+    union_mask = np.where((left_mask > 0) | (right_mask > 0), 255, 0).astype(np.uint8)
+    overlap_mask = (left_mask > 0) & (right_mask > 0)
+
+    w_l = (left_mask > 0).astype(np.float32)
+    w_r = (right_mask > 0).astype(np.float32)
+    overlap_bbox = _mask_bbox(overlap_mask.astype(np.uint8) * 255)
+    if overlap_bbox is not None:
+        x0, _, x1, _ = overlap_bbox
+        span = max(1, x1 - x0)
+        fw = int(np.clip(feather_width, 8, span))
+        cx = (x0 + x1) // 2
+        b0 = max(x0, cx - fw // 2)
+        b1 = min(x1, b0 + fw)
+        b0 = max(x0, b1 - fw)
+        if b1 > b0:
+            ramp = np.linspace(1.0, 0.0, b1 - b0, dtype=np.float32)[None, :]
+            ov_slice = overlap_mask[:, b0:b1]
+            w_l[:, b0:b1][ov_slice] = np.broadcast_to(ramp, (out_h, b1 - b0))[ov_slice]
+            w_r[:, b0:b1][ov_slice] = 1.0 - w_l[:, b0:b1][ov_slice]
+        if b0 > x0:
+            pre = overlap_mask[:, x0:b0]
+            w_l[:, x0:b0][pre] = 1.0
+            w_r[:, x0:b0][pre] = 0.0
+        if b1 < x1:
+            post = overlap_mask[:, b1:x1]
+            w_l[:, b1:x1][post] = 0.0
+            w_r[:, b1:x1][post] = 1.0
+
+    denom = w_l + w_r
+    valid = denom > 1e-6
+    inv_denom = np.zeros_like(denom, dtype=np.float32)
+    inv_denom[valid] = 1.0 / denom[valid]
+
+    crop_bbox = _mask_bbox(union_mask)
+    if crop_bbox is None:
+        crop_bbox = (0, 0, out_w, out_h)
+
+    scale = float(max(0.2, min(1.0, output_scale)))
+    scaled_size = (
+        int(max(2, round((crop_bbox[2] - crop_bbox[0]) * scale))),
+        int(max(2, round((crop_bbox[3] - crop_bbox[1]) * scale))),
+    )
+
+    return {
+        "out_w": out_w,
+        "out_h": out_h,
+        "left_x": tx,
+        "left_y": ty,
+        "left_w": w,
+        "left_h": h,
+        "m_right": m_right,
+        "w_l": w_l,
+        "w_r": w_r,
+        "valid": valid,
+        "inv_denom": inv_denom,
+        "crop_bbox": crop_bbox,
+        "scaled_size": scaled_size,
+    }
+
+
+def stitch_with_precomputed_manual(left, right, cfg):
+    out_h = cfg["out_h"]
+    out_w = cfg["out_w"]
+    left_canvas = np.zeros((out_h, out_w, 3), dtype=np.uint8)
+    x = cfg["left_x"]
+    y = cfg["left_y"]
+    h = cfg["left_h"]
+    w = cfg["left_w"]
+    left_canvas[y:y + h, x:x + w] = left
+    right_canvas = cv2.warpPerspective(right, cfg["m_right"], (out_w, out_h))
+
+    w_l = cfg["w_l"][:, :, None]
+    w_r = cfg["w_r"][:, :, None]
+    inv = cfg["inv_denom"][:, :, None]
+    merged = (left_canvas.astype(np.float32) * w_l + right_canvas.astype(np.float32) * w_r) * inv
+    out = merged.astype(np.uint8)
+    out[~cfg["valid"]] = 0
+
+    x0, y0, x1, y1 = cfg["crop_bbox"]
+    out = out[y0:y1, x0:x1]
+    sw, sh = cfg["scaled_size"]
+    if out.shape[1] != sw or out.shape[0] != sh:
+        out = cv2.resize(out, (sw, sh), interpolation=cv2.INTER_AREA)
+    return out
+
+
 def put_text(img, text, y):
     cv2.putText(img, text, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 0, 0), 3, cv2.LINE_AA)
     cv2.putText(img, text, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 2, cv2.LINE_AA)
@@ -388,7 +505,12 @@ def main():
     ap.add_argument("--refresh-overlap-every", type=int, default=0, help="Auto-overlap refresh period in frames (0 disables).")
     ap.add_argument("--use-manual-extrinsic", action="store_true", help="Use manual rotation extrinsic stitching instead of overlap estimator.")
     ap.add_argument("--manual-extrinsic-yaml", type=str, default="/home/raj/BDR/pilot_ws/src/pilot_control/config/manual_stereo_extrinsics.yaml", help="Manual extrinsics YAML (yaw/pitch/roll/baseline).")
+    ap.add_argument("--output-scale", type=float, default=0.7, help="Scale final panorama output [0.2..1.0] for FPS.")
+    ap.add_argument("--perf-mode", action="store_true", help="Performance profile (narrow blend + lower output scale).")
     args = ap.parse_args()
+    if args.perf_mode:
+        args.output_scale = min(args.output_scale, 0.6)
+        args.feather_width = min(args.feather_width, 160)
 
     try:
         calib = args.calib_file if args.calib_file else str(latest_calib_file())
@@ -449,8 +571,20 @@ def main():
     overlap = max(100, out_w // 8) if args.overlap_px <= 0 else int(args.overlap_px)
     y_shift = 0
     overlap_score = 0.0
+    manual_cfg = None
 
-    if args.overlap_px <= 0:
+    if args.use_manual_extrinsic and manual_r is not None:
+        und_l0 = cv2.remap(f0_l, map1_l, map2_l, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_r0 = cv2.remap(f0_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_l0 = crop_border(und_l0, args.crop_px)
+        und_r0 = crop_border(und_r0, args.crop_px)
+        manual_cfg = build_manual_stitcher(und_l0.shape, manual_r, args.feather_width, args.output_scale)
+        if manual_cfg is None:
+            print("ERROR: failed to build manual stitch configuration", file=sys.stderr)
+            cap_l.release()
+            cap_r.release()
+            sys.exit(1)
+    elif args.overlap_px <= 0:
         und_l0 = cv2.remap(f0_l, map1_l, map2_l, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         und_r0 = cv2.remap(f0_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         und_l0 = crop_border(und_l0, args.crop_px)
@@ -488,8 +622,8 @@ def main():
                     y_shift = ys
                     overlap_score = sc
 
-            if args.use_manual_extrinsic and manual_r is not None:
-                merged = stitch_by_manual_rotation(und_l, und_r, manual_r, feather_width=args.feather_width)
+            if args.use_manual_extrinsic and manual_cfg is not None:
+                merged = stitch_with_precomputed_manual(und_l, und_r, manual_cfg)
             else:
                 merged = stitch_feather(und_l, und_r, overlap, y_shift=y_shift, feather_width=args.feather_width)
 
@@ -502,7 +636,7 @@ def main():
 
             put_text(merged, f"FPS ~ {fps_disp:.1f}", 28)
             if args.use_manual_extrinsic:
-                put_text(merged, f"manual extrinsic baseline={manual_baseline:.3f}m", 56)
+                put_text(merged, f"manual extrinsic baseline={manual_baseline:.3f}m scale={args.output_scale:.2f}", 56)
             else:
                 put_text(merged, f"overlap={overlap}px yshift={y_shift}px score={overlap_score:.2f}", 56)
             put_text(merged, f"alpha={args.undistort_alpha:.2f} dist_scale={args.distortion_scale:.2f} crop={args.crop_px}px", 84)
