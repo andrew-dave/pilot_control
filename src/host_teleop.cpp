@@ -6,6 +6,7 @@
 #include <std_srvs/srv/trigger.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 #include <SDL2/SDL.h>
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <unistd.h>
@@ -21,9 +22,13 @@ public:
         this->declare_parameter("teleop_mode", "keyboard");
         this->declare_parameter("max_linear_velocity", 1.0);
         this->declare_parameter("max_angular_velocity", 4.5);
+        this->declare_parameter("interactive_sdl", true);
+        this->declare_parameter("cmd_vel_enabled", true);
         // Load parameter values
         max_linear_velocity_ = this->get_parameter("max_linear_velocity").as_double();
         max_angular_velocity_ = this->get_parameter("max_angular_velocity").as_double();
+        interactive_sdl_ = this->get_parameter("interactive_sdl").as_bool();
+        cmd_vel_enabled_ = this->get_parameter("cmd_vel_enabled").as_bool();
         // Initialize angular magnitude used for A/D turns
         ang_mag_ = std::min(1.0, std::max(0.0, max_angular_velocity_));
         cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
@@ -54,34 +59,54 @@ public:
         rosbag_toggle_client_ = create_client<std_srvs::srv::Trigger>("/rosbag/toggle");
         
         timer_ = create_wall_timer(std::chrono::milliseconds(100), std::bind(&TeleopNode::update, this));
-        
-        SDL_Init(SDL_INIT_VIDEO);
-        window_ = SDL_CreateWindow("Teleop", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 300, 300, SDL_WINDOW_SHOWN);
-        
-        if (!window_) {
-            RCLCPP_ERROR(get_logger(), "Failed to create SDL window: %s", SDL_GetError());
-            return;
+
+        if (interactive_sdl_) {
+            if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+                RCLCPP_ERROR(get_logger(), "Failed to initialize SDL: %s", SDL_GetError());
+                interactive_sdl_ = false;
+            } else {
+                sdl_initialized_ = true;
+                window_ =
+                    SDL_CreateWindow("Teleop",
+                                     SDL_WINDOWPOS_CENTERED,
+                                     SDL_WINDOWPOS_CENTERED,
+                                     300,
+                                     300,
+                                     SDL_WINDOW_SHOWN);
+
+                if (!window_) {
+                    RCLCPP_ERROR(get_logger(), "Failed to create SDL window: %s", SDL_GetError());
+                    interactive_sdl_ = false;
+                } else {
+                    // Force the window to be visible and focused
+                    SDL_ShowWindow(window_);
+                    SDL_RaiseWindow(window_);
+
+                    RCLCPP_INFO(get_logger(), "SDL window created successfully");
+                    RCLCPP_INFO(get_logger(), "Teleop started. Controls:");
+                    RCLCPP_INFO(get_logger(), "  WASD - Move robot (disabled when MPC active)");
+                    RCLCPP_INFO(get_logger(), "  X - Toggle MPC autonomous control");
+                    RCLCPP_INFO(get_logger(), "  E - Arm motors");
+                    RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
+                    RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
+                    RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
+                    RCLCPP_INFO(get_logger(), "  G - Toggle GPR scan (line + motor + logging)");
+                    RCLCPP_INFO(get_logger(), "  O - GPR power off");
+                    RCLCPP_INFO(get_logger(), "  M - Save map checkpoint (Fast-LIO2 continues running)");
+                    RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
+                    RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
+                    RCLCPP_INFO(get_logger(), "  B - Toggle rosbag recording");
+                    RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
+                }
+            }
         }
-        
-        // Force the window to be visible and focused
-        SDL_ShowWindow(window_);
-        SDL_RaiseWindow(window_);
-        
-        RCLCPP_INFO(get_logger(), "SDL window created successfully");
-        RCLCPP_INFO(get_logger(), "Teleop started. Controls:");
-        RCLCPP_INFO(get_logger(), "  WASD - Move robot (disabled when MPC active)");
-        RCLCPP_INFO(get_logger(), "  X - Toggle MPC autonomous control");
-        RCLCPP_INFO(get_logger(), "  E - Arm motors");
-        RCLCPP_INFO(get_logger(), "  Q - Disarm motors");
-        RCLCPP_INFO(get_logger(), "  L - Start GPR line (linear actuator)");
-        RCLCPP_INFO(get_logger(), "  K - Stop GPR line (linear actuator)");
-        RCLCPP_INFO(get_logger(), "  G - Toggle GPR scan (line + motor + logging)");
-        RCLCPP_INFO(get_logger(), "  O - GPR power off");
-        RCLCPP_INFO(get_logger(), "  M - Save map checkpoint (Fast-LIO2 continues running)");
-        RCLCPP_INFO(get_logger(), "  R - Start recording (both cams)");
-        RCLCPP_INFO(get_logger(), "  T - Stop recording (both cams)");
-        RCLCPP_INFO(get_logger(), "  B - Toggle rosbag recording");
-        RCLCPP_INFO(get_logger(), "  Click on the 'Teleop' window to give it focus!");
+
+        if (!interactive_sdl_) {
+            RCLCPP_INFO(get_logger(), "Headless host_teleop mode enabled (SDL interaction disabled)");
+        }
+        if (!cmd_vel_enabled_) {
+            RCLCPP_INFO(get_logger(), "host_teleop cmd_vel publishing disabled (heartbeat/services remain active)");
+        }
         
         // Check if services are available (non-blocking)
         RCLCPP_INFO(get_logger(), "Checking service availability...");
@@ -169,7 +194,9 @@ public:
         if (window_) {
             SDL_DestroyWindow(window_);
         }
-        SDL_Quit();
+        if (sdl_initialized_) {
+            SDL_Quit();
+        }
     }
 
     void arm_motors() {
@@ -417,6 +444,10 @@ private:
     }
 
     void update() {
+        if (!interactive_sdl_) {
+            return;
+        }
+
         geometry_msgs::msg::Twist cmd_vel_msg;
         SDL_Event event;
         static int event_count = 0;
@@ -502,7 +533,7 @@ private:
 
         // Only process WASD teleop when MPC autonomous control is DISABLED
         // When MPC is active, we don't send any cmd_vel to avoid fighting for motor control
-        if (!mpc_autonomy_enabled_) {
+        if (cmd_vel_enabled_ && !mpc_autonomy_enabled_) {
             const Uint8* keys = SDL_GetKeyboardState(NULL);
             // Robot teleoperation (WASD)
             if (keys[SDL_SCANCODE_W]) {
@@ -539,7 +570,10 @@ private:
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gpr_power_off_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr rosbag_toggle_client_;
     rclcpp::TimerBase::SharedPtr timer_;
-    SDL_Window* window_;
+    SDL_Window* window_{nullptr};
+    bool interactive_sdl_{true};
+    bool cmd_vel_enabled_{true};
+    bool sdl_initialized_{false};
     
     // Workflow state management
     std::atomic<bool> workflow_active_{false};
