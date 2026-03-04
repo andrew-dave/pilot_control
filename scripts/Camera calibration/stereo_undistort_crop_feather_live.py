@@ -200,6 +200,22 @@ def scale_k(k, sx, sy):
     return ks
 
 
+def build_mono_maps(k1, d1, k2, d2, calib_size, out_size, distortion_scale):
+    cw, ch = calib_size
+    ow, oh = out_size
+    sx = float(ow) / float(cw)
+    sy = float(oh) / float(ch)
+    k1s = scale_k(k1, sx, sy)
+    k2s = scale_k(k2, sx, sy)
+    d1s = np.array(d1, dtype=np.float64).reshape(-1) * float(distortion_scale)
+    d2s = np.array(d2, dtype=np.float64).reshape(-1) * float(distortion_scale)
+    n1, _ = cv2.getOptimalNewCameraMatrix(k1s, d1s, (ow, oh), alpha=0.9, newImgSize=(ow, oh))
+    n2, _ = cv2.getOptimalNewCameraMatrix(k2s, d2s, (ow, oh), alpha=0.9, newImgSize=(ow, oh))
+    m1a, m1b = cv2.initUndistortRectifyMap(k1s, d1s, None, n1, (ow, oh), cv2.CV_16SC2)
+    m2a, m2b = cv2.initUndistortRectifyMap(k2s, d2s, None, n2, (ow, oh), cv2.CV_16SC2)
+    return m1a, m1b, m2a, m2b
+
+
 def rect_intersection(a, b):
     ax, ay, aw, ah = [int(v) for v in a]
     bx, by, bw, bh = [int(v) for v in b]
@@ -234,6 +250,13 @@ def crop_rect(img, r):
     x1 = max(x0 + 1, min(iw, x + w))
     y1 = max(y0 + 1, min(ih, y + h))
     return img[y0:y1, x0:x1]
+
+
+def non_black_ratio(img):
+    if img.size == 0:
+        return 0.0
+    nz = np.count_nonzero(np.any(img > 8, axis=2))
+    return float(nz) / float(img.shape[0] * img.shape[1])
 
 
 def build_rectify_maps(k1, d1, k2, d2, r_lr, t_lr, calib_size, out_size, rectify_alpha, distortion_scale):
@@ -391,6 +414,7 @@ def main():
         CALIB_CAPTURE_SIZE, (out_w, out_h),
         args.rectify_alpha, args.distortion_scale
     )
+    map_mode = "rectified"
     common_roi = rect_intersection(roi_l, roi_r)
     common_roi = inset_rect(common_roi, args.crop_px)
     if common_roi is None:
@@ -400,6 +424,20 @@ def main():
     und_r0 = cv2.remap(f0_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
     und_l0 = crop_rect(und_l0, common_roi)
     und_r0 = crop_rect(und_r0, common_roi)
+    nb_l = non_black_ratio(und_l0)
+    nb_r = non_black_ratio(und_r0)
+    if nb_l < 0.05 or nb_r < 0.05:
+        print(
+            f"[WARN] Rectified output mostly black (nonblack L/R={nb_l:.3f}/{nb_r:.3f}); switching to undistort-only fallback."
+        )
+        ds_fallback = min(0.6, max(0.2, args.distortion_scale))
+        map1_l, map2_l, map1_r, map2_r = build_mono_maps(k1, d1, k2, d2, CALIB_CAPTURE_SIZE, (out_w, out_h), ds_fallback)
+        common_roi = inset_rect((0, 0, out_w, out_h), args.crop_px)
+        map_mode = "undistort-only"
+        und_l0 = cv2.remap(f0_l, map1_l, map2_l, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_r0 = cv2.remap(f0_r, map1_r, map2_r, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        und_l0 = crop_rect(und_l0, common_roi)
+        und_r0 = crop_rect(und_r0, common_roi)
 
     if args.overlap_px > 0:
         overlap = int(args.overlap_px)
@@ -448,7 +486,7 @@ def main():
                 fps_last = now
 
             put_text(merged, f"FPS ~ {fps_disp:.1f}", 28)
-            put_text(merged, f"rectify alpha={args.rectify_alpha:.2f} overlap={overlap}px score={overlap_score:.2f}", 56)
+            put_text(merged, f"mode={map_mode} alpha={args.rectify_alpha:.2f} overlap={overlap}px score={overlap_score:.2f}", 56)
             put_text(merged, f"feather={args.feather_width}px scale={args.output_scale:.2f} crop={args.crop_px}px", 84)
             put_text(merged, "q: quit, r: re-estimate overlap, +/-: overlap", 112)
             cv2.imshow("stereo_known_extrinsic_stitch", merged)
