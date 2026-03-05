@@ -382,6 +382,22 @@ def run_shell(cmd: str, timeout_sec: float) -> int:
         return 124
 
 
+def stop_cmd_may_kill_self(cmd: str) -> bool:
+    """
+    Best-effort guard against stop commands that match this autotune process
+    via --launch-cmd / --stop-cmd arguments.
+    """
+    s = (cmd or "").lower()
+    if "pkill" not in s or "-f" not in s:
+        return False
+    argv = " ".join(sys.argv).lower()
+    risky_markers = [
+        "robot_complete.launch.py",
+        "ros2 launch pilot_control",
+    ]
+    return any(marker in s and marker in argv for marker in risky_markers)
+
+
 def run_shell_background(cmd: str, log_path: Optional[Path] = None) -> subprocess.Popen:
     stdout_target = subprocess.DEVNULL
     if log_path is not None:
@@ -425,14 +441,20 @@ def maybe_restart_pipeline(
     launch_log_path: Optional[Path],
 ) -> Optional[subprocess.Popen]:
     if stop_cmd.strip():
-        if "pkill -f robot_complete.launch.py" in stop_cmd:
+        if stop_cmd_may_kill_self(stop_cmd):
             print(
-                "[WARN] stop-cmd pattern may match this autotune process. "
-                "Prefer: pkill -f '[r]obot_complete.launch.py' || true"
+                "[WARN] Skipping stop-cmd because it may terminate this autotune "
+                "process via pkill -f pattern match."
             )
-        rc = run_shell(stop_cmd, timeout_sec=stop_timeout)
-        if rc != 0:
-            print(f"[WARN] stop command returned {rc}")
+        else:
+            if "pkill -f robot_complete.launch.py" in stop_cmd:
+                print(
+                    "[WARN] stop-cmd pattern may match this autotune process. "
+                    "Prefer: pkill -f '[r]obot_complete.launch.py' || true"
+                )
+            rc = run_shell(stop_cmd, timeout_sec=stop_timeout)
+            if rc != 0:
+                print(f"[WARN] stop command returned {rc}")
     if launch_cmd.strip():
         # Launch commands are often long-running (e.g. ros2 launch ...).
         # Start them in a detached background process and then wait for odometry.
@@ -800,9 +822,15 @@ def main() -> int:
 
         stop_background_process(launched_proc, grace_sec=8.0)
         if args.stop_cmd.strip():
-            rc = run_shell(args.stop_cmd, timeout_sec=args.stop_timeout)
-            if rc != 0:
-                print(f"[WARN] stop command returned {rc} during shutdown.")
+            if stop_cmd_may_kill_self(args.stop_cmd):
+                print(
+                    "[WARN] Skipping stop-cmd on shutdown because it may "
+                    "terminate this autotune process."
+                )
+            else:
+                rc = run_shell(args.stop_cmd, timeout_sec=args.stop_timeout)
+                if rc != 0:
+                    print(f"[WARN] stop command returned {rc} during shutdown.")
 
         if executor is not None and runner is not None:
             try:
