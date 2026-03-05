@@ -25,6 +25,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -91,6 +92,7 @@ class BoundedManeuverRunner(Node):
             Odometry, odom_topic, self._odom_cb, qos_sub
         )
         self.last_pose: Optional[Pose2D] = None
+        self.last_odom_wall_time: float = 0.0
 
     def _odom_cb(self, msg: Odometry) -> None:
         p = msg.pose.pose.position
@@ -100,6 +102,10 @@ class BoundedManeuverRunner(Node):
             y=float(p.y),
             yaw=yaw_from_quat(float(q.x), float(q.y), float(q.z), float(q.w)),
         )
+        self.last_odom_wall_time = time.time()
+
+    def clear_odom_cache(self) -> None:
+        self.last_pose = None
 
     def publish_cmd(self, linear_x: float, angular_z: float) -> None:
         tw = Twist()
@@ -158,11 +164,15 @@ def wait_for_odom(
     runner: BoundedManeuverRunner,
     executor: SingleThreadedExecutor,
     timeout_sec: float = 10.0,
+    min_odom_wall_time: float = 0.0,
 ) -> bool:
     t0 = time.time()
     while time.time() - t0 < timeout_sec:
         executor.spin_once(timeout_sec=0.1)
-        if runner.last_pose is not None:
+        if (
+            runner.last_pose is not None
+            and runner.last_odom_wall_time > float(min_odom_wall_time)
+        ):
             return True
     return False
 
@@ -290,8 +300,28 @@ def load_yaml(path: Path) -> dict:
 
 
 def write_yaml(path: Path, data: dict) -> None:
-    with path.open("w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+    # Write atomically: avoid leaving a truncated/invalid YAML if interrupted.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+            f.flush()
+            os.fsync(f.fileno())
+
+        # Validate the generated YAML before replacing the live config.
+        with tmp_path.open("r", encoding="utf-8") as f:
+            loaded = yaml.safe_load(f)
+        if not isinstance(loaded, dict):
+            raise RuntimeError(f"Generated YAML root is invalid for {path}")
+
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 def set_covariances(data: dict, params: Dict[str, float]) -> None:
@@ -419,6 +449,30 @@ def maybe_restart_pipeline(
     return None
 
 
+def scan_launch_log_for_known_errors(log_path: Optional[Path], start_offset: int) -> List[str]:
+    if log_path is None or (not log_path.exists()):
+        return []
+    try:
+        with log_path.open("r", encoding="utf-8", errors="ignore") as f:
+            f.seek(max(0, int(start_offset)))
+            chunk = f.read(300000).lower()
+    except Exception:
+        return []
+
+    hints: List[str] = []
+    if "cannot find device \"can0\"" in chunk:
+        hints.append("CAN interface can0 missing.")
+    if "failed to initialize socket can interface: can0" in chunk:
+        hints.append("ODrive CAN node failed to bind can0.")
+    if "odrive services not available after waiting" in chunk:
+        hints.append("diff_drive_controller could not find ODrive services.")
+    if "device '/dev/v4l/by-id/" in chunk and "is busy" in chunk:
+        hints.append("Camera device busy (likely stale process still running).")
+    if "zenoh_bridge_dds-1" in chunk and "process has died" in chunk:
+        hints.append("zenoh bridge process died during startup.")
+    return hints
+
+
 def format_params(p: Dict[str, float]) -> str:
     return (
         f"acc_cov={p['acc_cov']:.7g}, "
@@ -480,6 +534,12 @@ def main() -> int:
         help="Path to append launch stdout/stderr (recommended for debugging).",
     )
     parser.add_argument(
+        "--launch-retries",
+        type=int,
+        default=1,
+        help="Additional relaunch attempts when fresh odometry is not received.",
+    )
+    parser.add_argument(
         "--set-time-sync-true",
         action="store_true",
         help="Force common.time_sync_en=true during autotuning.",
@@ -528,12 +588,6 @@ def main() -> int:
             "restarts are handled externally."
         )
 
-    context = Context()
-    rclpy.init(args=None, context=context)
-    executor = SingleThreadedExecutor(context=context)
-    runner = BoundedManeuverRunner(args.cmd_topic, args.odom_topic, context=context)
-    executor.add_node(runner)
-
     fields = [
         "trial",
         "score",
@@ -551,145 +605,234 @@ def main() -> int:
         "e_rtb_m",
         "e_fig8_m",
     ]
+    context = Context()
+    executor: Optional[SingleThreadedExecutor] = None
+    runner: Optional[BoundedManeuverRunner] = None
     launched_proc: Optional[subprocess.Popen] = None
-    with csv_path.open("w", newline="", encoding="utf-8") as fcsv:
-        writer = csv.DictWriter(fcsv, fieldnames=fields)
-        writer.writeheader()
+    best = dict(current)
+    best_score = float("inf")
+    step_scale = max(0.08, args.step_scale)
+    interrupted = False
+    completed = False
+    try:
+        rclpy.init(args=None, context=context)
+        executor = SingleThreadedExecutor(context=context)
+        runner = BoundedManeuverRunner(args.cmd_topic, args.odom_topic, context=context)
+        executor.add_node(runner)
 
-        best = dict(current)
-        best_score = float("inf")
-        step_scale = max(0.08, args.step_scale)
+        with csv_path.open("w", newline="", encoding="utf-8") as fcsv:
+            writer = csv.DictWriter(fcsv, fieldnames=fields)
+            writer.writeheader()
 
-        param_order = ["acc_cov", "gyr_cov", "b_acc_cov", "b_gyr_cov"]
-        trial_count = 0
+            param_order = ["acc_cov", "gyr_cov", "b_acc_cov", "b_gyr_cov"]
+            trial_count = 0
 
-        while trial_count < args.trials:
-            candidates: List[Dict[str, float]] = []
-            candidates.append(dict(best))
-            for k in param_order:
-                up = dict(best)
-                dn = dict(best)
-                up[k] = up[k] * (1.0 + step_scale)
-                dn[k] = dn[k] * (1.0 - step_scale)
-                candidates.append(clamp_params(up))
-                candidates.append(clamp_params(dn))
+            while trial_count < args.trials:
+                candidates: List[Dict[str, float]] = []
+                candidates.append(dict(best))
+                for k in param_order:
+                    up = dict(best)
+                    dn = dict(best)
+                    up[k] = up[k] * (1.0 + step_scale)
+                    dn[k] = dn[k] * (1.0 - step_scale)
+                    candidates.append(clamp_params(up))
+                    candidates.append(clamp_params(dn))
 
-            tested_this_round = []
-            for cand in candidates:
-                if trial_count >= args.trials:
-                    break
+                tested_this_round = []
+                for cand in candidates:
+                    if trial_count >= args.trials:
+                        break
 
-                trial_count += 1
-                cfg = load_yaml(cfg_path)
-                params_to_set = dict(cand)
-                if args.set_time_sync_true:
-                    params_to_set["time_sync_en"] = True
-                set_covariances(cfg, params_to_set)
-                write_yaml(cfg_path, cfg)
+                    trial_count += 1
+                    cfg = load_yaml(cfg_path)
+                    params_to_set = dict(cand)
+                    if args.set_time_sync_true:
+                        params_to_set["time_sync_en"] = True
+                    set_covariances(cfg, params_to_set)
+                    write_yaml(cfg_path, cfg)
 
-                print(f"\n[TRIAL {trial_count}] {format_params(cand)}")
-                # Preferred restart path: if launch-cmd is provided, manage lifecycle
-                # of that process internally to avoid unsafe pkill patterns.
-                if args.launch_cmd.strip():
-                    stop_background_process(launched_proc, grace_sec=8.0)
-                    launched_proc = maybe_restart_pipeline(
-                        "",
-                        args.launch_cmd,
-                        args.stop_timeout,
-                        args.launch_timeout,
-                        args.post_launch_sleep,
-                        launch_log_path,
-                    )
-                else:
-                    maybe_restart_pipeline(
-                        args.stop_cmd,
-                        "",
-                        args.stop_timeout,
-                        args.launch_timeout,
-                        args.post_launch_sleep,
-                        launch_log_path,
-                    )
+                    print(f"\n[TRIAL {trial_count}] {format_params(cand)}")
+                    prev_odom_time = runner.last_odom_wall_time
+                    runner.clear_odom_cache()
+                    odom_ready = False
 
-                if not wait_for_odom(
-                    runner, executor, timeout_sec=args.odom_wait_timeout
-                ):
-                    print("[WARN] No odometry received; assigning penalty.")
-                    metrics = {
-                        "score": 9999.0,
-                        "final_dist_m": 99.0,
-                        "final_yaw_rad": math.pi,
-                        "max_radius_m": 99.0,
-                        "oob_events": 9.0,
-                        "e_spin_m": 99.0,
-                        "e_fb_m": 99.0,
-                        "e_rta_m": 99.0,
-                        "e_rtb_m": 99.0,
-                        "e_fig8_m": 99.0,
+                    # Preferred restart path: if launch-cmd is provided, manage lifecycle.
+                    if args.launch_cmd.strip():
+                        retries = max(0, int(args.launch_retries))
+                        for attempt in range(retries + 1):
+                            log_start = (
+                                int(launch_log_path.stat().st_size)
+                                if launch_log_path.exists()
+                                else 0
+                            )
+                            stop_background_process(launched_proc, grace_sec=8.0)
+                            launched_proc = maybe_restart_pipeline(
+                                args.stop_cmd,
+                                args.launch_cmd,
+                                args.stop_timeout,
+                                args.launch_timeout,
+                                args.post_launch_sleep,
+                                launch_log_path,
+                            )
+                            odom_ready = wait_for_odom(
+                                runner,
+                                executor,
+                                timeout_sec=args.odom_wait_timeout,
+                                min_odom_wall_time=prev_odom_time,
+                            )
+                            if odom_ready:
+                                break
+                            hints = scan_launch_log_for_known_errors(
+                                launch_log_path, start_offset=log_start
+                            )
+                            if hints:
+                                print(
+                                    "[WARN] Launch health hints: "
+                                    + " | ".join(sorted(set(hints)))
+                                )
+                            if attempt < retries:
+                                print(
+                                    f"[WARN] No fresh odometry after launch attempt "
+                                    f"{attempt + 1}/{retries + 1}; retrying..."
+                                )
+                    else:
+                        maybe_restart_pipeline(
+                            args.stop_cmd,
+                            "",
+                            args.stop_timeout,
+                            args.launch_timeout,
+                            args.post_launch_sleep,
+                            launch_log_path,
+                        )
+                        odom_ready = wait_for_odom(
+                            runner,
+                            executor,
+                            timeout_sec=args.odom_wait_timeout,
+                            min_odom_wall_time=prev_odom_time,
+                        )
+
+                    if not odom_ready:
+                        print("[WARN] No odometry received; assigning penalty.")
+                        metrics = {
+                            "score": 9999.0,
+                            "final_dist_m": 99.0,
+                            "final_yaw_rad": math.pi,
+                            "max_radius_m": 99.0,
+                            "oob_events": 9.0,
+                            "e_spin_m": 99.0,
+                            "e_fb_m": 99.0,
+                            "e_rta_m": 99.0,
+                            "e_rtb_m": 99.0,
+                            "e_fig8_m": 99.0,
+                        }
+                    else:
+                        metrics = run_maneuver_trial(
+                            runner=runner,
+                            executor=executor,
+                            sequence=sequence,
+                            max_radius_m=args.max_radius,
+                            command_rate_hz=args.command_rate,
+                            settle_before_sec=args.settle_before,
+                            settle_after_sec=args.settle_after,
+                        )
+
+                    row = {
+                        "trial": trial_count,
+                        "acc_cov": cand["acc_cov"],
+                        "gyr_cov": cand["gyr_cov"],
+                        "b_acc_cov": cand["b_acc_cov"],
+                        "b_gyr_cov": cand["b_gyr_cov"],
+                        **metrics,
                     }
-                else:
-                    metrics = run_maneuver_trial(
-                        runner=runner,
-                        executor=executor,
-                        sequence=sequence,
-                        max_radius_m=args.max_radius,
-                        command_rate_hz=args.command_rate,
-                        settle_before_sec=args.settle_before,
-                        settle_after_sec=args.settle_after,
+                    writer.writerow(row)
+                    fcsv.flush()
+                    os.fsync(fcsv.fileno())
+
+                    print(
+                        f"[TRIAL {trial_count}] score={metrics['score']:.5f}, "
+                        f"final_dist={metrics['final_dist_m']:.4f} m, "
+                        f"max_radius={metrics['max_radius_m']:.3f} m"
                     )
 
-                row = {
-                    "trial": trial_count,
-                    "acc_cov": cand["acc_cov"],
-                    "gyr_cov": cand["gyr_cov"],
-                    "b_acc_cov": cand["b_acc_cov"],
-                    "b_gyr_cov": cand["b_gyr_cov"],
-                    **metrics,
-                }
-                writer.writerow(row)
-                fcsv.flush()
-                os.fsync(fcsv.fileno())
+                    tested_this_round.append((cand, float(metrics["score"])))
+                    if metrics["score"] < best_score:
+                        best_score = float(metrics["score"])
+                        best = dict(cand)
+                        print(
+                            f"[BEST] Updated: score={best_score:.5f}  {format_params(best)}"
+                        )
 
-                print(
-                    f"[TRIAL {trial_count}] score={metrics['score']:.5f}, "
-                    f"final_dist={metrics['final_dist_m']:.4f} m, "
-                    f"max_radius={metrics['max_radius_m']:.3f} m"
-                )
+                # Keep best from this local neighborhood and shrink step.
+                tested_this_round.sort(key=lambda x: x[1])
+                if tested_this_round:
+                    best = dict(tested_this_round[0][0])
+                step_scale = max(0.08, step_scale * args.decay)
+                print(f"[INFO] Next step-scale: {step_scale:.4f}")
 
-                tested_this_round.append((cand, float(metrics["score"])))
-                if metrics["score"] < best_score:
-                    best_score = float(metrics["score"])
-                    best = dict(cand)
-                    print(f"[BEST] Updated: score={best_score:.5f}  {format_params(best)}")
+        # Write best back to config.
+        cfgf = load_yaml(cfg_path)
+        final_set = dict(best)
+        if args.set_time_sync_true:
+            final_set["time_sync_en"] = True
+        set_covariances(cfgf, final_set)
+        write_yaml(cfg_path, cfgf)
+        completed = True
+    except KeyboardInterrupt:
+        interrupted = True
+        print("\n[INFO] Ctrl+C received. Shutting down cleanly...")
+    finally:
+        # Persist best-known parameters even on interruption.
+        try:
+            cfgf = load_yaml(cfg_path)
+            final_set = dict(best)
+            if args.set_time_sync_true:
+                final_set["time_sync_en"] = True
+            set_covariances(cfgf, final_set)
+            write_yaml(cfg_path, cfgf)
+        except Exception as ex:
+            print(f"[WARN] Failed to write final/best config during shutdown: {ex}")
 
-            # Keep best from this local neighborhood and shrink step.
-            tested_this_round.sort(key=lambda x: x[1])
-            if tested_this_round:
-                best = dict(tested_this_round[0][0])
-            step_scale = max(0.08, step_scale * args.decay)
-            print(f"[INFO] Next step-scale: {step_scale:.4f}")
+        try:
+            if runner is not None:
+                runner.publish_cmd(0.0, 0.0)
+        except Exception:
+            pass
 
-    # Write best back to config.
-    cfgf = load_yaml(cfg_path)
-    final_set = dict(best)
-    if args.set_time_sync_true:
-        final_set["time_sync_en"] = True
-    set_covariances(cfgf, final_set)
-    write_yaml(cfg_path, cfgf)
+        stop_background_process(launched_proc, grace_sec=8.0)
+        if args.stop_cmd.strip():
+            rc = run_shell(args.stop_cmd, timeout_sec=args.stop_timeout)
+            if rc != 0:
+                print(f"[WARN] stop command returned {rc} during shutdown.")
 
-    runner.publish_cmd(0.0, 0.0)
-    stop_background_process(launched_proc, grace_sec=8.0)
-    executor.remove_node(runner)
-    runner.destroy_node()
-    if context.ok():
-        rclpy.shutdown(context=context)
+        if executor is not None and runner is not None:
+            try:
+                executor.remove_node(runner)
+            except Exception:
+                pass
+            try:
+                runner.destroy_node()
+            except Exception:
+                pass
+        if context.ok():
+            rclpy.shutdown(context=context)
 
-    print("\n=== AUTOTUNE COMPLETE ===")
-    print(f"Best score: {best_score:.5f}")
-    print(f"Best params: {format_params(best)}")
+    if completed:
+        print("\n=== AUTOTUNE COMPLETE ===")
+        print(f"Best score: {best_score:.5f}")
+        print(f"Best params: {format_params(best)}")
+        print(f"Config updated: {cfg_path}")
+        print(f"CSV results: {csv_path}")
+        print(f"Backup file: {backup_path}")
+        return 0
+
+    print("\n=== AUTOTUNE STOPPED EARLY ===")
+    print(f"Best-so-far params written: {format_params(best)}")
     print(f"Config updated: {cfg_path}")
     print(f"CSV results: {csv_path}")
     print(f"Backup file: {backup_path}")
-    return 0
+    if interrupted:
+        return 130
+    return 1
 
 
 if __name__ == "__main__":
