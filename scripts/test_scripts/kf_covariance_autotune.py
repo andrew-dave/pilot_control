@@ -804,11 +804,11 @@ def main() -> int:
         "--decay", type=float, default=0.8, help="Step scale decay per outer iteration."
     )
     parser.add_argument("--settle-before", type=float, default=4.0)
-    parser.add_argument("--settle-after", type=float, default=1.5)
+    parser.add_argument("--settle-after", type=float, default=2.5)
     parser.add_argument(
         "--measurement-window",
         type=float,
-        default=1.5,
+        default=2.5,
         help="Stationary duration after maneuver for drift measurement (seconds).",
     )
     parser.add_argument(
