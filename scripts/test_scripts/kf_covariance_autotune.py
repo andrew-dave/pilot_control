@@ -36,6 +36,7 @@ import rclpy
 import yaml
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from odrive_can.msg import ControllerStatus
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -73,7 +74,14 @@ def wrap_angle(rad: float) -> float:
 
 
 class BoundedManeuverRunner(Node):
-    def __init__(self, cmd_topic: str, odom_topic: str, context: Context) -> None:
+    def __init__(
+        self,
+        cmd_topic: str,
+        odom_topic: str,
+        left_encoder_topic: str,
+        right_encoder_topic: str,
+        context: Context,
+    ) -> None:
         super().__init__("kf_covariance_autotune_runner", context=context)
 
         qos_pub = QoSProfile(
@@ -91,10 +99,23 @@ class BoundedManeuverRunner(Node):
         self.odom_sub = self.create_subscription(
             Odometry, odom_topic, self._odom_cb, qos_sub
         )
+        self.left_enc_sub = self.create_subscription(
+            ControllerStatus, left_encoder_topic, self._left_enc_cb, qos_sub
+        )
+        self.right_enc_sub = self.create_subscription(
+            ControllerStatus, right_encoder_topic, self._right_enc_cb, qos_sub
+        )
         self.last_pose: Optional[Pose2D] = None
         self.last_odom_wall_time: float = 0.0
+        self.trial_recording = False
+        self.odom_vel_samples: List[Tuple[float, float, float]] = []
+        self.left_enc_vel_samples: List[Tuple[float, float]] = []
+        self.right_enc_vel_samples: List[Tuple[float, float]] = []
+        self.left_raw_stamp_us_samples: List[Tuple[float, float]] = []
+        self.right_raw_stamp_us_samples: List[Tuple[float, float]] = []
 
     def _odom_cb(self, msg: Odometry) -> None:
+        recv_t = time.time()
         p = msg.pose.pose.position
         q = msg.pose.pose.orientation
         self.last_pose = Pose2D(
@@ -102,10 +123,43 @@ class BoundedManeuverRunner(Node):
             y=float(p.y),
             yaw=yaw_from_quat(float(q.x), float(q.y), float(q.z), float(q.w)),
         )
-        self.last_odom_wall_time = time.time()
+        self.last_odom_wall_time = recv_t
+        if self.trial_recording:
+            self.odom_vel_samples.append(
+                (
+                    recv_t,
+                    float(msg.twist.twist.linear.x),
+                    float(msg.twist.twist.angular.z),
+                )
+            )
+
+    def _left_enc_cb(self, msg: ControllerStatus) -> None:
+        if not self.trial_recording:
+            return
+        recv_t = time.time()
+        self.left_enc_vel_samples.append((recv_t, float(msg.vel_estimate)))
+        self.left_raw_stamp_us_samples.append((recv_t, float(msg.stamp_us)))
+
+    def _right_enc_cb(self, msg: ControllerStatus) -> None:
+        if not self.trial_recording:
+            return
+        recv_t = time.time()
+        self.right_enc_vel_samples.append((recv_t, float(msg.vel_estimate)))
+        self.right_raw_stamp_us_samples.append((recv_t, float(msg.stamp_us)))
 
     def clear_odom_cache(self) -> None:
         self.last_pose = None
+
+    def start_trial_recording(self) -> None:
+        self.trial_recording = True
+        self.odom_vel_samples = []
+        self.left_enc_vel_samples = []
+        self.right_enc_vel_samples = []
+        self.left_raw_stamp_us_samples = []
+        self.right_raw_stamp_us_samples = []
+
+    def stop_trial_recording(self) -> None:
+        self.trial_recording = False
 
     def publish_cmd(self, linear_x: float, angular_z: float) -> None:
         tw = Twist()
@@ -178,6 +232,101 @@ def wait_for_odom(
     return False
 
 
+def interp_sample(samples: List[Tuple[float, float]], t: float) -> Optional[float]:
+    if len(samples) < 2:
+        return None
+    if t < samples[0][0] or t > samples[-1][0]:
+        return None
+    lo = 0
+    hi = len(samples) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if samples[mid][0] < t:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    i1 = max(1, lo)
+    i0 = i1 - 1
+    t0, v0 = samples[i0]
+    t1, v1 = samples[i1]
+    if t1 <= t0:
+        return float(v1)
+    alpha = (t - t0) / (t1 - t0)
+    return float((1.0 - alpha) * v0 + alpha * v1)
+
+
+def compute_motion_velocity_reference_metrics(
+    odom_samples: List[Tuple[float, float, float]],
+    left_enc_samples: List[Tuple[float, float]],
+    right_enc_samples: List[Tuple[float, float]],
+    wheel_radius_m: float,
+    wheel_base_m: float,
+    gear_ratio: float,
+    invert_left: bool,
+    invert_right: bool,
+) -> Dict[str, float]:
+    if len(odom_samples) < 5 or len(left_enc_samples) < 5 or len(right_enc_samples) < 5:
+        return {
+            "v_ref_rmse_mps": 9.9,
+            "w_ref_rmse_radps": 9.9,
+            "v_ref_bias_mps": 9.9,
+            "w_ref_bias_radps": 9.9,
+            "vel_ref_samples": 0.0,
+        }
+
+    left = sorted(left_enc_samples, key=lambda x: x[0])
+    right = sorted(right_enc_samples, key=lambda x: x[0])
+    odom = sorted(odom_samples, key=lambda x: x[0])
+    wheel_circ = 2.0 * math.pi * max(1e-6, wheel_radius_m)
+    base = max(1e-6, wheel_base_m)
+    gr = max(1e-6, gear_ratio)
+
+    v_res_sq = 0.0
+    w_res_sq = 0.0
+    v_res_sum = 0.0
+    w_res_sum = 0.0
+    used = 0
+    for t, v_odom, w_odom in odom:
+        l_mps = interp_sample(left, t)
+        r_mps = interp_sample(right, t)
+        if l_mps is None or r_mps is None:
+            continue
+
+        # Encoder vel_estimate is motor rev/s.
+        left_motor_rps = -l_mps if invert_left else l_mps
+        right_motor_rps = -r_mps if invert_right else r_mps
+        left_wheel_rps = left_motor_rps / gr
+        right_wheel_rps = right_motor_rps / gr
+        v_left = left_wheel_rps * wheel_circ
+        v_right = right_wheel_rps * wheel_circ
+        v_ref = 0.5 * (v_left + v_right)
+        w_ref = (v_right - v_left) / base
+
+        dv = float(v_odom) - v_ref
+        dw = float(w_odom) - w_ref
+        v_res_sq += dv * dv
+        w_res_sq += dw * dw
+        v_res_sum += dv
+        w_res_sum += dw
+        used += 1
+
+    if used < 5:
+        return {
+            "v_ref_rmse_mps": 9.9,
+            "w_ref_rmse_radps": 9.9,
+            "v_ref_bias_mps": 9.9,
+            "w_ref_bias_radps": 9.9,
+            "vel_ref_samples": float(used),
+        }
+    return {
+        "v_ref_rmse_mps": float(math.sqrt(v_res_sq / used)),
+        "w_ref_rmse_radps": float(math.sqrt(w_res_sq / used)),
+        "v_ref_bias_mps": float(v_res_sum / used),
+        "w_ref_bias_radps": float(w_res_sum / used),
+        "vel_ref_samples": float(used),
+    }
+
+
 def run_maneuver_trial(
     runner: BoundedManeuverRunner,
     executor: SingleThreadedExecutor,
@@ -186,6 +335,12 @@ def run_maneuver_trial(
     command_rate_hz: float,
     settle_before_sec: float,
     settle_after_sec: float,
+    measurement_window_sec: float,
+    wheel_radius_m: float,
+    wheel_base_m: float,
+    gear_ratio: float,
+    invert_left: bool,
+    invert_right: bool,
 ) -> Dict[str, float]:
     if runner.last_pose is None:
         raise RuntimeError("No odometry available before trial start.")
@@ -203,6 +358,8 @@ def run_maneuver_trial(
         raise RuntimeError("Odometry lost during pre-trial settle.")
     origin = runner.last_pose
 
+    # Motion-phase recording for encoder-referenced velocity residuals.
+    runner.start_trial_recording()
     block_starts: Dict[str, Pose2D] = {}
     block_ends: Dict[str, Pose2D] = {}
     current_block = ""
@@ -235,19 +392,21 @@ def run_maneuver_trial(
             block_ends[seg.block] = runner.last_pose
         if out_of_bounds > 0:
             break
+    runner.stop_trial_recording()
 
     # Capture the pose immediately after commanded motion for drift probing.
     motion_end_pose = runner.last_pose
     if motion_end_pose is None:
         raise RuntimeError("Odometry lost at motion end.")
 
-    # Post-trial settle and post-motion drift probes.
-    # We explicitly measure residual drift from motion end at +0.5 s and +1.0 s.
+    # Post-trial stationary measurement and drift probes.
+    # No movement is allowed in this phase: only zero-velocity commands are sent.
+    # We measure residual drift from motion end at +0.5 s and +1.0 s.
     probe_times = [0.5, 1.0]
     probe_poses: Dict[float, Pose2D] = {}
     t1 = time.time()
-    settle_window = max(settle_after_sec, max(probe_times))
-    while time.time() - t1 < settle_window:
+    stationary_window = max(settle_after_sec, measurement_window_sec, max(probe_times))
+    while time.time() - t1 < stationary_window:
         runner.publish_cmd(0.0, 0.0)
         executor.spin_once(timeout_sec=dt)
         elapsed = time.time() - t1
@@ -288,6 +447,16 @@ def run_maneuver_trial(
     e_rta, yaw_rta = block_error("rot_trans_a")
     e_rtb, yaw_rtb = block_error("rot_trans_b")
     e_fig8, yaw_fig8 = block_error("figure8")
+    vel_ref = compute_motion_velocity_reference_metrics(
+        odom_samples=runner.odom_vel_samples,
+        left_enc_samples=runner.left_enc_vel_samples,
+        right_enc_samples=runner.right_enc_vel_samples,
+        wheel_radius_m=wheel_radius_m,
+        wheel_base_m=wheel_base_m,
+        gear_ratio=gear_ratio,
+        invert_left=invert_left,
+        invert_right=invert_right,
+    )
 
     # Weighted score (lower is better).
     score = (
@@ -296,6 +465,10 @@ def run_maneuver_trial(
         + 1.5 * e_spin
         + 1.2 * e_fb
         + 1.0 * e_fig8
+        + 6.0 * vel_ref["v_ref_rmse_mps"]
+        + 2.5 * vel_ref["w_ref_rmse_radps"]
+        + 2.0 * abs(vel_ref["v_ref_bias_mps"])
+        + 1.2 * abs(vel_ref["w_ref_bias_radps"])
         + 2.3 * drift_1p0
         + 1.2 * drift_0p5
         + 1.8 * drift_1p0_yaw
@@ -319,6 +492,11 @@ def run_maneuver_trial(
         "e_rta_m": float(e_rta),
         "e_rtb_m": float(e_rtb),
         "e_fig8_m": float(e_fig8),
+        "v_ref_rmse_mps": float(vel_ref["v_ref_rmse_mps"]),
+        "w_ref_rmse_radps": float(vel_ref["w_ref_rmse_radps"]),
+        "v_ref_bias_mps": float(vel_ref["v_ref_bias_mps"]),
+        "w_ref_bias_radps": float(vel_ref["w_ref_bias_radps"]),
+        "vel_ref_samples": float(vel_ref["vel_ref_samples"]),
         "drift_0p5_m": float(drift_0p5),
         "drift_1p0_m": float(drift_1p0),
         "drift_0p5_yaw_rad": float(drift_0p5_yaw),
@@ -544,11 +722,15 @@ def infer_covariance_update(
         metrics.get("e_fb_m", 0.0)
         + 0.6 * metrics.get("e_fig8_m", 0.0)
         + 0.8 * metrics.get("final_dist_m", 0.0)
+        + 1.3 * metrics.get("v_ref_rmse_mps", 0.0)
+        + 0.8 * abs(metrics.get("v_ref_bias_mps", 0.0))
     )
     rot_res = (
         metrics.get("e_spin_m", 0.0)
         + 0.7 * (metrics.get("e_rta_m", 0.0) + metrics.get("e_rtb_m", 0.0))
         + 0.6 * metrics.get("final_yaw_rad", 0.0)
+        + 0.9 * metrics.get("w_ref_rmse_radps", 0.0)
+        + 0.6 * abs(metrics.get("w_ref_bias_radps", 0.0))
     )
     drift_trans = metrics.get("drift_1p0_m", 0.0)
     drift_rot = metrics.get("drift_1p0_yaw_rad", 0.0)
@@ -595,6 +777,23 @@ def main() -> int:
     )
     parser.add_argument("--cmd-topic", default="/cmd_vel")
     parser.add_argument("--odom-topic", default="/Odometry_tilt_corrected_diff")
+    parser.add_argument("--left-encoder-topic", default="/left/controller_status")
+    parser.add_argument("--right-encoder-topic", default="/right/controller_status")
+    parser.add_argument("--wheel-radius", type=float, default=0.09)
+    parser.add_argument("--wheel-base", type=float, default=0.355)
+    parser.add_argument("--gear-ratio", type=float, default=1.0)
+    parser.add_argument(
+        "--invert-left",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Encoder sign inversion for left wheel (matches launch config default: false).",
+    )
+    parser.add_argument(
+        "--invert-right",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Encoder sign inversion for right wheel (matches launch config default: true).",
+    )
     parser.add_argument("--max-radius", type=float, default=1.6)
     parser.add_argument("--command-rate", type=float, default=20.0)
     parser.add_argument("--trials", type=int, default=12)
@@ -605,7 +804,13 @@ def main() -> int:
         "--decay", type=float, default=0.8, help="Step scale decay per outer iteration."
     )
     parser.add_argument("--settle-before", type=float, default=4.0)
-    parser.add_argument("--settle-after", type=float, default=2.0)
+    parser.add_argument("--settle-after", type=float, default=1.5)
+    parser.add_argument(
+        "--measurement-window",
+        type=float,
+        default=1.5,
+        help="Stationary duration after maneuver for drift measurement (seconds).",
+    )
     parser.add_argument(
         "--launch-cmd",
         default="",
@@ -682,6 +887,12 @@ def main() -> int:
 
     print(f"[INFO] Starting params: {format_params(current)}")
     print(f"[INFO] Results CSV: {csv_path}")
+    print(
+        "[INFO] Encoder reference config: "
+        f"wheel_radius={args.wheel_radius:.4f} m, wheel_base={args.wheel_base:.4f} m, "
+        f"gear_ratio={args.gear_ratio:.4f}, invert_left={args.invert_left}, "
+        f"invert_right={args.invert_right}"
+    )
     if args.launch_cmd:
         print("[INFO] launch-cmd is enabled.")
     else:
@@ -706,6 +917,11 @@ def main() -> int:
         "e_rta_m",
         "e_rtb_m",
         "e_fig8_m",
+        "v_ref_rmse_mps",
+        "w_ref_rmse_radps",
+        "v_ref_bias_mps",
+        "w_ref_bias_radps",
+        "vel_ref_samples",
         "drift_0p5_m",
         "drift_1p0_m",
         "drift_0p5_yaw_rad",
@@ -723,7 +939,13 @@ def main() -> int:
     try:
         rclpy.init(args=None, context=context)
         executor = SingleThreadedExecutor(context=context)
-        runner = BoundedManeuverRunner(args.cmd_topic, args.odom_topic, context=context)
+        runner = BoundedManeuverRunner(
+            args.cmd_topic,
+            args.odom_topic,
+            args.left_encoder_topic,
+            args.right_encoder_topic,
+            context=context,
+        )
         executor.add_node(runner)
 
         with csv_path.open("w", newline="", encoding="utf-8") as fcsv:
@@ -830,6 +1052,15 @@ def main() -> int:
                             "e_rta_m": 99.0,
                             "e_rtb_m": 99.0,
                             "e_fig8_m": 99.0,
+                            "v_ref_rmse_mps": 9.9,
+                            "w_ref_rmse_radps": 9.9,
+                            "v_ref_bias_mps": 9.9,
+                            "w_ref_bias_radps": 9.9,
+                            "vel_ref_samples": 0.0,
+                            "drift_0p5_m": 99.0,
+                            "drift_1p0_m": 99.0,
+                            "drift_0p5_yaw_rad": math.pi,
+                            "drift_1p0_yaw_rad": math.pi,
                         }
                     else:
                         metrics = run_maneuver_trial(
@@ -840,6 +1071,12 @@ def main() -> int:
                             command_rate_hz=args.command_rate,
                             settle_before_sec=args.settle_before,
                             settle_after_sec=args.settle_after,
+                            measurement_window_sec=args.measurement_window,
+                            wheel_radius_m=args.wheel_radius,
+                            wheel_base_m=args.wheel_base,
+                            gear_ratio=args.gear_ratio,
+                            invert_left=args.invert_left,
+                            invert_right=args.invert_right,
                         )
 
                     row = {
@@ -857,7 +1094,10 @@ def main() -> int:
                     print(
                         f"[TRIAL {trial_count}] score={metrics['score']:.5f}, "
                         f"final_dist={metrics['final_dist_m']:.4f} m, "
-                        f"max_radius={metrics['max_radius_m']:.3f} m"
+                        f"max_radius={metrics['max_radius_m']:.3f} m, "
+                        f"v_rmse={metrics['v_ref_rmse_mps']:.4f} m/s, "
+                        f"w_rmse={metrics['w_ref_rmse_radps']:.4f} rad/s, "
+                        f"vel_samples={int(metrics['vel_ref_samples'])}"
                     )
 
                     tested_this_round.append((cand, float(metrics["score"]), metrics))
