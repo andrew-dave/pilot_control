@@ -1,0 +1,2 @@
+trial,score,acc_cov,gyr_cov,b_acc_cov,b_gyr_cov,final_dist_m,final_yaw_rad,max_radius_m,oob_events,e_spin_m,e_fb_m,e_rta_m,e_rtb_m,e_fig8_m
+1,9999.0,0.013000000000000001,2.5e-05,1.5e-06,1e-08,99.0,3.141592653589793,99.0,9.0,99.0,99.0,99.0,99.0,99.0
