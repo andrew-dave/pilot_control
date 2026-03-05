@@ -367,8 +367,7 @@ def clamp_params(p: Dict[str, float]) -> Dict[str, float]:
 def run_shell(cmd: str, timeout_sec: float) -> int:
     try:
         proc = subprocess.run(
-            cmd,
-            shell=True,
+            ["/bin/bash", "-lc", cmd],
             text=True,
             timeout=timeout_sec,
             stdout=subprocess.PIPE,
@@ -404,8 +403,7 @@ def run_shell_background(cmd: str, log_path: Optional[Path] = None) -> subproces
         log_path.parent.mkdir(parents=True, exist_ok=True)
         stdout_target = open(log_path, "a", encoding="utf-8")
     proc = subprocess.Popen(
-        cmd,
-        shell=True,
+        ["/bin/bash", "-lc", cmd],
         stdout=stdout_target,
         stderr=subprocess.STDOUT,
         start_new_session=True,
