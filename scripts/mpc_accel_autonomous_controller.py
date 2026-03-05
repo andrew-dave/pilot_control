@@ -956,7 +956,7 @@ class MPCAccelController(Node):
 
         # Parameters
         self.declare_parameter("wheel_radius", 0.09)
-        self.declare_parameter("wheel_base", 0.32)
+        self.declare_parameter("wheel_base", 0.355)
         self.declare_parameter("gear_ratio", 1.0)
         self.declare_parameter("invert_left", False)
         self.declare_parameter("invert_right", True)
