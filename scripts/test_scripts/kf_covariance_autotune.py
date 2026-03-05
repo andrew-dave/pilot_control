@@ -121,40 +121,41 @@ def build_bounded_sequence() -> List[Segment]:
     """
     seq: List[Segment] = []
 
-    # Block 1: in-place left/right cancellation
+    # Block 1: in-place left/right cancellation (more aggressive angular rate,
+    # similar integrated turn to keep workspace bounds comparable)
     seq += [
-        Segment("spin_cancel", "left_spin", 0.0, 0.85, 1.0),
-        Segment("spin_cancel", "right_spin", 0.0, -0.85, 1.0),
+        Segment("spin_cancel", "left_spin", 0.0, 1.35, 0.62),
+        Segment("spin_cancel", "right_spin", 0.0, -1.35, 0.62),
     ]
 
-    # Block 2: forward/backward cancellation
+    # Block 2: forward/backward cancellation (higher speed, shorter duration)
     seq += [
-        Segment("fb_cancel", "forward", 0.20, 0.0, 1.3),
-        Segment("fb_cancel", "backward", -0.20, 0.0, 1.3),
+        Segment("fb_cancel", "forward", 0.32, 0.0, 0.80),
+        Segment("fb_cancel", "backward", -0.32, 0.0, 0.80),
     ]
 
     # Block 3: rotation -> translation coupling stress
     seq += [
-        Segment("rot_trans_a", "left_spin", 0.0, 0.90, 0.9),
-        Segment("rot_trans_a", "forward", 0.22, 0.0, 1.0),
-        Segment("rot_trans_a", "right_spin", 0.0, -0.90, 0.9),
-        Segment("rot_trans_a", "backward", -0.22, 0.0, 1.0),
+        Segment("rot_trans_a", "left_spin", 0.0, 1.45, 0.55),
+        Segment("rot_trans_a", "forward", 0.34, 0.0, 0.65),
+        Segment("rot_trans_a", "right_spin", 0.0, -1.45, 0.55),
+        Segment("rot_trans_a", "backward", -0.34, 0.0, 0.65),
     ]
 
     # Block 4: mirrored coupling stress
     seq += [
-        Segment("rot_trans_b", "right_spin", 0.0, -0.90, 0.9),
-        Segment("rot_trans_b", "forward", 0.22, 0.0, 1.0),
-        Segment("rot_trans_b", "left_spin", 0.0, 0.90, 0.9),
-        Segment("rot_trans_b", "backward", -0.22, 0.0, 1.0),
+        Segment("rot_trans_b", "right_spin", 0.0, -1.45, 0.55),
+        Segment("rot_trans_b", "forward", 0.34, 0.0, 0.65),
+        Segment("rot_trans_b", "left_spin", 0.0, 1.45, 0.55),
+        Segment("rot_trans_b", "backward", -0.34, 0.0, 0.65),
     ]
 
     # Block 5: compact figure-8 style arcs (combined maneuvers)
     seq += [
-        Segment("figure8", "arc_left_fwd", 0.18, 0.55, 1.4),
-        Segment("figure8", "arc_right_fwd", 0.18, -0.55, 1.4),
-        Segment("figure8", "arc_right_bwd", -0.18, -0.55, 1.1),
-        Segment("figure8", "arc_left_bwd", -0.18, 0.55, 1.1),
+        Segment("figure8", "arc_left_fwd", 0.30, 0.92, 0.84),
+        Segment("figure8", "arc_right_fwd", 0.30, -0.92, 0.84),
+        Segment("figure8", "arc_right_bwd", -0.30, -0.92, 0.66),
+        Segment("figure8", "arc_left_bwd", -0.30, 0.92, 0.66),
     ]
 
     return seq
@@ -235,18 +236,44 @@ def run_maneuver_trial(
         if out_of_bounds > 0:
             break
 
-    # Post-trial settle.
+    # Capture the pose immediately after commanded motion for drift probing.
+    motion_end_pose = runner.last_pose
+    if motion_end_pose is None:
+        raise RuntimeError("Odometry lost at motion end.")
+
+    # Post-trial settle and post-motion drift probes.
+    # We explicitly measure residual drift from motion end at +0.5 s and +1.0 s.
+    probe_times = [0.5, 1.0]
+    probe_poses: Dict[float, Pose2D] = {}
     t1 = time.time()
-    while time.time() - t1 < settle_after_sec:
+    settle_window = max(settle_after_sec, max(probe_times))
+    while time.time() - t1 < settle_window:
         runner.publish_cmd(0.0, 0.0)
         executor.spin_once(timeout_sec=dt)
+        elapsed = time.time() - t1
+        for pt in probe_times:
+            if pt not in probe_poses and elapsed >= pt and runner.last_pose is not None:
+                probe_poses[pt] = runner.last_pose
 
     if runner.last_pose is None:
         raise RuntimeError("Odometry lost after trial.")
+    for pt in probe_times:
+        if pt not in probe_poses:
+            probe_poses[pt] = runner.last_pose
 
     final = runner.last_pose
     final_dist = math.hypot(final.x - origin.x, final.y - origin.y)
     final_yaw = abs(wrap_angle(final.yaw - origin.yaw))
+    drift_0p5 = math.hypot(
+        probe_poses[0.5].x - motion_end_pose.x,
+        probe_poses[0.5].y - motion_end_pose.y,
+    )
+    drift_1p0 = math.hypot(
+        probe_poses[1.0].x - motion_end_pose.x,
+        probe_poses[1.0].y - motion_end_pose.y,
+    )
+    drift_0p5_yaw = abs(wrap_angle(probe_poses[0.5].yaw - motion_end_pose.yaw))
+    drift_1p0_yaw = abs(wrap_angle(probe_poses[1.0].yaw - motion_end_pose.yaw))
 
     # Block closure metrics emphasize rotation->translation induced residuals.
     def block_error(block_name: str) -> Tuple[float, float]:
@@ -269,6 +296,10 @@ def run_maneuver_trial(
         + 1.5 * e_spin
         + 1.2 * e_fb
         + 1.0 * e_fig8
+        + 2.3 * drift_1p0
+        + 1.2 * drift_0p5
+        + 1.8 * drift_1p0_yaw
+        + 0.9 * drift_0p5_yaw
         + 1.5 * final_dist
         + 0.5 * (yaw_spin + yaw_fb + yaw_rta + yaw_rtb + yaw_fig8)
         + 0.8 * final_yaw
@@ -288,6 +319,10 @@ def run_maneuver_trial(
         "e_rta_m": float(e_rta),
         "e_rtb_m": float(e_rtb),
         "e_fig8_m": float(e_fig8),
+        "drift_0p5_m": float(drift_0p5),
+        "drift_1p0_m": float(drift_1p0),
+        "drift_0p5_yaw_rad": float(drift_0p5_yaw),
+        "drift_1p0_yaw_rad": float(drift_1p0_yaw),
     }
 
 
@@ -493,6 +528,53 @@ def scan_launch_log_for_known_errors(log_path: Optional[Path], start_offset: int
     return hints
 
 
+def infer_covariance_update(
+    current_best: Dict[str, float], metrics: Dict[str, float], step_scale: float
+) -> Dict[str, float]:
+    """
+    Motion-aware heuristic update:
+    - translation residuals/drift steer accelerometer noise terms
+    - rotation residuals/drift steer gyro noise terms
+    - growth in post-motion drift steers bias random-walk terms
+    """
+    p = dict(current_best)
+    gain = min(0.18, max(0.03, 0.5 * step_scale))
+
+    trans_res = (
+        metrics.get("e_fb_m", 0.0)
+        + 0.6 * metrics.get("e_fig8_m", 0.0)
+        + 0.8 * metrics.get("final_dist_m", 0.0)
+    )
+    rot_res = (
+        metrics.get("e_spin_m", 0.0)
+        + 0.7 * (metrics.get("e_rta_m", 0.0) + metrics.get("e_rtb_m", 0.0))
+        + 0.6 * metrics.get("final_yaw_rad", 0.0)
+    )
+    drift_trans = metrics.get("drift_1p0_m", 0.0)
+    drift_rot = metrics.get("drift_1p0_yaw_rad", 0.0)
+    drift_growth = max(0.0, drift_trans - metrics.get("drift_0p5_m", 0.0)) + 0.5 * max(
+        0.0, drift_rot - metrics.get("drift_0p5_yaw_rad", 0.0)
+    )
+
+    if trans_res > 0.07 or drift_trans > 0.03:
+        p["acc_cov"] *= 1.0 + gain
+        p["b_acc_cov"] *= 1.0 + 0.75 * gain
+    elif trans_res < 0.03 and drift_trans < 0.015:
+        p["acc_cov"] *= 1.0 - 0.4 * gain
+
+    if rot_res > 0.28 or drift_rot > 0.08:
+        p["gyr_cov"] *= 1.0 + gain
+        p["b_gyr_cov"] *= 1.0 + 0.75 * gain
+    elif rot_res < 0.11 and drift_rot < 0.03:
+        p["gyr_cov"] *= 1.0 - 0.4 * gain
+
+    if drift_growth > 0.015:
+        p["b_acc_cov"] *= 1.0 + 0.6 * gain
+        p["b_gyr_cov"] *= 1.0 + 0.6 * gain
+
+    return clamp_params(p)
+
+
 def format_params(p: Dict[str, float]) -> str:
     return (
         f"acc_cov={p['acc_cov']:.7g}, "
@@ -624,6 +706,10 @@ def main() -> int:
         "e_rta_m",
         "e_rtb_m",
         "e_fig8_m",
+        "drift_0p5_m",
+        "drift_1p0_m",
+        "drift_0p5_yaw_rad",
+        "drift_1p0_yaw_rad",
     ]
     context = Context()
     executor: Optional[SingleThreadedExecutor] = None
@@ -774,7 +860,7 @@ def main() -> int:
                         f"max_radius={metrics['max_radius_m']:.3f} m"
                     )
 
-                    tested_this_round.append((cand, float(metrics["score"])))
+                    tested_this_round.append((cand, float(metrics["score"]), metrics))
                     if metrics["score"] < best_score:
                         best_score = float(metrics["score"])
                         best = dict(cand)
@@ -785,7 +871,19 @@ def main() -> int:
                 # Keep best from this local neighborhood and shrink step.
                 tested_this_round.sort(key=lambda x: x[1])
                 if tested_this_round:
-                    best = dict(tested_this_round[0][0])
+                    round_best_cand, _, round_best_metrics = tested_this_round[0]
+                    best = dict(round_best_cand)
+                    inferred = infer_covariance_update(
+                        current_best=best,
+                        metrics=round_best_metrics,
+                        step_scale=step_scale,
+                    )
+                    if inferred != best:
+                        print(
+                            "[INFO] Motion-aware inference nudged center: "
+                            f"{format_params(inferred)}"
+                        )
+                    best = inferred
                 step_scale = max(0.08, step_scale * args.decay)
                 print(f"[INFO] Next step-scale: {step_scale:.4f}")
 
