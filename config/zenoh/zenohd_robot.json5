@@ -26,7 +26,9 @@
           "^/cmd_vel$",
           "^/stream_target_ip$",
           "^/host_teleop/heartbeat$",
-          "^/mpc_autonomy_enable$"
+          "^/mpc_autonomy_enable$",
+          "^/f2c_waypoints$",
+          "^/start_waypoint_navigation$"
         ],
 
         // Laptop service clients -> Robot service servers
