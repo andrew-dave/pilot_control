@@ -471,6 +471,10 @@ public:
     // Stream status publisher (publishes full stream configuration)
     stream_status_pub_ = this->create_publisher<std_msgs::msg::String>("/stream_status", 10);
     RCLCPP_INFO(this->get_logger(), "Stream target topic: /stream_target_ip (publish laptop IP to configure)");
+
+    // Low-bandwidth thermal summary publisher for OCU telemetry cards.
+    // Format: "max_c=<v>,avg_c=<v>,min_c=<v>" (published at 1 Hz).
+    thermal_summary_pub_ = this->create_publisher<std_msgs::msg::String>("/thermal/summary", 10);
     
     // Publish initial stream status
     publishStreamStatus();
@@ -1056,7 +1060,62 @@ private:
     }
 
     seekcamera_frame_unlock(cam_frame);
-    if (!f.thermo.empty()) ring_.push(std::move(f));
+    if (!f.thermo.empty()) {
+      maybePublishThermalSummary(f);
+      ring_.push(std::move(f));
+    }
+  }
+
+  void maybePublishThermalSummary(const ThermFrame& frame) {
+    if (!thermal_summary_pub_) {
+      return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    if (last_thermal_summary_publish_at_.time_since_epoch().count() > 0) {
+      const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          now - last_thermal_summary_publish_at_).count();
+      if (elapsed_ms < 1000) {
+        return;
+      }
+    }
+
+    bool has_sample = false;
+    double min_c = 0.0;
+    double max_c = 0.0;
+    double sum_c = 0.0;
+    size_t sample_count = 0;
+    for (float sample : frame.thermo) {
+      if (!std::isfinite(sample)) {
+        continue;
+      }
+      const double t = static_cast<double>(sample);
+      if (!has_sample) {
+        min_c = t;
+        max_c = t;
+        has_sample = true;
+      } else {
+        min_c = std::min(min_c, t);
+        max_c = std::max(max_c, t);
+      }
+      sum_c += t;
+      ++sample_count;
+    }
+
+    if (!has_sample || sample_count == 0) {
+      return;
+    }
+
+    const double avg_c = sum_c / static_cast<double>(sample_count);
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2)
+        << "max_c=" << max_c
+        << ",avg_c=" << avg_c
+        << ",min_c=" << min_c;
+    msg.data = oss.str();
+    thermal_summary_pub_->publish(msg);
+    last_thermal_summary_publish_at_ = now;
   }
 
   // ---------- GStreamer plumbing ----------
@@ -1415,6 +1474,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_status_pub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_target_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stream_status_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr thermal_summary_pub_;
+  std::chrono::steady_clock::time_point last_thermal_summary_publish_at_{};
 
   // Thermal Camera
   seekcamera_manager_t* mgr_ = nullptr;

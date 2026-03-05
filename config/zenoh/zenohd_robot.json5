@@ -16,6 +16,7 @@
         // Robot -> Laptop topics
         publishers: [
           "^/stream_status$",
+          "^/thermal/summary$",
           "^/Odometry_tilt_corrected_diff$",
           "^/left/controller_status$",
           "^/right/controller_status$"
