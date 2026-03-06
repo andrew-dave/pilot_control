@@ -339,6 +339,7 @@ def generate_launch_description():
         parameters=[{
             'primary_input_topic': '/cloud_registered',
             'fallback_input_topic': '/Laser_map',
+            'raw_odometry_topic': '/Odometry',
             'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
             'output_topic': '/local_nav_grid',
             'calibration_file': tilt_calibration_file,

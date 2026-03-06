@@ -36,6 +36,7 @@ constexpr double kDefaultRollingHorizonSec = 0.75;
 constexpr double kDefaultMaxPublishRateHz = 10.0;
 constexpr double kDefaultPrimaryActiveTimeoutSec = 0.50;
 constexpr double kPi = 3.14159265358979323846;
+constexpr size_t kRawOdomBufferMaxSamples = 200;
 
 struct Point3f {
     float x = 0.0f;
@@ -48,6 +49,12 @@ struct BufferedScan {
     std::vector<Point3f> corrected_points;
 };
 
+struct RawOdomSample {
+    uint64_t stamp_ns = 0;
+    Eigen::Vector3d position = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d orientation = Eigen::Matrix3d::Identity();
+};
+
 Eigen::Matrix3d buildPitchRotation(double pitch_rad) {
     const double cp = std::cos(pitch_rad);
     const double sp = std::sin(pitch_rad);
@@ -56,6 +63,32 @@ Eigen::Matrix3d buildPitchRotation(double pitch_rad) {
                 0.0, 1.0, 0.0,
                 -sp, 0.0, cp;
     return rotation;
+}
+
+Eigen::Matrix3d quaternionToMatrix(double x, double y, double z, double w) {
+    const double xx = x * x;
+    const double yy = y * y;
+    const double zz = z * z;
+    const double xy = x * y;
+    const double xz = x * z;
+    const double yz = y * z;
+    const double wx = w * x;
+    const double wy = w * y;
+    const double wz = w * z;
+
+    Eigen::Matrix3d rotation;
+    rotation << 1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy),
+                2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx),
+                2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy);
+    return rotation;
+}
+
+double extractYawFromMatrix(const Eigen::Matrix3d& rotation) {
+    return std::atan2(rotation(1, 0), rotation(0, 0));
+}
+
+uint64_t stampToNs(int32_t sec, uint32_t nanosec) {
+    return (static_cast<uint64_t>(sec) * 1000000000ULL) + static_cast<uint64_t>(nanosec);
 }
 
 std::string shellEscapeSingleQuoted(const std::string& text) {
@@ -149,6 +182,7 @@ public:
         : Node("local_nav_grid_publisher") {
         this->declare_parameter<std::string>("primary_input_topic", "/cloud_registered");
         this->declare_parameter<std::string>("fallback_input_topic", "/Laser_map");
+        this->declare_parameter<std::string>("raw_odometry_topic", "/Odometry");
         this->declare_parameter<std::string>("corrected_odometry_topic",
                                              "/Odometry_tilt_corrected_diff");
         this->declare_parameter<std::string>("output_topic", "/local_nav_grid");
@@ -161,6 +195,7 @@ public:
 
         primary_input_topic_ = this->get_parameter("primary_input_topic").as_string();
         fallback_input_topic_ = this->get_parameter("fallback_input_topic").as_string();
+        raw_odometry_topic_ = this->get_parameter("raw_odometry_topic").as_string();
         corrected_odometry_topic_ =
             this->get_parameter("corrected_odometry_topic").as_string();
         output_topic_ = this->get_parameter("output_topic").as_string();
@@ -203,10 +238,14 @@ public:
             cloud_qos,
             std::bind(&LocalNavGridPublisher::onFallbackCloud, this, std::placeholders::_1));
 
-        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        raw_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+            raw_odometry_topic_,
+            rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
+            std::bind(&LocalNavGridPublisher::onRawOdom, this, std::placeholders::_1));
+        corrected_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             corrected_odometry_topic_,
             rclcpp::QoS(rclcpp::KeepLast(20)).reliable(),
-            std::bind(&LocalNavGridPublisher::onOdom, this, std::placeholders::_1));
+            std::bind(&LocalNavGridPublisher::onCorrectedOdom, this, std::placeholders::_1));
 
         rclcpp::QoS grid_qos(rclcpp::KeepLast(1));
         grid_qos.best_effort();
@@ -216,7 +255,9 @@ public:
         RCLCPP_INFO(this->get_logger(), "Local nav grid publisher started");
         RCLCPP_INFO(this->get_logger(), "  primary cloud:   %s", primary_input_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "  fallback cloud:  %s", fallback_input_topic_.c_str());
-        RCLCPP_INFO(this->get_logger(), "  odom input:      %s",
+        RCLCPP_INFO(this->get_logger(), "  raw odom:        %s",
+                    raw_odometry_topic_.c_str());
+        RCLCPP_INFO(this->get_logger(), "  corrected odom:  %s",
                     corrected_odometry_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "  output:          %s", output_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "  grid:            %dx%d (%.4f m/cell, %d bytes)",
@@ -239,7 +280,7 @@ private:
         if (!calibration_file_.empty() &&
             extractCalibrationMatrices(calibration_file_, r_map_, p0_world_, this->get_logger())) {
             RCLCPP_INFO(this->get_logger(),
-                        "Loaded tilt calibration from %s",
+                        "Loaded static tilt calibration reference from %s",
                         calibration_file_.c_str());
             return;
         }
@@ -252,18 +293,123 @@ private:
                     lidar_pitch_deg_);
     }
 
-    void onOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    void onRawOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
         if (!msg) {
             return;
         }
+
+        if (transform_initialized_) {
+            return;
+        }
+
+        RawOdomSample sample;
+        sample.stamp_ns = stampToNs(msg->header.stamp.sec, msg->header.stamp.nanosec);
+        sample.position.x() = msg->pose.pose.position.x;
+        sample.position.y() = msg->pose.pose.position.y;
+        sample.position.z() = msg->pose.pose.position.z;
+        sample.orientation = quaternionToMatrix(msg->pose.pose.orientation.x,
+                                                msg->pose.pose.orientation.y,
+                                                msg->pose.pose.orientation.z,
+                                                msg->pose.pose.orientation.w);
+        raw_odom_buffer_.push_back(std::move(sample));
+        while (raw_odom_buffer_.size() > kRawOdomBufferMaxSamples) {
+            raw_odom_buffer_.pop_front();
+        }
+
+        if (pending_corrected_valid_) {
+            tryInitializeTransformFromMatchedOdom();
+        }
+    }
+
+    void onCorrectedOdom(const nav_msgs::msg::Odometry::SharedPtr msg) {
+        if (!msg) {
+            return;
+        }
+
         latest_robot_position_.x() = msg->pose.pose.position.x;
         latest_robot_position_.y() = msg->pose.pose.position.y;
         latest_robot_position_.z() = msg->pose.pose.position.z;
         odom_ready_ = true;
+
+        if (!transform_initialized_) {
+            pending_corrected_stamp_ns_ =
+                stampToNs(msg->header.stamp.sec, msg->header.stamp.nanosec);
+            pending_corrected_position_.x() = msg->pose.pose.position.x;
+            pending_corrected_position_.y() = msg->pose.pose.position.y;
+            pending_corrected_position_.z() = msg->pose.pose.position.z;
+            pending_corrected_orientation_ =
+                quaternionToMatrix(msg->pose.pose.orientation.x,
+                                   msg->pose.pose.orientation.y,
+                                   msg->pose.pose.orientation.z,
+                                   msg->pose.pose.orientation.w);
+            pending_corrected_valid_ = true;
+            tryInitializeTransformFromMatchedOdom();
+        }
+    }
+
+    void tryInitializeTransformFromMatchedOdom() {
+        if (transform_initialized_ || !pending_corrected_valid_) {
+            return;
+        }
+
+        const auto it = std::find_if(raw_odom_buffer_.begin(),
+                                     raw_odom_buffer_.end(),
+                                     [this](const RawOdomSample& sample) {
+                                         return sample.stamp_ns == pending_corrected_stamp_ns_;
+                                     });
+        if (it == raw_odom_buffer_.end()) {
+            return;
+        }
+
+        r_init_ = pending_corrected_orientation_ * it->orientation.transpose();
+        p0_lidar_ = it->position - (r_init_.transpose() * pending_corrected_position_);
+        transform_initialized_ = true;
+        pending_corrected_valid_ = false;
+        raw_odom_buffer_.clear();
+
+        const double derived_yaw = extractYawFromMatrix(r_init_);
+        RCLCPP_INFO(this->get_logger(),
+                    "Initialized local nav transform from matched raw/corrected odometry");
+        RCLCPP_INFO(this->get_logger(),
+                    "  origin:           [%.3f, %.3f, %.3f]",
+                    p0_lidar_.x(),
+                    p0_lidar_.y(),
+                    p0_lidar_.z());
+        RCLCPP_INFO(this->get_logger(),
+                    "  frame yaw:        %.2f deg",
+                    derived_yaw * 180.0 / kPi);
+    }
+
+    bool transformPointToRobotFrame(double raw_x,
+                                    double raw_y,
+                                    double raw_z,
+                                    double& corrected_x,
+                                    double& corrected_y,
+                                    double& corrected_z) const {
+        if (!transform_initialized_) {
+            return false;
+        }
+
+        const double centered_x = raw_x - p0_lidar_.x();
+        const double centered_y = raw_y - p0_lidar_.y();
+        const double centered_z = raw_z - p0_lidar_.z();
+
+        corrected_x = (r_init_(0, 0) * centered_x) + (r_init_(0, 1) * centered_y) +
+                      (r_init_(0, 2) * centered_z);
+        corrected_y = (r_init_(1, 0) * centered_x) + (r_init_(1, 1) * centered_y) +
+                      (r_init_(1, 2) * centered_z);
+        corrected_z = (r_init_(2, 0) * centered_x) + (r_init_(2, 1) * centered_y) +
+                      (r_init_(2, 2) * centered_z);
+        return std::isfinite(corrected_x) && std::isfinite(corrected_y) &&
+               std::isfinite(corrected_z);
     }
 
     void onPrimaryCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
         if (!msg) {
+            return;
+        }
+
+        if (!transform_initialized_) {
             return;
         }
 
@@ -288,6 +434,10 @@ private:
 
     void onFallbackCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
         if (!msg) {
+            return;
+        }
+
+        if (!transform_initialized_) {
             return;
         }
 
@@ -321,24 +471,11 @@ private:
     void transformCloudToCorrectedPoints(const sensor_msgs::msg::PointCloud2& cloud,
                                          std::vector<Point3f>& corrected_points) const {
         corrected_points.clear();
-        if (cloud.data.empty() || cloud.point_step == 0) {
+        if (!transform_initialized_ || cloud.data.empty() || cloud.point_step == 0) {
             return;
         }
 
         corrected_points.reserve(cloud.data.size() / cloud.point_step);
-
-        const double r00 = r_map_(0, 0);
-        const double r01 = r_map_(0, 1);
-        const double r02 = r_map_(0, 2);
-        const double r10 = r_map_(1, 0);
-        const double r11 = r_map_(1, 1);
-        const double r12 = r_map_(1, 2);
-        const double r20 = r_map_(2, 0);
-        const double r21 = r_map_(2, 1);
-        const double r22 = r_map_(2, 2);
-        const double p0x = p0_world_.x();
-        const double p0y = p0_world_.y();
-        const double p0z = p0_world_.z();
 
         try {
             sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
@@ -353,18 +490,11 @@ private:
                     continue;
                 }
 
-                const double centered_x = raw_x - p0x;
-                const double centered_y = raw_y - p0y;
-                const double centered_z = raw_z - p0z;
-
-                const double corrected_x =
-                    (r00 * centered_x) + (r01 * centered_y) + (r02 * centered_z);
-                const double corrected_y =
-                    (r10 * centered_x) + (r11 * centered_y) + (r12 * centered_z);
-                const double corrected_z =
-                    (r20 * centered_x) + (r21 * centered_y) + (r22 * centered_z);
-                if (!std::isfinite(corrected_x) || !std::isfinite(corrected_y) ||
-                    !std::isfinite(corrected_z)) {
+                double corrected_x = 0.0;
+                double corrected_y = 0.0;
+                double corrected_z = 0.0;
+                if (!transformPointToRobotFrame(
+                        raw_x, raw_y, raw_z, corrected_x, corrected_y, corrected_z)) {
                     continue;
                 }
 
@@ -416,22 +546,9 @@ private:
 
     void buildGridFromFallbackCloud(const sensor_msgs::msg::PointCloud2& cloud,
                                     std::array<uint8_t, kGridBytes>& grid) const {
-        if (cloud.data.empty() || cloud.point_step == 0) {
+        if (!transform_initialized_ || cloud.data.empty() || cloud.point_step == 0) {
             return;
         }
-
-        const double r00 = r_map_(0, 0);
-        const double r01 = r_map_(0, 1);
-        const double r02 = r_map_(0, 2);
-        const double r10 = r_map_(1, 0);
-        const double r11 = r_map_(1, 1);
-        const double r12 = r_map_(1, 2);
-        const double r20 = r_map_(2, 0);
-        const double r21 = r_map_(2, 1);
-        const double r22 = r_map_(2, 2);
-        const double p0x = p0_world_.x();
-        const double p0y = p0_world_.y();
-        const double p0z = p0_world_.z();
 
         try {
             sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
@@ -446,18 +563,11 @@ private:
                     continue;
                 }
 
-                const double centered_x = raw_x - p0x;
-                const double centered_y = raw_y - p0y;
-                const double centered_z = raw_z - p0z;
-
-                const double corrected_x =
-                    (r00 * centered_x) + (r01 * centered_y) + (r02 * centered_z);
-                const double corrected_y =
-                    (r10 * centered_x) + (r11 * centered_y) + (r12 * centered_z);
-                const double corrected_z =
-                    (r20 * centered_x) + (r21 * centered_y) + (r22 * centered_z);
-                if (!std::isfinite(corrected_x) || !std::isfinite(corrected_y) ||
-                    !std::isfinite(corrected_z)) {
+                double corrected_x = 0.0;
+                double corrected_y = 0.0;
+                double corrected_z = 0.0;
+                if (!transformPointToRobotFrame(
+                        raw_x, raw_y, raw_z, corrected_x, corrected_y, corrected_z)) {
                     continue;
                 }
 
@@ -484,6 +594,7 @@ private:
 
     std::string primary_input_topic_;
     std::string fallback_input_topic_;
+    std::string raw_odometry_topic_;
     std::string corrected_odometry_topic_;
     std::string output_topic_;
     std::string calibration_file_;
@@ -494,14 +605,22 @@ private:
 
     Eigen::Matrix3d r_map_ = Eigen::Matrix3d::Identity();
     Eigen::Vector3d p0_world_ = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d r_init_ = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d p0_lidar_ = Eigen::Vector3d::Zero();
     Eigen::Vector3d latest_robot_position_ = Eigen::Vector3d::Zero();
     bool odom_ready_ = false;
+    bool transform_initialized_ = false;
+    uint64_t pending_corrected_stamp_ns_ = 0;
+    Eigen::Vector3d pending_corrected_position_ = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d pending_corrected_orientation_ = Eigen::Matrix3d::Identity();
+    bool pending_corrected_valid_ = false;
 
     std::chrono::steady_clock::duration rolling_horizon_{};
     std::chrono::steady_clock::duration min_publish_period_{};
     std::chrono::steady_clock::duration primary_active_timeout_{};
 
     std::deque<BufferedScan> primary_scan_buffer_;
+    std::deque<RawOdomSample> raw_odom_buffer_;
     sensor_msgs::msg::PointCloud2::SharedPtr latest_fallback_cloud_;
     std::chrono::steady_clock::time_point last_primary_rx_tp_{};
     std::chrono::steady_clock::time_point last_fallback_rx_tp_{};
@@ -511,7 +630,8 @@ private:
 
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr primary_cloud_sub_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr fallback_cloud_sub_;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr raw_odom_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr corrected_odom_sub_;
     rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr grid_pub_;
 };
 
