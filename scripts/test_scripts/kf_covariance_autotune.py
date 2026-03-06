@@ -391,6 +391,7 @@ def run_maneuver_trial(
     command_rate_hz: float,
     settle_before_sec: float,
     settle_after_sec: float,
+    inter_maneuver_stop_sec: float,
     measurement_window_sec: float,
     pre_measurement_stop_sec: float,
     max_stop_settle_extra_sec: float,
@@ -425,10 +426,13 @@ def run_maneuver_trial(
     current_block = ""
     max_radius_seen = 0.0
     out_of_bounds = 0
+    inter_stop_drift_sum = 0.0
+    inter_stop_drift_yaw_sum = 0.0
+    inter_stop_count = 0
 
     planned_motion_sec = float(sum(max(0.0, s.duration_sec) for s in sequence))
     motion_start_time = time.time()
-    for seg in sequence:
+    for idx, seg in enumerate(sequence):
         if seg.block != current_block:
             current_block = seg.block
             if runner.last_pose is not None:
@@ -458,6 +462,23 @@ def run_maneuver_trial(
             block_ends[seg.block] = runner.last_pose
         if out_of_bounds > 0:
             break
+
+        # Mandatory stop between maneuvers: no commanded motion.
+        if idx < len(sequence) - 1 and inter_maneuver_stop_sec > 0.0:
+            stop_ref = runner.last_pose
+            t_stop = time.time()
+            while time.time() - t_stop < inter_maneuver_stop_sec:
+                runner.publish_cmd(0.0, 0.0)
+                executor.spin_once(timeout_sec=dt)
+            if stop_ref is not None and runner.last_pose is not None:
+                inter_stop_drift_sum += math.hypot(
+                    runner.last_pose.x - stop_ref.x,
+                    runner.last_pose.y - stop_ref.y,
+                )
+                inter_stop_drift_yaw_sum += abs(
+                    wrap_angle(runner.last_pose.yaw - stop_ref.yaw)
+                )
+                inter_stop_count += 1
     motion_end_time = time.time()
     runner.stop_trial_recording()
     actual_motion_sec = float(max(0.0, motion_end_time - motion_start_time))
@@ -533,6 +554,12 @@ def run_maneuver_trial(
     e_rta, yaw_rta = block_error("rot_trans_a")
     e_rtb, yaw_rtb = block_error("rot_trans_b")
     e_fig8, yaw_fig8 = block_error("figure8")
+    inter_stop_drift_m = (
+        inter_stop_drift_sum / inter_stop_count if inter_stop_count > 0 else 0.0
+    )
+    inter_stop_drift_yaw_rad = (
+        inter_stop_drift_yaw_sum / inter_stop_count if inter_stop_count > 0 else 0.0
+    )
     vel_ref = compute_motion_velocity_reference_metrics(
         odom_samples=runner.odom_vel_samples,
         left_enc_samples=runner.left_enc_vel_samples,
@@ -559,6 +586,8 @@ def run_maneuver_trial(
         + 1.2 * drift_0p5
         + 1.8 * drift_1p0_yaw
         + 0.9 * drift_0p5_yaw
+        + 1.2 * inter_stop_drift_m
+        + 0.6 * inter_stop_drift_yaw_rad
         + 1.5 * final_dist
         + 0.5 * (yaw_spin + yaw_fb + yaw_rta + yaw_rtb + yaw_fig8)
         + 0.8 * final_yaw
@@ -580,6 +609,8 @@ def run_maneuver_trial(
         "e_rta_m": float(e_rta),
         "e_rtb_m": float(e_rtb),
         "e_fig8_m": float(e_fig8),
+        "inter_stop_drift_m": float(inter_stop_drift_m),
+        "inter_stop_drift_yaw_rad": float(inter_stop_drift_yaw_rad),
         "v_ref_rmse_mps": float(vel_ref["v_ref_rmse_mps"]),
         "w_ref_rmse_radps": float(vel_ref["w_ref_rmse_radps"]),
         "v_ref_bias_mps": float(vel_ref["v_ref_bias_mps"]),
@@ -813,6 +844,7 @@ def infer_covariance_update(
         metrics.get("e_fb_m", 0.0)
         + 0.6 * metrics.get("e_fig8_m", 0.0)
         + 0.8 * metrics.get("final_dist_m", 0.0)
+        + 0.9 * metrics.get("inter_stop_drift_m", 0.0)
         + 1.3 * metrics.get("v_ref_rmse_mps", 0.0)
         + 0.8 * abs(metrics.get("v_ref_bias_mps", 0.0))
     )
@@ -820,6 +852,7 @@ def infer_covariance_update(
         metrics.get("e_spin_m", 0.0)
         + 0.7 * (metrics.get("e_rta_m", 0.0) + metrics.get("e_rtb_m", 0.0))
         + 0.6 * metrics.get("final_yaw_rad", 0.0)
+        + 0.5 * metrics.get("inter_stop_drift_yaw_rad", 0.0)
         + 0.9 * metrics.get("w_ref_rmse_radps", 0.0)
         + 0.6 * abs(metrics.get("w_ref_bias_radps", 0.0))
     )
@@ -910,6 +943,12 @@ def main() -> int:
     )
     parser.add_argument("--settle-before", type=float, default=4.0)
     parser.add_argument("--settle-after", type=float, default=2.5)
+    parser.add_argument(
+        "--inter-maneuver-stop",
+        type=float,
+        default=1.5,
+        help="Stationary stop duration inserted between maneuver segments.",
+    )
     parser.add_argument(
         "--measurement-window",
         type=float,
@@ -1046,6 +1085,8 @@ def main() -> int:
         "e_rta_m",
         "e_rtb_m",
         "e_fig8_m",
+        "inter_stop_drift_m",
+        "inter_stop_drift_yaw_rad",
         "v_ref_rmse_mps",
         "w_ref_rmse_radps",
         "v_ref_bias_mps",
@@ -1186,6 +1227,8 @@ def main() -> int:
                             "e_rta_m": 99.0,
                             "e_rtb_m": 99.0,
                             "e_fig8_m": 99.0,
+                            "inter_stop_drift_m": 99.0,
+                            "inter_stop_drift_yaw_rad": math.pi,
                             "v_ref_rmse_mps": 9.9,
                             "w_ref_rmse_radps": 9.9,
                             "v_ref_bias_mps": 9.9,
@@ -1210,6 +1253,7 @@ def main() -> int:
                             command_rate_hz=args.command_rate,
                             settle_before_sec=args.settle_before,
                             settle_after_sec=args.settle_after,
+                            inter_maneuver_stop_sec=args.inter_maneuver_stop,
                             measurement_window_sec=args.measurement_window,
                             pre_measurement_stop_sec=args.pre_measurement_stop,
                             max_stop_settle_extra_sec=args.max_stop_settle_extra,
@@ -1240,6 +1284,7 @@ def main() -> int:
                         f"max_radius={metrics['max_radius_m']:.3f} m, "
                         f"v_rmse={metrics['v_ref_rmse_mps']:.4f} m/s, "
                         f"w_rmse={metrics['w_ref_rmse_radps']:.4f} rad/s, "
+                        f"inter_stop_drift={metrics['inter_stop_drift_m']:.4f} m, "
                         f"vel_samples={int(metrics['vel_ref_samples'])}, "
                         f"motion={metrics['actual_motion_sec']:.2f}/"
                         f"{metrics['planned_motion_sec']:.2f}s"
