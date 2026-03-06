@@ -107,6 +107,8 @@ class BoundedManeuverRunner(Node):
         )
         self.last_pose: Optional[Pose2D] = None
         self.last_odom_wall_time: float = 0.0
+        self.last_odom_linear_x: float = 0.0
+        self.last_odom_angular_z: float = 0.0
         self.trial_recording = False
         self.odom_vel_samples: List[Tuple[float, float, float]] = []
         self.left_enc_vel_samples: List[Tuple[float, float]] = []
@@ -132,6 +134,8 @@ class BoundedManeuverRunner(Node):
                     float(msg.twist.twist.angular.z),
                 )
             )
+        self.last_odom_linear_x = float(msg.twist.twist.linear.x)
+        self.last_odom_angular_z = float(msg.twist.twist.angular.z)
 
     def _left_enc_cb(self, msg: ControllerStatus) -> None:
         if not self.trial_recording:
@@ -336,6 +340,10 @@ def run_maneuver_trial(
     settle_before_sec: float,
     settle_after_sec: float,
     measurement_window_sec: float,
+    pre_measurement_stop_sec: float,
+    max_stop_settle_extra_sec: float,
+    stationary_lin_thresh_mps: float,
+    stationary_ang_thresh_radps: float,
     wheel_radius_m: float,
     wheel_base_m: float,
     gear_ratio: float,
@@ -366,6 +374,8 @@ def run_maneuver_trial(
     max_radius_seen = 0.0
     out_of_bounds = 0
 
+    planned_motion_sec = float(sum(max(0.0, s.duration_sec) for s in sequence))
+    motion_start_time = time.time()
     for seg in sequence:
         if seg.block != current_block:
             current_block = seg.block
@@ -373,9 +383,13 @@ def run_maneuver_trial(
                 block_starts[current_block] = runner.last_pose
 
         seg_start = time.time()
-        while time.time() - seg_start < seg.duration_sec:
+        seg_end = seg_start + max(0.0, seg.duration_sec)
+        while True:
+            now = time.time()
+            if now >= seg_end:
+                break
             runner.publish_cmd(seg.linear_x, seg.angular_z)
-            executor.spin_once(timeout_sec=dt)
+            executor.spin_once(timeout_sec=max(0.0, min(dt, seg_end - now)))
 
             if runner.last_pose is not None:
                 dx = runner.last_pose.x - origin.x
@@ -392,12 +406,32 @@ def run_maneuver_trial(
             block_ends[seg.block] = runner.last_pose
         if out_of_bounds > 0:
             break
+    motion_end_time = time.time()
     runner.stop_trial_recording()
+    actual_motion_sec = float(max(0.0, motion_end_time - motion_start_time))
+    motion_duration_error_sec = float(actual_motion_sec - planned_motion_sec)
 
-    # Capture the pose immediately after commanded motion for drift probing.
+    # Enforce a hard stop before stationary drift measurement.
+    # This guarantees a zero-command phase is entered before we start probes.
+    stop_start = time.time()
+    while time.time() - stop_start < max(0.0, pre_measurement_stop_sec):
+        runner.publish_cmd(0.0, 0.0)
+        executor.spin_once(timeout_sec=dt)
+
+    # Optional extra settle time: wait until measured odom twist is near zero.
+    extra_start = time.time()
+    while time.time() - extra_start < max(0.0, max_stop_settle_extra_sec):
+        lin_ok = abs(runner.last_odom_linear_x) <= stationary_lin_thresh_mps
+        ang_ok = abs(runner.last_odom_angular_z) <= stationary_ang_thresh_radps
+        if lin_ok and ang_ok:
+            break
+        runner.publish_cmd(0.0, 0.0)
+        executor.spin_once(timeout_sec=dt)
+
+    # Use stationary-phase start as bias-drift origin.
     motion_end_pose = runner.last_pose
     if motion_end_pose is None:
-        raise RuntimeError("Odometry lost at motion end.")
+        raise RuntimeError("Odometry lost at stationary measurement start.")
 
     # Post-trial stationary measurement and drift probes.
     # No movement is allowed in this phase: only zero-velocity commands are sent.
@@ -479,6 +513,8 @@ def run_maneuver_trial(
     )
     if out_of_bounds > 0:
         score += 100.0 + 10.0 * out_of_bounds
+    elif abs(motion_duration_error_sec) > 0.15:
+        score += 1.5 * abs(motion_duration_error_sec)
 
     runner.publish_cmd(0.0, 0.0)
     return {
@@ -497,6 +533,9 @@ def run_maneuver_trial(
         "v_ref_bias_mps": float(vel_ref["v_ref_bias_mps"]),
         "w_ref_bias_radps": float(vel_ref["w_ref_bias_radps"]),
         "vel_ref_samples": float(vel_ref["vel_ref_samples"]),
+        "planned_motion_sec": float(planned_motion_sec),
+        "actual_motion_sec": float(actual_motion_sec),
+        "motion_duration_error_sec": float(motion_duration_error_sec),
         "drift_0p5_m": float(drift_0p5),
         "drift_1p0_m": float(drift_1p0),
         "drift_0p5_yaw_rad": float(drift_0p5_yaw),
@@ -812,6 +851,30 @@ def main() -> int:
         help="Stationary duration after maneuver for drift measurement (seconds).",
     )
     parser.add_argument(
+        "--pre-measurement-stop",
+        type=float,
+        default=0.8,
+        help="Zero-command duration enforced before stationary measurement starts.",
+    )
+    parser.add_argument(
+        "--max-stop-settle-extra",
+        type=float,
+        default=1.2,
+        help="Extra settle wait while odom twist remains above stationary thresholds.",
+    )
+    parser.add_argument(
+        "--stationary-lin-thresh",
+        type=float,
+        default=0.03,
+        help="Linear speed threshold (m/s) used to confirm stationary state.",
+    )
+    parser.add_argument(
+        "--stationary-ang-thresh",
+        type=float,
+        default=0.10,
+        help="Angular speed threshold (rad/s) used to confirm stationary state.",
+    )
+    parser.add_argument(
         "--launch-cmd",
         default="",
         help="Shell command that starts your pipeline (optional, long-running is fine).",
@@ -922,6 +985,9 @@ def main() -> int:
         "v_ref_bias_mps",
         "w_ref_bias_radps",
         "vel_ref_samples",
+        "planned_motion_sec",
+        "actual_motion_sec",
+        "motion_duration_error_sec",
         "drift_0p5_m",
         "drift_1p0_m",
         "drift_0p5_yaw_rad",
@@ -1057,6 +1123,11 @@ def main() -> int:
                             "v_ref_bias_mps": 9.9,
                             "w_ref_bias_radps": 9.9,
                             "vel_ref_samples": 0.0,
+                            "planned_motion_sec": float(
+                                sum(max(0.0, s.duration_sec) for s in sequence)
+                            ),
+                            "actual_motion_sec": 0.0,
+                            "motion_duration_error_sec": 0.0,
                             "drift_0p5_m": 99.0,
                             "drift_1p0_m": 99.0,
                             "drift_0p5_yaw_rad": math.pi,
@@ -1072,6 +1143,10 @@ def main() -> int:
                             settle_before_sec=args.settle_before,
                             settle_after_sec=args.settle_after,
                             measurement_window_sec=args.measurement_window,
+                            pre_measurement_stop_sec=args.pre_measurement_stop,
+                            max_stop_settle_extra_sec=args.max_stop_settle_extra,
+                            stationary_lin_thresh_mps=args.stationary_lin_thresh,
+                            stationary_ang_thresh_radps=args.stationary_ang_thresh,
                             wheel_radius_m=args.wheel_radius,
                             wheel_base_m=args.wheel_base,
                             gear_ratio=args.gear_ratio,
@@ -1097,7 +1172,9 @@ def main() -> int:
                         f"max_radius={metrics['max_radius_m']:.3f} m, "
                         f"v_rmse={metrics['v_ref_rmse_mps']:.4f} m/s, "
                         f"w_rmse={metrics['w_ref_rmse_radps']:.4f} rad/s, "
-                        f"vel_samples={int(metrics['vel_ref_samples'])}"
+                        f"vel_samples={int(metrics['vel_ref_samples'])}, "
+                        f"motion={metrics['actual_motion_sec']:.2f}/"
+                        f"{metrics['planned_motion_sec']:.2f}s"
                     )
 
                     tested_this_round.append((cand, float(metrics["score"]), metrics))
