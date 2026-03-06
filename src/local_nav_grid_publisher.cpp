@@ -29,7 +29,8 @@ constexpr int kGridBytes = kGridBits / 8;
 constexpr double kWindowSizeM = 3.0;
 constexpr double kHalfWindowM = kWindowSizeM * 0.5;
 constexpr double kCellSizeM = kWindowSizeM / static_cast<double>(kGridCols);
-constexpr double kHalfHeightSliceM = 0.10;
+constexpr double kMinHeightSliceM = -0.20;
+constexpr double kMaxHeightSliceM = 0.10;
 constexpr double kFallbackPitchDeg = 15.0;
 constexpr double kDefaultRollingHorizonSec = 0.75;
 constexpr double kDefaultMaxPublishRateHz = 10.0;
@@ -227,8 +228,8 @@ public:
                     kWindowSizeM,
                     kWindowSizeM);
         RCLCPP_INFO(this->get_logger(), "  z slice:         [%.2f, %.2f] m",
-                    -kHalfHeightSliceM,
-                    kHalfHeightSliceM);
+                    kMinHeightSliceM,
+                    kMaxHeightSliceM);
         RCLCPP_INFO(this->get_logger(), "  rolling horizon: %.2f s", rolling_horizon_sec_);
         RCLCPP_INFO(this->get_logger(), "  max publish:     %.1f Hz", max_publish_rate_hz_);
     }
@@ -388,7 +389,8 @@ private:
         const double dy = static_cast<double>(corrected_y) - latest_robot_position_.y();
         const double dz = static_cast<double>(corrected_z) - latest_robot_position_.z();
 
-        if (std::abs(dz) > kHalfHeightSliceM ||
+        if (dz < kMinHeightSliceM ||
+            dz > kMaxHeightSliceM ||
             std::abs(dx) > kHalfWindowM ||
             std::abs(dy) > kHalfWindowM) {
             return;
