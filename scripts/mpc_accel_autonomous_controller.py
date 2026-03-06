@@ -1898,12 +1898,11 @@ class MPCAccelController(Node):
             omega_L_target = 0.0
             omega_R_target = 0.0
         else:
-            omega_L_target = (self.v_cmd / self.wheel_radius) - (
-                self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius)
-            )
-            omega_R_target = (self.v_cmd / self.wheel_radius) + (
-                self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius)
-            )
+            # Match diff_drive_controller's 2x rotational split behavior:
+            # right_wheel_mps = v + omega*L, left_wheel_mps = v - omega*L
+            rot_term = self.omega_cmd * self.wheel_base
+            omega_L_target = (self.v_cmd - rot_term) / self.wheel_radius
+            omega_R_target = (self.v_cmd + rot_term) / self.wheel_radius
 
         left_rps_target = omega_L_target / (2.0 * math.pi * self.gear_ratio)
         right_rps_target = omega_R_target / (2.0 * math.pi * self.gear_ratio)
@@ -2320,16 +2319,15 @@ class MPCAccelController(Node):
 
         # Convert MPC's (v_cmd, ω_cmd) to TARGET wheel velocities (rad/s)
         # These are what the MPC wants the wheels to achieve
-        # v = (r/2)(ωL + ωR), ω = (r/L)(ωR - ωL)
-        # Solving for ωL, ωR:
-        #   ωL = v/r - ω*L/(2r)
-        #   ωR = v/r + ω*L/(2r)
+        # Match diff_drive_controller's 2x rotational split behavior:
+        # right_wheel_mps = v + omega*L, left_wheel_mps = v - omega*L
         if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
             omega_L_target = 0.0
             omega_R_target = 0.0
         else:
-            omega_L_target = (self.v_cmd / self.wheel_radius) - (self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius))
-            omega_R_target = (self.v_cmd / self.wheel_radius) + (self.omega_cmd * self.wheel_base / (2.0 * self.wheel_radius))
+            rot_term = self.omega_cmd * self.wheel_base
+            omega_L_target = (self.v_cmd - rot_term) / self.wheel_radius
+            omega_R_target = (self.v_cmd + rot_term) / self.wheel_radius
 
         # Convert target wheel angular velocities (rad/s) to motor rev/s
         # This is the unit that ODrive expects and that the compensator works in

@@ -452,11 +452,10 @@ def generate_launch_description():
         ]
     )
 
-    # MPC Autonomous Controller using direct (v, w) inputs.
-    # Parameters and topic wiring are kept aligned with mpc_accel_autonomous_controller.py.
+    # Accel MPC Autonomous Controller
     mpc_controller_node = Node(
         package='pilot_control',
-        executable='mpc_autonomous_controller.py',
+        executable='mpc_accel_autonomous_controller.py',
         name='mpc_accel_autonomous_controller',
         output='screen',
         parameters=[{
