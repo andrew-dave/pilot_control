@@ -1898,9 +1898,9 @@ class MPCAccelController(Node):
             omega_L_target = 0.0
             omega_R_target = 0.0
         else:
-            # Match diff_drive_controller's 2x rotational split behavior:
-            # right_wheel_mps = v + omega*L, left_wheel_mps = v - omega*L
-            rot_term = self.omega_cmd * self.wheel_base
+            # Use standard differential-drive split:
+            # right_wheel_mps = v + omega*L/2, left_wheel_mps = v - omega*L/2
+            rot_term = self.omega_cmd * self.wheel_base / 2.0
             omega_L_target = (self.v_cmd - rot_term) / self.wheel_radius
             omega_R_target = (self.v_cmd + rot_term) / self.wheel_radius
 
@@ -2319,13 +2319,13 @@ class MPCAccelController(Node):
 
         # Convert MPC's (v_cmd, ω_cmd) to TARGET wheel velocities (rad/s)
         # These are what the MPC wants the wheels to achieve
-        # Match diff_drive_controller's 2x rotational split behavior:
-        # right_wheel_mps = v + omega*L, left_wheel_mps = v - omega*L
+        # Use standard differential-drive split:
+        # right_wheel_mps = v + omega*L/2, left_wheel_mps = v - omega*L/2
         if abs(self.wheel_radius) < 1e-6 or abs(self.wheel_base) < 1e-6:
             omega_L_target = 0.0
             omega_R_target = 0.0
         else:
-            rot_term = self.omega_cmd * self.wheel_base
+            rot_term = self.omega_cmd * self.wheel_base / 2.0
             omega_L_target = (self.v_cmd - rot_term) / self.wheel_radius
             omega_R_target = (self.v_cmd + rot_term) / self.wheel_radius
 
