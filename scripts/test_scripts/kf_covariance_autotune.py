@@ -37,6 +37,7 @@ import yaml
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from odrive_can.msg import ControllerStatus
+from odrive_can.srv import AxisState
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -80,6 +81,8 @@ class BoundedManeuverRunner(Node):
         odom_topic: str,
         left_encoder_topic: str,
         right_encoder_topic: str,
+        left_axis_service: str,
+        right_axis_service: str,
         context: Context,
     ) -> None:
         super().__init__("kf_covariance_autotune_runner", context=context)
@@ -105,6 +108,8 @@ class BoundedManeuverRunner(Node):
         self.right_enc_sub = self.create_subscription(
             ControllerStatus, right_encoder_topic, self._right_enc_cb, qos_sub
         )
+        self.left_axis_client = self.create_client(AxisState, left_axis_service)
+        self.right_axis_client = self.create_client(AxisState, right_axis_service)
         self.last_pose: Optional[Pose2D] = None
         self.last_odom_wall_time: float = 0.0
         self.last_odom_linear_x: float = 0.0
@@ -170,6 +175,53 @@ class BoundedManeuverRunner(Node):
         tw.linear.x = float(linear_x)
         tw.angular.z = float(angular_z)
         self.cmd_pub.publish(tw)
+
+
+def disarm_odrive_axes(
+    runner: BoundedManeuverRunner,
+    executor: SingleThreadedExecutor,
+    timeout_sec: float,
+) -> bool:
+    """
+    Request ODrive axes to IDLE state via /request_axis_state services.
+    Returns True only if both calls are acknowledged.
+    """
+    req = AxisState.Request()
+    # ODrive AxisState: 1 = IDLE
+    req.axis_requested_state = 1
+
+    clients = [runner.left_axis_client, runner.right_axis_client]
+    names = ["left", "right"]
+    all_ok = True
+    for cli, name in zip(clients, names):
+        t0 = time.time()
+        while time.time() - t0 < timeout_sec:
+            if cli.wait_for_service(timeout_sec=0.2):
+                break
+            executor.spin_once(timeout_sec=0.05)
+        if not cli.service_is_ready():
+            print(f"[WARN] {name} axis service not available for disarm.")
+            all_ok = False
+            continue
+        fut = cli.call_async(req)
+        t1 = time.time()
+        while time.time() - t1 < timeout_sec:
+            executor.spin_once(timeout_sec=0.05)
+            if fut.done():
+                break
+        if not fut.done():
+            print(f"[WARN] {name} disarm request timed out.")
+            all_ok = False
+            continue
+        try:
+            resp = fut.result()
+            if resp is None or (hasattr(resp, "success") and not bool(resp.success)):
+                print(f"[WARN] {name} disarm request returned unsuccessful response.")
+                all_ok = False
+        except Exception as ex:
+            print(f"[WARN] {name} disarm request failed: {ex}")
+            all_ok = False
+    return all_ok
 
 
 def build_bounded_sequence() -> List[Segment]:
@@ -818,6 +870,20 @@ def main() -> int:
     parser.add_argument("--odom-topic", default="/Odometry_tilt_corrected_diff")
     parser.add_argument("--left-encoder-topic", default="/left/controller_status")
     parser.add_argument("--right-encoder-topic", default="/right/controller_status")
+    parser.add_argument("--left-axis-service", default="/left/request_axis_state")
+    parser.add_argument("--right-axis-service", default="/right/request_axis_state")
+    parser.add_argument(
+        "--disarm-on-shutdown",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Send ODrive IDLE requests on shutdown/Ctrl+C.",
+    )
+    parser.add_argument(
+        "--disarm-timeout",
+        type=float,
+        default=2.0,
+        help="Timeout (s) for each ODrive disarm service request.",
+    )
     parser.add_argument("--wheel-radius", type=float, default=0.09)
     parser.add_argument("--wheel-base", type=float, default=0.355)
     parser.add_argument("--gear-ratio", type=float, default=1.0)
@@ -1010,6 +1076,8 @@ def main() -> int:
             args.odom_topic,
             args.left_encoder_topic,
             args.right_encoder_topic,
+            args.left_axis_service,
+            args.right_axis_service,
             context=context,
         )
         executor.add_node(runner)
@@ -1232,6 +1300,15 @@ def main() -> int:
                 runner.publish_cmd(0.0, 0.0)
         except Exception:
             pass
+
+        if args.disarm_on_shutdown and runner is not None and executor is not None:
+            ok = disarm_odrive_axes(
+                runner=runner,
+                executor=executor,
+                timeout_sec=max(0.2, float(args.disarm_timeout)),
+            )
+            if ok:
+                print("[INFO] ODrive disarm requests sent successfully.")
 
         stop_background_process(launched_proc, grace_sec=8.0)
         if args.stop_cmd.strip():
