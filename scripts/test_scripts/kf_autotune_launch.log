@@ -45557,3 +45557,241 @@ Section folders will be created dynamically by /dc/start service
 [odom_tilt_corrector-12] [INFO] [1772744614.822846287] [odom_tilt_corrector]:   Robot starts at (0, 0, 0) with yaw=0°
 [odom_tilt_corrector-12] [INFO] [1772744614.823099469] [odom_tilt_corrector]: ✓ First pose in robot frame: pos=[0.000, 0.000, 0.000] rpy=[-0.0°, 14.5°, 0.0°]
 [mpc_accel_autonomous_controller.py-7] [INFO] [1772744614.824094226] [mpc_accel_autonomous_controller]: ✓ Odometry initialized at x=0.000, y=0.000, yaw=0.0°
+[INFO] [launch]: All log files can be found below /home/roofus/.ros/log/2026-03-05-16-55-53-782887-roofus-LattePanda-Sigma-9921
+[INFO] [launch]: Default logging verbosity is set to INFO
+
+[Tilt Calibration] Using: /R_DATA/tilt_calibration/tilt_correction_matrices_2.npz
+
+======================================================================
+DATA COLLECTION PIPELINE
+======================================================================
+Base data dir:  /R_DATA
+Section folders will be created dynamically by /dc/start service
+======================================================================
+
+[INFO] [zenoh_bridge_dds-1]: process started with pid [9931]
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.823748Z[0m [32m INFO[0m main ThreadId(01) [2mzenohd[0m[2m:[0m zenohd v1.7.2 built with rustc 1.85.0 (4d91de4e4 2025-02-17)
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.824278Z[0m [32m INFO[0m main ThreadId(01) [2mzenohd[0m[2m:[0m Initial conf: {"access_control":{"default_permission":"deny","enabled":false,"policies":null,"rules":null,"subjects":null},"adminspace":{"enabled":true,"permissions":{"read":true,"write":false}},"aggregation":{"publishers":[],"subscribers":[]},"connect":{"endpoints":[],"exit_on_failure":null,"retry":null,"timeout_ms":null},"downsampling":[],"id":null,"listen":{"endpoints":{"router":["tcp/0.0.0.0:7447"]},"exit_on_failure":null,"retry":null,"timeout_ms":null},"low_pass_filter":[],"metadata":null,"mode":"router","namespace":null,"open":{"return_conditions":{"connect_scouted":null,"declares":null}},"plugins":{"ros2dds":{"allow":{"action_clients":[],"action_servers":[],"publishers":["^/stream_status$","^/thermal/summary$","^/Odometry_tilt_corrected_diff$","^/left/controller_status$","^/right/controller_status$"],"service_clients":[],"service_servers":["^/video_record_set$","^/save_raw_map$","^/left/request_axis_state$","^/right/request_axis_state$","^/gpr/request_axis_state$","^/gpr_power_off$"],"subscribers":["^/cmd_vel$","^/stream_target_ip$","^/host_teleop/heartbeat$","^/mpc_autonomy_enable$","^/f2c_waypoints$","^/start_waypoint_navigation$"]}}},"plugins_loading":{"enabled":true,"search_dirs":[{"kind":"current_exe_parent","value":null},".","~/.zenoh/lib","/opt/homebrew/lib","/usr/local/lib","/usr/lib"]},"qos":{"network":[],"publication":[]},"queries_default_timeout":null,"routing":{"interests":{"timeout":null},"peer":{"linkstate":{"transport_weights":[]},"mode":null},"router":{"linkstate":{"transport_weights":[]},"peers_failover_brokering":null}},"scouting":{"delay":null,"gossip":{"autoconnect":null,"autoconnect_strategy":null,"enabled":false,"multihop":null,"target":null},"multicast":{"address":null,"autoconnect":null,"autoconnect_strategy":null,"enabled":false,"interface":null,"listen":null,"ttl":null},"timeout":null},"stats":{"filters":[]},"timestamping":{"drop_future_timestamp":null,"enabled":null},"transport":{"auth":{"pubkey":{"key_size":null,"known_keys_file":null,"private_key_file":null,"private_key_pem":null,"public_key_file":null,"public_key_pem":null},"usrpwd":{"dictionary_file":null,"password":null,"user":null}},"link":{"protocols":null,"rx":{"buffer_size":65535,"max_message_size":1073741824},"tcp":{"so_rcvbuf":null,"so_sndbuf":null},"tls":{"close_link_on_expiration":null,"connect_certificate":null,"connect_private_key":null,"enable_mtls":null,"listen_certificate":null,"listen_private_key":null,"root_ca_certificate":null,"so_rcvbuf":null,"so_sndbuf":null,"verify_name_on_connect":null},"tx":{"batch_size":65535,"keep_alive":4,"lease":10000,"queue":{"allocation":{"mode":"lazy"},"batching":{"enabled":true,"time_limit":1},"congestion_control":{"block":{"wait_before_close":5000000},"drop":{"max_wait_before_drop_fragments":50000,"wait_before_drop":1000}},"size":{"background":2,"control":2,"data":2,"data_high":2,"data_low":2,"interactive_high":2,"interactive_low":2,"real_time":2}},"sequence_number_resolution":"32bit","threads":4},"unixpipe":{"file_access_mask":null}},"multicast":{"compression":{"enabled":false},"join_interval":2500,"max_sessions":1000,"qos":{"enabled":false}},"shared_memory":{"enabled":true,"mode":"lazy","transport_optimization":{"enabled":true,"message_size_threshold":3072,"pool_size":16777216}},"unicast":{"accept_pending":100,"accept_timeout":10000,"compression":{"enabled":false},"lowlatency":false,"max_links":1,"max_sessions":1000,"open_timeout":10000,"qos":{"enabled":true}}}}
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.824437Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::net::runtime[0m[2m:[0m Using ZID: ed3ad2c37e5a88f8061c5756fe35abb3
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.824534Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::api::loader[0m[2m:[0m Loading  plugin "ros2dds"
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.825547Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::api::loader[0m[2m:[0m Starting  plugin "ros2dds"
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.826025Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::api::loader[0m[2m:[0m Successfully started plugin ros2dds from "/usr/lib/libzenoh_plugin_ros2dds.so"
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.826032Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::api::loader[0m[2m:[0m Finished loading plugins
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.826479Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/192.168.1.50:7447
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.826482Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/192.168.168.101:7447
+[zenoh_bridge_dds-1] [2m2026-03-05T21:55:53.826483Z[0m [32m INFO[0m main ThreadId(01) [2mzenoh::net::runtime::orchestrator[0m[2m:[0m Zenoh can be reached at: tcp/10.105.45.70:7447
+[INFO] [sudo-2]: process started with pid [9946]
+[sudo-2] RTNETLINK answers: Device or resource busy
+[ERROR] [sudo-2]: process has died [pid 9946, exit code 2, cmd 'sudo ip link set can0 up type can bitrate 250000'].
+[INFO] [odrive_can_node-3]: process started with pid [9949]
+[INFO] [odrive_can_node-4]: process started with pid [9951]
+[INFO] [odrive_can_node-5]: process started with pid [9953]
+[INFO] [diff_drive_controller-6]: process started with pid [9955]
+[INFO] [mpc_accel_autonomous_controller.py-7]: process started with pid [9957]
+[INFO] [taskset-8]: process started with pid [9959]
+[INFO] [taskset-9]: process started with pid [9961]
+[INFO] [static_transform_publisher-10]: process started with pid [9963]
+[INFO] [static_transform_publisher-11]: process started with pid [9965]
+[INFO] [odom_tilt_corrector-12]: process started with pid [9967]
+[INFO] [raw_map_saver-13]: process started with pid [9969]
+[INFO] [shutdown_service-14]: process started with pid [9971]
+[INFO] [unified_data_collector-15]: process started with pid [9973]
+[INFO] [gps_driver-16]: process started with pid [9975]
+[INFO] [gpr_serial_bridge.py-17]: process started with pid [9978]
+[INFO] [gpr_scan_controller.py-18]: process started with pid [9980]
+[INFO] [data_collection_coordinator.py-19]: process started with pid [10006]
+[static_transform_publisher-10] [WARN] [1772747756.862849569] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-11] [WARN] [1772747756.862608917] []: Old-style arguments are deprecated; see --help for new-style arguments
+[diff_drive_controller-6] [INFO] [1772747756.873982697] [diff_drive_controller]: Drive: r=0.090 m, base=0.355 m, gear=1.00 | invert L/R=0/1
+[odrive_can_node-4] [INFO] [1772747756.876124108] [right.odrive_can_right]: node_id: 1
+[odrive_can_node-4] [INFO] [1772747756.876236923] [right.odrive_can_right]: interface: can0
+[diff_drive_controller-6] [INFO] [1772747756.877385487] [diff_drive_controller]: Subscribed to /mpc_autonomy_enable for MPC handoff
+[shutdown_service-14] [INFO] [1772747756.890337795] [shutdown_service]: Shutdown service started - available at /shutdown_mapping
+[gps_driver-16] [INFO] [1772747756.891189011] [gps_driver]: GPS Driver started: device=/dev/gps baud=38400 rate=5Hz dynamic_model=3
+[gps_driver-16] [INFO] [1772747756.891299173] [gps_driver]: Quality gates: hAcc<5.0m, numSV>=8, pDOP<4.0, 3D_fix=required, gnss_fix_ok=required
+[gps_driver-16] [WARN] [1772747756.891459677] [gps_driver]: Primary device /dev/gps unavailable, using /dev/ttyACM0
+[gps_driver-16] [INFO] [1772747756.891511154] [gps_driver]: Serial port opened: /dev/gps @ 38400 baud
+[gps_driver-16] [INFO] [1772747756.891521337] [gps_driver]: Configuring ZED-F9P receiver...
+[odrive_can_node-5] [INFO] [1772747756.895336129] [gpr.odrive_can_gpr]: node_id: 2
+[odrive_can_node-5] [INFO] [1772747756.895423279] [gpr.odrive_can_gpr]: interface: can0
+[taskset-8] [INFO] [1772747756.896283824] [livox_lidar_publisher]: Livox Ros Driver2 Version: 1.2.4
+[taskset-8] [INFO] [1772747756.897201864] [livox_lidar_publisher]: Data Source is raw lidar.
+[taskset-8] [INFO] [1772747756.897238753] [livox_lidar_publisher]: Config file : /home/roofus/pilot_ws/install/livox_ros_driver2/share/livox_ros_driver2/config/MID360_config.json
+[static_transform_publisher-11] [INFO] [1772747756.897399144] [camera_init_to_foot_init_transform]: Spinning until stopped - publishing transform
+[static_transform_publisher-11] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-11] rotation: ('0.000000', '-0.130526', '0.000000', '0.991445')
+[static_transform_publisher-11] from 'camera_init' to 'foot_init'
+[taskset-8] LdsLidar *GetInstance
+[taskset-8] config lidar type: 8
+[taskset-8] successfully parse base config, counts: 1
+[odrive_can_node-3] [INFO] [1772747756.900178171] [left.odrive_can_left]: node_id: 0
+[odrive_can_node-3] [INFO] [1772747756.900266282] [left.odrive_can_left]: interface: can0
+[static_transform_publisher-10] [INFO] [1772747756.901273123] [body_to_foot_transform]: Spinning until stopped - publishing transform
+[static_transform_publisher-10] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-10] rotation: ('0.000000', '-0.130526', '0.000000', '0.991445')
+[static_transform_publisher-10] from 'body' to 'foot'
+[taskset-8] [INFO] [1772747756.902925733] [livox_lidar_publisher]: Init lds lidar success!
+[raw_map_saver-13] [INFO] [1772747756.905585342] [raw_map_saver]: Raw Map Saver started
+[raw_map_saver-13] [INFO] [1772747756.905719493] [raw_map_saver]: Input topic: /Laser_map
+[raw_map_saver-13] [INFO] [1772747756.905737383] [raw_map_saver]: Save directory: /R_DATA/raw_maps
+[raw_map_saver-13] [INFO] [1772747756.905749767] [raw_map_saver]: Services: /save_raw_map, /raw_map_saver/set_directory
+[raw_map_saver-13] [INFO] [1772747756.905761089] [raw_map_saver]: Auto-save: DISABLED
+[raw_map_saver-13] [INFO] [1772747756.905771886] [raw_map_saver]: Tilt correction: ENABLED
+[raw_map_saver-13] [INFO] [1772747756.905782712] [raw_map_saver]: Calibration file: /R_DATA/tilt_calibration/tilt_correction_matrices_2.npz
+[raw_map_saver-13] [INFO] [1772747756.905797108] [raw_map_saver]: Save format: compressed
+[taskset-9] [INFO] [1772747756.927878619] [laser_mapping]: p_pre->lidar_type 1
+[taskset-9] Multi thread started 
+[taskset-9] ~~~~/home/roofus/pilot_ws/src/FAST_LIO/ file opened
+[taskset-9] [INFO] [1772747756.931772706] [laser_mapping]: Node init finished.
+[unified_data_collector-15] [INFO] [1772747756.956153622] [unified_data_collector]: Service ready: /video_record_set (std_srvs/SetBool)
+[unified_data_collector-15] [INFO] [1772747756.958109280] [unified_data_collector]: Services ready: /udc/pause, /udc/resume, /udc/stop, /udc/set_directory
+[unified_data_collector-15] [INFO] [1772747756.959547823] [unified_data_collector]: Camera selection topic: /stream_camera_select ("left", "panorama", or "right")
+[unified_data_collector-15] [INFO] [1772747756.959874210] [unified_data_collector]: Stream target topic: /stream_target_ip (publish laptop IP to configure)
+[unified_data_collector-15] [INFO] [1772747756.964800656] [unified_data_collector]: GPS subscription: /gps/fix (quality-gated)
+[unified_data_collector-15] [INFO] [1772747756.979800310] [unified_data_collector]: Camera devices: LEFT=/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0 RIGHT=/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0
+[unified_data_collector-15] [INFO] [1772747756.979887924] [unified_data_collector]: Pipeline mode: MJPEG, Resolution: 1920x1080@30fps, STREAMING: LEFT
+[unified_data_collector-15] [INFO] [1772747756.979906380] [unified_data_collector]: Encoder: x264enc (software)
+[unified_data_collector-15] [INFO] [1772747756.979941620] [unified_data_collector]: GStreamer streaming config: host=192.168.168.100 port=5600 bitrate=800kbps mtu=1400
+[unified_data_collector-15] [INFO] [1772747756.979957953] [unified_data_collector]: Launching GStreamer pipeline:
+[unified_data_collector-15] v4l2src name=v4l2src_left device=/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0 do-timestamp=true io-mode=mmap ! image/jpeg,width=1920,height=1080,framerate=30/1 ! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=I420 ! tee name=T_left  T_left. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 ! videorate ! video/x-raw,framerate=20/1 ! videoscale ! video/x-raw,width=480,height=360 ! videoconvert ! video/x-raw,format=I420 ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=800 key-int-max=20 bframes=0 byte-stream=true threads=2 ! h264parse config-interval=1 ! rtph264pay pt=96 mtu=1400 ! udpsink host=192.168.168.100 port=5600 sync=false  T_left. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 ! videoconvert ! video/x-raw,format=BGR ! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true 
+[unified_data_collector-15] v4l2src name=v4l2src_right device=/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0 do-timestamp=true io-mode=mmap ! image/jpeg,width=1920,height=1080,framerate=30/1 ! jpegparse ! jpegdec ! videoconvert ! video/x-raw,format=I420 ! tee name=T_right  T_right. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 ! videoconvert ! video/x-raw,format=BGR ! appsink name=right_appsink emit-signals=true sync=false max-buffers=1 drop=true 
+[diff_drive_controller-6] [INFO] [1772747757.085444044] [diff_drive_controller]: Waiting for ODrive services to become available...
+[diff_drive_controller-6] [INFO] [1772747757.085611334] [diff_drive_controller]: Services found. Arming motors (CLOSED_LOOP)...
+[odrive_can_node-4] [INFO] [1772747757.086160559] [right.odrive_can_right]: requesting axis state: 8
+[odrive_can_node-3] [INFO] [1772747757.086995768] [left.odrive_can_left]: requesting axis state: 8
+[data_collection_coordinator.py-19] [INFO] [1772747757.093470631] [data_collection_coordinator]: ============================================================
+[data_collection_coordinator.py-19] [INFO] [1772747757.093741010] [data_collection_coordinator]: DATA COLLECTION COORDINATOR STARTED
+[data_collection_coordinator.py-19] [INFO] [1772747757.093952682] [data_collection_coordinator]: ============================================================
+[data_collection_coordinator.py-19] [INFO] [1772747757.094158465] [data_collection_coordinator]: Base data directory: /R_DATA
+[data_collection_coordinator.py-19] [INFO] [1772747757.094383767] [data_collection_coordinator]: 
+[data_collection_coordinator.py-19] [INFO] [1772747757.094592336] [data_collection_coordinator]: Available services:
+[data_collection_coordinator.py-19] [INFO] [1772747757.094797000] [data_collection_coordinator]:   /dc/start          - Start all data collection (B->G->R)
+[data_collection_coordinator.py-19] [INFO] [1772747757.094997519] [data_collection_coordinator]:   /dc/pause          - Pause all data collection
+[data_collection_coordinator.py-19] [INFO] [1772747757.095205141] [data_collection_coordinator]:   /dc/resume         - Resume data collection
+[data_collection_coordinator.py-19] [INFO] [1772747757.095403888] [data_collection_coordinator]:   /dc/end_and_save   - End and save (data: 0=partial, 1=complete)
+[data_collection_coordinator.py-19] [INFO] [1772747757.095596262] [data_collection_coordinator]:   /dc/end_and_delete - End and delete all session data
+[data_collection_coordinator.py-19] [INFO] [1772747757.095789837] [data_collection_coordinator]: 
+[data_collection_coordinator.py-19] [INFO] [1772747757.095984533] [data_collection_coordinator]: Section folders are created dynamically on /dc/start
+[data_collection_coordinator.py-19] [INFO] [1772747757.096201812] [data_collection_coordinator]: ============================================================
+[unified_data_collector-15] [INFO] [1772747757.130083526] [unified_data_collector]: Pipeline state change pending (async)
+[odom_tilt_corrector-12] [INFO] [1772747757.159755143] [odom_tilt_corrector]: Odom tilt corrector (LiDAR→Robot frame) started
+[odom_tilt_corrector-12] [INFO] [1772747757.160038765] [odom_tilt_corrector]:   Input: "/Odometry" → Output: "/Odometry_tilt_corrected_diff"
+[odom_tilt_corrector-12] [INFO] [1772747757.160258774] [odom_tilt_corrector]:   Using calibration file: /R_DATA/tilt_calibration/tilt_correction_matrices_2.npz
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.218483208] [mpc_accel_autonomous_controller]: Wheel ramp compensation DISABLED (using direct velocity commands)
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.223573615] [mpc_accel_autonomous_controller]: ✓ Heartbeat safety monitoring ENABLED (timeout: 1.0s)
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.224192284] [mpc_accel_autonomous_controller]: ✓ Autonomous data collection uses per-waypoint tags (start_delay=2.0s, end_delay=2.0s)
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.230035337] [mpc_accel_autonomous_controller]: ============================================================
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.230287254] [mpc_accel_autonomous_controller]: Acceleration-based MPC Controller started
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.230494091] [mpc_accel_autonomous_controller]: Horizon: 50, dt: 0.100 s
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.230671401] [mpc_accel_autonomous_controller]: Max v: 0.40 m/s, Max ω: 2.00 rad/s
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.230845151] [mpc_accel_autonomous_controller]: Safety: Heartbeat monitoring ENABLED (timeout: 1.0s)
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747757.231022539] [mpc_accel_autonomous_controller]: ============================================================
+[gpr_scan_controller.py-18] [INFO] [1772747757.237446933] [gpr_scan_controller]: === GPR Scan Controller Started ===
+[gpr_scan_controller.py-18] [INFO] [1772747757.237692898] [gpr_scan_controller]: GPR wheel radius: 0.0300 m
+[gpr_scan_controller.py-18] [INFO] [1772747757.237900440] [gpr_scan_controller]: GPR wheel circumference: 0.1885 m
+[gpr_scan_controller.py-18] [INFO] [1772747757.238088064] [gpr_scan_controller]: Scan velocity: 0.500 m/s
+[gpr_scan_controller.py-18] [INFO] [1772747757.238294613] [gpr_scan_controller]: Log frequency: 50.0 Hz
+[gpr_scan_controller.py-18] [INFO] [1772747757.238478404] [gpr_scan_controller]: GPR motor start delay: 0.5 s
+[gpr_scan_controller.py-18] [INFO] [1772747757.238647982] [gpr_scan_controller]: Post-stop logging duration: 1.5 s
+[gpr_scan_controller.py-18] [INFO] [1772747757.238826940] [gpr_scan_controller]: GPR CSV directory: /R_DATA/gpr_scans
+[gpr_scan_controller.py-18] [INFO] [1772747757.239004701] [gpr_scan_controller]: Rosbag RAM disk: /tmp/rosbag_recording
+[gpr_scan_controller.py-18] [INFO] [1772747757.239209805] [gpr_scan_controller]: Rosbag final destination: /R_DATA/gpr_scans
+[gpr_scan_controller.py-18] [INFO] [1772747757.239408278] [gpr_scan_controller]: Services available:
+[gpr_scan_controller.py-18] [INFO] [1772747757.239591290] [gpr_scan_controller]:   - /gpr_scan/toggle
+[gpr_scan_controller.py-18] [INFO] [1772747757.239770656] [gpr_scan_controller]:   - /gpr_scan/power_off
+[gpr_scan_controller.py-18] [INFO] [1772747757.239946092] [gpr_scan_controller]:   - /gpr_scan/start, /gpr_scan/pause, /gpr_scan/resume, /gpr_scan/stop
+[gpr_scan_controller.py-18] [INFO] [1772747757.240122515] [gpr_scan_controller]:   - /gpr_scan/set_directory (update paths for new section)
+[gpr_scan_controller.py-18] [INFO] [1772747757.240326315] [gpr_scan_controller]:   - /rosbag/toggle
+[gpr_scan_controller.py-18] [INFO] [1772747757.240505610] [gpr_scan_controller]:   - /rosbag/start, /rosbag/pause, /rosbag/resume, /rosbag/stop
+[gpr_scan_controller.py-18] [INFO] [1772747757.240676428] [gpr_scan_controller]: 
+[gpr_scan_controller.py-18] [INFO] [1772747757.240849931] [gpr_scan_controller]: 💡 Press G in teleop to start/stop GPR scanning
+[gpr_scan_controller.py-18] [INFO] [1772747757.241026718] [gpr_scan_controller]: 💡 Press B in teleop to start/stop rosbag recording
+[odrive_can_node-5] [INFO] [1772747757.422244437] [gpr.odrive_can_gpr]: requesting axis state: 8
+[gpr_scan_controller.py-18] [INFO] [1772747757.423344070] [gpr_scan_controller]: Sent CLOSED_LOOP arming to /gpr axis
+[unified_data_collector-15] [INFO] [1772747757.481652021] [unified_data_collector]: [Thermal] Streaming.
+[unified_data_collector-15] [INFO] [1772747757.544564837] [unified_data_collector]: UnifiedDataCollector ready. Odom: /Odometry_tilt_corrected_diff
+[unified_data_collector-15] [INFO] [1772747757.544617420] [unified_data_collector]: Call /video_record_set service to start/stop recording
+[gps_driver-16] [INFO] [1772747757.642439160] [gps_driver]: Receiver configured: rate=5Hz, dynamic_model=3, NMEA disabled, UBX-NAV-PVT enabled
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] [INFO] [1772747758.230008899] [left.odrive_can_left]: clearing errors
+[odrive_can_node-4] [INFO] [1772747758.230092842] [right.odrive_can_right]: clearing errors
+[odrive_can_node-3] [INFO] [1772747758.330251426] [left.odrive_can_left]: requesting axis state: 8
+[odrive_can_node-4] [INFO] [1772747758.330401879] [right.odrive_can_right]: requesting axis state: 8
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747758.330927465] [mpc_accel_autonomous_controller]: Arming ODrive axes (CLOSED_LOOP_CONTROL requested by accel controller)
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[odrive_can_node-5] Failed to send CAN frame
+[taskset-8] GetFreeIndex key:livox_lidar_2130815168.
+[taskset-8] Init queue, real query size:16.
+[taskset-8] Lidar[0] storage queue size: 10
+[taskset-8] set pcl data type, handle: 2130815168, data type: 1
+[taskset-8] set scan pattern, handle: 2130815168, scan pattern: 0
+[taskset-8] begin to change work mode to 'Normal', handle: 2130815168
+[taskset-8] successfully set data type, handle: 2130815168, set_bit: 2
+[taskset-8] successfully set pattern mode, handle: 2130815168, set_bit: 0
+[taskset-8] successfully set lidar attitude, ip: 192.168.1.127
+[taskset-8] successfully change work mode, handle: 2130815168
+[taskset-8] successfully enable Livox Lidar imu, ip: 192.168.1.127
+[gpr_serial_bridge.py-17] [INFO] [1772747759.049442883] [gpr_serial_bridge]: Successfully connected to Arduino on /dev/arduino
+[gpr_serial_bridge.py-17] [INFO] [1772747759.051335911] [gpr_serial_bridge]: GPR Serial Bridge started on /dev/arduino
+[gpr_serial_bridge.py-17] [INFO] [1772747759.051632021] [gpr_serial_bridge]: Services available:
+[gpr_serial_bridge.py-17] [INFO] [1772747759.052079491] [gpr_serial_bridge]:   /gpr_line_start - Send "K" twice to Arduino
+[gpr_serial_bridge.py-17] [INFO] [1772747759.052498994] [gpr_serial_bridge]:   /gpr_line_stop  - Send "L" to Arduino
+[gpr_serial_bridge.py-17] [INFO] [1772747759.052732013] [gpr_serial_bridge]:   /gpr_power_off  - Send "O" to Arduino
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] Failed to send CAN frame
+[odrive_can_node-3] Failed to send CAN frame
+[taskset-8] [INFO] [1772747759.903551795] [livox_lidar_publisher]: livox/imu publish use imu format
+[taskset-8] [INFO] [1772747759.909610924] [livox_lidar_publisher]: livox/lidar publish use livox custom format
+[taskset-9] [WARN] [1772747759.942728812] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747759.952277275] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747759.961473677] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747759.971502618] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747759.981500514] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747759.991501979] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.001507353] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.011515703] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.021484824] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.031502860] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] IMU Initial Done
+[taskset-9] [WARN] [1772747760.041575278] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.051515712] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.061510365] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [WARN] [1772747760.071505329] [laser_mapping]: No point, skip this scan!
+[taskset-9] 
+[taskset-9] [INFO] [1772747760.082422763] [laser_mapping]: Initialize the map kdtree
+[odom_tilt_corrector-12] [INFO] [1772747760.114362814] [odom_tilt_corrector]: ✓ Transformation initialized:
+[odom_tilt_corrector-12] [INFO] [1772747760.114640563] [odom_tilt_corrector]:   Fixed pitch correction: 15.0°
+[odom_tilt_corrector-12] [INFO] [1772747760.114839211] [odom_tilt_corrector]:   Origin (LiDAR frame): [-0.004, -0.001, -0.002]
+[odom_tilt_corrector-12] [INFO] [1772747760.115006614] [odom_tilt_corrector]:   Initial yaw removed: -0.01°
+[odom_tilt_corrector-12] [INFO] [1772747760.115175884] [odom_tilt_corrector]:   Robot starts at (0, 0, 0) with yaw=0°
+[odom_tilt_corrector-12] [INFO] [1772747760.115424656] [odom_tilt_corrector]: ✓ First pose in robot frame: pos=[0.000, 0.000, 0.000] rpy=[-0.0°, 14.6°, 0.0°]
+[mpc_accel_autonomous_controller.py-7] [INFO] [1772747760.116399482] [mpc_accel_autonomous_controller]: ✓ Odometry initialized at x=0.000, y=0.000, yaw=0.0°
