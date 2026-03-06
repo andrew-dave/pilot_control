@@ -65,7 +65,7 @@ namespace fs = std::filesystem;
 struct Config {
   std::string odom_topic      = "/Odometry_tilt_corrected_diff";  // Use tilt-corrected odometry from diff_drive_controller
   std::string log_directory   = std::string(getenv("HOME")?getenv("HOME"):".") + "/unified_scans";
-  bool use_seekvision_mode    = true;   // SeekVision pipeline for colorized stream
+  bool use_seekvision_mode    = true;   // SeekVision pipeline for colorized image frames
   bool save_color_png         = true;   // write *_color.png alongside float32 bin
   int  csv_flush_every_rows   = 50;     // batch CSV flush, no per-row flush
   size_t frame_ring_size      = 24;     // ~2–3 s @ 9 Hz camera
@@ -100,7 +100,7 @@ struct ThermFrame {
   uint64_t ts_ns = 0;  // SDK UTC timestamp (ns)
   int w = 0, h = 0;
   std::vector<float> thermo;   // °C, size w*h
-  cv::Mat color_bgr;           // colorized display (optional)
+  cv::Mat color_bgr;           // colorized display for saved PNG sidecar (optional)
 };
 
 struct CameraFrame {
@@ -1015,7 +1015,15 @@ private:
       seekcamera_set_color_palette(thermal_cam_, SEEKCAMERA_COLOR_PALETTE_SPECTRA);
 
       uint32_t fmts = SEEKCAMERA_FRAME_FORMAT_THERMOGRAPHY_FLOAT;
-      if (cfg_.save_color_png) fmts |= SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888;
+      if (thermal_thumb_pub_) {
+        // Request the SDK grayscale image frame for the low-bandwidth OCU thermal thumbnail.
+        // This keeps thumbnail contrast coupled to the Seek pipeline even if PNG sidecar saving
+        // is later disabled.
+        fmts |= SEEKCAMERA_FRAME_FORMAT_GRAYSCALE;
+      }
+      if (cfg_.save_color_png) {
+        fmts |= SEEKCAMERA_FRAME_FORMAT_COLOR_ARGB8888;
+      }
 
       seekcamera_register_frame_available_callback(thermal_cam_, &UnifiedDataCollector::onThermalFrameStatic, this);
       auto err = seekcamera_capture_session_start(thermal_cam_, fmts);
@@ -1039,6 +1047,7 @@ private:
     seekcamera_frame_lock(cam_frame);
 
     ThermFrame f;
+    cv::Mat thermal_thumb_gray;
 
     seekframe_t* therm=nullptr;
     if (seekcamera_frame_get_frame_by_format(cam_frame,
@@ -1067,10 +1076,25 @@ private:
       }
     }
 
+    if (thermal_thumb_pub_) {
+      seekframe_t* gray = nullptr;
+      if (seekcamera_frame_get_frame_by_format(cam_frame,
+          SEEKCAMERA_FRAME_FORMAT_GRAYSCALE, &gray) == SEEKCAMERA_SUCCESS && gray) {
+        const int w = static_cast<int>(seekframe_get_width(gray));
+        const int h = static_cast<int>(seekframe_get_height(gray));
+        const auto* data = static_cast<const uint8_t*>(seekframe_get_data(gray));
+        const auto stride = static_cast<size_t>(seekframe_get_line_stride(gray));
+        if (data && w > 0 && h > 0 && stride >= static_cast<size_t>(w)) {
+          cv::Mat gray_view(h, w, CV_8UC1, const_cast<uint8_t*>(data), stride);
+          thermal_thumb_gray = gray_view.clone();
+        }
+      }
+    }
+
     seekcamera_frame_unlock(cam_frame);
     if (!f.thermo.empty()) {
       maybePublishThermalSummary(f);
-      maybePublishThermalThumbnail(f);
+      maybePublishThermalThumbnail(f, thermal_thumb_gray);
       ring_.push(std::move(f));
     }
   }
@@ -1127,7 +1151,7 @@ private:
     last_thermal_summary_publish_at_ = now;
   }
 
-  void maybePublishThermalThumbnail(const ThermFrame& frame) {
+  void maybePublishThermalThumbnail(const ThermFrame& frame, const cv::Mat& seekvision_gray) {
     if (!thermal_thumb_pub_ || frame.thermo.empty() || frame.w <= 0 || frame.h <= 0) {
       return;
     }
@@ -1160,47 +1184,72 @@ private:
       }
     };
 
-    for (int out_y = 0; out_y < kThumbH; ++out_y) {
-      int y0 = (out_y * frame.h) / kThumbH;
-      int y1 = ((out_y + 1) * frame.h) / kThumbH;
-      if (y1 <= y0) {
-        y1 = std::min(frame.h, y0 + 1);
-      }
-      y0 = std::clamp(y0, 0, frame.h - 1);
-      y1 = std::clamp(y1, y0 + 1, frame.h);
-
-      for (int out_x = 0; out_x < kThumbW; ++out_x) {
-        int x0 = (out_x * frame.w) / kThumbW;
-        int x1 = ((out_x + 1) * frame.w) / kThumbW;
-        if (x1 <= x0) {
-          x1 = std::min(frame.w, x0 + 1);
-        }
-        x0 = std::clamp(x0, 0, frame.w - 1);
-        x1 = std::clamp(x1, x0 + 1, frame.w);
-
-        double sum_c = 0.0;
-        int count = 0;
-        for (int src_y = y0; src_y < y1; ++src_y) {
-          const int row_offset = src_y * frame.w;
-          for (int src_x = x0; src_x < x1; ++src_x) {
-            const float sample = frame.thermo[static_cast<size_t>(row_offset + src_x)];
-            if (!std::isfinite(sample)) {
-              continue;
-            }
-            sum_c += static_cast<double>(sample);
-            ++count;
+    bool published_from_seekvision = false;
+    if (!seekvision_gray.empty() && seekvision_gray.type() == CV_8UC1) {
+      cv::Mat thumb_gray;
+      cv::resize(seekvision_gray,
+                 thumb_gray,
+                 cv::Size(kThumbW, kThumbH),
+                 0.0,
+                 0.0,
+                 cv::INTER_AREA);
+      if (thumb_gray.rows == kThumbH && thumb_gray.cols == kThumbW) {
+        for (int out_y = 0; out_y < kThumbH; ++out_y) {
+          const auto* row = thumb_gray.ptr<uint8_t>(out_y);
+          for (int out_x = 0; out_x < kThumbW; ++out_x) {
+            const double normalized = static_cast<double>(row[out_x]) / 255.0;
+            const uint8_t palette_idx = static_cast<uint8_t>(
+                std::clamp<int>(static_cast<int>(std::lround(normalized * 15.0)), 0, 15));
+            pack_nibble((out_y * kThumbW) + out_x, palette_idx);
           }
         }
+        published_from_seekvision = true;
+      }
+    }
 
-        double cell_c = kScaleMinC;
-        if (count > 0) {
-          cell_c = sum_c / static_cast<double>(count);
+    if (!published_from_seekvision) {
+      for (int out_y = 0; out_y < kThumbH; ++out_y) {
+        int y0 = (out_y * frame.h) / kThumbH;
+        int y1 = ((out_y + 1) * frame.h) / kThumbH;
+        if (y1 <= y0) {
+          y1 = std::min(frame.h, y0 + 1);
         }
-        const double clamped_c = std::clamp(cell_c, kScaleMinC, kScaleMaxC);
-        const double normalized = (clamped_c - kScaleMinC) / kScaleRangeC;
-        const uint8_t palette_idx = static_cast<uint8_t>(
-            std::clamp<int>(static_cast<int>(std::lround(normalized * 15.0)), 0, 15));
-        pack_nibble((out_y * kThumbW) + out_x, palette_idx);
+        y0 = std::clamp(y0, 0, frame.h - 1);
+        y1 = std::clamp(y1, y0 + 1, frame.h);
+
+        for (int out_x = 0; out_x < kThumbW; ++out_x) {
+          int x0 = (out_x * frame.w) / kThumbW;
+          int x1 = ((out_x + 1) * frame.w) / kThumbW;
+          if (x1 <= x0) {
+            x1 = std::min(frame.w, x0 + 1);
+          }
+          x0 = std::clamp(x0, 0, frame.w - 1);
+          x1 = std::clamp(x1, x0 + 1, frame.w);
+
+          double sum_c = 0.0;
+          int count = 0;
+          for (int src_y = y0; src_y < y1; ++src_y) {
+            const int row_offset = src_y * frame.w;
+            for (int src_x = x0; src_x < x1; ++src_x) {
+              const float sample = frame.thermo[static_cast<size_t>(row_offset + src_x)];
+              if (!std::isfinite(sample)) {
+                continue;
+              }
+              sum_c += static_cast<double>(sample);
+              ++count;
+            }
+          }
+
+          double cell_c = kScaleMinC;
+          if (count > 0) {
+            cell_c = sum_c / static_cast<double>(count);
+          }
+          const double clamped_c = std::clamp(cell_c, kScaleMinC, kScaleMaxC);
+          const double normalized = (clamped_c - kScaleMinC) / kScaleRangeC;
+          const uint8_t palette_idx = static_cast<uint8_t>(
+              std::clamp<int>(static_cast<int>(std::lround(normalized * 15.0)), 0, 15));
+          pack_nibble((out_y * kThumbW) + out_x, palette_idx);
+        }
       }
     }
 
