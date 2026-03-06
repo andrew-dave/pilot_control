@@ -452,10 +452,11 @@ def generate_launch_description():
         ]
     )
 
-    # Accel MPC Autonomous Controller - drop-in replacement with accel-based MPC
+    # MPC Autonomous Controller using direct (v, w) inputs.
+    # Parameters and topic wiring are kept aligned with mpc_accel_autonomous_controller.py.
     mpc_controller_node = Node(
         package='pilot_control',
-        executable='mpc_accel_autonomous_controller.py',
+        executable='mpc_autonomous_controller.py',
         name='mpc_accel_autonomous_controller',
         output='screen',
         parameters=[{
@@ -479,14 +480,24 @@ def generate_launch_description():
             'mpc_Q_yaw':100.0, #131 - 5deg, 625 - 2.29deg, 
             'mpc_R_delta_v': 0.00001, #
             'mpc_R_delta_omega': 0.00001,
+            'mpc_dv_max': 0.5,
+            'mpc_domega_max': 0.8,
             'mpc_weight_increase_xe': 0.20,
             'mpc_weight_increase_ye': 0.20,
             'mpc_weight_increase_yaw': 0.20,
 
-            # Slip/waypoint parameters (accepted for compatibility; slip unused)
+            # Waypoint/compatibility parameters
             'slip_history_length': 100,
             'slip_estimation_window': 1.0,
             'lookahead_distance': 0.5,
+            'waypoints_csv_path': '',
+
+            # Autonomy / behavior flags
+            'mpc_autonomy_enabled_default': False,
+            'enable_yaw_gating': False,
+            'enable_turn_only_before_waypoint': True,
+            'turn_only_yaw_threshold_deg': 5.0,
+
             'target_reached_threshold': 0.01,
 
             # Topic names (match existing robot wiring)
@@ -495,6 +506,24 @@ def generate_launch_description():
             'right_control_topic': '/right/control_message',
             'left_encoder_topic': '/left/controller_status',
             'right_encoder_topic': '/right/controller_status',
+
+            # Heartbeat safety
+            'heartbeat_timeout': 1.0,
+            'heartbeat_enabled': True,
+
+            # Autonomous data collection
+            'auto_dc_enabled': False,
+            'auto_dc_start_delay': 2.0,
+            'auto_dc_end_delay': 2.0,
+
+            # Wheel ramp compensation
+            'ramp_compensation_enabled': False,
+            'wheel_ramp_rate': 20.0,
+            'wheel_delay_time': 0.01,
+
+            # Error-reference shaping near path start
+            'error_ref_ahead_min_scale': 0.02,
+            'error_ref_gate_distance': 0.20,
 
             # Solver debug
             'solver_debug_enabled': False,
