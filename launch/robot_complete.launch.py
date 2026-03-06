@@ -337,11 +337,15 @@ def generate_launch_description():
         name='local_nav_grid_publisher',
         output='screen',
         parameters=[{
-            'input_topic': '/Laser_map',
+            'primary_input_topic': '/cloud_registered',
+            'fallback_input_topic': '/Laser_map',
             'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
             'output_topic': '/local_nav_grid',
             'calibration_file': tilt_calibration_file,
             'lidar_pitch_deg': 15.0,
+            'rolling_horizon_sec': 0.75,
+            'max_publish_rate_hz': 10.0,
+            'primary_active_timeout_sec': 0.5,
         }]
     )
 

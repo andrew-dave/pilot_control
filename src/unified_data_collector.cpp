@@ -5,6 +5,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
+#include <std_msgs/msg/u_int8_multi_array.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -22,6 +23,7 @@
 #include <jxl/color_encoding.h>
 #endif
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -475,6 +477,12 @@ public:
     // Low-bandwidth thermal summary publisher for OCU telemetry cards.
     // Format: "max_c=<v>,avg_c=<v>,min_c=<v>" (published at 1 Hz).
     thermal_summary_pub_ = this->create_publisher<std_msgs::msg::String>("/thermal/summary", 10);
+    {
+      rclcpp::QoS thermal_thumb_qos(rclcpp::KeepLast(1));
+      thermal_thumb_qos.best_effort();
+      thermal_thumb_pub_ = this->create_publisher<std_msgs::msg::UInt8MultiArray>("/thermal/thumb",
+                                                                                   thermal_thumb_qos);
+    }
     
     // Publish initial stream status
     publishStreamStatus();
@@ -1062,6 +1070,7 @@ private:
     seekcamera_frame_unlock(cam_frame);
     if (!f.thermo.empty()) {
       maybePublishThermalSummary(f);
+      maybePublishThermalThumbnail(f);
       ring_.push(std::move(f));
     }
   }
@@ -1116,6 +1125,89 @@ private:
     msg.data = oss.str();
     thermal_summary_pub_->publish(msg);
     last_thermal_summary_publish_at_ = now;
+  }
+
+  void maybePublishThermalThumbnail(const ThermFrame& frame) {
+    if (!thermal_thumb_pub_ || frame.thermo.empty() || frame.w <= 0 || frame.h <= 0) {
+      return;
+    }
+
+    constexpr int kThumbW = 32;
+    constexpr int kThumbH = 24;
+    constexpr int kThumbPixels = kThumbW * kThumbH;
+    constexpr int kThumbBytes = kThumbPixels / 2;
+    constexpr double kScaleMinC = 20.0;
+    constexpr double kScaleMaxC = 45.0;
+    constexpr double kScaleRangeC = kScaleMaxC - kScaleMinC;
+
+    const auto now = std::chrono::steady_clock::now();
+    if (last_thermal_thumb_publish_at_.time_since_epoch().count() > 0) {
+      const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          now - last_thermal_thumb_publish_at_).count();
+      if (elapsed_ms < 200) {
+        return;
+      }
+    }
+
+    std::vector<uint8_t> packed(static_cast<size_t>(kThumbBytes), 0u);
+    auto pack_nibble = [&packed](int pixel_index, uint8_t value) {
+      const int byte_index = pixel_index / 2;
+      if ((pixel_index & 1) == 0) {
+        packed[static_cast<size_t>(byte_index)] =
+            static_cast<uint8_t>((value & 0x0F) << 4);
+      } else {
+        packed[static_cast<size_t>(byte_index)] |= static_cast<uint8_t>(value & 0x0F);
+      }
+    };
+
+    for (int out_y = 0; out_y < kThumbH; ++out_y) {
+      int y0 = (out_y * frame.h) / kThumbH;
+      int y1 = ((out_y + 1) * frame.h) / kThumbH;
+      if (y1 <= y0) {
+        y1 = std::min(frame.h, y0 + 1);
+      }
+      y0 = std::clamp(y0, 0, frame.h - 1);
+      y1 = std::clamp(y1, y0 + 1, frame.h);
+
+      for (int out_x = 0; out_x < kThumbW; ++out_x) {
+        int x0 = (out_x * frame.w) / kThumbW;
+        int x1 = ((out_x + 1) * frame.w) / kThumbW;
+        if (x1 <= x0) {
+          x1 = std::min(frame.w, x0 + 1);
+        }
+        x0 = std::clamp(x0, 0, frame.w - 1);
+        x1 = std::clamp(x1, x0 + 1, frame.w);
+
+        double sum_c = 0.0;
+        int count = 0;
+        for (int src_y = y0; src_y < y1; ++src_y) {
+          const int row_offset = src_y * frame.w;
+          for (int src_x = x0; src_x < x1; ++src_x) {
+            const float sample = frame.thermo[static_cast<size_t>(row_offset + src_x)];
+            if (!std::isfinite(sample)) {
+              continue;
+            }
+            sum_c += static_cast<double>(sample);
+            ++count;
+          }
+        }
+
+        double cell_c = kScaleMinC;
+        if (count > 0) {
+          cell_c = sum_c / static_cast<double>(count);
+        }
+        const double clamped_c = std::clamp(cell_c, kScaleMinC, kScaleMaxC);
+        const double normalized = (clamped_c - kScaleMinC) / kScaleRangeC;
+        const uint8_t palette_idx = static_cast<uint8_t>(
+            std::clamp<int>(static_cast<int>(std::lround(normalized * 15.0)), 0, 15));
+        pack_nibble((out_y * kThumbW) + out_x, palette_idx);
+      }
+    }
+
+    std_msgs::msg::UInt8MultiArray msg;
+    msg.data = std::move(packed);
+    thermal_thumb_pub_->publish(msg);
+    last_thermal_thumb_publish_at_ = now;
   }
 
   // ---------- GStreamer plumbing ----------
@@ -1475,7 +1567,9 @@ private:
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr stream_target_sub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stream_status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr thermal_summary_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr thermal_thumb_pub_;
   std::chrono::steady_clock::time_point last_thermal_summary_publish_at_{};
+  std::chrono::steady_clock::time_point last_thermal_thumb_publish_at_{};
 
   // Thermal Camera
   seekcamera_manager_t* mgr_ = nullptr;
