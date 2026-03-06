@@ -19,7 +19,11 @@
           "^/thermal/summary$",
           "^/Odometry_tilt_corrected_diff$",
           "^/left/controller_status$",
-          "^/right/controller_status$"
+          "^/right/controller_status$",
+          "^/mpc_accel/cmd_twist$",
+          "^/mpc_accel/error_state$",
+          "^/mpc_accel/reference_trajectory$",
+          "^/mpc_accel/delta_cmd$"
         ],
 
         // Laptop -> Robot topics
@@ -29,7 +33,9 @@
           "^/host_teleop/heartbeat$",
           "^/mpc_autonomy_enable$",
           "^/f2c_waypoints$",
-          "^/start_waypoint_navigation$"
+          "^/start_waypoint_navigation$",
+          "^/set_target_pose$",
+          "^/mpc_auto_dc_enable$"
         ],
 
         // Laptop service clients -> Robot service servers
