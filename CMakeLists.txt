@@ -104,6 +104,12 @@ target_link_libraries(raw_map_saver ${PCL_LIBRARIES} Eigen3::Eigen)
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS raw_map_saver DESTINATION lib/${PROJECT_NAME})
 
+# === LOCAL NAV GRID PUBLISHER (robot-side compact exploration map) ===
+add_executable(local_nav_grid_publisher src/local_nav_grid_publisher.cpp)
+ament_target_dependencies(local_nav_grid_publisher rclcpp nav_msgs sensor_msgs std_msgs)
+target_link_libraries(local_nav_grid_publisher Eigen3::Eigen)
+install(TARGETS local_nav_grid_publisher DESTINATION lib/${PROJECT_NAME})
+
 # === LASER MAP ROTATOR ===
 add_executable(laser_map_rotator src/laser_map_rotator.cpp)
 ament_target_dependencies(laser_map_rotator rclcpp sensor_msgs pcl_conversions tf2 tf2_geometry_msgs tf2_sensor_msgs)

@@ -330,6 +330,21 @@ def generate_launch_description():
         }]
     )
 
+    # Local navigation grid publisher - compact 48x48 occupancy bitset for the OCU.
+    local_nav_grid_publisher = Node(
+        package='pilot_control',
+        executable='local_nav_grid_publisher',
+        name='local_nav_grid_publisher',
+        output='screen',
+        parameters=[{
+            'input_topic': '/Laser_map',
+            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
+            'output_topic': '/local_nav_grid',
+            'calibration_file': tilt_calibration_file,
+            'lidar_pitch_deg': 15.0,
+        }]
+    )
+
     # PCD Processor - REMOVED (not needed - using raw maps only)
 
     # Shutdown Service Node (for remote shutdown)
@@ -539,6 +554,7 @@ def generate_launch_description():
                 camera_init_to_foot_init_transform,
                 odom_tilt_corrector_node,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
+                local_nav_grid_publisher,
                 # pcd_processor_node - REMOVED (not needed - using raw maps only)
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,

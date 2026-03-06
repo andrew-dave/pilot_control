@@ -17,6 +17,7 @@
         publishers: [
           "^/stream_status$",
           "^/thermal/summary$",
+          "^/local_nav_grid$",
           "^/Odometry_tilt_corrected_diff$",
           "^/left/controller_status$",
           "^/right/controller_status$",
