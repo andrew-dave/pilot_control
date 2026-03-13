@@ -1,0 +1,223 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-802a0c1cc68e8656b84a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "pilot_control",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "diff_drive_controller::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-diff_drive_controller-c51ff7510cc8df2bf565.json",
+					"name" : "diff_drive_controller",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "gpr_motion_follower::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-gpr_motion_follower-740f9682e0f3cd46ec28.json",
+					"name" : "gpr_motion_follower",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "gps_driver::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-gps_driver-39ea812186c5b5d521b3.json",
+					"name" : "gps_driver",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "host_teleop::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-host_teleop-6a43c764c6e94ad42022.json",
+					"name" : "host_teleop",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "jpegxl_test_simple::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-jpegxl_test_simple-b40b5440c83cf924d401.json",
+					"name" : "jpegxl_test_simple",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "laser_map_rotator::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-laser_map_rotator-cea2d8bbcfd26b327eea.json",
+					"name" : "laser_map_rotator",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "local_nav_grid_publisher::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-local_nav_grid_publisher-967cbcd438aa16b8af6a.json",
+					"name" : "local_nav_grid_publisher",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "pcd_processor::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-pcd_processor-a4aa65c118c20986c456.json",
+					"name" : "pcd_processor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "pilot_control_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-pilot_control_uninstall-74a957b7cb72eb98217e.json",
+					"name" : "pilot_control_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "point_cloud_downsampler::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-point_cloud_downsampler-c1dd15b57476a5f8c757.json",
+					"name" : "point_cloud_downsampler",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "pose_controller::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-pose_controller-c9f4fbd54f4759bb2fbc.json",
+					"name" : "pose_controller",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "raw_map_saver::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-raw_map_saver-2dd26b29b9e3a8e014e5.json",
+					"name" : "raw_map_saver",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "shutdown_service::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-shutdown_service-e54e45fabc3a75392694.json",
+					"name" : "shutdown_service",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "simple_camera_capture::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-simple_camera_capture-d6a33b2108b297135fbf.json",
+					"name" : "simple_camera_capture",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "thermal_check::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-thermal_check-afee13a2c71a1db9690b.json",
+					"name" : "thermal_check",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "unified_data_collector::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-unified_data_collector-0b630178aee183b6fecb.json",
+					"name" : "unified_data_collector",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-6a23b2c2810c9ede9584.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "video_recorder::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-video_recorder-6a73a721cafb59c6ce20.json",
+					"name" : "video_recorder",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "video_streamer_gst::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-video_streamer_gst-7301a926ec9586d26b5a.json",
+					"name" : "video_streamer_gst",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control",
+		"source" : "/home/avenblake/pilot_ws/src/pilot_control"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}
