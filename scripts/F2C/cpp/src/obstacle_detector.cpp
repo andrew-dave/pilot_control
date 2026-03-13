@@ -409,6 +409,105 @@ static inline bool occAt(const OccGrid& g, int x, int y) {
     return g.occ[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)] != 0;
 }
 
+struct ScalarGrid {
+    int w = 0;
+    int h = 0;
+    double xmin = 0.0;
+    double ymin = 0.0;
+    double cell = 0.09;
+    std::vector<double> values;  // row-major signed distance, +inside / -outside
+};
+
+static inline double scalarAt(const ScalarGrid& g, int x, int y) {
+    if (x < 0 || y < 0 || x >= g.w || y >= g.h) {
+        return -0.5 * g.cell;
+    }
+    return g.values[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)];
+}
+
+using ShapeContours = std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>>;
+
+static std::vector<double> squaredDistanceToFeature(const OccGrid& g, bool feature_occupied) {
+    const double inf = std::numeric_limits<double>::infinity();
+    std::vector<double> row_sq(static_cast<size_t>(g.w) * static_cast<size_t>(g.h), inf);
+    std::vector<double> out(static_cast<size_t>(g.w) * static_cast<size_t>(g.h), inf);
+
+    for (int y = 0; y < g.h; ++y) {
+        int last = -1;
+        for (int x = 0; x < g.w; ++x) {
+            if ((occAt(g, x, y) != 0) == feature_occupied) {
+                last = x;
+            }
+            if (last >= 0) {
+                const double dx = static_cast<double>(x - last);
+                row_sq[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)] = dx * dx;
+            }
+        }
+
+        last = -1;
+        for (int x = g.w - 1; x >= 0; --x) {
+            if ((occAt(g, x, y) != 0) == feature_occupied) {
+                last = x;
+            }
+            if (last >= 0) {
+                const double dx = static_cast<double>(last - x);
+                double& v = row_sq[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)];
+                v = std::min(v, dx * dx);
+            }
+        }
+    }
+
+    for (int x = 0; x < g.w; ++x) {
+        std::vector<std::pair<int, double>> candidates;
+        candidates.reserve(static_cast<size_t>(g.h));
+        for (int y = 0; y < g.h; ++y) {
+            const double base = row_sq[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)];
+            if (std::isfinite(base)) {
+                candidates.emplace_back(y, base);
+            }
+        }
+        if (candidates.empty()) {
+            continue;
+        }
+
+        for (int y = 0; y < g.h; ++y) {
+            double best = inf;
+            for (const auto& [cy, base] : candidates) {
+                const double dy = static_cast<double>(y - cy);
+                best = std::min(best, base + dy * dy);
+            }
+            out[static_cast<size_t>(y) * static_cast<size_t>(g.w) + static_cast<size_t>(x)] = best;
+        }
+    }
+
+    return out;
+}
+
+static ScalarGrid signedDistanceFieldFromOcc(const OccGrid& occ) {
+    ScalarGrid g;
+    if (occ.w <= 0 || occ.h <= 0 || occ.occ.empty()) {
+        return g;
+    }
+
+    g.w = occ.w;
+    g.h = occ.h;
+    g.xmin = occ.xmin;
+    g.ymin = occ.ymin;
+    g.cell = occ.cell;
+    g.values.assign(static_cast<size_t>(g.w) * static_cast<size_t>(g.h), 0.0);
+
+    const std::vector<double> dist_occ_sq = squaredDistanceToFeature(occ, true);
+    const std::vector<double> dist_empty_sq = squaredDistanceToFeature(occ, false);
+    for (size_t i = 0; i < g.values.size(); ++i) {
+        const double d_occ = std::isfinite(dist_occ_sq[i]) ? std::sqrt(std::max(0.0, dist_occ_sq[i])) : 0.0;
+        const double d_empty = std::isfinite(dist_empty_sq[i]) ? std::sqrt(std::max(0.0, dist_empty_sq[i])) : 0.0;
+        // A center-based signed distance keeps the same topology as the binary mask,
+        // while shifting iso-crossings away from fixed midpoints on long oblique runs.
+        g.values[i] = 0.5 * (d_empty - d_occ) * occ.cell;
+    }
+    return g;
+}
+
 static OccGrid occupancyFromPoints(const std::vector<Point2D>& pts, double cell, double padding) {
     OccGrid g;
     g.cell = cell;
@@ -582,11 +681,13 @@ static OccGrid maxpoolOccupancy(const OccGrid& in, int factor) {
 
 // Forward declarations (used by helper routines below)
 static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g);
-static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> groupRingsIntoShapes(
+static std::vector<Polygon2D> extractContourRingsFromSdf(const ScalarGrid& g);
+static ShapeContours groupRingsIntoShapes(
     std::vector<Polygon2D> rings,
     double min_area_m2);
+static ShapeContours extractShapesFromOcc(const OccGrid& g, double min_area_m2);
 
-static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClusterGrid(
+static ShapeContours polygonizeClusterGrid(
     const std::vector<Point2D>& pts2d,
     double grid_cell_m,
     double contour_cell_m,
@@ -611,8 +712,7 @@ static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClust
         }
     }
 
-    std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ);
-    return groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+    return extractShapesFromOcc(occ, min_contour_area_m2);
 }
 
 static Polygon2D rectFromBbox(const std::vector<Point2D>& pts2d, double min_size_m, double margin_m) {
@@ -792,8 +892,7 @@ static std::vector<Obstacle2D> smoothShapesRollingDiskGrid(
             }
         }
 
-        std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ2);
-        auto grouped = groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+        auto grouped = extractShapesFromOcc(occ2, min_contour_area_m2);
         if (grouped.empty()) {
             out.push_back(sh);
             continue;
@@ -810,7 +909,15 @@ static std::vector<Obstacle2D> smoothShapesRollingDiskGrid(
     return out;
 }
 
-static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
+template <typename SampleFn>
+static std::vector<Polygon2D> extractContourRingsGeneric(
+    int w,
+    int h,
+    double xmin,
+    double ymin,
+    double cell,
+    double iso,
+    const SampleFn& sampleValue) {
     struct Segment {
         Point2D a;
         Point2D b;
@@ -828,12 +935,11 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
     };
 
     std::vector<Polygon2D> rings;
-    if (g.w <= 0 || g.h <= 0 || g.occ.empty()) {
+    if (w <= 0 || h <= 0) {
         return rings;
     }
 
-    constexpr double iso = 0.5;
-    const double snap = std::max(1e-9, g.cell * 1e-6);
+    const double snap = std::max(1e-9, cell * 1e-6);
     const double close_tol = snap * 8.0;
 
     auto toKey = [&](const Point2D& p) -> Key {
@@ -841,11 +947,6 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
             static_cast<int64_t>(std::llround(p.x / snap)),
             static_cast<int64_t>(std::llround(p.y / snap))
         };
-    };
-
-    auto sampleValue = [&](int cx, int cy) -> double {
-        // Marching-squares samples live on cell centers; outside grid is empty.
-        return occAt(g, cx, cy) ? 1.0 : 0.0;
     };
 
     auto interp = [&](const Point2D& p0, const Point2D& p1, double v0, double v1) -> Point2D {
@@ -863,12 +964,12 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
     };
 
     std::vector<Segment> segments;
-    segments.reserve(static_cast<size_t>(g.w) * static_cast<size_t>(g.h) * 2);
+    segments.reserve(static_cast<size_t>(w) * static_cast<size_t>(h) * 2);
 
     // Marching squares over 2x2 blocks of occupancy-cell samples.
     // This preserves tiny occupied islands better than averaged vertex fields.
-    for (int y = -1; y < g.h; ++y) {
-        for (int x = -1; x < g.w; ++x) {
+    for (int y = -1; y < h; ++y) {
+        for (int x = -1; x < w; ++x) {
             const double v0 = sampleValue(x, y);         // bottom-left
             const double v1 = sampleValue(x + 1, y);     // bottom-right
             const double v2 = sampleValue(x + 1, y + 1); // top-right
@@ -942,7 +1043,7 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
 
     std::vector<uint8_t> used(segments.size(), 0);
     auto toWorld = [&](const Point2D& p) -> Point2D {
-        return Point2D(g.xmin + p.x * g.cell, g.ymin + p.y * g.cell);
+        return Point2D(xmin + p.x * cell, ymin + p.y * cell);
     };
 
     for (int si = 0; si < static_cast<int>(segments.size()); ++si) {
@@ -996,7 +1097,7 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
             // Defensive close for tiny numerical cracks.
             const Point2D& first = ring.front();
             const Point2D& last = ring.back();
-            if (std::hypot(last.x - first.x, last.y - first.y) <= close_tol * g.cell) {
+            if (std::hypot(last.x - first.x, last.y - first.y) <= close_tol * cell) {
                 ring.back() = first;  // close cleanly for downstream cleaning.
                 closed = true;
             }
@@ -1008,6 +1109,27 @@ static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
     }
 
     return rings;
+}
+
+static std::vector<Polygon2D> extractContourRingsFromOcc(const OccGrid& g) {
+    if (g.w <= 0 || g.h <= 0 || g.occ.empty()) {
+        return {};
+    }
+    auto sample = [&](int cx, int cy) -> double {
+        // Marching-squares samples live on cell centers; outside grid is empty.
+        return occAt(g, cx, cy) ? 1.0 : 0.0;
+    };
+    return extractContourRingsGeneric(g.w, g.h, g.xmin, g.ymin, g.cell, 0.5, sample);
+}
+
+static std::vector<Polygon2D> extractContourRingsFromSdf(const ScalarGrid& g) {
+    if (g.w <= 0 || g.h <= 0 || g.values.empty()) {
+        return {};
+    }
+    auto sample = [&](int cx, int cy) -> double {
+        return scalarAt(g, cx, cy);
+    };
+    return extractContourRingsGeneric(g.w, g.h, g.xmin, g.ymin, g.cell, 0.0, sample);
 }
 
 static void removeConsecutiveDuplicates(Polygon2D& ring) {
@@ -1056,7 +1178,307 @@ static void removeCollinear(Polygon2D& ring) {
     }
 }
 
-static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> groupRingsIntoShapes(
+static Polygon2D normalizeOpenRing(const Polygon2D& ring) {
+    Polygon2D out = ring;
+    if (out.size() >= 2 && std::hypot(out.front().x - out.back().x, out.front().y - out.back().y) <= 1e-9) {
+        out.pop_back();
+    }
+    return out;
+}
+
+static double pointSegmentDistance(const Point2D& p, const Point2D& a, const Point2D& b) {
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double len_sq = dx * dx + dy * dy;
+    if (len_sq <= 1e-18) {
+        return std::hypot(p.x - a.x, p.y - a.y);
+    }
+    double t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq;
+    t = std::clamp(t, 0.0, 1.0);
+    const double qx = a.x + t * dx;
+    const double qy = a.y + t * dy;
+    return std::hypot(p.x - qx, p.y - qy);
+}
+
+static double pointToRingDistance(const Point2D& p, const Polygon2D& ring) {
+    const Polygon2D open = normalizeOpenRing(ring);
+    if (open.empty()) {
+        return std::numeric_limits<double>::infinity();
+    }
+    if (open.size() == 1) {
+        return std::hypot(p.x - open.front().x, p.y - open.front().y);
+    }
+
+    double best = std::numeric_limits<double>::infinity();
+    for (size_t i = 0; i < open.size(); ++i) {
+        const Point2D& a = open[i];
+        const Point2D& b = open[(i + 1) % open.size()];
+        best = std::min(best, pointSegmentDistance(p, a, b));
+    }
+    return best;
+}
+
+static double maxRingToRingVertexDistance(const Polygon2D& src, const Polygon2D& dst) {
+    const Polygon2D open = normalizeOpenRing(src);
+    double worst = 0.0;
+    for (const auto& p : open) {
+        worst = std::max(worst, pointToRingDistance(p, dst));
+    }
+    return worst;
+}
+
+static double orient2D(const Point2D& a, const Point2D& b, const Point2D& c) {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+static bool pointOnSegment(const Point2D& p, const Point2D& a, const Point2D& b, double eps = 1e-9) {
+    if (std::abs(orient2D(a, b, p)) > eps) {
+        return false;
+    }
+    return p.x >= std::min(a.x, b.x) - eps && p.x <= std::max(a.x, b.x) + eps &&
+           p.y >= std::min(a.y, b.y) - eps && p.y <= std::max(a.y, b.y) + eps;
+}
+
+static bool segmentsIntersect(const Point2D& a1, const Point2D& a2, const Point2D& b1, const Point2D& b2) {
+    const double o1 = orient2D(a1, a2, b1);
+    const double o2 = orient2D(a1, a2, b2);
+    const double o3 = orient2D(b1, b2, a1);
+    const double o4 = orient2D(b1, b2, a2);
+    const double eps = 1e-9;
+
+    if (((o1 > eps && o2 < -eps) || (o1 < -eps && o2 > eps)) &&
+        ((o3 > eps && o4 < -eps) || (o3 < -eps && o4 > eps))) {
+        return true;
+    }
+    if (std::abs(o1) <= eps && pointOnSegment(b1, a1, a2, eps)) return true;
+    if (std::abs(o2) <= eps && pointOnSegment(b2, a1, a2, eps)) return true;
+    if (std::abs(o3) <= eps && pointOnSegment(a1, b1, b2, eps)) return true;
+    if (std::abs(o4) <= eps && pointOnSegment(a2, b1, b2, eps)) return true;
+    return false;
+}
+
+static bool ringHasSelfIntersection(const Polygon2D& ring) {
+    const Polygon2D open = normalizeOpenRing(ring);
+    if (open.size() < 4) {
+        return false;
+    }
+    for (size_t i = 0; i < open.size(); ++i) {
+        const Point2D& a1 = open[i];
+        const Point2D& a2 = open[(i + 1) % open.size()];
+        for (size_t j = i + 1; j < open.size(); ++j) {
+            if (j == i) continue;
+            if ((i + 1) % open.size() == j) continue;
+            if (i == 0 && (j + 1) % open.size() == 0) continue;
+
+            const Point2D& b1 = open[j];
+            const Point2D& b2 = open[(j + 1) % open.size()];
+            if (segmentsIntersect(a1, a2, b1, b2)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static size_t strongestCornerIndex(const Polygon2D& ring) {
+    const Polygon2D open = normalizeOpenRing(ring);
+    if (open.size() < 3) {
+        return 0;
+    }
+    size_t best_idx = 0;
+    double best_turn = -1.0;
+    for (size_t i = 0; i < open.size(); ++i) {
+        const Point2D& prev = open[(i + open.size() - 1) % open.size()];
+        const Point2D& curr = open[i];
+        const Point2D& next = open[(i + 1) % open.size()];
+        const double ax = curr.x - prev.x;
+        const double ay = curr.y - prev.y;
+        const double bx = next.x - curr.x;
+        const double by = next.y - curr.y;
+        const double an = std::hypot(ax, ay);
+        const double bn = std::hypot(bx, by);
+        if (an <= 1e-12 || bn <= 1e-12) {
+            continue;
+        }
+        const double cross = (ax * by - ay * bx) / (an * bn);
+        const double dot = (ax * bx + ay * by) / (an * bn);
+        const double turn = std::abs(std::atan2(cross, dot));
+        if (turn > best_turn) {
+            best_turn = turn;
+            best_idx = i;
+        }
+    }
+    return best_idx;
+}
+
+static bool runIsStraightEnough(
+    const Polygon2D& ring,
+    size_t begin,
+    size_t end,
+    double max_residual_m,
+    double monotonic_tol_m) {
+    if (end <= begin + 1) {
+        return false;
+    }
+    const Point2D& a = ring[begin];
+    const Point2D& b = ring[end];
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double chord = std::hypot(dx, dy);
+    if (chord <= 1e-9) {
+        return false;
+    }
+    const double ux = dx / chord;
+    const double uy = dy / chord;
+    double prev_t = -std::numeric_limits<double>::infinity();
+    for (size_t i = begin; i <= end; ++i) {
+        const double px = ring[i].x - a.x;
+        const double py = ring[i].y - a.y;
+        const double t = px * ux + py * uy;
+        if (t + monotonic_tol_m < prev_t) {
+            return false;
+        }
+        prev_t = t;
+        if (i > begin && i < end && pointSegmentDistance(ring[i], a, b) > max_residual_m) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static Polygon2D regularizeStraightSegments(const Polygon2D& ring, double cell_m) {
+    Polygon2D open = normalizeOpenRing(ring);
+    if (open.size() < 6 || cell_m <= 0.0) {
+        return ring;
+    }
+
+    const size_t start_idx = strongestCornerIndex(open);
+    Polygon2D ordered;
+    ordered.reserve(open.size());
+    for (size_t i = 0; i < open.size(); ++i) {
+        ordered.push_back(open[(start_idx + i) % open.size()]);
+    }
+
+    const size_t min_run_points = 4;
+    const double min_run_length_m = std::max(4.0 * cell_m, 0.35);
+    const double max_residual_m = std::max(0.02, std::min(0.55 * cell_m, 0.05));
+    const double monotonic_tol_m = std::max(1e-3, 0.10 * cell_m);
+
+    Polygon2D simplified;
+    simplified.reserve(ordered.size());
+    size_t i = 0;
+    while (i < ordered.size()) {
+        if (simplified.empty() ||
+            std::hypot(simplified.back().x - ordered[i].x, simplified.back().y - ordered[i].y) > 1e-9) {
+            simplified.push_back(ordered[i]);
+        }
+
+        size_t best_end = i;
+        double run_length_m = 0.0;
+        for (size_t j = i + 1; j < ordered.size(); ++j) {
+            run_length_m += std::hypot(ordered[j].x - ordered[j - 1].x, ordered[j].y - ordered[j - 1].y);
+            if (j - i + 1 < min_run_points || run_length_m < min_run_length_m) {
+                continue;
+            }
+            if (!runIsStraightEnough(ordered, i, j, max_residual_m, monotonic_tol_m)) {
+                break;
+            }
+            best_end = j;
+        }
+
+        if (best_end > i + 1) {
+            if (std::hypot(simplified.back().x - ordered[best_end].x,
+                           simplified.back().y - ordered[best_end].y) > 1e-9) {
+                simplified.push_back(ordered[best_end]);
+            }
+            i = best_end;
+        } else {
+            ++i;
+        }
+    }
+
+    removeConsecutiveDuplicates(simplified);
+    removeCollinear(simplified);
+    if (simplified.size() < 3 || ringHasSelfIntersection(simplified)) {
+        return ring;
+    }
+
+    const double base_area = polygonArea(open);
+    const double new_area = polygonArea(simplified);
+    const double abs_area_delta = std::abs(new_area - base_area);
+    if (base_area > 1e-9) {
+        const double rel_area_delta = abs_area_delta / base_area;
+        if (rel_area_delta > 0.20 && abs_area_delta > std::max(2.0 * cell_m * cell_m, 0.05)) {
+            return ring;
+        }
+    }
+
+    const double max_dev_m = std::max(0.03, std::min(0.75 * cell_m, 0.08));
+    const double deviation_m = std::max(
+        maxRingToRingVertexDistance(open, simplified),
+        maxRingToRingVertexDistance(simplified, open));
+    if (deviation_m > max_dev_m) {
+        return ring;
+    }
+
+    return simplified;
+}
+
+static bool ringInsideOuter(const Polygon2D& ring, const Polygon2D& outer) {
+    const Polygon2D open = normalizeOpenRing(ring);
+    if (open.empty()) {
+        return false;
+    }
+    const size_t stride = std::max<size_t>(1, open.size() / 8);
+    for (size_t i = 0; i < open.size(); i += stride) {
+        if (!pointInPolyRayCast(open[i], outer)) {
+            return false;
+        }
+    }
+    return pointInPolyRayCast(open.back(), outer);
+}
+
+static ShapeContours regularizeShapeContours(ShapeContours shapes, double cell_m) {
+    if (cell_m <= 0.0) {
+        return shapes;
+    }
+    for (auto& shape : shapes) {
+        const Polygon2D original_outer = shape.first;
+        Polygon2D regularized_outer = regularizeStraightSegments(shape.first, cell_m);
+        ensureCCW(regularized_outer);
+
+        std::vector<Polygon2D> regularized_holes;
+        regularized_holes.reserve(shape.second.size());
+        bool keep_regularized_outer = true;
+        for (const auto& original_hole : shape.second) {
+            Polygon2D hole = regularizeStraightSegments(original_hole, cell_m);
+            ensureCW(hole);
+            if (!ringInsideOuter(hole, regularized_outer)) {
+                hole = original_hole;
+                ensureCW(hole);
+                if (!ringInsideOuter(hole, regularized_outer)) {
+                    keep_regularized_outer = false;
+                }
+            }
+            regularized_holes.push_back(std::move(hole));
+        }
+
+        if (!keep_regularized_outer) {
+            shape.first = original_outer;
+            ensureCCW(shape.first);
+            for (auto& hole : shape.second) {
+                ensureCW(hole);
+            }
+            continue;
+        }
+
+        shape.first = std::move(regularized_outer);
+        shape.second = std::move(regularized_holes);
+    }
+    return shapes;
+}
+
+static ShapeContours groupRingsIntoShapes(
     std::vector<Polygon2D> rings,
     double min_area_m2) {
     // Filter tiny/degenerate rings
@@ -1147,7 +1569,56 @@ static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> groupRingsIntoS
     return shapes;
 }
 
-static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClusterGridLikePython(
+static int totalHoleCount(const ShapeContours& shapes) {
+    int holes = 0;
+    for (const auto& shape : shapes) {
+        holes += static_cast<int>(shape.second.size());
+    }
+    return holes;
+}
+
+static bool sameShapeTopology(const ShapeContours& a, const ShapeContours& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i].second.size() != b[i].second.size()) {
+            return false;
+        }
+        const double area_a = polygonArea(a[i].first);
+        const double area_b = polygonArea(b[i].first);
+        const double denom = std::max({area_a, area_b, 1e-9});
+        if (std::abs(area_a - area_b) / denom > 0.35) {
+            return false;
+        }
+    }
+    return totalHoleCount(a) == totalHoleCount(b);
+}
+
+static ShapeContours extractShapesFromOcc(const OccGrid& g, double min_area_m2) {
+    if (g.w <= 0 || g.h <= 0 || g.occ.empty()) {
+        return {};
+    }
+
+    ShapeContours baseline = groupRingsIntoShapes(extractContourRingsFromOcc(g), min_area_m2);
+    ShapeContours chosen = baseline;
+
+    // Only promote the signed-distance contour when it preserves the same topology
+    // as the current binary pipeline; otherwise keep the existing behavior.
+    if (!baseline.empty()) {
+        ScalarGrid sdf = signedDistanceFieldFromOcc(g);
+        if (!sdf.values.empty()) {
+            ShapeContours refined = groupRingsIntoShapes(extractContourRingsFromSdf(sdf), min_area_m2);
+            if (!refined.empty() && sameShapeTopology(refined, baseline)) {
+                chosen = std::move(refined);
+            }
+        }
+    }
+
+    return regularizeShapeContours(std::move(chosen), g.cell);
+}
+
+static ShapeContours polygonizeClusterGridLikePython(
     const std::vector<Point2D>& pts2d,
     double grid_cell_m,
     double contour_cell_m,
@@ -1169,8 +1640,7 @@ static std::vector<std::pair<Polygon2D, std::vector<Polygon2D>>> polygonizeClust
         occ = maxpoolOccupancy(occ, factor);
     }
 
-    std::vector<Polygon2D> rings = extractContourRingsFromOcc(occ);
-    return groupRingsIntoShapes(std::move(rings), min_contour_area_m2);
+    return extractShapesFromOcc(occ, min_contour_area_m2);
 }
 
 }  // namespace
