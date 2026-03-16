@@ -12,6 +12,8 @@
 #include <sstream>
 #include <fstream>
 #include <cstring>
+#include <limits>
+#include <mutex>
 
 // Simple NPZ file loader for tilt correction matrices
 class NPZLoader {
@@ -19,6 +21,8 @@ public:
     static bool load_npz_matrices(const std::string& npz_file, 
                                   Eigen::Matrix3d& R_map, 
                                   Eigen::Vector3d& p0_world) {
+        (void)R_map;
+        (void)p0_world;
         std::ifstream file(npz_file, std::ios::binary);
         if (!file.is_open()) {
             return false;
@@ -43,7 +47,7 @@ public:
     RawMapSaver() : Node("raw_map_saver")
     {
         // Declare parameters
-        this->declare_parameter("input_topic", "/Laser_map");
+        this->declare_parameter("input_topic", "/cloud_registered");
         this->declare_parameter("save_directory", "/tmp/robot_maps");
         this->declare_parameter("raw_map_filename", "");
         this->declare_parameter("auto_save_enabled", false);
@@ -59,7 +63,8 @@ public:
         this->declare_parameter("save_format", "compressed"); // "binary", "compressed", "ascii"
         
         // Get parameters
-        input_topic_ = this->get_parameter("input_topic").as_string();
+        std::string requested_input_topic = this->get_parameter("input_topic").as_string();
+        input_topic_ = requested_input_topic;
         save_directory_ = this->get_parameter("save_directory").as_string();
         raw_map_filename_ = this->get_parameter("raw_map_filename").as_string();
         auto_save_enabled_ = this->get_parameter("auto_save_enabled").as_bool();
@@ -69,11 +74,29 @@ public:
         calibration_file_ = this->get_parameter("calibration_file").as_string();
         lidar_pitch_deg_ = this->get_parameter("lidar_pitch_deg").as_double();
         save_format_ = this->get_parameter("save_format").as_string();
+
+        if (input_topic_.empty() || input_topic_ == "/Laser_map") {
+            if (input_topic_ == "/Laser_map") {
+                RCLCPP_WARN(
+                    this->get_logger(),
+                    "Legacy input topic '/Laser_map' requested. "
+                    "Accumulating '/cloud_registered' locally instead."
+                );
+            } else {
+                RCLCPP_WARN(
+                    this->get_logger(),
+                    "Input topic parameter is empty. Falling back to '/cloud_registered'."
+                );
+            }
+            input_topic_ = "/cloud_registered";
+        }
         
         // Create save directory
         std::filesystem::create_directories(save_directory_);
+
+        accumulated_cloud_.reset(new pcl::PointCloud<pcl::PointXYZ>());
         
-        // Create subscriber for Laser_map point cloud
+        // Subscribe to registered world-frame scans and accumulate them locally.
         cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
             input_topic_,
             rclcpp::QoS(10).durability_volatile(),
@@ -123,15 +146,47 @@ public:
 private:
     void cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
-        // Store the latest cloud for saving
-        latest_cloud_ = msg;
-        clouds_received_++;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*msg, *scan_cloud);
+
+        if (scan_cloud->empty()) {
+            return;
+        }
+
+        size_t total_points = 0;
+        size_t total_scans = 0;
+        {
+            std::lock_guard<std::mutex> lock(cloud_mutex_);
+            *accumulated_cloud_ += *scan_cloud;
+            clouds_received_++;
+            total_points = accumulated_cloud_->size();
+            total_scans = clouds_received_;
+        }
         
         // Log every 50th cloud to reduce spam
-        if (clouds_received_ % 50 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Received %d clouds, latest: %lu points", 
-                       clouds_received_, msg->data.size() / msg->point_step);
+        if (total_scans % 50 == 0) {
+            RCLCPP_INFO(
+                this->get_logger(),
+                "Accumulated %zu scans, latest: %zu points, total: %zu points",
+                total_scans,
+                scan_cloud->size(),
+                total_points
+            );
         }
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr copy_accumulated_cloud(size_t& scan_count, size_t& point_count)
+    {
+        std::lock_guard<std::mutex> lock(cloud_mutex_);
+        if (!accumulated_cloud_ || accumulated_cloud_->empty()) {
+            scan_count = 0;
+            point_count = 0;
+            return nullptr;
+        }
+
+        scan_count = clouds_received_;
+        point_count = accumulated_cloud_->size();
+        return pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>(*accumulated_cloud_));
     }
     
     // NEW: Find .npz file in directory
@@ -349,21 +404,25 @@ private:
     
     void auto_save_callback()
     {
-        if (!latest_cloud_) {
-            RCLCPP_WARN(this->get_logger(), "Auto-save: No point cloud data available");
+        size_t scan_count = 0;
+        size_t point_count = 0;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = copy_accumulated_cloud(scan_count, point_count);
+        if (!cloud) {
+            RCLCPP_WARN(this->get_logger(), "Auto-save: No accumulated point cloud data available");
             return;
         }
         
         try {
-            RCLCPP_INFO(this->get_logger(), "Auto-save: Saving point cloud map...");
+            RCLCPP_INFO(
+                this->get_logger(),
+                "Auto-save: Saving accumulated point cloud map from %zu scans (%zu points)...",
+                scan_count,
+                point_count
+            );
             
             // Generate filename with timestamp
             std::string filename = generate_filename("raw_map");
             std::string filepath = save_directory_ + "/" + filename;
-            
-            // Convert to PCL format
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            pcl::fromROSMsg(*latest_cloud_, *cloud);
 
             // Save using configured format
             std::string format_used;
@@ -387,19 +446,23 @@ private:
     {
         (void)request; // Unused parameter
         
-        if (!latest_cloud_) {
+        size_t scan_count = 0;
+        size_t point_count = 0;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = copy_accumulated_cloud(scan_count, point_count);
+        if (!cloud) {
             response->success = false;
-            response->message = "No point cloud data available for saving";
-            RCLCPP_WARN(this->get_logger(), "No point cloud data available for saving");
+            response->message = "No accumulated point cloud data available for saving";
+            RCLCPP_WARN(this->get_logger(), "No accumulated point cloud data available for saving");
             return;
         }
         
         try {
-            RCLCPP_INFO(this->get_logger(), "Processing point cloud map from Fast-LIO2...");
-            
-            // Convert ROS message to PCL PointXYZ for processing
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            pcl::fromROSMsg(*latest_cloud_, *cloud);
+            RCLCPP_INFO(
+                this->get_logger(),
+                "Processing accumulated point cloud map from Fast-LIO2 (%zu scans, %zu points)...",
+                scan_count,
+                point_count
+            );
             
             RCLCPP_INFO(this->get_logger(), "Loaded %lu points for processing", cloud->size());
             
@@ -500,9 +563,10 @@ private:
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_dir_service_;
     rclcpp::TimerBase::SharedPtr auto_save_timer_;
     
-    sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_;
-    int clouds_received_ = 0;
-    int auto_saves_count_ = 0;
+    std::mutex cloud_mutex_;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr accumulated_cloud_;
+    size_t clouds_received_ = 0;
+    size_t auto_saves_count_ = 0;
     
     std::string input_topic_;
     std::string save_directory_;

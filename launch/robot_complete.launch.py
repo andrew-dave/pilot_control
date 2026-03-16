@@ -318,7 +318,7 @@ def generate_launch_description():
         name='raw_map_saver',
         output='screen',
         parameters=[{
-            'input_topic': '/Laser_map',
+            'input_topic': '/cloud_registered',
             'save_directory': '/R_DATA/raw_maps',  # Fallback — overridden by coordinator on /dc/start
             'auto_save_enabled': False,  # Disabled - save only when M key pressed
             'auto_save_interval_sec': 30.0,
