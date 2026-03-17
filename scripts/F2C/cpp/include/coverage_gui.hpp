@@ -53,6 +53,7 @@
 #include <std_msgs/msg/string.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <thread>
+#include <atomic>
 #include <optional>
 #include <mutex>
 #include <chrono>
@@ -321,6 +322,15 @@ public:
     explicit CoverageGUI(QWidget* parent = nullptr);
     ~CoverageGUI() override;
 
+    struct HeightCropResult {
+        PointCloudPtr filtered_points;
+        std::vector<Point2D> projected_points;
+        QString error;
+        double z_min = 0.0;
+        double z_max = 0.0;
+        bool cancelled = false;
+    };
+
 private slots:
     // File operations
     void loadPointCloud();
@@ -381,6 +391,7 @@ private slots:
     
     // UI updates
     void updateDownsampleUI(const QString& method);
+    void onHeightCropFinished();
     void onTransitPathPlanningFinished();
     
     // ROS2 reconnection
@@ -431,6 +442,7 @@ private slots:
     void onTransferProgress(int percent, double speedMBps);
     void onShowTransferDialogRequested();
     void onCancelTransferRequested();
+    void onCancelProgressRequested();
     
     // Preset management
     void onPresetSelected(int index);
@@ -513,8 +525,13 @@ private:
     
     // Status/Progress
     void setStatus(const QString& text, int timeout_ms = 0);
+    void beginProgressOperation(const QString& text, bool cancelable, bool indeterminate = false);
+    bool endProgressOperation();
     void showProgress(bool show, const QString& text = "");
     void updateProgress(int percent, const QString& text = "");
+    void pumpProgressUiIfNeeded(bool force = false);
+    bool isProgressCancelRequested() const;
+    bool isOperationCancelledMessage(const QString& text) const;
     
     // Get current configuration
     CoverageConfig currentConfig() const;
@@ -591,10 +608,17 @@ private:
         GoTo
     };
 
+    enum class ProcessWaitResult {
+        Finished = 0,
+        TimedOut,
+        Cancelled
+    };
+
     // Main widgets
     PlotWidget* plot_;
     QStatusBar* status_bar_;
     QProgressBar* progress_bar_;
+    QPushButton* btn_progress_cancel_ = nullptr;
     
     // File controls
     QLabel* lbl_file_;
@@ -749,6 +773,13 @@ private:
     QString active_robot_slug_;
     QString robot_registry_error_;
     QString pinned_known_hosts_file_;
+    std::atomic_bool progress_cancel_requested_{false};
+    bool progress_operation_active_ = false;
+    bool progress_operation_cancelable_ = false;
+    QProcess* progress_active_process_ = nullptr;
+    int progress_last_percent_ = -2;
+    QString progress_last_text_;
+    std::chrono::steady_clock::time_point progress_last_ui_pump_{};
 
     // In-memory auth session (never persisted to disk)
     QString session_robot_id_;
@@ -850,7 +881,9 @@ private:
     
     // Async loading
     QFutureWatcher<PointCloudPtr>* pcd_watcher_ = nullptr;
+    QFutureWatcher<HeightCropResult>* height_crop_watcher_ = nullptr;
     QString pending_load_path_;
+    ProcessWaitResult waitForProcessFinishedCancelable(QProcess* process, int timeout_ms);
     
     // Workflow steps indicator
     QWidget* workflow_widget_ = nullptr;

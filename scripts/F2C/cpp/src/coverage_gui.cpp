@@ -19,9 +19,12 @@
 #include <QFile>
 #include <QFrame>
 #include <QDir>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QTabWidget>
 #include <QStandardPaths>
 #include <QSignalBlocker>
+#include <QThread>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QJsonArray>
@@ -35,6 +38,7 @@
 #include <chrono>
 #include <atomic>
 #include <limits>
+#include <stdexcept>
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -267,6 +271,7 @@ namespace {
 
 constexpr double kWaypointDuplicateEpsilon = 1e-6;
 constexpr double kConnectorObstacleClearanceM = 0.3;
+constexpr const char* kOperationCancelledMessage = "Operation cancelled";
 
 PathStateList dedupePathStates(const PathStateList& path) {
     PathStateList filtered;
@@ -1768,6 +1773,11 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     connect(pcd_watcher_, &QFutureWatcher<PointCloudPtr>::finished, 
             this, &CoverageGUI::onPointCloudLoaded);
 
+    // Initialize async height crop worker
+    height_crop_watcher_ = new QFutureWatcher<HeightCropResult>(this);
+    connect(height_crop_watcher_, &QFutureWatcher<HeightCropResult>::finished,
+            this, &CoverageGUI::onHeightCropFinished);
+
     // Initialize async obstacle detector
     obstacle_detect_watcher_ = new QFutureWatcher<ObstacleDetectionResult>(this);
     connect(obstacle_detect_watcher_, &QFutureWatcher<ObstacleDetectionResult>::finished,
@@ -1848,13 +1858,25 @@ CoverageGUI::~CoverageGUI() {
         zenoh_check_timer_->stop();
     }
 
+    progress_cancel_requested_.store(true);
+
     // Avoid use-after-free if background futures are still running
     if (pcd_watcher_ && pcd_watcher_->isRunning()) {
         pcd_watcher_->waitForFinished();
     }
+    if (height_crop_watcher_ && height_crop_watcher_->isRunning()) {
+        height_crop_watcher_->waitForFinished();
+    }
     if (obstacle_detect_watcher_ && obstacle_detect_watcher_->isRunning()) {
         obstacle_detect_watcher_->waitForFinished();
     }
+    if (transit_plan_watcher_ && transit_plan_watcher_->isRunning()) {
+        transit_plan_watcher_->waitForFinished();
+    }
+
+    setProgressCallback(nullptr);
+    setCancelCheckCallback(nullptr);
+    setObstacleCancelCallback(nullptr);
     
     // Clean up ROS2 resources
     fastlio_sub_.reset();
@@ -2013,6 +2035,11 @@ void CoverageGUI::setupUI() {
     progress_bar_->setVisible(false);
     progress_bar_->setMaximumWidth(200);
     status_bar_->addPermanentWidget(progress_bar_);
+
+    btn_progress_cancel_ = new QPushButton("Cancel");
+    btn_progress_cancel_->setVisible(false);
+    btn_progress_cancel_->setEnabled(false);
+    status_bar_->addPermanentWidget(btn_progress_cancel_);
     
     // Note: Teleop dock is created later after ROS2 node is initialized
     // See end of constructor where ros_node_ is created
@@ -2030,6 +2057,9 @@ void CoverageGUI::setupConnections() {
     connect(plot_, &PlotWidget::customWaypointRequested, this, &CoverageGUI::onPlotCustomWaypoint);
     connect(plot_, &PlotWidget::rectangleCompleted, this, &CoverageGUI::onRectangleCompleted);
     connect(plot_, &PlotWidget::measureDistanceUpdated, this, &CoverageGUI::onMeasureDistanceUpdated);
+    if (btn_progress_cancel_) {
+        connect(btn_progress_cancel_, &QPushButton::clicked, this, &CoverageGUI::onCancelProgressRequested);
+    }
     
     // Path mode switching
     if (radio_mode_f2c_) {
@@ -2103,9 +2133,20 @@ void CoverageGUI::setupConnections() {
     
     // Set progress callback
     setProgressCallback([this](int percent, const std::string& msg) {
-        QMetaObject::invokeMethod(this, [this, percent, msg]() {
-            updateProgress(percent, QString::fromStdString(msg));
-        }, Qt::QueuedConnection);
+        const QString text = QString::fromStdString(msg);
+        if (QThread::currentThread() == thread()) {
+            updateProgress(percent, text);
+        } else {
+            QMetaObject::invokeMethod(this, [this, percent, text]() {
+                updateProgress(percent, text);
+            }, Qt::QueuedConnection);
+        }
+    });
+    setCancelCheckCallback([this]() {
+        return isProgressCancelRequested();
+    });
+    setObstacleCancelCallback([this]() {
+        return isProgressCancelRequested();
     });
 }
 
@@ -3991,18 +4032,169 @@ void CoverageGUI::setStatus(const QString& text, int timeout_ms) {
     status_bar_->showMessage(text, timeout_ms);
 }
 
+void CoverageGUI::beginProgressOperation(const QString& text, bool cancelable, bool indeterminate) {
+    progress_cancel_requested_.store(false);
+    progress_operation_active_ = true;
+    progress_operation_cancelable_ = cancelable;
+    progress_active_process_ = nullptr;
+    progress_last_percent_ = -2;
+    progress_last_text_.clear();
+    progress_last_ui_pump_ = std::chrono::steady_clock::now();
+
+    if (progress_bar_) {
+        if (indeterminate) {
+            progress_bar_->setRange(0, 0);
+        } else {
+            progress_bar_->setRange(0, 100);
+            progress_bar_->setValue(0);
+        }
+        progress_bar_->setVisible(true);
+    }
+    if (btn_progress_cancel_) {
+        btn_progress_cancel_->setVisible(cancelable);
+        btn_progress_cancel_->setEnabled(cancelable);
+    }
+    if (cancelable && centralWidget()) {
+        centralWidget()->setEnabled(false);
+    }
+    if (!text.isEmpty()) {
+        setStatus(text);
+        progress_last_text_ = text;
+    }
+    if (cancelable) {
+        pumpProgressUiIfNeeded(true);
+    }
+}
+
+bool CoverageGUI::endProgressOperation() {
+    const bool was_cancelled = progress_cancel_requested_.exchange(false);
+    progress_operation_active_ = false;
+    progress_operation_cancelable_ = false;
+    progress_active_process_ = nullptr;
+    progress_last_percent_ = -2;
+    progress_last_text_.clear();
+
+    if (progress_bar_) {
+        progress_bar_->setVisible(false);
+        progress_bar_->setRange(0, 100);
+        progress_bar_->setValue(0);
+    }
+    if (btn_progress_cancel_) {
+        btn_progress_cancel_->setVisible(false);
+        btn_progress_cancel_->setEnabled(false);
+    }
+    if (centralWidget()) {
+        centralWidget()->setEnabled(true);
+    }
+    return was_cancelled;
+}
+
 void CoverageGUI::showProgress(bool show, const QString& text) {
     progress_bar_->setVisible(show);
+    if (!show) {
+        progress_bar_->setRange(0, 100);
+        progress_bar_->setValue(0);
+    }
     if (show && !text.isEmpty()) {
         setStatus(text);
     }
 }
 
 void CoverageGUI::updateProgress(int percent, const QString& text) {
-    progress_bar_->setValue(percent);
-    if (!text.isEmpty()) {
-        setStatus(text);
+    if (percent >= 0) {
+        if (progress_bar_->minimum() == 0 && progress_bar_->maximum() == 0) {
+            progress_bar_->setRange(0, 100);
+        }
+        const int clamped_percent = std::clamp(percent, 0, 100);
+        if (clamped_percent != progress_last_percent_) {
+            progress_bar_->setValue(clamped_percent);
+            progress_last_percent_ = clamped_percent;
+        }
     }
+    if (!text.isEmpty() && text != progress_last_text_) {
+        setStatus(text);
+        progress_last_text_ = text;
+    }
+    pumpProgressUiIfNeeded();
+}
+
+void CoverageGUI::pumpProgressUiIfNeeded(bool force) {
+    if (!progress_operation_active_ || !progress_operation_cancelable_) {
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    if (!force && progress_last_ui_pump_.time_since_epoch().count() != 0) {
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - progress_last_ui_pump_);
+        if (elapsed < std::chrono::milliseconds(33)) {
+            return;
+        }
+    }
+
+    progress_last_ui_pump_ = now;
+    QApplication::processEvents(QEventLoop::AllEvents, 1);
+}
+
+bool CoverageGUI::isProgressCancelRequested() const {
+    return progress_cancel_requested_.load();
+}
+
+bool CoverageGUI::isOperationCancelledMessage(const QString& text) const {
+    return text.trimmed().compare(kOperationCancelledMessage, Qt::CaseInsensitive) == 0;
+}
+
+void CoverageGUI::onCancelProgressRequested() {
+    if (!progress_operation_active_ || !progress_operation_cancelable_) {
+        return;
+    }
+    progress_cancel_requested_.store(true);
+    if (btn_progress_cancel_) {
+        btn_progress_cancel_->setEnabled(false);
+    }
+    setStatus("Cancelling current operation...");
+    if (progress_active_process_ && progress_active_process_->state() != QProcess::NotRunning) {
+        progress_active_process_->terminate();
+        if (!progress_active_process_->waitForFinished(250)) {
+            progress_active_process_->kill();
+            progress_active_process_->waitForFinished(250);
+        }
+    }
+}
+
+CoverageGUI::ProcessWaitResult CoverageGUI::waitForProcessFinishedCancelable(
+    QProcess* process, int timeout_ms) {
+    if (!process) {
+        return ProcessWaitResult::TimedOut;
+    }
+
+    progress_active_process_ = process;
+    QElapsedTimer timer;
+    timer.start();
+    while (process->state() != QProcess::NotRunning) {
+        if (timeout_ms >= 0 && timer.elapsed() >= timeout_ms) {
+            process->terminate();
+            if (!process->waitForFinished(500)) {
+                process->kill();
+                process->waitForFinished(500);
+            }
+            progress_active_process_ = nullptr;
+            return ProcessWaitResult::TimedOut;
+        }
+        if (isProgressCancelRequested()) {
+            process->terminate();
+            if (!process->waitForFinished(500)) {
+                process->kill();
+                process->waitForFinished(500);
+            }
+            progress_active_process_ = nullptr;
+            return ProcessWaitResult::Cancelled;
+        }
+        process->waitForFinished(100);
+        pumpProgressUiIfNeeded();
+    }
+    progress_active_process_ = nullptr;
+    return ProcessWaitResult::Finished;
 }
 
 CoverageConfig CoverageGUI::currentConfig() const {
@@ -4338,16 +4530,24 @@ if tmp_cleanup:
         pass
 )PY";
 
-    showProgress(true, "Loading trail from rosbag...");
+    beginProgressOperation("Loading trail from rosbag...", true);
+    updateProgress(10, "Loading trail from rosbag...");
     QProcess proc;
     proc.start("python3", QStringList() << "-c" << py_code << bag_dir << topic << temp_csv);
-    if (!proc.waitForFinished(600000)) {
-        showProgress(false);
+    const ProcessWaitResult bag_wait = waitForProcessFinishedCancelable(&proc, 600000);
+    if (bag_wait == ProcessWaitResult::Cancelled) {
+        QFile::remove(temp_csv);
+        endProgressOperation();
+        setStatus("Trail import cancelled", 5000);
+        return;
+    }
+    if (bag_wait == ProcessWaitResult::TimedOut) {
+        endProgressOperation();
         QMessageBox::warning(this, "Trail Import Failed", "Timed out while reading/decompressing rosbag.");
         return;
     }
     if (proc.exitCode() != 0) {
-        showProgress(false);
+        endProgressOperation();
         QString err = QString::fromUtf8(proc.readAllStandardError()).trimmed();
         if (err.isEmpty()) {
             err = "Unknown error reading rosbag.";
@@ -4356,9 +4556,10 @@ if tmp_cleanup:
         return;
     }
 
+    updateProgress(55, "Parsing extracted trail...");
     std::ifstream in(temp_csv.toStdString());
     if (!in.is_open()) {
-        showProgress(false);
+        endProgressOperation();
         QMessageBox::warning(this, "Trail Import Failed", "Could not read extracted trail CSV.");
         return;
     }
@@ -4367,8 +4568,26 @@ if tmp_cleanup:
     std::getline(in, line);  // header
     std::vector<PathState> imported_states;
     imported_states.reserve(5000);
+    const qint64 csv_size = QFileInfo(temp_csv).size();
 
     while (std::getline(in, line)) {
+        if ((imported_states.size() & 0x0FFFu) == 0u) {
+            const std::streampos pos = in.tellg();
+            if (csv_size > 0 && pos >= 0) {
+                const double ratio = std::clamp(static_cast<double>(pos) /
+                                                    static_cast<double>(csv_size),
+                                                0.0, 1.0);
+                updateProgress(55 + static_cast<int>(40.0 * ratio), "Parsing extracted trail...");
+            } else {
+                updateProgress(-1, "Parsing extracted trail...");
+            }
+            if (isProgressCancelRequested()) {
+                QFile::remove(temp_csv);
+                endProgressOperation();
+                setStatus("Trail import cancelled", 5000);
+                return;
+            }
+        }
         if (line.empty()) {
             continue;
         }
@@ -4402,7 +4621,7 @@ if tmp_cleanup:
     }
 
     if (imported_states.empty()) {
-        showProgress(false);
+        endProgressOperation();
         QMessageBox::warning(this, "Trail Import Failed", "No valid trail points were parsed.");
         return;
     }
@@ -4418,7 +4637,8 @@ if tmp_cleanup:
         driven_path_snapshot_ = robot_trail_states_;
     }
 
-    showProgress(false);
+    updateProgress(100, "Trail import complete");
+    endProgressOperation();
     refreshPlot();
     setStatus(QString("Loaded %1 trail points from rosbag (%2)")
                   .arg(imported_states.size())
@@ -4436,7 +4656,8 @@ void CoverageGUI::fetchLatestMapFromRobot() {
                                  : QString("-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=yes "
                                            "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
                                        .arg(pinned_known_hosts_file_);
-    showProgress(true, QString("Connecting to %1...").arg(display_robot));
+    beginProgressOperation(QString("Connecting to %1...").arg(display_robot), true);
+    updateProgress(5, QString("Connecting to %1...").arg(display_robot));
     
     // Build SSH command to find the latest .pcd file on robot
     QString find_cmd = QString(
@@ -4446,9 +4667,15 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     
     QProcess find_process;
     find_process.start("bash", QStringList() << "-c" << find_cmd);
-    
-    if (!find_process.waitForFinished(10000)) {
-        showProgress(false);
+
+    const ProcessWaitResult find_wait = waitForProcessFinishedCancelable(&find_process, 10000);
+    if (find_wait == ProcessWaitResult::Cancelled) {
+        endProgressOperation();
+        setStatus("Map fetch cancelled", 5000);
+        return;
+    }
+    if (find_wait == ProcessWaitResult::TimedOut) {
+        endProgressOperation();
         const QString details = using_registry
                                     ? QString("Could not connect to robot.\nCheck if:\n"
                                               "• Robot is powered on\n"
@@ -4466,7 +4693,7 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     }
     
     if (find_process.exitCode() != 0) {
-        showProgress(false);
+        endProgressOperation();
         QString error = QString::fromUtf8(find_process.readAllStandardError());
         QMessageBox::warning(this, "SSH Error", "SSH command failed:\n" + error);
         return;
@@ -4475,7 +4702,7 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     QString remote_path = QString::fromUtf8(find_process.readAllStandardOutput()).trimmed();
     
     if (remote_path.isEmpty()) {
-        showProgress(false);
+        endProgressOperation();
         QMessageBox::warning(this, "No Maps Found", 
             "No .pcd map files found on robot at " + robot_data_path_);
         return;
@@ -4490,6 +4717,7 @@ void CoverageGUI::fetchLatestMapFromRobot() {
     // Extract filename and create local path
     QFileInfo remote_info(remote_path);
     QString local_path = local_dir + "/" + remote_info.fileName();
+    updateProgress(30, "Latest map found: " + remote_info.fileName());
     
     // Check if file already exists locally
     if (QFile::exists(local_path)) {
@@ -4498,19 +4726,21 @@ void CoverageGUI::fetchLatestMapFromRobot() {
             QString("Map already exists locally:\n%1\n\nOverwrite?").arg(local_path),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) {
-            showProgress(false);
+            endProgressOperation();
             // Offer to load existing file
             reply = QMessageBox::question(this, "Load Existing?", 
                 "Load the existing local map instead?",
                 QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
             if (reply == QMessageBox::Yes) {
-                loadPointCloudFromPath(local_path);
+                loadPointCloudAsync(local_path);
             }
             return;
         }
     }
-    
-    showProgress(true, "Downloading: " + remote_info.fileName());
+
+    const QString download_path = local_path + ".part";
+    QFile::remove(download_path);
+    updateProgress(60, "Downloading: " + remote_info.fileName());
     
     // SCP the file to local machine
     QString scp_cmd = QString(
@@ -4521,27 +4751,51 @@ void CoverageGUI::fetchLatestMapFromRobot() {
             : QString("-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=yes "
                       "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
                   .arg(pinned_known_hosts_file_),
-        robot_user_, robot_host_, remote_path, local_path);
+        robot_user_, robot_host_, remote_path, download_path);
     
     QProcess scp_process;
     scp_process.start("bash", QStringList() << "-c" << scp_cmd);
-    
-    if (!scp_process.waitForFinished(180000)) {  // 3 min timeout for large files
-        showProgress(false);
+
+    const ProcessWaitResult scp_wait = waitForProcessFinishedCancelable(&scp_process, 180000);
+    if (scp_wait == ProcessWaitResult::Cancelled) {
+        QFile::remove(download_path);
+        endProgressOperation();
+        setStatus("Map download cancelled", 5000);
+        return;
+    }
+    if (scp_wait == ProcessWaitResult::TimedOut) {  // 3 min timeout for large files
+        QFile::remove(download_path);
+        endProgressOperation();
         QMessageBox::warning(this, "Download Failed", 
             "File transfer timed out.\nThe map file may be too large or connection is slow.");
         return;
     }
     
     if (scp_process.exitCode() != 0) {
-        showProgress(false);
+        QFile::remove(download_path);
+        endProgressOperation();
         QString error = QString::fromUtf8(scp_process.readAllStandardError());
         QMessageBox::warning(this, "Download Failed", 
             "Could not download map file:\n" + error);
         return;
     }
-    
-    showProgress(false);
+
+    if (QFile::exists(local_path) && !QFile::remove(local_path)) {
+        QFile::remove(download_path);
+        endProgressOperation();
+        QMessageBox::warning(this, "Download Failed",
+                             "Downloaded map could not replace the existing local file.");
+        return;
+    }
+    if (!QFile::rename(download_path, local_path)) {
+        QFile::remove(download_path);
+        endProgressOperation();
+        QMessageBox::warning(this, "Download Failed",
+                             "Downloaded map could not be finalized locally.");
+        return;
+    }
+    updateProgress(100, "Map download complete");
+    endProgressOperation();
     
     // Verify file exists locally
     QFileInfo local_info(local_path);
@@ -4566,7 +4820,7 @@ void CoverageGUI::fetchLatestMapFromRobot() {
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     
     if (reply == QMessageBox::Yes) {
-        loadPointCloudFromPath(local_path);
+        loadPointCloudAsync(local_path);
     }
     
     setStatus("Map saved: " + local_path);
@@ -4582,8 +4836,7 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
                                  : QString("-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=yes "
                                            "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
                                        .arg(pinned_known_hosts_file_);
-
-    showProgress(true, QString("Alignment: finding latest map on %1...").arg(display_robot));
+    updateProgress(10, QString("Alignment: finding latest map on %1...").arg(display_robot));
 
     QString find_cmd = QString(
         "ssh %1 %2@%3 "
@@ -4592,8 +4845,14 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
 
     QProcess find_process;
     find_process.start("bash", QStringList() << "-c" << find_cmd);
-    if (!find_process.waitForFinished(10000) || find_process.exitCode() != 0) {
-        showProgress(false);
+    const ProcessWaitResult find_wait = waitForProcessFinishedCancelable(&find_process, 10000);
+    if (find_wait == ProcessWaitResult::Cancelled) {
+        if (errorOut) {
+            *errorOut = kOperationCancelledMessage;
+        }
+        return false;
+    }
+    if (find_wait == ProcessWaitResult::TimedOut || find_process.exitCode() != 0) {
         if (errorOut) {
             *errorOut = QString("Could not query latest robot map via SSH.\n%1")
                             .arg(QString::fromUtf8(find_process.readAllStandardError()).trimmed());
@@ -4603,7 +4862,6 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
 
     QString remote_path = QString::fromUtf8(find_process.readAllStandardOutput()).trimmed();
     if (remote_path.isEmpty()) {
-        showProgress(false);
         if (errorOut) {
             *errorOut = "No .pcd map files found on robot under " + robot_data_path_;
         }
@@ -4620,7 +4878,9 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
     bool use_existing = QFileInfo::exists(local_path) && QFileInfo(local_path).size() > 0;
 
     if (!use_existing) {
-        showProgress(true, "Alignment: downloading " + remote_info.fileName());
+        const QString download_path = local_path + ".align.part";
+        QFile::remove(download_path);
+        updateProgress(25, "Alignment: downloading " + remote_info.fileName());
         QString scp_cmd = QString(
             "scp %1 %2@%3:\"%4\" \"%5\""
         ).arg(
@@ -4629,21 +4889,44 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
                 : QString("-o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=yes "
                           "-o UserKnownHostsFile=%1 -o GlobalKnownHostsFile=/dev/null")
                       .arg(pinned_known_hosts_file_),
-            robot_user_, robot_host_, remote_path, local_path);
+            robot_user_, robot_host_, remote_path, download_path);
 
         QProcess scp_process;
         scp_process.start("bash", QStringList() << "-c" << scp_cmd);
-        if (!scp_process.waitForFinished(180000) || scp_process.exitCode() != 0) {
-            showProgress(false);
+        const ProcessWaitResult scp_wait = waitForProcessFinishedCancelable(&scp_process, 180000);
+        if (scp_wait == ProcessWaitResult::Cancelled) {
+            QFile::remove(download_path);
+            if (errorOut) {
+                *errorOut = kOperationCancelledMessage;
+            }
+            return false;
+        }
+        if (scp_wait == ProcessWaitResult::TimedOut || scp_process.exitCode() != 0) {
+            QFile::remove(download_path);
             if (errorOut) {
                 *errorOut = QString("Failed to download latest map.\n%1")
                                 .arg(QString::fromUtf8(scp_process.readAllStandardError()).trimmed());
             }
             return false;
         }
+        if (QFile::exists(local_path) && !QFile::remove(local_path)) {
+            QFile::remove(download_path);
+            if (errorOut) {
+                *errorOut = "Downloaded map could not replace the existing cached file.";
+            }
+            return false;
+        }
+        if (!QFile::rename(download_path, local_path)) {
+            QFile::remove(download_path);
+            if (errorOut) {
+                *errorOut = "Downloaded map could not be finalized locally.";
+            }
+            return false;
+        }
+    } else {
+        updateProgress(25, "Alignment: using cached latest map");
     }
 
-    showProgress(false);
     QFileInfo local_info(local_path);
     if (!local_info.exists() || local_info.size() <= 0) {
         if (errorOut) {
@@ -4652,6 +4935,7 @@ bool CoverageGUI::fetchLatestMapFileForAlignment(QString* localPathOut, QString*
         return false;
     }
 
+    updateProgress(35, "Alignment: latest map ready");
     if (localPathOut) {
         *localPathOut = local_path;
     }
@@ -4761,9 +5045,16 @@ void CoverageGUI::alignLoadedMapToLatestRobotMap() {
         return;
     }
 
+    beginProgressOperation("Alignment: finding latest robot map...", true);
     QString latest_path;
     QString fetch_error;
     if (!fetchLatestMapFileForAlignment(&latest_path, &fetch_error)) {
+        const bool cancelled = isOperationCancelledMessage(fetch_error);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Map alignment cancelled", 5000);
+            return;
+        }
         QMessageBox::warning(
             this, "Alignment Fetch Failed",
             "Could not fetch the latest robot map for alignment.\n\n" + fetch_error +
@@ -4771,200 +5062,177 @@ void CoverageGUI::alignLoadedMapToLatestRobotMap() {
         return;
     }
 
-    PointCloudPtr target_cloud;
     try {
-        target_cloud = loadPointCloudFile(latest_path.toStdString());
+        updateProgress(40, "Alignment: loading latest robot map...");
+        PointCloudPtr target_cloud = loadPointCloudFile(latest_path.toStdString());
+        if (isProgressCancelRequested()) {
+            throw std::runtime_error(kOperationCancelledMessage);
+        }
+
+        updateProgress(55, "Alignment: preparing point clouds...");
+        // Alignment uses raw loaded cloud (pcd_points_), not GUI-cropped/filtered cloud.
+        PointCloudPtr eval_source_ds = downsampleForAlignment(pcd_points_, 0.15);
+        PointCloudPtr eval_target_ds = downsampleForAlignment(target_cloud, 0.15);
+        if (!eval_source_ds || !eval_target_ds || eval_source_ds->size() < 50 || eval_target_ds->size() < 50) {
+            endProgressOperation();
+            QMessageBox::warning(this, "Alignment Failed",
+                                 "Not enough points for alignment after downsampling.");
+            return;
+        }
+
+        updateProgress(60, "Applying manual initial guess...");
+        const double tx_guess = spin_align_tx_ ? spin_align_tx_->value() : 0.0;
+        const double ty_guess = spin_align_ty_ ? spin_align_ty_->value() : 0.0;
+        const double yaw_guess_deg = spin_align_yaw_deg_ ? spin_align_yaw_deg_->value() : 0.0;
+        const double yaw_guess_rad = yaw_guess_deg * M_PI / 180.0;
+
+        Eigen::Matrix4f initial = Eigen::Matrix4f::Identity();
+        initial(0, 0) = static_cast<float>(std::cos(yaw_guess_rad));
+        initial(0, 1) = static_cast<float>(-std::sin(yaw_guess_rad));
+        initial(1, 0) = static_cast<float>(std::sin(yaw_guess_rad));
+        initial(1, 1) = static_cast<float>(std::cos(yaw_guess_rad));
+        initial(0, 3) = static_cast<float>(tx_guess);
+        initial(1, 3) = static_cast<float>(ty_guess);
+
+        QString guess_debug = QString("Manual initial guess: yaw=%1 deg, tx=%2 m, ty=%3 m")
+                                  .arg(yaw_guess_deg, 0, 'f', 2)
+                                  .arg(tx_guess, 0, 'f', 2)
+                                  .arg(ty_guess, 0, 'f', 2);
+
+        Eigen::Matrix4f final_tf = initial;
+        QString method = combo_align_mode_ ? combo_align_mode_->currentData().toString() : "guess_icp";
+        bool icp_converged = false;
+        double icp_score = std::numeric_limits<double>::quiet_NaN();
+        QString stage_report;
+
+        const double pre_err = estimateAlignmentError(eval_source_ds, eval_target_ds, Eigen::Matrix4f::Identity());
+        const double guess_err = estimateAlignmentError(eval_source_ds, eval_target_ds, initial);
+
+        if (method == "guess_icp") {
+            struct IcpStage {
+                double voxel;
+                double max_corr;
+                int max_iter;
+            };
+            const std::vector<IcpStage> stages = {
+                {0.35, 3.0, 80},
+                {0.18, 1.8, 60},
+                {0.10, 0.9, 50},
+            };
+
+            Eigen::Matrix4f current_tf = initial;
+            bool all_stages_ok = true;
+            for (size_t i = 0; i < stages.size(); ++i) {
+                if (isProgressCancelRequested()) {
+                    throw std::runtime_error(kOperationCancelledMessage);
+                }
+
+                const auto& st = stages[i];
+                const int percent = 70 + static_cast<int>((20.0 * static_cast<double>(i)) /
+                                                          std::max<size_t>(1, stages.size()));
+                updateProgress(percent, QString("Running ICP (%1/%2, voxel=%3 m)...")
+                                            .arg(i + 1)
+                                            .arg(stages.size())
+                                            .arg(st.voxel, 0, 'f', 2));
+
+                PointCloudPtr stage_source = downsampleForAlignment(pcd_points_, st.voxel);
+                PointCloudPtr stage_target = downsampleForAlignment(target_cloud, st.voxel);
+                if (!stage_source || !stage_target || stage_source->size() < 50 || stage_target->size() < 50) {
+                    all_stages_ok = false;
+                    stage_report += QString("\nStage %1 skipped (insufficient points at voxel=%2)")
+                                        .arg(i + 1)
+                                        .arg(st.voxel, 0, 'f', 2);
+                    continue;
+                }
+
+                pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+                icp.setInputSource(stage_source);
+                icp.setInputTarget(stage_target);
+                icp.setUseReciprocalCorrespondences(true);
+                icp.setMaximumIterations(st.max_iter);
+                icp.setMaxCorrespondenceDistance(st.max_corr);
+                icp.setRANSACOutlierRejectionThreshold(st.max_corr * 0.25);
+                icp.setTransformationEpsilon(1e-9);
+                icp.setEuclideanFitnessEpsilon(1e-5);
+
+                PointCloud aligned;
+                icp.align(aligned, current_tf);
+                if (isProgressCancelRequested()) {
+                    throw std::runtime_error(kOperationCancelledMessage);
+                }
+
+                const bool ok = icp.hasConverged();
+                const double fit = icp.getFitnessScore();
+                if (ok && std::isfinite(fit)) {
+                    current_tf = icp.getFinalTransformation();
+                    stage_report += QString("\nStage %1: converged=yes, fitness=%2")
+                                        .arg(i + 1)
+                                        .arg(fit, 0, 'f', 5);
+                    icp_score = fit;
+                } else {
+                    all_stages_ok = false;
+                    stage_report += QString("\nStage %1: converged=no").arg(i + 1);
+                }
+            }
+
+            icp_converged = all_stages_ok;
+            if (std::isfinite(icp_score)) {
+                final_tf = current_tf;
+            }
+        }
+
+        if (isProgressCancelRequested()) {
+            throw std::runtime_error(kOperationCancelledMessage);
+        }
+
+        updateProgress(95, "Applying alignment transform...");
+        const double final_err = estimateAlignmentError(eval_source_ds, eval_target_ds, final_tf);
+        applyAlignmentTransformToLoadedData(final_tf);
+        endProgressOperation();
+
+        const double yaw_deg = std::atan2(final_tf(1, 0), final_tf(0, 0)) * 180.0 / M_PI;
+        const double tx = final_tf(0, 3);
+        const double ty = final_tf(1, 3);
+        const QString status = QString("Alignment done (manual guess + ICP): yaw=%1 deg, tx=%2 m, ty=%3 m")
+                                   .arg(yaw_deg, 0, 'f', 2)
+                                   .arg(tx, 0, 'f', 2)
+                                   .arg(ty, 0, 'f', 2);
+        if (lbl_alignment_status_) {
+            lbl_alignment_status_->setText(status);
+            lbl_alignment_status_->setStyleSheet("color: #2e7d32; font-size: 10px;");
+        }
+
+        QString details = guess_debug + "\n";
+        details += QString("Error (mean NN): before=%1 m, initial=%2 m, final=%3 m")
+                       .arg(pre_err, 0, 'f', 3)
+                       .arg(guess_err, 0, 'f', 3)
+                       .arg(final_err, 0, 'f', 3);
+        details += QString("\nICP: converged=%1, fitness=%2")
+                       .arg(icp_converged ? "yes" : "no")
+                       .arg(std::isfinite(icp_score) ? QString::number(icp_score, 'f', 4) : "n/a");
+        if (!stage_report.isEmpty()) {
+            details += "\n" + stage_report;
+        }
+        details += "\n\nNext: recompute hull/obstacles/path in the aligned frame.";
+
+        QMessageBox::information(this, "Map Alignment Complete", details);
+        setStatus(status, 7000);
     } catch (const std::exception& e) {
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Map alignment cancelled", 5000);
+            return;
+        }
         QMessageBox::warning(this, "Alignment Failed",
-                             QString("Failed to load latest robot map:\n%1").arg(e.what()));
+                             QString("Alignment failed:\n%1").arg(err));
         return;
     }
-
-    // Alignment uses raw loaded cloud (pcd_points_), not GUI-cropped/filtered cloud.
-    PointCloudPtr eval_source_ds = downsampleForAlignment(pcd_points_, 0.15);
-    PointCloudPtr eval_target_ds = downsampleForAlignment(target_cloud, 0.15);
-    if (!eval_source_ds || !eval_target_ds || eval_source_ds->size() < 50 || eval_target_ds->size() < 50) {
-        QMessageBox::warning(this, "Alignment Failed",
-                             "Not enough points for alignment after downsampling.");
-        return;
-    }
-
-    showProgress(true, "Applying manual initial guess...");
-    const double tx_guess = spin_align_tx_ ? spin_align_tx_->value() : 0.0;
-    const double ty_guess = spin_align_ty_ ? spin_align_ty_->value() : 0.0;
-    const double yaw_guess_deg = spin_align_yaw_deg_ ? spin_align_yaw_deg_->value() : 0.0;
-    const double yaw_guess_rad = yaw_guess_deg * M_PI / 180.0;
-
-    Eigen::Matrix4f initial = Eigen::Matrix4f::Identity();
-    initial(0, 0) = static_cast<float>(std::cos(yaw_guess_rad));
-    initial(0, 1) = static_cast<float>(-std::sin(yaw_guess_rad));
-    initial(1, 0) = static_cast<float>(std::sin(yaw_guess_rad));
-    initial(1, 1) = static_cast<float>(std::cos(yaw_guess_rad));
-    initial(0, 3) = static_cast<float>(tx_guess);
-    initial(1, 3) = static_cast<float>(ty_guess);
-
-    QString guess_debug = QString("Manual initial guess: yaw=%1 deg, tx=%2 m, ty=%3 m")
-                              .arg(yaw_guess_deg, 0, 'f', 2)
-                              .arg(tx_guess, 0, 'f', 2)
-                              .arg(ty_guess, 0, 'f', 2);
-
-    Eigen::Matrix4f final_tf = initial;
-    QString method = combo_align_mode_ ? combo_align_mode_->currentData().toString() : "guess_icp";
-    bool icp_converged = false;
-    double icp_score = std::numeric_limits<double>::quiet_NaN();
-    QString stage_report;
-
-    const double pre_err = estimateAlignmentError(eval_source_ds, eval_target_ds, Eigen::Matrix4f::Identity());
-    const double guess_err = estimateAlignmentError(eval_source_ds, eval_target_ds, initial);
-
-    if (method == "guess_icp") {
-        // Multi-scale ICP improves capture range and final precision.
-        struct IcpStage {
-            double voxel;
-            double max_corr;
-            int max_iter;
-        };
-        const std::vector<IcpStage> stages = {
-            {0.35, 3.0, 80},  // coarse
-            {0.18, 1.8, 60},  // medium
-            {0.10, 0.9, 50},  // fine
-        };
-
-        Eigen::Matrix4f current_tf = initial;
-        bool all_stages_ok = true;
-
-        for (size_t i = 0; i < stages.size(); ++i) {
-            const auto& st = stages[i];
-            showProgress(true, QString("Running ICP (%1/%2, voxel=%3 m)...")
-                                   .arg(i + 1)
-                                   .arg(stages.size())
-                                   .arg(st.voxel, 0, 'f', 2));
-
-            PointCloudPtr stage_source = downsampleForAlignment(pcd_points_, st.voxel);
-            PointCloudPtr stage_target = downsampleForAlignment(target_cloud, st.voxel);
-            if (!stage_source || !stage_target || stage_source->size() < 50 || stage_target->size() < 50) {
-                all_stages_ok = false;
-                stage_report += QString("\nStage %1 skipped (insufficient points at voxel=%2)")
-                                    .arg(i + 1)
-                                    .arg(st.voxel, 0, 'f', 2);
-                continue;
-            }
-
-            pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-            icp.setInputSource(stage_source);
-            icp.setInputTarget(stage_target);
-            icp.setUseReciprocalCorrespondences(true);
-            icp.setMaximumIterations(st.max_iter);
-            icp.setMaxCorrespondenceDistance(st.max_corr);
-            icp.setRANSACOutlierRejectionThreshold(st.max_corr * 0.25);
-            icp.setTransformationEpsilon(1e-9);
-            icp.setEuclideanFitnessEpsilon(1e-5);
-
-            PointCloud aligned;
-            icp.align(aligned, current_tf);
-            const bool ok = icp.hasConverged();
-            const double fit = icp.getFitnessScore();
-            if (ok && std::isfinite(fit)) {
-                current_tf = icp.getFinalTransformation();
-                stage_report += QString("\nStage %1: converged=yes, fitness=%2")
-                                    .arg(i + 1)
-                                    .arg(fit, 0, 'f', 5);
-                icp_score = fit;
-            } else {
-                all_stages_ok = false;
-                stage_report += QString("\nStage %1: converged=no").arg(i + 1);
-            }
-        }
-
-        icp_converged = all_stages_ok;
-        if (std::isfinite(icp_score)) {
-            final_tf = current_tf;
-        }
-    }
-
-    const double final_err = estimateAlignmentError(eval_source_ds, eval_target_ds, final_tf);
-    applyAlignmentTransformToLoadedData(final_tf);
-    showProgress(false);
-
-    const double yaw_deg = std::atan2(final_tf(1, 0), final_tf(0, 0)) * 180.0 / M_PI;
-    const double tx = final_tf(0, 3);
-    const double ty = final_tf(1, 3);
-    const QString status = QString("Alignment done (manual guess + ICP): yaw=%1 deg, tx=%2 m, ty=%3 m")
-                               .arg(yaw_deg, 0, 'f', 2)
-                               .arg(tx, 0, 'f', 2)
-                               .arg(ty, 0, 'f', 2);
-    if (lbl_alignment_status_) {
-        lbl_alignment_status_->setText(status);
-        lbl_alignment_status_->setStyleSheet("color: #2e7d32; font-size: 10px;");
-    }
-
-    QString details = guess_debug + "\n";
-    details += QString("Error (mean NN): before=%1 m, initial=%2 m, final=%3 m")
-                   .arg(pre_err, 0, 'f', 3)
-                   .arg(guess_err, 0, 'f', 3)
-                   .arg(final_err, 0, 'f', 3);
-    details += QString("\nICP: converged=%1, fitness=%2")
-                   .arg(icp_converged ? "yes" : "no")
-                   .arg(std::isfinite(icp_score) ? QString::number(icp_score, 'f', 4) : "n/a");
-    if (!stage_report.isEmpty()) {
-        details += "\n" + stage_report;
-    }
-    details += "\n\nNext: recompute hull/obstacles/path in the aligned frame.";
-
-    QMessageBox::information(this, "Map Alignment Complete", details);
-    setStatus(status, 7000);
 }
 
 void CoverageGUI::loadPointCloudFromPath(const QString& path) {
-    showProgress(true, "Loading point cloud...");
-    
-    try {
-        pcd_points_ = loadPointCloudFile(path.toStdString());
-        filtered_points_ = pcd_points_;
-        
-        loaded_file_ = path;
-        lbl_file_->setText(QFileInfo(path).fileName());
-        
-        // Clear old data
-        polygon_.clear();
-        roi_polygon_.clear();
-        obstacles_.clear();
-        swaths_.clear();
-        route_.clear();
-        path_.clear();
-        alignment_transform_total_ = Eigen::Matrix4f::Identity();
-
-        // Snapshot driven path at map-load time (used for obstacle detection)
-        {
-            std::lock_guard<std::mutex> lock(robot_pose_mutex_);
-            driven_path_snapshot_ = robot_trail_states_;
-        }
-        
-        lbl_roi_->setText("ROI: none");
-        lbl_obstacles_->setText("Obstacles: 0");
-        if (lbl_alignment_status_) {
-            lbl_alignment_status_->setText("Alignment: not run");
-            lbl_alignment_status_->setStyleSheet("color: #666; font-size: 10px;");
-        }
-        
-        plot_->clearAll();
-        
-        // Project points to 2D immediately for visualization
-        xy_2d_.clear();
-        xy_2d_.reserve(pcd_points_->size());
-        for (const auto& pt : pcd_points_->points) {
-            xy_2d_.emplace_back(pt.x, pt.y);
-        }
-        
-        scheduleFitToView();
-        refreshPlot();
-        setStatus(QString("Loaded %1 points from %2").arg(pcd_points_->size()).arg(QFileInfo(path).fileName()), 4000);
-        
-    } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString("Failed to load: %1").arg(e.what()));
-    }
-    
-    showProgress(false);
+    loadPointCloudAsync(path);
 }
 
 void CoverageGUI::applyHeightCrop() {
@@ -4972,40 +5240,88 @@ void CoverageGUI::applyHeightCrop() {
         QMessageBox::warning(this, "Warning", "Load a point cloud first.");
         return;
     }
+
+    if (height_crop_watcher_ && height_crop_watcher_->isRunning()) {
+        QMessageBox::warning(this, "Busy", "Height crop already in progress. Please wait.");
+        return;
+    }
     
     double z_min = spin_z_min_->value();
     double z_max = spin_z_max_->value();
     
-    showProgress(true, QString("Applying height crop [%1, %2]m...").arg(z_min).arg(z_max));
-    
-    try {
-        // Use the new Z range filter (relative to robot origin Z=0)
-        filtered_points_ = filterByZRange(pcd_points_, z_min, z_max);
-        
-        // Project to 2D for visualization
-        xy_2d_.clear();
-        xy_2d_.reserve(filtered_points_->size());
-        for (const auto& pt : filtered_points_->points) {
-            xy_2d_.emplace_back(pt.x, pt.y);
+    beginProgressOperation(QString("Applying height crop [%1, %2]m...").arg(z_min).arg(z_max), true, true);
+
+    PointCloudPtr source_cloud = pcd_points_;
+    QFuture<HeightCropResult> future = QtConcurrent::run([this, source_cloud, z_min, z_max]() -> HeightCropResult {
+        HeightCropResult result;
+        result.z_min = z_min;
+        result.z_max = z_max;
+
+        try {
+            result.filtered_points = filterByZRange(source_cloud, z_min, z_max);
+            result.projected_points.clear();
+            result.projected_points.reserve(result.filtered_points ? result.filtered_points->size() : 0);
+            size_t i = 0;
+            for (const auto& pt : result.filtered_points->points) {
+                if ((i++ & 0x7FFFu) == 0u && isProgressCancelRequested()) {
+                    result.cancelled = true;
+                    return result;
+                }
+                result.projected_points.emplace_back(pt.x, pt.y);
+            }
+        } catch (const std::exception& e) {
+            const QString err = QString::fromUtf8(e.what());
+            if (isOperationCancelledMessage(err)) {
+                result.cancelled = true;
+            } else {
+                result.error = err;
+            }
         }
-        
-        // Clear previous polygon/coverage data
-        polygon_.clear();
-        swaths_.clear();
-        route_.clear();
-        path_.clear();
-        
-        scheduleFitToView();
-        refreshPlot();
-        setStatus(QString("Filtered to %1 points (Z: %2 to %3 m)")
-                  .arg(filtered_points_->size())
-                  .arg(z_min, 0, 'f', 2)
-                  .arg(z_max, 0, 'f', 2), 4000);
-    } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+
+        return result;
+    });
+
+    height_crop_watcher_->setFuture(future);
+}
+
+void CoverageGUI::onHeightCropFinished() {
+    const bool cancelled = progress_cancel_requested_.load();
+    endProgressOperation();
+
+    if (!height_crop_watcher_) {
+        return;
     }
-    
-    showProgress(false);
+
+    const HeightCropResult result = height_crop_watcher_->result();
+    if (cancelled || result.cancelled) {
+        setStatus("Height crop cancelled", 5000);
+        return;
+    }
+    if (!result.error.isEmpty()) {
+        QMessageBox::critical(this, "Error", result.error);
+        return;
+    }
+    if (!result.filtered_points || result.filtered_points->empty()) {
+        QMessageBox::critical(this, "Error", "Height crop returned no points.");
+        return;
+    }
+
+    filtered_points_ = result.filtered_points;
+    xy_2d_ = result.projected_points;
+
+    // Clear previous polygon/coverage data
+    polygon_.clear();
+    swaths_.clear();
+    route_.clear();
+    path_.clear();
+
+    scheduleFitToView();
+    refreshPlot();
+    setStatus(QString("Filtered to %1 points (Z: %2 to %3 m)")
+                  .arg(filtered_points_->size())
+                  .arg(result.z_min, 0, 'f', 2)
+                  .arg(result.z_max, 0, 'f', 2),
+              4000);
 }
 
 void CoverageGUI::showPointCloud3D() {
@@ -5020,7 +5336,7 @@ void CoverageGUI::showPointCloud3D() {
     }
     
     setStatus(QString("Preparing 3D viewer with %1 points...").arg(cloud->size()));
-    showProgress(true, "Saving temporary point cloud...");
+    beginProgressOperation("Saving temporary point cloud...", true);
     
     // Save point cloud to a temporary file (avoids VTK/Qt threading conflicts)
     std::string temp_pcd = "/tmp/f2c_viewer_temp.pcd";
@@ -5034,7 +5350,20 @@ void CoverageGUI::showPointCloud3D() {
     float min_z = std::numeric_limits<float>::max();
     float max_z = std::numeric_limits<float>::lowest();
     
-    for (const auto& pt : cloud->points) {
+    for (size_t i = 0; i < cloud->points.size(); ++i) {
+        if ((i & 0x1FFFu) == 0u) {
+            const int percent = cloud->points.empty()
+                ? 0
+                : 5 + static_cast<int>((15.0 * static_cast<double>(i)) /
+                                       static_cast<double>(cloud->points.size()));
+            updateProgress(percent, "Scanning point cloud heights...");
+            if (isProgressCancelRequested()) {
+                endProgressOperation();
+                setStatus("3D viewer preparation cancelled", 5000);
+                return;
+            }
+        }
+        const auto& pt = cloud->points[i];
         min_z = std::min(min_z, pt.z);
         max_z = std::max(max_z, pt.z);
     }
@@ -5043,7 +5372,20 @@ void CoverageGUI::showPointCloud3D() {
     if (z_range < 0.001f) z_range = 1.0f;
     
     // Apply height-based coloring
-    for (const auto& pt : cloud->points) {
+    for (size_t i = 0; i < cloud->points.size(); ++i) {
+        if ((i & 0x1FFFu) == 0u) {
+            const int percent = cloud->points.empty()
+                ? 20
+                : 20 + static_cast<int>((65.0 * static_cast<double>(i)) /
+                                        static_cast<double>(cloud->points.size()));
+            updateProgress(percent, "Colorizing point cloud for 3D viewer...");
+            if (isProgressCancelRequested()) {
+                endProgressOperation();
+                setStatus("3D viewer preparation cancelled", 5000);
+                return;
+            }
+        }
+        const auto& pt = cloud->points[i];
         pcl::PointXYZRGB colored_pt;
         colored_pt.x = pt.x;
         colored_pt.y = pt.y;
@@ -5077,7 +5419,7 @@ void CoverageGUI::showPointCloud3D() {
     // Save to temp file
     if (pcl::io::savePCDFileBinary(temp_pcd, *colored_cloud) != 0) {
         QMessageBox::critical(this, "Error", "Failed to save temporary point cloud file.");
-        showProgress(false);
+        endProgressOperation();
         return;
     }
     
@@ -5094,7 +5436,8 @@ void CoverageGUI::showPointCloud3D() {
         path_out.close();
     }
     
-    showProgress(false);
+    updateProgress(100, "Temporary point cloud ready");
+    endProgressOperation();
     
     // Try different viewer options in order of preference
     std::string viewer_cmd;
@@ -5253,7 +5596,7 @@ void CoverageGUI::applyDownsample() {
         return;
     }
     
-    showProgress(true, QString("Applying %1 downsampling...").arg(method));
+    beginProgressOperation(QString("Applying %1 downsampling...").arg(method), true);
     
     try {
         if (method == "random") {
@@ -5265,12 +5608,21 @@ void CoverageGUI::applyDownsample() {
                                                      spin_mean_k_->value(),
                                                      spin_std_ratio_->value());
         }
+        if (isProgressCancelRequested()) {
+            throw std::runtime_error(kOperationCancelledMessage);
+        }
+        endProgressOperation();
         setStatus(QString("Downsampled to %1 points").arg(filtered_points_->size()), 4000);
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Downsampling cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 void CoverageGUI::computeHull() {
@@ -5279,28 +5631,44 @@ void CoverageGUI::computeHull() {
         return;
     }
     
-    showProgress(true, "Computing hull...");
-    
+    beginProgressOperation("Computing hull...", true);
+
     try {
-        // Project to 2D
-        xy_2d_.clear();
-        xy_2d_.reserve(filtered_points_->size());
-        for (const auto& pt : filtered_points_->points) {
-            xy_2d_.emplace_back(pt.x, pt.y);
+        std::vector<Point2D> projected;
+        projected.reserve(filtered_points_->size());
+        for (size_t i = 0; i < filtered_points_->size(); ++i) {
+            if ((i & 0x1FFFu) == 0u) {
+                const int percent = filtered_points_->empty()
+                    ? 0
+                    : static_cast<int>((15.0 * static_cast<double>(i)) /
+                                       static_cast<double>(filtered_points_->size()));
+                updateProgress(percent, "Projecting point cloud to 2D...");
+                if (isProgressCancelRequested()) {
+                    throw std::runtime_error(kOperationCancelledMessage);
+                }
+            }
+            const auto& pt = filtered_points_->points[i];
+            projected.emplace_back(pt.x, pt.y);
         }
-        
+        xy_2d_ = std::move(projected);
+
         QString method = combo_hull_method_->currentData().toString();
         polygon_ = computeConcaveHull(xy_2d_, spin_alpha_->value(), method.toStdString());
-        
+
+        endProgressOperation();
         scheduleFitToView();
         refreshPlot();
         setStatus(QString("Hull computed with %1 vertices").arg(polygon_.size()), 4000);
-        
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Hull computation cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 void CoverageGUI::simplifyPolygon() {
@@ -5309,18 +5677,27 @@ void CoverageGUI::simplifyPolygon() {
         return;
     }
     
-    showProgress(true, "Simplifying polygon...");
+    beginProgressOperation("Simplifying polygon...", true);
     
     try {
         polygon_ = f2c_cpp::simplifyPolygon(polygon_, spin_simplify_->value());
+        if (isProgressCancelRequested()) {
+            throw std::runtime_error(kOperationCancelledMessage);
+        }
+        endProgressOperation();
         scheduleFitToView();
         refreshPlot();
         setStatus(QString("Simplified to %1 vertices").arg(polygon_.size()), 4000);
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Polygon simplification cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 void CoverageGUI::toggleROISelection() {
@@ -5454,8 +5831,7 @@ void CoverageGUI::autoDetectObstacles() {
         btn_auto_detect_obstacles_->setEnabled(false);
     }
 
-    showProgress(true, "Auto-detecting obstacles...");
-    progress_bar_->setRange(0, 0);
+    beginProgressOperation("Auto-detecting obstacles...", true, true);
     setStatus("Auto-detecting obstacles (AUTO mode)...");
 
     PointCloudPtr cloud = pcd_points_;
@@ -5556,9 +5932,14 @@ void CoverageGUI::onAutoDetectObstaclesFinished() {
         btn_auto_detect_obstacles_->setEnabled(true);
     }
 
-    showProgress(false);
+    const bool cancelled = progress_cancel_requested_.load();
+    endProgressOperation();
 
     const ObstacleDetectionResult result = obstacle_detect_watcher_->result();
+    if (cancelled || isOperationCancelledMessage(QString::fromStdString(result.error_message))) {
+        setStatus("Obstacle detection cancelled", 5000);
+        return;
+    }
     if (!result.success) {
         QMessageBox::critical(this, "Auto-detect Obstacles",
                               QString("Obstacle detection failed:\n\n%1")
@@ -5634,16 +6015,16 @@ void CoverageGUI::generateSwaths() {
         return;
     }
     
-    showProgress(true, "Generating swaths...");
-    progress_bar_->setRange(0, 0);  // Indeterminate
-    
+    beginProgressOperation("Generating swaths...", true);
+
     try {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
-        
+
+        endProgressOperation();
         if (!result.success) {
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
         } else {
@@ -5656,10 +6037,15 @@ void CoverageGUI::generateSwaths() {
             setStatus(QString("Generated %1 swaths").arg(swaths_.size()), 4000);
         }
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Swath generation cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 void CoverageGUI::generateRoute() {
@@ -5668,16 +6054,16 @@ void CoverageGUI::generateRoute() {
         return;
     }
     
-    showProgress(true, "Generating route...");
-    progress_bar_->setRange(0, 0);
-    
+    beginProgressOperation("Generating route...", true);
+
     try {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
-        
+
+        endProgressOperation();
         if (!result.success) {
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
         } else {
@@ -5692,10 +6078,15 @@ void CoverageGUI::generateRoute() {
             setStatus(QString("Generated route with %1 waypoints").arg(route_.size()), 4000);
         }
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Route generation cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 void CoverageGUI::generatePath() {
@@ -5704,17 +6095,17 @@ void CoverageGUI::generatePath() {
         return;
     }
     
-    showProgress(true, "Generating path...");
-    progress_bar_->setRange(0, 0);
-    
+    beginProgressOperation("Generating path...", true);
+
     try {
         CoverageConfig cfg = currentConfig();
         const Polygon2D* roi_ptr = roi_polygon_.empty() ? nullptr : &roi_polygon_;
         // Pass obstacles to coverage generation
         const std::vector<Obstacle2D>* obs_ptr = obstacles_.empty() ? nullptr : &obstacles_;
         CoverageResult result = generateCoverage(polygon_, cfg, roi_ptr, obs_ptr);
-        
+
         if (!result.success) {
+            endProgressOperation();
             QMessageBox::critical(this, "Error", QString::fromStdString(result.error_message));
         } else {
             swaths_ = result.swaths;
@@ -5735,6 +6126,17 @@ void CoverageGUI::generatePath() {
                     size_t connect_idx = 0;
                     bool found_connector = false;
                     for (size_t i = 0; i < final_path.size(); ++i) {
+                        if ((i & 0x0Fu) == 0u || i + 1 == final_path.size()) {
+                            updateProgress(85 + static_cast<int>(
+                                                    (10.0 * static_cast<double>(i)) /
+                                                    std::max<size_t>(1, final_path.size())),
+                                           QString("Planning connector %1/%2...")
+                                               .arg(i + 1)
+                                               .arg(final_path.size()));
+                        }
+                        if (isProgressCancelRequested()) {
+                            throw std::runtime_error(kOperationCancelledMessage);
+                        }
                         const Point2D goal = final_path[i].point;
                         const double dist = std::hypot(start.x - goal.x, start.y - goal.y);
                         if (dist <= 0.05) {
@@ -5810,12 +6212,18 @@ void CoverageGUI::generatePath() {
             if (spin_scan_len_) {
                 generateScanSegments();
             }
+            endProgressOperation();
         }
     } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString::fromStdString(e.what()));
+        const QString err = QString::fromUtf8(e.what());
+        const bool cancelled = isOperationCancelledMessage(err);
+        endProgressOperation();
+        if (cancelled) {
+            setStatus("Path generation cancelled", 5000);
+            return;
+        }
+        QMessageBox::critical(this, "Error", err);
     }
-    
-    showProgress(false);
 }
 
 int CoverageGUI::estimateTurns(const PathStateList& seg) const {
@@ -6853,7 +7261,7 @@ void CoverageGUI::loadPointCloudAsync(const QString& path) {
     }
     
     pending_load_path_ = path;
-    showProgress(true, "Loading point cloud...");
+    beginProgressOperation("Loading point cloud...", true, true);
     setStatus("Loading " + QFileInfo(path).fileName() + " (async)...");
     
     // Run loading in background thread
@@ -6870,9 +7278,15 @@ void CoverageGUI::loadPointCloudAsync(const QString& path) {
 }
 
 void CoverageGUI::onPointCloudLoaded() {
-    showProgress(false);
+    const bool cancelled = progress_cancel_requested_.load();
+    endProgressOperation();
     
     PointCloudPtr result = pcd_watcher_->result();
+    if (cancelled) {
+        pending_load_path_.clear();
+        setStatus("Point cloud load cancelled", 5000);
+        return;
+    }
     
     if (!result || result->empty()) {
         QMessageBox::critical(this, "Error", "Failed to load point cloud: " + pending_load_path_);
@@ -7428,22 +7842,27 @@ void CoverageGUI::startTransitPathPlanning(const Point2D& start, const Point2D& 
     const double spacing = spin_waypoint_spacing_ ? spin_waypoint_spacing_->value() : 0.0;
     const double clearance = kConnectorObstacleClearanceM;
 
-    showProgress(true, is_home ? "Planning home path..." : "Planning GO TO path...");
-    progress_bar_->setRange(0, 0);
+    beginProgressOperation(is_home ? "Planning home path..." : "Planning GO TO path...", true, true);
     if (btn_quick_home_) btn_quick_home_->setEnabled(false);
     if (btn_go_to_) btn_go_to_->setEnabled(false);
 
-    auto future = QtConcurrent::run([start, goal, boundary, obstacles_copy, spacing, clearance]() -> PathStateList {
+    auto future = QtConcurrent::run([this, start, goal, boundary, obstacles_copy, spacing, clearance]() -> PathStateList {
         const std::vector<Obstacle2D>* obs_ptr = obstacles_copy.empty() ? nullptr : &obstacles_copy;
-        return planObstacleAvoidingPath(start, goal, boundary, nullptr, obs_ptr, spacing, clearance);
+        try {
+            return planObstacleAvoidingPath(start, goal, boundary, nullptr, obs_ptr, spacing, clearance);
+        } catch (const std::exception& e) {
+            if (!isOperationCancelledMessage(QString::fromUtf8(e.what()))) {
+                std::cerr << "Transit planning error: " << e.what() << std::endl;
+            }
+            return PathStateList();
+        }
     });
     transit_plan_watcher_->setFuture(future);
 }
 
 void CoverageGUI::onTransitPathPlanningFinished() {
-    showProgress(false);
-    progress_bar_->setRange(0, 100);
-    progress_bar_->setValue(0);
+    const bool cancelled = progress_cancel_requested_.load();
+    endProgressOperation();
     if (btn_quick_home_) btn_quick_home_->setEnabled(true);
     if (btn_go_to_) btn_go_to_->setEnabled(true);
 
@@ -7457,6 +7876,13 @@ void CoverageGUI::onTransitPathPlanningFinished() {
     transit_plan_kind_ = TransitPlanKind::None;
 
     if (planned_path.empty()) {
+        if (cancelled) {
+            setStatus(kind == TransitPlanKind::Home
+                          ? "Home path planning cancelled"
+                          : "GO TO path planning cancelled",
+                      5000);
+            return;
+        }
         if (kind == TransitPlanKind::Home) {
             QMessageBox::warning(
                 this, "Home Path",

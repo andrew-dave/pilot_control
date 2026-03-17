@@ -235,10 +235,11 @@ CoverageResult generateCoverage(const Polygon2D& boundary,
                                 const std::vector<Obstacle2D>* obstacles = nullptr);
 
 /**
- * @brief Plan an obstacle-avoiding path between two points using straight segments.
+ * @brief Plan an obstacle-avoiding path between two points using a bidirectional heuristic grid search.
  *
  * The path minimizes the number of turns first, then total length (lexicographic).
- * It operates in polygonal free space defined by boundary/ROI minus obstacles.
+ * It operates in polygonal free space defined by boundary/ROI minus obstacles,
+ * using a bidirectional A* search over an 8-connected occupancy grid.
  *
  * @param start Start point (XY)
  * @param goal Goal point (XY)
@@ -275,10 +276,18 @@ bool savePathToCSV(const PathStateList& path, const std::string& filename);
 // =============================================================================
 
 using ProgressCallback = std::function<void(int percent, const std::string& message)>;
+using CancelCheckCallback = std::function<bool()>;
 
 /**
  * @brief Set global progress callback for long operations
  */
 void setProgressCallback(ProgressCallback callback);
+
+/**
+ * @brief Set global cancellation callback for long operations.
+ *
+ * The callback should return true when the active operation should stop.
+ */
+void setCancelCheckCallback(CancelCheckCallback callback);
 
 } // namespace f2c_cpp

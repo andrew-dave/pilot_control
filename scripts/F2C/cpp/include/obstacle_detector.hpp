@@ -108,6 +108,13 @@ struct ObstacleDetectionResult {
     ObstacleDetectionStats stats;
 };
 
+using ObstacleCancelCallback = std::function<bool()>;
+
+/**
+ * @brief Set a cooperative cancellation callback for long obstacle-detection runs.
+ */
+void setObstacleCancelCallback(ObstacleCancelCallback callback);
+
 /**
  * @brief Detect obstacles using AUTO mode (hull by default, grid-with-holes when hollow).
  *

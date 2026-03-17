@@ -22,6 +22,12 @@
 
 namespace f2c_cpp {
 
+static ObstacleCancelCallback g_obstacleCancelCallback = nullptr;
+
+void setObstacleCancelCallback(ObstacleCancelCallback callback) {
+    g_obstacleCancelCallback = callback;
+}
+
 namespace {
 
 static constexpr double kEps = 1e-12;
@@ -1651,6 +1657,13 @@ ObstacleDetectionResult detectObstaclesAuto(
     const Polygon2D* roi_or_boundary,
     const ObstacleDetectionParams& params) {
     ObstacleDetectionResult res;
+    auto abortIfCancelled = [&res]() -> bool {
+        if (!g_obstacleCancelCallback || !g_obstacleCancelCallback()) {
+            return false;
+        }
+        res.error_message = "Operation cancelled";
+        return true;
+    };
     if (!cloud || cloud->empty()) {
         res.error_message = "No point cloud loaded.";
         return res;
@@ -1667,6 +1680,9 @@ ObstacleDetectionResult detectObstaclesAuto(
         path = filterPathToPolygon(driven_path, scope);
     }
     res.stats.path_poses = path.size();
+    if (abortIfCancelled()) {
+        return res;
+    }
 
     // Derived defaults (match Python main()).
     double grid_cell_m = params.grid_cell_m;
@@ -1707,7 +1723,11 @@ ObstacleDetectionResult detectObstaclesAuto(
                       << fp_ground->size() << "), falling back to z-threshold (z <= "
                       << params.ground_z_max << ")\n";
             fp_ground->clear();
+            size_t ground_idx = 0;
             for (const auto& pt : scoped_cloud->points) {
+                if ((ground_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
+                    return res;
+                }
                 if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
             }
         } else {
@@ -1718,11 +1738,18 @@ ObstacleDetectionResult detectObstaclesAuto(
     } else {
         std::cout << "[ObstacleDetect] Ground: no path provided, using z-threshold (z <= "
                   << params.ground_z_max << ")\n";
+        size_t ground_idx = 0;
         for (const auto& pt : scoped_cloud->points) {
+            if ((ground_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
+                return res;
+            }
             if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
         }
     }
     res.stats.footprint_ground_points = fp_ground->size();
+    if (abortIfCancelled()) {
+        return res;
+    }
 
     PlaneModel plane;
     if (fp_ground->size() < 20) {
@@ -1749,7 +1776,11 @@ ObstacleDetectionResult detectObstaclesAuto(
     PointCloudPtr obstacle_raw(new PointCloud);
     obstacle_raw->reserve(scoped_cloud->size() / 4);
     size_t ground_band_count = 0;
+    size_t candidate_idx = 0;
     for (const auto& pt : scoped_cloud->points) {
+        if ((candidate_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
+            return res;
+        }
         double sd = signedDist(plane, pt);
         bool is_ground = std::abs(sd) <= params.ground_band_m;
         if (is_ground) {
@@ -1771,16 +1802,26 @@ ObstacleDetectionResult detectObstaclesAuto(
     PointCloudPtr obstacle_clean = removeStatisticalOutliersMeanDist(
         obstacle_raw, params.outlier_k, params.outlier_std);
     res.stats.obstacle_points_after_outlier = obstacle_clean ? obstacle_clean->size() : 0;
+    if (abortIfCancelled()) {
+        return res;
+    }
 
     // ------------------------------------------------------------------
     // 6. 2D projection + DBSCAN
     // ------------------------------------------------------------------
     std::vector<Point2D> obs_xy;
     obs_xy.reserve(obstacle_clean->size());
+    size_t obs_xy_idx = 0;
     for (const auto& pt : obstacle_clean->points) {
+        if ((obs_xy_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
+            return res;
+        }
         obs_xy.emplace_back(pt.x, pt.y);
     }
     std::vector<int> labels = dbscan2D(obs_xy, params.cluster_eps_m, params.cluster_min_pts);
+    if (abortIfCancelled()) {
+        return res;
+    }
     int max_label = -1;
     for (int l : labels) max_label = std::max(max_label, l);
     const int n_clusters = max_label + 1;
@@ -1791,6 +1832,9 @@ ObstacleDetectionResult detectObstaclesAuto(
     std::vector<Point2D> noise_pts;
     noise_pts.reserve(obs_xy.size());
     for (size_t i = 0; i < obs_xy.size(); ++i) {
+        if ((i & 0x1FFFu) == 0u && abortIfCancelled()) {
+            return res;
+        }
         int l = labels[i];
         if (l < 0) {
             noise_pts.push_back(obs_xy[i]);
@@ -1814,7 +1858,11 @@ ObstacleDetectionResult detectObstaclesAuto(
     if (params.micro_enable && !obs_xy.empty()) {
         std::vector<std::vector<Point2D>> normal_clusters;
         normal_clusters.reserve(cluster_list.size());
+        size_t cluster_idx = 0;
         for (auto& cl : cluster_list) {
+            if ((cluster_idx++ & 0x3Fu) == 0u && abortIfCancelled()) {
+                return res;
+            }
             if (isMicroCluster(cl, params)) {
                 Obstacle2D obs;
                 obs.outer = rectFromBbox(cl, params.micro_min_size_m, params.micro_margin_m);
@@ -1835,6 +1883,9 @@ ObstacleDetectionResult detectObstaclesAuto(
         }
         if (static_cast<int>(noise_pts.size()) >= params.micro_min_pts && params.micro_noise_eps_m > 0.0) {
             std::vector<int> micro_labels = dbscan2D(noise_pts, params.micro_noise_eps_m, params.micro_min_pts);
+            if (abortIfCancelled()) {
+                return res;
+            }
             int micro_max_label = -1;
             for (int l : micro_labels) micro_max_label = std::max(micro_max_label, l);
             const int micro_n_clusters = micro_max_label + 1;
@@ -1940,6 +1991,9 @@ ObstacleDetectionResult detectObstaclesAuto(
     std::vector<float> nn_dist2(1);
 
     for (int i = 0; i < static_cast<int>(ck.size()); ++i) {
+        if ((i & 0x0Fu) == 0 && abortIfCancelled()) {
+            return res;
+        }
         for (int j = i + 1; j < static_cast<int>(ck.size()); ++j) {
             if (aabbMinDist2(ck[static_cast<size_t>(i)], ck[static_cast<size_t>(j)]) > merge_d2) {
                 continue;
@@ -1969,6 +2023,9 @@ ObstacleDetectionResult detectObstaclesAuto(
     int total_holes = 0;
 
     for (const auto& kv : groups) {
+        if (abortIfCancelled()) {
+            return res;
+        }
         const auto& idxs = kv.second;
         std::vector<Point2D> merged_pts;
         size_t total_pts = 0;
@@ -2093,6 +2150,9 @@ ObstacleDetectionResult detectObstaclesAuto(
             params.min_contour_area_m2,
             preserve_holes,
             preserve_holes_min_area_m2);
+    }
+    if (abortIfCancelled()) {
+        return res;
     }
 
     // Append preserved micro obstacles unchanged (Python skips smoothing for micro shapes).

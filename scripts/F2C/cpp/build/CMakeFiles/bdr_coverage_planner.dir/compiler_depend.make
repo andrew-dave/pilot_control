@@ -5789,6 +5789,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QElapsedTimer \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QEventLoop \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QStandardPaths \
@@ -22102,6 +22104,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end_impl.hpp:
 
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
+
+/usr/include/boost/fusion/view/single_view/detail/prior_impl.hpp:
+
+/usr/include/boost/fusion/support/is_segmented.hpp:
+
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__struct.hpp:
 
 /usr/include/CGAL/Intersections_3/internal/Bbox_3_Plane_3_do_intersect.h:
@@ -23286,8 +23294,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/mpl/aux_/config/static_constant.hpp:
 
-/opt/ros/humble/include/rcl/rcl/service.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTreeWidget:
 
 /usr/include/boost/mpl/vector/aux_/pop_front.hpp:
@@ -23311,6 +23317,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QEventLoop:
 
 /opt/ros/humble/include/rcl/rcl/wait.h:
 
@@ -27892,6 +27900,10 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qpainterpath.h:
 
+/opt/ros/humble/include/rcl/rcl/service.h:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/QElapsedTimer:
+
 /usr/include/eigen3/Eigen/src/Core/util/Memory.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/QRegularExpressionValidator:
@@ -28683,9 +28695,3 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_setup_screen.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h:
 
 /usr/include/boost/fusion/sequence/intrinsic/end.hpp:
-
-/usr/include/boost/fusion/view/single_view/detail/prior_impl.hpp:
-
-/usr/include/boost/fusion/support/is_segmented.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:

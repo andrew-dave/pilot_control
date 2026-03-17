@@ -5795,6 +5795,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtooltip.h
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFileInfo
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QFile
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QElapsedTimer
+ /usr/include/x86_64-linux-gnu/qt5/QtCore/QEventLoop
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QTabWidget
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtabwidget.h
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QStandardPaths

@@ -18,6 +18,7 @@
 #include <limits>
 #include <queue>
 #include <deque>
+#include <stdexcept>
 #include <unordered_set>
 
 // Robust polygon ops (ROI intersection, obstacle clipping, validity checks)
@@ -52,15 +53,28 @@ namespace f2c_cpp {
 
 // Global progress callback
 static ProgressCallback g_progressCallback = nullptr;
+static CancelCheckCallback g_cancelCheckCallback = nullptr;
 
 void setProgressCallback(ProgressCallback callback) {
     g_progressCallback = callback;
 }
 
+void setCancelCheckCallback(CancelCheckCallback callback) {
+    g_cancelCheckCallback = callback;
+}
+
+static void throwIfCancelled() {
+    if (g_cancelCheckCallback && g_cancelCheckCallback()) {
+        throw std::runtime_error("Operation cancelled");
+    }
+}
+
 static void reportProgress(int percent, const std::string& message) {
+    throwIfCancelled();
     if (g_progressCallback) {
         g_progressCallback(percent, message);
     }
+    throwIfCancelled();
 }
 
 namespace {
@@ -76,6 +90,7 @@ constexpr double kGeomEps = 1e-9;
 constexpr double kMinValidArea = 1e-10;  // m^2-ish (depends on input units)
 constexpr double kEdgeSampleMinLen = 1.0;
 constexpr double kEdgeSampleLongLen = 3.0;
+constexpr double kPathSearchCostEps = 1e-9;
 
 static PathStateList resamplePathStates(const PathStateList& in, double spacing_m);
 static PathStateList dedupePathStates(const PathStateList& path);
@@ -441,9 +456,17 @@ static PathStateList planObstacleAvoidingPathInternal(
         int turns;
         double length;
     };
+    constexpr int kInfTurns = std::numeric_limits<int>::max() / 4;
+    const Cost kInfCost{kInfTurns, std::numeric_limits<double>::infinity()};
     auto better = [](const Cost& a, const Cost& b) {
         if (a.turns != b.turns) return a.turns < b.turns;
-        return a.length < b.length;
+        return a.length + kPathSearchCostEps < b.length;
+    };
+    auto equalCost = [](const Cost& a, const Cost& b) {
+        return a.turns == b.turns && std::fabs(a.length - b.length) <= kPathSearchCostEps;
+    };
+    auto lexicographicMax = [&](const Cost& a, const Cost& b) {
+        return better(a, b) ? b : a;
     };
 
     auto simplifyByVisibility = [&](const std::vector<Point2D>& pts) {
@@ -470,7 +493,7 @@ static PathStateList planObstacleAvoidingPathInternal(
         return out;
     };
 
-    // Build a grid over the free-space island and run A*.
+    // Build a grid over the free-space island and run bidirectional heuristic A*.
     constexpr size_t kMaxGridCells = 250000;
     double grid_res = (waypoint_spacing > 0.0) ? waypoint_spacing : 0.2;
     grid_res = std::clamp(grid_res, 0.05, 1.0);
@@ -529,6 +552,9 @@ static PathStateList planObstacleAvoidingPathInternal(
 
     std::vector<uint8_t> free_mask(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
     for (int y = 0; y < height; ++y) {
+        if ((y & 0x7F) == 0) {
+            throwIfCancelled();
+        }
         for (int x = 0; x < width; ++x) {
             Point2D p = cellCenter(x, y);
             if (pointInFreeSpace(p, free_space)) {
@@ -604,6 +630,8 @@ static PathStateList planObstacleAvoidingPathInternal(
         return resamplePathStates(path, waypoint_spacing);
     }
 
+    const Point2D start_cell_center = cellCenter(sx, sy);
+    const Point2D goal_cell_center = cellCenter(gx, gy);
     const int dirs8[8][2] = {
         {1,0},{-1,0},{0,1},{0,-1},
         {1,1},{1,-1},{-1,1},{-1,-1}
@@ -622,93 +650,276 @@ static PathStateList planObstacleAvoidingPathInternal(
     const int dir_states = 9;  // 8 directions + 1 for "none"
     const size_t cell_count = static_cast<size_t>(width) * static_cast<size_t>(height);
     const size_t state_count = cell_count * dir_states;
-    std::vector<int> best_turns(state_count, std::numeric_limits<int>::max());
-    std::vector<double> best_len(state_count, std::numeric_limits<double>::infinity());
-    std::vector<int> parent_state(state_count, -1);
+    std::vector<int> best_turns_f(state_count, kInfTurns);
+    std::vector<double> best_len_f(state_count, std::numeric_limits<double>::infinity());
+    std::vector<int> parent_state_f(state_count, -1);
+    std::vector<int> best_turns_r(state_count, kInfTurns);
+    std::vector<double> best_len_r(state_count, std::numeric_limits<double>::infinity());
+    std::vector<int> parent_state_r(state_count, -1);
 
-    auto stateIndex = [&](int prev_dir, int cell_idx) {
-        return (prev_dir + 1) * static_cast<int>(cell_count) + cell_idx;
+    auto stateIndex = [&](int dir_state, int cell_idx) {
+        return (dir_state + 1) * static_cast<int>(cell_count) + cell_idx;
+    };
+    auto stateCost = [&](const std::vector<int>& turns, const std::vector<double>& lengths, int state) {
+        return Cost{turns[static_cast<size_t>(state)], lengths[static_cast<size_t>(state)]};
+    };
+    auto hasState = [&](const std::vector<int>& turns, const std::vector<double>& lengths, int state) {
+        return turns[static_cast<size_t>(state)] < kInfTurns &&
+               std::isfinite(lengths[static_cast<size_t>(state)]);
+    };
+    auto heuristicLength = [&](int cell_idx, const Point2D& target_center) {
+        int cx = cell_idx % width;
+        int cy = cell_idx / width;
+        Point2D c = cellCenter(cx, cy);
+        return std::hypot(c.x - target_center.x, c.y - target_center.y);
     };
 
     struct Node {
-        int prev_dir;
+        int dir_state;
         int cell_idx;
-        Cost cost;
+        Cost g;
+        double h_length;
     };
     struct Cmp {
         bool operator()(const Node& a, const Node& b) const {
-            if (a.cost.turns != b.cost.turns) return a.cost.turns > b.cost.turns;
-            return a.cost.length > b.cost.length;
+            if (a.g.turns != b.g.turns) return a.g.turns > b.g.turns;
+            const double af = a.g.length + a.h_length;
+            const double bf = b.g.length + b.h_length;
+            if (std::fabs(af - bf) > kPathSearchCostEps) return af > bf;
+            return a.g.length > b.g.length;
         }
     };
 
-    std::priority_queue<Node, std::vector<Node>, Cmp> pq;
-    const int start_state = stateIndex(-1, start_idx);
-    best_turns[static_cast<size_t>(start_state)] = 0;
-    best_len[static_cast<size_t>(start_state)] = 0.0;
-    parent_state[static_cast<size_t>(start_state)] = -1;
-    pq.push(Node{-1, start_idx, {0, 0.0}});
+    using Frontier = std::priority_queue<Node, std::vector<Node>, Cmp>;
+    Frontier forward_open;
+    Frontier reverse_open;
 
-    int goal_state = -1;
-
-    while (!pq.empty()) {
-        Node cur = pq.top();
-        pq.pop();
-        int cur_state = stateIndex(cur.prev_dir, cur.cell_idx);
-        if (cur.cost.turns != best_turns[static_cast<size_t>(cur_state)] ||
-            std::fabs(cur.cost.length - best_len[static_cast<size_t>(cur_state)]) > 1e-9) {
-            continue;
+    auto isStale = [&](const Node& node, const std::vector<int>& turns, const std::vector<double>& lengths) {
+        const int state = stateIndex(node.dir_state, node.cell_idx);
+        return node.g.turns != turns[static_cast<size_t>(state)] ||
+               std::fabs(node.g.length - lengths[static_cast<size_t>(state)]) > kPathSearchCostEps;
+    };
+    auto pruneFrontier = [&](Frontier& frontier, const std::vector<int>& turns, const std::vector<double>& lengths) {
+        while (!frontier.empty() && isStale(frontier.top(), turns, lengths)) {
+            frontier.pop();
         }
-        if (cur.cell_idx == goal_idx) {
-            goal_state = cur_state;
+    };
+    auto frontierLowerBound = [&](Frontier& frontier,
+                                  const std::vector<int>& turns,
+                                  const std::vector<double>& lengths) -> std::optional<Cost> {
+        pruneFrontier(frontier, turns, lengths);
+        if (frontier.empty()) {
+            return std::nullopt;
+        }
+        const Node& top = frontier.top();
+        return Cost{top.g.turns, top.g.length + top.h_length};
+    };
+    auto pushState = [&](Frontier& frontier,
+                         std::vector<int>& turns,
+                         std::vector<double>& lengths,
+                         std::vector<int>& parents,
+                         int dir_state,
+                         int cell_idx,
+                         const Cost& g,
+                         int parent_state,
+                         double h_length) {
+        const int state = stateIndex(dir_state, cell_idx);
+        if (!better(g, stateCost(turns, lengths, state))) {
+            return false;
+        }
+        turns[static_cast<size_t>(state)] = g.turns;
+        lengths[static_cast<size_t>(state)] = g.length;
+        parents[static_cast<size_t>(state)] = parent_state;
+        frontier.push(Node{dir_state, cell_idx, g, h_length});
+        return true;
+    };
+    auto combineMeetingCost = [&](int forward_dir,
+                                  const Cost& forward_cost,
+                                  int reverse_dir,
+                                  const Cost& reverse_cost) {
+        Cost total{forward_cost.turns + reverse_cost.turns,
+                   forward_cost.length + reverse_cost.length};
+        if (forward_dir >= 0 && reverse_dir >= 0 && forward_dir != reverse_dir) {
+            total.turns += 1;
+        }
+        return total;
+    };
+
+    const int start_state = stateIndex(-1, start_idx);
+    best_turns_f[static_cast<size_t>(start_state)] = 0;
+    best_len_f[static_cast<size_t>(start_state)] = 0.0;
+    parent_state_f[static_cast<size_t>(start_state)] = -1;
+    forward_open.push(Node{-1, start_idx, {0, 0.0}, heuristicLength(start_idx, goal_cell_center)});
+
+    const int goal_state = stateIndex(-1, goal_idx);
+    best_turns_r[static_cast<size_t>(goal_state)] = 0;
+    best_len_r[static_cast<size_t>(goal_state)] = 0.0;
+    parent_state_r[static_cast<size_t>(goal_state)] = -1;
+    reverse_open.push(Node{-1, goal_idx, {0, 0.0}, heuristicLength(goal_idx, start_cell_center)});
+
+    Cost best_solution = kInfCost;
+    int best_forward_state = -1;
+    int best_reverse_state = -1;
+
+    auto considerForwardMeeting = [&](int forward_dir, int cell_idx) {
+        const int f_state = stateIndex(forward_dir, cell_idx);
+        if (!hasState(best_turns_f, best_len_f, f_state)) {
+            return;
+        }
+        const Cost forward_cost = stateCost(best_turns_f, best_len_f, f_state);
+        for (int reverse_dir = -1; reverse_dir < 8; ++reverse_dir) {
+            const int r_state = stateIndex(reverse_dir, cell_idx);
+            if (!hasState(best_turns_r, best_len_r, r_state)) {
+                continue;
+            }
+            const Cost candidate =
+                combineMeetingCost(forward_dir, forward_cost,
+                                   reverse_dir, stateCost(best_turns_r, best_len_r, r_state));
+            if (better(candidate, best_solution)) {
+                best_solution = candidate;
+                best_forward_state = f_state;
+                best_reverse_state = r_state;
+            }
+        }
+    };
+    auto considerReverseMeeting = [&](int reverse_dir, int cell_idx) {
+        const int r_state = stateIndex(reverse_dir, cell_idx);
+        if (!hasState(best_turns_r, best_len_r, r_state)) {
+            return;
+        }
+        const Cost reverse_cost = stateCost(best_turns_r, best_len_r, r_state);
+        for (int forward_dir = -1; forward_dir < 8; ++forward_dir) {
+            const int f_state = stateIndex(forward_dir, cell_idx);
+            if (!hasState(best_turns_f, best_len_f, f_state)) {
+                continue;
+            }
+            const Cost candidate =
+                combineMeetingCost(forward_dir, stateCost(best_turns_f, best_len_f, f_state),
+                                   reverse_dir, reverse_cost);
+            if (better(candidate, best_solution)) {
+                best_solution = candidate;
+                best_forward_state = f_state;
+                best_reverse_state = r_state;
+            }
+        }
+    };
+
+    size_t expansion_count = 0;
+    while (true) {
+        if ((expansion_count++ & 0x0FFFu) == 0u) {
+            throwIfCancelled();
+        }
+        const auto forward_lb = frontierLowerBound(forward_open, best_turns_f, best_len_f);
+        const auto reverse_lb = frontierLowerBound(reverse_open, best_turns_r, best_len_r);
+        if (!forward_lb.has_value() || !reverse_lb.has_value()) {
             break;
         }
 
-        int cx = cur.cell_idx % width;
-        int cy = cur.cell_idx / width;
-        for (int dir = 0; dir < 8; ++dir) {
-            int nx = cx + dirs8[dir][0];
-            int ny = cy + dirs8[dir][1];
-            if (!canStep(cx, cy, nx, ny)) {
+        const Cost lower_bound = lexicographicMax(*forward_lb, *reverse_lb);
+        if (best_forward_state >= 0 && !better(lower_bound, best_solution)) {
+            break;
+        }
+
+        const bool expand_forward =
+            better(*forward_lb, *reverse_lb) || equalCost(*forward_lb, *reverse_lb);
+
+        if (expand_forward) {
+            Node cur = forward_open.top();
+            forward_open.pop();
+            if (isStale(cur, best_turns_f, best_len_f)) {
                 continue;
             }
-            int nidx = cellIndex(nx, ny);
-            int add_turn = (cur.prev_dir >= 0 && dir != cur.prev_dir) ? 1 : 0;
-            double step_len = (dir >= 4) ? diag * grid_res : grid_res;
-            Cost nc{cur.cost.turns + add_turn, cur.cost.length + step_len};
-            int nstate = stateIndex(dir, nidx);
-            if (better(nc, {best_turns[static_cast<size_t>(nstate)],
-                           best_len[static_cast<size_t>(nstate)]})) {
-                best_turns[static_cast<size_t>(nstate)] = nc.turns;
-                best_len[static_cast<size_t>(nstate)] = nc.length;
-                parent_state[static_cast<size_t>(nstate)] = cur_state;
-                pq.push(Node{dir, nidx, nc});
+
+            const int cur_state = stateIndex(cur.dir_state, cur.cell_idx);
+            considerForwardMeeting(cur.dir_state, cur.cell_idx);
+
+            const int cx = cur.cell_idx % width;
+            const int cy = cur.cell_idx / width;
+            for (int dir = 0; dir < 8; ++dir) {
+                const int nx = cx + dirs8[dir][0];
+                const int ny = cy + dirs8[dir][1];
+                if (!canStep(cx, cy, nx, ny)) {
+                    continue;
+                }
+                const int nidx = cellIndex(nx, ny);
+                const int add_turn = (cur.dir_state >= 0 && dir != cur.dir_state) ? 1 : 0;
+                const double step_len = (dir >= 4) ? diag * grid_res : grid_res;
+                const Cost ng{cur.g.turns + add_turn, cur.g.length + step_len};
+                pushState(forward_open, best_turns_f, best_len_f, parent_state_f,
+                          dir, nidx, ng, cur_state, heuristicLength(nidx, goal_cell_center));
+            }
+        } else {
+            Node cur = reverse_open.top();
+            reverse_open.pop();
+            if (isStale(cur, best_turns_r, best_len_r)) {
+                continue;
+            }
+
+            const int cur_state = stateIndex(cur.dir_state, cur.cell_idx);
+            considerReverseMeeting(cur.dir_state, cur.cell_idx);
+
+            const int cx = cur.cell_idx % width;
+            const int cy = cur.cell_idx / width;
+            for (int forward_dir = 0; forward_dir < 8; ++forward_dir) {
+                const int nx = cx - dirs8[forward_dir][0];
+                const int ny = cy - dirs8[forward_dir][1];
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+                    continue;
+                }
+                if (!canStep(nx, ny, cx, cy)) {
+                    continue;
+                }
+                const int nidx = cellIndex(nx, ny);
+                const int add_turn = (cur.dir_state >= 0 && forward_dir != cur.dir_state) ? 1 : 0;
+                const double step_len = (forward_dir >= 4) ? diag * grid_res : grid_res;
+                const Cost ng{cur.g.turns + add_turn, cur.g.length + step_len};
+                pushState(reverse_open, best_turns_r, best_len_r, parent_state_r,
+                          forward_dir, nidx, ng, cur_state, heuristicLength(nidx, start_cell_center));
             }
         }
     }
 
-    if (goal_state < 0) {
+    if (best_forward_state < 0 || best_reverse_state < 0) {
         return empty;
     }
 
-    std::vector<Point2D> rev_pts;
-    int cur_state = goal_state;
-    while (cur_state >= 0) {
-        int cell_idx = cur_state % static_cast<int>(cell_count);
-        int cx = cell_idx % width;
-        int cy = cell_idx / width;
-        rev_pts.push_back(cellCenter(cx, cy));
-        cur_state = parent_state[static_cast<size_t>(cur_state)];
-    }
-    std::reverse(rev_pts.begin(), rev_pts.end());
+    auto reconstructForward = [&](int state) {
+        std::vector<Point2D> pts;
+        while (state >= 0) {
+            const int cell_idx = state % static_cast<int>(cell_count);
+            const int cx = cell_idx % width;
+            const int cy = cell_idx / width;
+            pts.push_back(cellCenter(cx, cy));
+            state = parent_state_f[static_cast<size_t>(state)];
+        }
+        std::reverse(pts.begin(), pts.end());
+        return pts;
+    };
+    auto reconstructReverse = [&](int state) {
+        std::vector<Point2D> pts;
+        while (state >= 0) {
+            const int cell_idx = state % static_cast<int>(cell_count);
+            const int cx = cell_idx % width;
+            const int cy = cell_idx / width;
+            pts.push_back(cellCenter(cx, cy));
+            state = parent_state_r[static_cast<size_t>(state)];
+        }
+        return pts;
+    };
 
-    if (rev_pts.empty()) {
+    std::vector<Point2D> forward_pts = reconstructForward(best_forward_state);
+    std::vector<Point2D> reverse_pts = reconstructReverse(best_reverse_state);
+    if (forward_pts.empty() || reverse_pts.empty()) {
         return empty;
     }
 
-    Point2D start_center = rev_pts.front();
-    Point2D goal_center = rev_pts.back();
-    std::vector<Point2D> raw_pts = rev_pts;
+    std::vector<Point2D> raw_pts = forward_pts;
+    if (reverse_pts.size() > 1) {
+        raw_pts.insert(raw_pts.end(), reverse_pts.begin() + 1, reverse_pts.end());
+    }
+
+    Point2D start_center = raw_pts.front();
+    Point2D goal_center = raw_pts.back();
     raw_pts.front() = start;
     raw_pts.back() = goal;
     if (raw_pts.size() >= 2) {
@@ -1027,6 +1238,7 @@ static bool buildEffectiveCellsFromROIAndObstacles(
 // =============================================================================
 
 PointCloudPtr loadPointCloudFile(const std::string& path) {
+    throwIfCancelled();
     PointCloudPtr cloud(new PointCloud);
     
     // Determine file type by extension
@@ -1045,8 +1257,12 @@ PointCloudPtr loadPointCloudFile(const std::string& path) {
             throw std::runtime_error("Cannot open file: " + path);
         }
         double x, y, z;
+        size_t line_count = 0;
         while (file >> x >> y >> z) {
             cloud->push_back(pcl::PointXYZ(x, y, z));
+            if ((++line_count & 0x0FFFu) == 0u) {
+                throwIfCancelled();
+            }
         }
         result = cloud->empty() ? -1 : 0;
     } else {
@@ -1057,6 +1273,7 @@ PointCloudPtr loadPointCloudFile(const std::string& path) {
         throw std::runtime_error("Failed to load point cloud: " + path);
     }
     
+    throwIfCancelled();
     return cloud;
 }
 
@@ -1078,7 +1295,11 @@ PointCloudPtr filterByZBand(const PointCloudPtr& cloud, double z_band) {
     PointCloudPtr filtered(new PointCloud);
     filtered->reserve(cloud->size());
     
+    size_t pt_idx = 0;
     for (const auto& pt : cloud->points) {
+        if ((pt_idx++ & 0x3FFFu) == 0u) {
+            throwIfCancelled();
+        }
         if (std::abs(pt.z - z_median) <= z_band) {
             filtered->push_back(pt);
         }
@@ -1105,7 +1326,11 @@ PointCloudPtr filterByZRange(const PointCloudPtr& cloud, double z_min, double z_
     PointCloudPtr filtered(new PointCloud);
     filtered->reserve(cloud->size());
     
+    size_t pt_idx = 0;
     for (const auto& pt : cloud->points) {
+        if ((pt_idx++ & 0x3FFFu) == 0u) {
+            throwIfCancelled();
+        }
         if (pt.z >= z_min && pt.z <= z_max) {
             filtered->push_back(pt);
         }
