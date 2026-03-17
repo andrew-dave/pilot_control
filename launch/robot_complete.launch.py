@@ -318,10 +318,14 @@ def generate_launch_description():
         name='raw_map_saver',
         output='screen',
         parameters=[{
-            'input_topic': '/cloud_registered',
+            'input_topic': '/Laser_map',
             'save_directory': '/R_DATA/raw_maps',  # Fallback — overridden by coordinator on /dc/start
             'auto_save_enabled': False,  # Disabled - save only when M key pressed
             'auto_save_interval_sec': 30.0,
+            'trigger_publish_before_save': True,
+            'publish_map_service': '/publish_map_once',
+            'publish_map_timeout_sec': 5.0,
+            'map_message_timeout_sec': 5.0,
             'apply_tilt_correction': True,  # Apply tilt correction when saving
             'calibration_file': tilt_calibration_file,  # Load from config folder
             'lidar_pitch_deg': 15.0,  # Fallback if calibration file not found

@@ -50,6 +50,7 @@
         service_servers: [
           "^/video_record_set$",
           "^/save_raw_map$",
+          "^/publish_map_once$",
           "^/left/request_axis_state$",
           "^/right/request_axis_state$",
           "^/gpr/request_axis_state$",

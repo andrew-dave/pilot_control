@@ -358,6 +358,10 @@ def generate_launch_description():
         parameters=[{
             'input_topic': '/Laser_map',
             'save_directory': '/tmp/robot_maps',
+            'trigger_publish_before_save': True,
+            'publish_map_service': '/publish_map_once',
+            'publish_map_timeout_sec': 5.0,
+            'map_message_timeout_sec': 5.0,
             'save_format': 'compressed'  # 'compressed' (best for wireless transfer), 'binary' (fast), 'ascii' (debug)
         }]
     )

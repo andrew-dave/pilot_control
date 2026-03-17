@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/executors/multi_threaded_executor.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -14,6 +15,7 @@
 #include <cstring>
 #include <limits>
 #include <mutex>
+#include <condition_variable>
 
 // Simple NPZ file loader for tilt correction matrices
 class NPZLoader {
@@ -47,11 +49,15 @@ public:
     RawMapSaver() : Node("raw_map_saver")
     {
         // Declare parameters
-        this->declare_parameter("input_topic", "/cloud_registered");
+        this->declare_parameter("input_topic", "/Laser_map");
         this->declare_parameter("save_directory", "/tmp/robot_maps");
         this->declare_parameter("raw_map_filename", "");
         this->declare_parameter("auto_save_enabled", false);
         this->declare_parameter("auto_save_interval_sec", 30.0);
+        this->declare_parameter("trigger_publish_before_save", true);
+        this->declare_parameter("publish_map_service", "/publish_map_once");
+        this->declare_parameter("publish_map_timeout_sec", 5.0);
+        this->declare_parameter("map_message_timeout_sec", 5.0);
         
         // Tilt correction parameters
         this->declare_parameter("apply_tilt_correction", true);
@@ -69,57 +75,72 @@ public:
         raw_map_filename_ = this->get_parameter("raw_map_filename").as_string();
         auto_save_enabled_ = this->get_parameter("auto_save_enabled").as_bool();
         auto_save_interval_ = this->get_parameter("auto_save_interval_sec").as_double();
+        trigger_publish_before_save_ = this->get_parameter("trigger_publish_before_save").as_bool();
+        publish_map_service_ = this->get_parameter("publish_map_service").as_string();
+        publish_map_timeout_sec_ = this->get_parameter("publish_map_timeout_sec").as_double();
+        map_message_timeout_sec_ = this->get_parameter("map_message_timeout_sec").as_double();
         apply_tilt_correction_ = this->get_parameter("apply_tilt_correction").as_bool();
         save_raw_backup_ = this->get_parameter("save_raw_backup").as_bool();
         calibration_file_ = this->get_parameter("calibration_file").as_string();
         lidar_pitch_deg_ = this->get_parameter("lidar_pitch_deg").as_double();
         save_format_ = this->get_parameter("save_format").as_string();
 
-        if (input_topic_.empty() || input_topic_ == "/Laser_map") {
-            if (input_topic_ == "/Laser_map") {
-                RCLCPP_WARN(
-                    this->get_logger(),
-                    "Legacy input topic '/Laser_map' requested. "
-                    "Accumulating '/cloud_registered' locally instead."
-                );
-            } else {
-                RCLCPP_WARN(
-                    this->get_logger(),
-                    "Input topic parameter is empty. Falling back to '/cloud_registered'."
-                );
-            }
-            input_topic_ = "/cloud_registered";
+        if (input_topic_.empty()) {
+            RCLCPP_WARN(
+                this->get_logger(),
+                "Input topic parameter is empty. Falling back to '/Laser_map'."
+            );
+            input_topic_ = "/Laser_map";
+        }
+
+        if (publish_map_service_.empty()) {
+            publish_map_service_ = "/publish_map_once";
         }
         
         // Create save directory
         std::filesystem::create_directories(save_directory_);
 
-        accumulated_cloud_.reset(new pcl::PointCloud<pcl::PointXYZ>());
+        subscription_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        service_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        client_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
         
-        // Subscribe to registered world-frame scans and accumulate them locally.
+        rclcpp::SubscriptionOptions sub_options;
+        sub_options.callback_group = subscription_callback_group_;
         cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
             input_topic_,
-            rclcpp::QoS(10).durability_volatile(),
-            std::bind(&RawMapSaver::cloud_callback, this, std::placeholders::_1)
+            rclcpp::QoS(10).reliable().durability_volatile(),
+            std::bind(&RawMapSaver::cloud_callback, this, std::placeholders::_1),
+            sub_options
         );
         
         // Create service for manual map saving
         save_service_ = this->create_service<std_srvs::srv::Trigger>(
             "save_raw_map",
-            std::bind(&RawMapSaver::save_raw_map_service, this, std::placeholders::_1, std::placeholders::_2)
+            std::bind(&RawMapSaver::save_raw_map_service, this, std::placeholders::_1, std::placeholders::_2),
+            rmw_qos_profile_services_default,
+            service_callback_group_
         );
         
         // Create service for updating save directory (multi-section support)
         set_dir_service_ = this->create_service<std_srvs::srv::Trigger>(
             "/raw_map_saver/set_directory",
-            std::bind(&RawMapSaver::set_directory_service, this, std::placeholders::_1, std::placeholders::_2)
+            std::bind(&RawMapSaver::set_directory_service, this, std::placeholders::_1, std::placeholders::_2),
+            rmw_qos_profile_services_default,
+            service_callback_group_
+        );
+
+        publish_map_client_ = this->create_client<std_srvs::srv::Trigger>(
+            publish_map_service_,
+            rmw_qos_profile_services_default,
+            client_callback_group_
         );
         
         // Create timer for automatic periodic saving if enabled
         if (auto_save_enabled_) {
             auto_save_timer_ = this->create_wall_timer(
                 std::chrono::duration<double>(auto_save_interval_),
-                std::bind(&RawMapSaver::auto_save_callback, this)
+                std::bind(&RawMapSaver::auto_save_callback, this),
+                service_callback_group_
             );
             RCLCPP_INFO(this->get_logger(), "Auto-save ENABLED: saving every %.1f seconds", auto_save_interval_);
         }
@@ -129,6 +150,10 @@ public:
         RCLCPP_INFO(this->get_logger(), "Save directory: %s", save_directory_.c_str());
         RCLCPP_INFO(this->get_logger(), "Services: /save_raw_map, /raw_map_saver/set_directory");
         RCLCPP_INFO(this->get_logger(), "Auto-save: %s", auto_save_enabled_ ? "ENABLED" : "DISABLED");
+        RCLCPP_INFO(this->get_logger(), "Trigger publish before save: %s", trigger_publish_before_save_ ? "ENABLED" : "DISABLED");
+        if (trigger_publish_before_save_) {
+            RCLCPP_INFO(this->get_logger(), "Map publish service: %s", publish_map_service_.c_str());
+        }
         RCLCPP_INFO(this->get_logger(), "Tilt correction: %s", apply_tilt_correction_ ? "ENABLED" : "DISABLED");
         if (apply_tilt_correction_) {
             if (!calibration_file_.empty()) {
@@ -146,47 +171,155 @@ public:
 private:
     void cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr scan_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::fromROSMsg(*msg, *scan_cloud);
-
-        if (scan_cloud->empty()) {
-            return;
-        }
-
-        size_t total_points = 0;
-        size_t total_scans = 0;
         {
             std::lock_guard<std::mutex> lock(cloud_mutex_);
-            *accumulated_cloud_ += *scan_cloud;
+            latest_cloud_ = msg;
             clouds_received_++;
-            total_points = accumulated_cloud_->size();
-            total_scans = clouds_received_;
+            latest_cloud_generation_++;
         }
+        latest_cloud_cv_.notify_all();
         
         // Log every 50th cloud to reduce spam
-        if (total_scans % 50 == 0) {
+        if (clouds_received_ % 50 == 0) {
             RCLCPP_INFO(
                 this->get_logger(),
-                "Accumulated %zu scans, latest: %zu points, total: %zu points",
-                total_scans,
-                scan_cloud->size(),
-                total_points
+                "Received %zu map clouds, latest: %zu points",
+                clouds_received_,
+                msg->data.size() / msg->point_step
             );
         }
     }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr copy_accumulated_cloud(size_t& scan_count, size_t& point_count)
+    sensor_msgs::msg::PointCloud2::SharedPtr copy_latest_cloud(size_t& cloud_generation)
     {
         std::lock_guard<std::mutex> lock(cloud_mutex_);
-        if (!accumulated_cloud_ || accumulated_cloud_->empty()) {
-            scan_count = 0;
-            point_count = 0;
+        if (!latest_cloud_) {
+            cloud_generation = 0;
             return nullptr;
         }
 
-        scan_count = clouds_received_;
-        point_count = accumulated_cloud_->size();
-        return pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>(*accumulated_cloud_));
+        cloud_generation = latest_cloud_generation_;
+        return latest_cloud_;
+    }
+
+    bool fetch_cloud_for_save(sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg, std::string& error_message)
+    {
+        if (!trigger_publish_before_save_) {
+            size_t cloud_generation = 0;
+            cloud_msg = copy_latest_cloud(cloud_generation);
+            if (!cloud_msg) {
+                error_message = "No point cloud data available for saving";
+                return false;
+            }
+            return true;
+        }
+
+        RCLCPP_INFO(this->get_logger(), "Requesting a fresh map on %s...", input_topic_.c_str());
+        if (!publish_map_client_->wait_for_service(std::chrono::duration<double>(publish_map_timeout_sec_))) {
+            error_message = "Map publish service " + publish_map_service_ + " is not available";
+            return false;
+        }
+
+        size_t generation_before = 0;
+        {
+            std::lock_guard<std::mutex> lock(cloud_mutex_);
+            generation_before = latest_cloud_generation_;
+        }
+
+        auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        auto future = publish_map_client_->async_send_request(request);
+        if (future.wait_for(std::chrono::duration<double>(publish_map_timeout_sec_)) != std::future_status::ready) {
+            error_message = "Timed out waiting for " + publish_map_service_;
+            return false;
+        }
+
+        auto result = future.get();
+        if (!result) {
+            error_message = publish_map_service_ + " returned no response";
+            return false;
+        }
+        if (!result->success) {
+            error_message = publish_map_service_ + " failed: " + result->message;
+            return false;
+        }
+
+        std::unique_lock<std::mutex> lock(cloud_mutex_);
+        bool got_fresh_cloud = latest_cloud_cv_.wait_for(
+            lock,
+            std::chrono::duration<double>(map_message_timeout_sec_),
+            [this, generation_before]() {
+                return latest_cloud_ && latest_cloud_generation_ > generation_before;
+            });
+
+        if (!got_fresh_cloud) {
+            error_message = "Timed out waiting for a fresh map on " + input_topic_;
+            return false;
+        }
+
+        cloud_msg = latest_cloud_;
+        return true;
+    }
+
+    bool save_cloud_snapshot(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg,
+        std::string& status_message)
+    {
+        if (!cloud_msg) {
+            status_message = "No point cloud data available for saving";
+            return false;
+        }
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*cloud_msg, *cloud);
+        if (cloud->empty()) {
+            status_message = "Received map cloud is empty";
+            return false;
+        }
+
+        RCLCPP_INFO(this->get_logger(), "Loaded %lu points for processing", cloud->size());
+
+        if (save_raw_backup_) {
+            std::string raw_filename = generate_filename("raw_map");
+            std::string raw_filepath = save_directory_ + "/" + raw_filename;
+            pcl::io::savePCDFileBinary(raw_filepath, *cloud);
+            RCLCPP_INFO(this->get_logger(), "Raw backup saved: %s", raw_filename.c_str());
+        }
+
+        bool corrected = false;
+        if (apply_tilt_correction_) {
+            Eigen::Matrix3d R_map;
+            Eigen::Vector3d p0_world;
+
+            if (load_tilt_correction_matrices(R_map, p0_world)) {
+                apply_tilt_correction_to_cloud(cloud, R_map, p0_world);
+                corrected = true;
+            } else {
+                RCLCPP_WARN(this->get_logger(),
+                           "Could not load tilt correction, saving uncorrected map");
+            }
+        }
+
+        std::string prefix = corrected ? "corrected_map" : "raw_map";
+        std::string filename = generate_filename(prefix);
+        std::string filepath = save_directory_ + "/" + filename;
+
+        std::string format_used;
+        if (!save_cloud_with_format(filepath, cloud, format_used)) {
+            status_message = "Failed to save point cloud file";
+            return false;
+        }
+
+        RCLCPP_INFO(this->get_logger(),
+                   "✓ %s saved (%s): %s (%lu points)",
+                   corrected ? "Corrected map" : "Raw map",
+                   format_used.c_str(),
+                   filename.c_str(),
+                   cloud->size());
+
+        status_message = (corrected ? "Tilt-corrected map" : "Raw map")
+                        + std::string(" saved as ") + format_used
+                        + std::string(" to ") + filepath;
+        return true;
     }
     
     // NEW: Find .npz file in directory
@@ -404,35 +537,21 @@ private:
     
     void auto_save_callback()
     {
-        size_t scan_count = 0;
-        size_t point_count = 0;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = copy_accumulated_cloud(scan_count, point_count);
-        if (!cloud) {
-            RCLCPP_WARN(this->get_logger(), "Auto-save: No accumulated point cloud data available");
-            return;
-        }
-        
         try {
-            RCLCPP_INFO(
-                this->get_logger(),
-                "Auto-save: Saving accumulated point cloud map from %zu scans (%zu points)...",
-                scan_count,
-                point_count
-            );
-            
-            // Generate filename with timestamp
-            std::string filename = generate_filename("raw_map");
-            std::string filepath = save_directory_ + "/" + filename;
+            sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg;
+            std::string status_message;
+            if (!fetch_cloud_for_save(cloud_msg, status_message)) {
+                RCLCPP_WARN(this->get_logger(), "Auto-save: %s", status_message.c_str());
+                return;
+            }
 
-            // Save using configured format
-            std::string format_used;
-            if (save_cloud_with_format(filepath, cloud, format_used)) {
-                RCLCPP_INFO(this->get_logger(), 
-                           "Auto-save: Map saved successfully (%s): %s (%lu points)", 
-                           format_used.c_str(), filename.c_str(), cloud->size());
+            if (save_cloud_snapshot(cloud_msg, status_message)) {
+                RCLCPP_INFO(this->get_logger(),
+                           "Auto-save: %s",
+                           status_message.c_str());
                 auto_saves_count_++;
             } else {
-                RCLCPP_ERROR(this->get_logger(), "Auto-save: Failed to save map");
+                RCLCPP_ERROR(this->get_logger(), "Auto-save: %s", status_message.c_str());
             }
             
         } catch (const std::exception& e) {
@@ -445,73 +564,19 @@ private:
         std_srvs::srv::Trigger::Response::SharedPtr response)
     {
         (void)request; // Unused parameter
-        
-        size_t scan_count = 0;
-        size_t point_count = 0;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = copy_accumulated_cloud(scan_count, point_count);
-        if (!cloud) {
-            response->success = false;
-            response->message = "No accumulated point cloud data available for saving";
-            RCLCPP_WARN(this->get_logger(), "No accumulated point cloud data available for saving");
-            return;
-        }
-        
+
         try {
-            RCLCPP_INFO(
-                this->get_logger(),
-                "Processing accumulated point cloud map from Fast-LIO2 (%zu scans, %zu points)...",
-                scan_count,
-                point_count
-            );
-            
-            RCLCPP_INFO(this->get_logger(), "Loaded %lu points for processing", cloud->size());
-            
-            // Save raw backup if requested
-            if (save_raw_backup_) {
-                std::string raw_filename = generate_filename("raw_map");
-                std::string raw_filepath = save_directory_ + "/" + raw_filename;
-                pcl::io::savePCDFileBinary(raw_filepath, *cloud);
-                RCLCPP_INFO(this->get_logger(), "Raw backup saved: %s", raw_filename.c_str());
+            sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg;
+            if (!fetch_cloud_for_save(cloud_msg, response->message)) {
+                response->success = false;
+                RCLCPP_WARN(this->get_logger(), "%s", response->message.c_str());
+                return;
             }
-            
-            // Apply tilt correction if enabled
-            bool corrected = false;
-            if (apply_tilt_correction_) {
-                Eigen::Matrix3d R_map;
-                Eigen::Vector3d p0_world;
-                
-                if (load_tilt_correction_matrices(R_map, p0_world)) {
-                    apply_tilt_correction_to_cloud(cloud, R_map, p0_world);
-                    corrected = true;
-                } else {
-                    RCLCPP_WARN(this->get_logger(), 
-                               "⚠ Could not load tilt correction, saving uncorrected map");
-                }
+
+            response->success = save_cloud_snapshot(cloud_msg, response->message);
+            if (!response->success) {
+                RCLCPP_ERROR(this->get_logger(), "Save error: %s", response->message.c_str());
             }
-            
-            // Save the (possibly corrected) map
-            std::string prefix = corrected ? "corrected_map" : "raw_map";
-            std::string filename = generate_filename(prefix);
-            std::string filepath = save_directory_ + "/" + filename;
-            
-            // Save using configured format
-            std::string format_used;
-            if (!save_cloud_with_format(filepath, cloud, format_used)) {
-                throw std::runtime_error("Failed to save point cloud file");
-            }
-            
-            RCLCPP_INFO(this->get_logger(), 
-                       "✓ %s saved (%s): %s (%lu points)",
-                       corrected ? "Corrected map" : "Raw map",
-                       format_used.c_str(),
-                       filename.c_str(),
-                       cloud->size());
-            
-            response->success = true;
-            response->message = (corrected ? "Tilt-corrected map" : "Raw map") 
-                              + std::string(" saved as ") + format_used 
-                              + std::string(" to ") + filepath;
-            
         } catch (const std::exception& e) {
             RCLCPP_ERROR(this->get_logger(), "Save error: %s", e.what());
             response->success = false;
@@ -561,10 +626,16 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_dir_service_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr publish_map_client_;
     rclcpp::TimerBase::SharedPtr auto_save_timer_;
+    rclcpp::CallbackGroup::SharedPtr subscription_callback_group_;
+    rclcpp::CallbackGroup::SharedPtr service_callback_group_;
+    rclcpp::CallbackGroup::SharedPtr client_callback_group_;
     
     std::mutex cloud_mutex_;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr accumulated_cloud_;
+    std::condition_variable latest_cloud_cv_;
+    sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_;
+    size_t latest_cloud_generation_ = 0;
     size_t clouds_received_ = 0;
     size_t auto_saves_count_ = 0;
     
@@ -573,6 +644,10 @@ private:
     std::string raw_map_filename_;
     bool auto_save_enabled_;
     double auto_save_interval_;
+    bool trigger_publish_before_save_;
+    std::string publish_map_service_;
+    double publish_map_timeout_sec_;
+    double map_message_timeout_sec_;
     
     // Tilt correction parameters
     bool apply_tilt_correction_;
@@ -588,7 +663,9 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<RawMapSaver>();
-    rclcpp::spin(node);
+    rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 3);
+    executor.add_node(node);
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }
