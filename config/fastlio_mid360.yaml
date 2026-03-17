@@ -3,9 +3,9 @@
     feature_extract_enable: false
     point_filter_num: 3
     max_iteration: 3
-    filter_size_surf: 0.1
+    filter_size_surf: 0.05
     filter_size_map: 0.1
-    cube_side_length: 200
+    cube_side_length: 200.0
     runtime_pos_log_enable: false
     map_file_path: "./test.pcd"
 
@@ -24,11 +24,11 @@
 
     mapping:
       # acc_cov: 0.03
-      acc_cov: 0.001
+      acc_cov: 0.01
       # gyr_cov: 0.003
-      gyr_cov: 0.00000123
-      b_acc_cov: 0.00001
-      b_gyr_cov: 0.0000001
+      gyr_cov: 0.01
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
       fov_degree: 360.0
       det_range: 10.0
       extrinsic_est_en: false
@@ -43,7 +43,7 @@
       map_en: false
       map_accumulate_en: true
       scan_publish_en: true
-      dense_publish_en: true
+      dense_publish_en: false
       scan_bodyframe_pub_en: false
 
     pcd_save:
