@@ -16,6 +16,7 @@
         // Robot -> Laptop topics
         publishers: [
           "^/stream_status$",
+          "^/stream_camera_status$",
           "^/thermal/summary$",
           "^/thermal/thumb$",
           "^/local_nav_grid$",
@@ -37,6 +38,7 @@
         // Laptop -> Robot topics
         subscribers: [
           "^/cmd_vel$",
+          "^/stream_camera_select$",
           "^/stream_target_ip$",
           "^/host_teleop/heartbeat$",
           "^/mpc_autonomy_enable$",

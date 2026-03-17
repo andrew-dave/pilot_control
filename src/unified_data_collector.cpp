@@ -791,6 +791,7 @@ private:
       const char* mode_name = (want_mode == 1) ? "RIGHT" : "LEFT";
       RCLCPP_INFO(this->get_logger(), "Already streaming %s", mode_name);
       publishCameraStatus();
+      publishStreamStatus();
       return;
     }
     
@@ -820,6 +821,7 @@ private:
     camera_switching_.store(false);
     
     publishCameraStatus();
+    publishStreamStatus();
   }
   
   void stopStreamingLoop() {

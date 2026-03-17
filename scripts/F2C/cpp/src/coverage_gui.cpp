@@ -2317,6 +2317,7 @@ void CoverageGUI::onCameraToggled(bool checked) {
     if (radio_cam_right_ && radio_cam_right_->isChecked()) {
         camera = "right";
     }
+    current_streaming_camera_ = camera;
     
     // Lazily create publisher if not yet available
     if (ros_initialized_ && ros_node_ && !camera_select_pub_) {
@@ -2334,12 +2335,23 @@ void CoverageGUI::onCameraToggled(bool checked) {
         camera_select_pub_->publish(msg);
         
         setStatus(QString("Switching to %1 camera...").arg(camera));
+
+        if (lbl_video_status_) {
+            QString target_display = current_stream_target_;
+            if (!target_display.contains(':') && spin_video_port_) {
+                target_display += QString(":%1").arg(spin_video_port_->value());
+            }
+            if (!target_display.isEmpty()) {
+                lbl_video_status_->setText(QString("Target: %1 (%2)").arg(target_display, camera));
+            } else {
+                lbl_video_status_->setText(QString("Switching to %1 camera...").arg(camera));
+            }
+            lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
+        }
         
         // If currently playing, restart stream after a delay
         if (video_widget_ && video_widget_->isPlaying()) {
             video_widget_->stopStream();
-            lbl_video_status_->setText("Switching camera...");
-            lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
             
             // Restart stream after pipeline rebuild (~2 seconds)
             QTimer::singleShot(2500, this, [this]() {
@@ -2365,6 +2377,16 @@ void CoverageGUI::onCameraStatusReceived(const std_msgs::msg::String::SharedPtr 
         QSignalBlocker blocker_right(radio_cam_right_);
         if (radio_cam_left_) radio_cam_left_->setChecked(!is_right);
         if (radio_cam_right_) radio_cam_right_->setChecked(is_right);
+
+        if (lbl_video_status_ && !current_stream_target_.isEmpty()) {
+            QString target_display = current_stream_target_;
+            if (!target_display.contains(':') && spin_video_port_) {
+                target_display += QString(":%1").arg(spin_video_port_->value());
+            }
+            lbl_video_status_->setText(QString("Target: %1 (%2)")
+                                           .arg(target_display, effective_camera));
+            lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
+        }
         
         setStatus(QString("Streaming: %1 camera").arg(effective_camera));
     }, Qt::QueuedConnection);
