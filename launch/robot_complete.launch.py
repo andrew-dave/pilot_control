@@ -375,15 +375,19 @@ def generate_launch_description():
             'baud_rate': 38400,
             'frame_id': 'gps_link',
             # Quality gating thresholds (for /gps/fix output)
-            'hacc_max_m': 5.0,           # Max horizontal accuracy (meters)
+            'hacc_max_m': 2.0,           # Max horizontal accuracy (meters)
             'min_sats': 8,               # Min satellites for valid fix
             'pdop_max': 4.0,             # Max position DOP
             'require_3d_fix': True,      # Require 3D fix (fixType >= 3)
             'require_gnss_fix_ok': True, # Require gnssFixOK flag
             # Receiver configuration
             'configure_receiver': True,
-            'rate_hz': 5,                # 5Hz update rate
+            'rate_hz': 10,                # 10Hz update rate
             'dynamic_model': 3,          # 3 = Pedestrian (best for slow robot ~0.5 m/s)
+            'enable_raw_observation_messages': True,
+            'enable_nav_sat': True,
+            'enable_hpposllh': True,
+            'raw_log_target_path': '',
         }]
     )
 
@@ -420,6 +424,10 @@ def generate_launch_description():
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
                 '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
+                '/gps/fix_raw',
+                '/gps/fix',
+                '/gps/vel',
+                '/gps/diag',
                 '/cmd_vel',
                 '/left/controller_status',
                 '/right/controller_status',
@@ -553,6 +561,9 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'base_data_directory': base_data_dir,
+            'gnss_temp_directory': '/tmp',
+            'gnss_precapture_timeout_sec': 1800.0,
+            'gnss_post_stop_delay_sec': 30.0,
         }]
     )
 

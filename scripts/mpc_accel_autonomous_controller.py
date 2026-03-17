@@ -1301,6 +1301,7 @@ class MPCAccelController(Node):
         self.shutdown_client = self.create_client(Trigger, "/shutdown_mapping")
 
         # Data collection coordinator service clients (for autonomous DC)
+        self.dc_gnss_precapture_client = self.create_client(Trigger, "/dc/start_gnss_precapture")
         self.dc_start_client = self.create_client(Trigger, "/dc/start")
         self.dc_pause_client = self.create_client(Trigger, "/dc/pause")
         self.dc_resume_client = self.create_client(Trigger, "/dc/resume")
@@ -1687,6 +1688,9 @@ class MPCAccelController(Node):
             # the target yaw is along the line from current pose to first waypoint
             self.previous_waypoint = (self.current_x, self.current_y)
 
+            # Start temporary GNSS capture before the robot begins moving.
+            self._start_gnss_precapture_for_navigation("csv_waypoint_start")
+
             # Start navigation to first waypoint immediately
             self._set_next_waypoint_target()
 
@@ -1799,6 +1803,9 @@ class MPCAccelController(Node):
         self.waypoint_navigation_active = True
         self.yaw_align_active = False
         self.previous_waypoint = (self.current_x, self.current_y)
+
+        # Start temporary GNSS capture before the robot begins moving.
+        self._start_gnss_precapture_for_navigation("f2c_start_navigation")
 
         # Start navigation to first waypoint
         self._set_next_waypoint_target()
@@ -1996,6 +2003,21 @@ class MPCAccelController(Node):
         except Exception as e:
             self.get_logger().error(f'DC {service_name} exception: {e}')
             return False
+
+    def _start_gnss_precapture_for_navigation(self, source: str) -> None:
+        """
+        Ask the coordinator to start temporary GNSS raw logging before motion.
+        Navigation should continue even if precapture fails.
+        """
+        ok = self._call_dc_service_blocking(
+            self.dc_gnss_precapture_client,
+            Trigger.Request(),
+            '/dc/start_gnss_precapture',
+            timeout=5.0,
+        )
+        if not ok:
+            self.get_logger().warn(
+                f'GNSS precapture request from {source} failed - navigation will continue')
 
     def _dc_start_sequence(self):
         """
