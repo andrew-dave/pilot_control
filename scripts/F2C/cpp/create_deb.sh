@@ -34,6 +34,7 @@ mkdir -p "$DEB_DIR/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "$DEB_DIR/usr/share/icons/hicolor/scalable/apps"
 mkdir -p "$DEB_DIR/usr/share/doc/bdr-coverage-planner"
 mkdir -p "$DEB_DIR/usr/share/bdr-coverage-planner"
+mkdir -p "$DEB_DIR/usr/share/bdr-coverage-planner/config"
 
 # Create control file
 echo "Creating control file..."
@@ -93,6 +94,9 @@ chmod +x "$DEB_DIR/DEBIAN/prerm"
 # Copy executable
 echo "Copying executable..."
 cp "${BUILD_DIR}/bdr_coverage_planner" "$DEB_DIR/usr/bin/"
+
+echo "Copying runtime config..."
+cp "${SCRIPT_DIR}/config/robots.json" "$DEB_DIR/usr/share/bdr-coverage-planner/config/"
 
 # Create launcher script
 echo "Creating launcher script..."

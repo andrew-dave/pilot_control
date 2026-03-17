@@ -265,6 +265,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install coverage planner robot registry for packaged/runtime lookup.
+install(
+  FILES scripts/F2C/cpp/config/robots.json
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
 # Install Python scripts
 install(
   PROGRAMS scripts/gpr_serial_bridge.py

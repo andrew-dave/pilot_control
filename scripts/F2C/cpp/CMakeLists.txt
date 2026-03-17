@@ -204,6 +204,10 @@ install(TARGETS bdr_coverage_planner
     RUNTIME DESTINATION bin
 )
 
+install(DIRECTORY config
+    DESTINATION share/${PROJECT_NAME}
+)
+
 # Print configuration summary
 message(STATUS "=== BDR Coverage Planner Configuration ===")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")

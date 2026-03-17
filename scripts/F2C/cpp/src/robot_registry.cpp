@@ -16,6 +16,47 @@
 
 namespace f2c_cpp {
 
+namespace {
+
+QString canonicalizeRobotId(const QString& robot_id) {
+    QString s = robot_id.trimmed().toLower();
+    static QRegularExpression non_alnum(R"([^a-z0-9]+)");
+    s.remove(non_alnum);
+    return s;
+}
+
+void appendCandidate(QStringList& candidates, const QString& candidate) {
+    if (candidate.isEmpty()) return;
+    const QString clean = QDir::cleanPath(candidate);
+    if (!candidates.contains(clean)) {
+        candidates << clean;
+    }
+}
+
+void appendRegistryCandidatesForBase(QStringList& candidates, const QString& base_dir) {
+    if (base_dir.isEmpty()) return;
+
+    QDir base(base_dir);
+    appendCandidate(candidates, base.absoluteFilePath("robots.json"));
+    appendCandidate(candidates, base.absoluteFilePath("config/robots.json"));
+
+    const QStringList share_dirs = {
+        "bdr_coverage_planner",
+        "bdr-coverage-planner",
+        "pilot_control",
+    };
+    for (const QString& share_dir : share_dirs) {
+        appendCandidate(candidates, base.absoluteFilePath(QString("share/%1/robots.json").arg(share_dir)));
+        appendCandidate(candidates, base.absoluteFilePath(QString("share/%1/config/robots.json").arg(share_dir)));
+    }
+
+    // Development-tree fallbacks for running from a ROS workspace without installing assets.
+    appendCandidate(candidates, base.absoluteFilePath("src/pilot_control/scripts/F2C/cpp/config/robots.json"));
+    appendCandidate(candidates, base.absoluteFilePath("src/pilot_control/config/robots.json"));
+}
+
+}  // namespace
+
 static std::optional<QJsonDocument> readJsonFile(const QString& path, QString& error) {
     QFile f(path);
     if (!f.exists()) {
@@ -117,28 +158,62 @@ QStringList RobotRegistry::robotIds() const {
 
 std::optional<RobotProfile> RobotRegistry::findById(const QString& robot_id) const {
     QString key = robot_id.trimmed();
+    if (key.isEmpty()) {
+        return std::nullopt;
+    }
+
     for (const auto& r : robots_) {
         if (r.robot_id == key) {
             return r;
         }
     }
+
+    const QString folded = key.toLower();
+    for (const auto& r : robots_) {
+        if (r.robot_id.trimmed().toLower() == folded) {
+            return r;
+        }
+    }
+
+    const QString canonical = canonicalizeRobotId(key);
+    for (const auto& r : robots_) {
+        if (canonicalizeRobotId(r.robot_id) == canonical ||
+            canonicalizeRobotId(r.robot_id_slug) == canonical) {
+            return r;
+        }
+    }
+
     return std::nullopt;
 }
 
 bool RobotRegistry::load(QString* error) {
     // Search order:
     // 1) User config location (~/.config/PilotControl/BDRCoveragePlanner/robots.json)
-    // 2) Next to executable (for packaged installs)
-    // 3) ../share/bdr_coverage_planner/robots.json (common layout)
+    // 2) Relative to executable/install roots (standalone install, deb, ROS workspace)
+    // 3) Relative to current working directory (developer runs from a workspace)
     QStringList candidates;
-    candidates << defaultUserRegistryPath();
+    appendCandidate(candidates, defaultUserRegistryPath());
+
+    QStringList roots;
+    auto appendRoot = [&roots](const QString& path) {
+        if (path.isEmpty()) return;
+        const QString clean = QDir(path).absolutePath();
+        if (!roots.contains(clean)) {
+            roots << clean;
+        }
+    };
 
     const QString exe_dir = QCoreApplication::applicationDirPath();
-    if (!exe_dir.isEmpty()) {
-        candidates << (exe_dir + "/robots.json");
-        candidates << (exe_dir + "/../config/robots.json");
-        candidates << (exe_dir + "/../share/bdr_coverage_planner/robots.json");
-        candidates << (exe_dir + "/../share/bdr_coverage_planner/config/robots.json");
+    appendRoot(exe_dir);
+    appendRoot(QDir(exe_dir).absoluteFilePath(".."));
+    appendRoot(QDir(exe_dir).absoluteFilePath("../.."));
+
+    const QString cwd = QDir::currentPath();
+    appendRoot(cwd);
+    appendRoot(QDir(cwd).absoluteFilePath(".."));
+
+    for (const QString& root : roots) {
+        appendRegistryCandidatesForBase(candidates, root);
     }
 
     QString last_err;

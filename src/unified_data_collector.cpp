@@ -463,7 +463,7 @@ public:
     
     // Camera status publisher (publishes current streaming camera)
     camera_status_pub_ = this->create_publisher<std_msgs::msg::String>("/stream_camera_status", 10);
-    RCLCPP_INFO(this->get_logger(), "Camera selection topic: /stream_camera_select (\"left\", \"panorama\", or \"right\")");
+    RCLCPP_INFO(this->get_logger(), "Camera selection topic: /stream_camera_select (\"left\" or \"right\")");
     
     // Stream target IP subscriber (for dynamic stream destination)
     stream_target_sub_ = this->create_subscription<std_msgs::msg::String>(
@@ -761,7 +761,7 @@ private:
       }
     }
     const int mode = streaming_camera_mode_.load();
-    job.streaming_camera = (mode == 2) ? "panorama" : ((mode == 1) ? "right" : "left");
+    job.streaming_camera = (mode == 1) ? "right" : "left";
 
     writer_.enqueue(std::move(job));
   }
@@ -775,24 +775,26 @@ private:
     if (camera == "right" || camera == "r") {
       want_mode = 1;
     } else if (camera == "panorama" || camera == "pano" || camera == "p") {
-      want_mode = 2;
+      RCLCPP_WARN(this->get_logger(),
+                  "Panorama stream request received, but panorama mode is disabled. Falling back to LEFT.");
+      want_mode = 0;
     } else {
       want_mode = 0;
     }
     int current_mode = streaming_camera_mode_.load();
-    const char* req_mode_name = (want_mode == 2) ? "PANORAMA" : ((want_mode == 1) ? "RIGHT" : "LEFT");
-    const char* cur_mode_name = (current_mode == 2) ? "PANORAMA" : ((current_mode == 1) ? "RIGHT" : "LEFT");
+    const char* req_mode_name = (want_mode == 1) ? "RIGHT" : "LEFT";
+    const char* cur_mode_name = (current_mode == 1) ? "RIGHT" : "LEFT";
     RCLCPP_INFO(this->get_logger(), "Camera select request='%s' parsed=%s current=%s",
                 camera.c_str(), req_mode_name, cur_mode_name);
     
     if (want_mode == current_mode) {
-      const char* mode_name = (want_mode == 2) ? "PANORAMA" : ((want_mode == 1) ? "RIGHT" : "LEFT");
+      const char* mode_name = (want_mode == 1) ? "RIGHT" : "LEFT";
       RCLCPP_INFO(this->get_logger(), "Already streaming %s", mode_name);
       publishCameraStatus();
       return;
     }
     
-    const char* mode_name = (want_mode == 2) ? "PANORAMA" : ((want_mode == 1) ? "RIGHT" : "LEFT");
+    const char* mode_name = (want_mode == 1) ? "RIGHT" : "LEFT";
     RCLCPP_INFO(this->get_logger(), "Switching stream to %s...", mode_name);
     
     // Set switching flag and timestamp
@@ -863,7 +865,7 @@ private:
   void publishCameraStatus() {
     auto msg = std_msgs::msg::String();
     const int mode = streaming_camera_mode_.load();
-    msg.data = (mode == 2) ? "panorama" : ((mode == 1) ? "right" : "left");
+    msg.data = (mode == 1) ? "right" : "left";
     camera_status_pub_->publish(msg);
   }
   
@@ -919,7 +921,7 @@ private:
     auto msg = std_msgs::msg::String();
     std::ostringstream oss;
     const int mode = streaming_camera_mode_.load();
-    const char* mode_name = (mode == 2) ? "panorama" : ((mode == 1) ? "right" : "left");
+    const char* mode_name = (mode == 1) ? "right" : "left";
     oss << cfg_.stream_host << ":" << cfg_.stream_port << ":" 
         << mode_name;
     msg.data = oss.str();
@@ -1279,16 +1281,15 @@ private:
     
     std::ostringstream oss;
     
-    const int stream_mode = streaming_camera_mode_.load();  // 0=left,1=right,2=panorama
+    const int stream_mode = streaming_camera_mode_.load();  // 0=left,1=right
     const bool stream_right = (stream_mode == 1);
-    const bool stream_panorama = (stream_mode == 2);
     
     RCLCPP_INFO(this->get_logger(), "Camera devices: LEFT=%s RIGHT=%s",
                 cfg_.left_device.c_str(), cfg_.right_device.c_str());
     RCLCPP_INFO(this->get_logger(), "Pipeline mode: %s, Resolution: %dx%d@%dfps, STREAMING: %s",
                 cfg_.use_mjpeg_pipeline ? "MJPEG" : "RAW",
                 cfg_.cap_w, cfg_.cap_h, cfg_.cap_fps,
-                stream_panorama ? "PANORAMA" : (stream_right ? "RIGHT" : "LEFT"));
+                stream_right ? "RIGHT" : "LEFT");
     RCLCPP_INFO(this->get_logger(), "Encoder: %s",
                 cfg_.stream_use_hw_encoder ? "vaapih264enc (hardware)" : "x264enc (software)");
     
@@ -1305,7 +1306,7 @@ private:
     oss << "! tee name=T_left ";
 
     // LEFT stream branch (only if streaming left)
-    if (!stream_right && !stream_panorama) {
+    if (!stream_right) {
     // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
     // - vaapih264enc requires NV12 format (VA-API preferred format)
     // - 480x360@20fps: Lower res for smooth FPV driving
@@ -1367,45 +1368,6 @@ private:
           << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
     }
     
-    // PANORAMA stream branch (left + right blended in compositor)
-    if (stream_panorama) {
-      // Keep panorama path lightweight to avoid stalls under CPU load.
-      // Approximate feather blend using overlap + alpha on right pad.
-      const int pano_fps = 20;
-      const int pano_w = 300;
-      const int pano_h = 360;
-      const int pano_overlap = 120;
-      const int pano_out_w = (pano_w * 2) - pano_overlap;
-      oss << " T_left. ! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
-          << "! videorate drop-only=true ! video/x-raw,framerate=" << pano_fps << "/1 "
-          << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
-          << "! videoconvert ! video/x-raw,format=I420 ! mix.sink_0 "
-          << " T_right. ! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
-          << "! videorate drop-only=true ! video/x-raw,framerate=" << pano_fps << "/1 "
-          << "! videoscale ! video/x-raw,width=" << pano_w << ",height=" << pano_h << " "
-          << "! videoflip method=rotate-180 "
-          << "! videoconvert ! video/x-raw,format=I420 ! mix.sink_1 "
-          << " videomixer name=mix background=black "
-          << "sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1.0 "
-          << "sink_1::xpos=" << (pano_w - pano_overlap) << " sink_1::ypos=0 sink_1::alpha=0.70 "
-          << "! queue leaky=downstream max-size-buffers=1 max-size-bytes=0 max-size-time=0 "
-          << "! videoconvert ! video/x-raw,width=" << pano_out_w << ",height=" << pano_h
-          << ",framerate=" << pano_fps << "/1 ";
-      if (cfg_.stream_use_hw_encoder) {
-        oss << "! videoconvert ! video/x-raw,format=NV12 "
-            << "! vaapih264enc rate-control=cbr bitrate=" << cfg_.stream_bitrate_kbps
-            << " keyframe-period=20 tune=low-power ";
-      } else {
-        oss << "! videoconvert ! video/x-raw,format=I420 "
-            << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << cfg_.stream_bitrate_kbps
-            << " key-int-max=20 bframes=0 byte-stream=true threads=2 ";
-      }
-      oss
-          << "! h264parse config-interval=1 "
-          << "! rtph264pay pt=96 mtu=" << cfg_.rtp_mtu << " "
-          << "! udpsink host=" << cfg_.stream_host << " port=" << cfg_.stream_port << " sync=false ";
-    }
-
     // RIGHT frame capture branch (appsink)
     oss << " T_right. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
         << "! videoconvert ! video/x-raw,format=BGR "
@@ -1591,7 +1553,7 @@ private:
   std::atomic<bool> shutting_down_;
   std::chrono::steady_clock::time_point last_log_time_;
   
-  // Camera streaming selection: 0=left, 1=right, 2=panorama
+  // Camera streaming selection: 0=left, 1=right
   std::atomic<int> streaming_camera_mode_{0};
   std::atomic<bool> camera_switching_{false};        // true during pipeline rebuild
   std::chrono::steady_clock::time_point camera_switch_start_;

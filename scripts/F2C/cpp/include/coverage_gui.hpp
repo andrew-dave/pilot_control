@@ -747,6 +747,7 @@ private:
     std::optional<RobotProfile> active_robot_;
     QString active_robot_id_;
     QString active_robot_slug_;
+    QString robot_registry_error_;
     QString pinned_known_hosts_file_;
 
     // In-memory auth session (never persisted to disk)
@@ -883,7 +884,6 @@ private:
     VideoStreamWidget* video_widget_ = nullptr;
     QPushButton* btn_view_fov_ = nullptr;
     QRadioButton* radio_cam_left_ = nullptr;
-    QRadioButton* radio_cam_panorama_ = nullptr;
     QRadioButton* radio_cam_right_ = nullptr;
     QSpinBox* spin_video_port_ = nullptr;
     QPushButton* btn_video_play_ = nullptr;
