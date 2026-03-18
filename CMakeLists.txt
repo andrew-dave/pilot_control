@@ -138,7 +138,7 @@ install(TARGETS shutdown_service DESTINATION lib/${PROJECT_NAME})
 # === GPS DRIVER (u-blox ZED-F9P) ===
 add_executable(gps_driver src/gps_driver.cpp)
 target_compile_features(gps_driver PUBLIC cxx_std_17)
-ament_target_dependencies(gps_driver rclcpp sensor_msgs geometry_msgs diagnostic_msgs std_srvs)
+ament_target_dependencies(gps_driver rclcpp sensor_msgs geometry_msgs diagnostic_msgs std_msgs std_srvs)
 install(TARGETS gps_driver DESTINATION lib/${PROJECT_NAME})
 
 # === HOST TELEOP (SDL2-based) ===

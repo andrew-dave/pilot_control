@@ -3,18 +3,19 @@
  * @brief ROS2 driver for u-blox ZED-F9P GNSS receiver
  *
  * Features:
- * - UBX protocol parsing (NAV-PVT)
+ * - UBX protocol parsing (NAV-PVT plus raw-message health accounting)
  * - Quality gating with configurable thresholds
  * - Auto-reconnection on USB disconnect
  * - Receiver configuration on startup
- * - Publishes position, velocity, and diagnostics
  * - Session-oriented raw UBX logging for post-processing
+ * - Dedicated raw GNSS health topic/service for operator visibility
  */
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <rcl_interfaces/msg/set_parameters_result.hpp>
@@ -29,14 +30,66 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <thread>
 #include <vector>
 
 namespace fs = std::filesystem;
+
+namespace {
+
+std::string jsonEscape(const std::string& input) {
+  std::ostringstream escaped;
+  for (const char c : input) {
+    switch (c) {
+      case '\\': escaped << "\\\\"; break;
+      case '"': escaped << "\\\""; break;
+      case '\n': escaped << "\\n"; break;
+      case '\r': escaped << "\\r"; break;
+      case '\t': escaped << "\\t"; break;
+      default: escaped << c; break;
+    }
+  }
+  return escaped.str();
+}
+
+std::string formatWallTime(const std::chrono::system_clock::time_point& tp) {
+  const std::time_t raw_time = std::chrono::system_clock::to_time_t(tp);
+  std::tm utc_tm{};
+  gmtime_r(&raw_time, &utc_tm);
+  char buf[64];
+  std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &utc_tm);
+  return std::string(buf);
+}
+
+std::string formatNowWallTime() {
+  return formatWallTime(std::chrono::system_clock::now());
+}
+
+void appendUniqueReason(std::vector<std::string>& reasons, const std::string& reason) {
+  if (std::find(reasons.begin(), reasons.end(), reason) == reasons.end()) {
+    reasons.push_back(reason);
+  }
+}
+
+std::string joinReasons(const std::vector<std::string>& reasons) {
+  std::ostringstream out;
+  for (size_t i = 0; i < reasons.size(); ++i) {
+    if (i > 0) {
+      out << "; ";
+    }
+    out << reasons[i];
+  }
+  return out.str();
+}
+
+}  // namespace
 
 // UBX protocol constants
 constexpr uint8_t UBX_SYNC1 = 0xB5;
@@ -71,32 +124,32 @@ struct UbxNavPvt {
   uint32_t iTOW;        // GPS time of week (ms)
   uint16_t year;
   uint8_t month, day, hour, min, sec;
-  uint8_t valid;        // Validity flags (bit0=validDate, bit1=validTime, bit2=fullyResolved)
-  uint32_t tAcc;        // Time accuracy estimate (ns)
-  int32_t nano;         // Fraction of second (-1e9..1e9)
-  uint8_t fixType;      // 0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS+DR, 5=time only
-  uint8_t flags;        // bit0=gnssFixOK, bit1=diffSoln, bit6-7=carrSoln
-  uint8_t flags2;       // Additional fix confirmation flags
-  uint8_t numSV;        // Number of satellites used in solution
-  int32_t lon;          // Longitude (1e-7 degrees)
-  int32_t lat;          // Latitude (1e-7 degrees)
-  int32_t height;       // Height above ellipsoid (mm)
-  int32_t hMSL;         // Height above mean sea level (mm)
-  uint32_t hAcc;        // Horizontal accuracy estimate (mm)
-  uint32_t vAcc;        // Vertical accuracy estimate (mm)
-  int32_t velN;         // NED north velocity (mm/s)
-  int32_t velE;         // NED east velocity (mm/s)
-  int32_t velD;         // NED down velocity (mm/s)
-  int32_t gSpeed;       // Ground speed (mm/s)
-  int32_t headMot;      // Heading of motion (1e-5 degrees)
-  uint32_t sAcc;        // Speed accuracy estimate (mm/s)
-  uint32_t headAcc;     // Heading accuracy estimate (1e-5 degrees)
-  uint16_t pDOP;        // Position DOP (0.01)
-  uint8_t flags3;       // bit0=invalidLlh
+  uint8_t valid;
+  uint32_t tAcc;
+  int32_t nano;
+  uint8_t fixType;
+  uint8_t flags;
+  uint8_t flags2;
+  uint8_t numSV;
+  int32_t lon;
+  int32_t lat;
+  int32_t height;
+  int32_t hMSL;
+  uint32_t hAcc;
+  uint32_t vAcc;
+  int32_t velN;
+  int32_t velE;
+  int32_t velD;
+  int32_t gSpeed;
+  int32_t headMot;
+  uint32_t sAcc;
+  uint32_t headAcc;
+  uint16_t pDOP;
+  uint8_t flags3;
   uint8_t reserved1[5];
-  int32_t headVeh;      // Heading of vehicle (1e-5 degrees)
-  int16_t magDec;       // Magnetic declination (1e-2 degrees)
-  uint16_t magAcc;      // Magnetic declination accuracy (1e-2 degrees)
+  int32_t headVeh;
+  int16_t magDec;
+  uint16_t magAcc;
 };
 #pragma pack(pop)
 
@@ -125,6 +178,15 @@ public:
     this->declare_parameter<bool>("enable_nav_sat", true);
     this->declare_parameter<bool>("enable_hpposllh", true);
 
+    // Raw health thresholds
+    this->declare_parameter<double>("rawx_startup_timeout_sec", 5.0);
+    this->declare_parameter<double>("sfrbx_startup_timeout_sec", 20.0);
+    this->declare_parameter<double>("rawx_min_coverage_ratio", 0.8);
+    this->declare_parameter<double>("rawx_gap_warn_sec", 2.0);
+    this->declare_parameter<double>("rawx_gap_fail_sec", 10.0);
+    this->declare_parameter<double>("raw_log_flush_interval_sec", 1.0);
+    this->declare_parameter<double>("raw_log_fsync_interval_sec", 5.0);
+
     // Raw logging
     this->declare_parameter<std::string>("raw_log_target_path", "");
 
@@ -143,12 +205,21 @@ public:
     enable_raw_observation_messages_ = this->get_parameter("enable_raw_observation_messages").as_bool();
     enable_nav_sat_ = this->get_parameter("enable_nav_sat").as_bool();
     enable_hpposllh_ = this->get_parameter("enable_hpposllh").as_bool();
+    rawx_startup_timeout_sec_ = this->get_parameter("rawx_startup_timeout_sec").as_double();
+    sfrbx_startup_timeout_sec_ = this->get_parameter("sfrbx_startup_timeout_sec").as_double();
+    rawx_min_coverage_ratio_ = this->get_parameter("rawx_min_coverage_ratio").as_double();
+    rawx_gap_warn_sec_ = this->get_parameter("rawx_gap_warn_sec").as_double();
+    rawx_gap_fail_sec_ = this->get_parameter("rawx_gap_fail_sec").as_double();
+    raw_log_flush_interval_sec_ = this->get_parameter("raw_log_flush_interval_sec").as_double();
+    raw_log_fsync_interval_sec_ = this->get_parameter("raw_log_fsync_interval_sec").as_double();
     raw_log_target_path_ = this->get_parameter("raw_log_target_path").as_string();
+    driver_boot_time_ = formatNowWallTime();
 
     fix_raw_pub_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/gps/fix_raw", 10);
     fix_pub_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/gps/fix", 10);
     vel_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/gps/vel", 10);
     diag_pub_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/gps/diag", 10);
+    raw_health_pub_ = this->create_publisher<std_msgs::msg::String>("/gps/raw_health", 10);
 
     raw_log_set_srv_ = this->create_service<std_srvs::srv::SetBool>(
         "/gps/raw_log_set",
@@ -156,9 +227,16 @@ public:
     raw_log_promote_srv_ = this->create_service<std_srvs::srv::Trigger>(
         "/gps/raw_log_promote",
         std::bind(&GpsDriver::onRawLogPromote, this, std::placeholders::_1, std::placeholders::_2));
+    raw_health_snapshot_srv_ = this->create_service<std_srvs::srv::Trigger>(
+        "/gps/raw_health_snapshot",
+        std::bind(&GpsDriver::onRawHealthSnapshot, this, std::placeholders::_1, std::placeholders::_2));
 
     parameter_callback_handle_ = this->add_on_set_parameters_callback(
         std::bind(&GpsDriver::onParametersSet, this, std::placeholders::_1));
+
+    health_timer_ = this->create_wall_timer(
+        std::chrono::seconds(1),
+        std::bind(&GpsDriver::publishRawHealth, this));
 
     running_ = true;
     serial_thread_ = std::thread(&GpsDriver::serialLoop, this);
@@ -172,13 +250,10 @@ public:
                 require_3d_fix_ ? "required" : "optional",
                 require_gnss_fix_ok_ ? "required" : "optional");
     RCLCPP_INFO(this->get_logger(),
-                "Raw PPK logging messages: RAWX=%s SFRBX=%s NAV-SAT=%s HPPOSLLH=%s",
-                enable_raw_observation_messages_ ? "on" : "off",
-                enable_raw_observation_messages_ ? "on" : "off",
-                enable_nav_sat_ ? "on" : "off",
-                enable_hpposllh_ ? "on" : "off");
+                "Raw PPK logging thresholds: RAWX startup %.1fs, SFRBX startup %.1fs, gap warn %.1fs, gap fail %.1fs",
+                rawx_startup_timeout_sec_, sfrbx_startup_timeout_sec_, rawx_gap_warn_sec_, rawx_gap_fail_sec_);
     RCLCPP_INFO(this->get_logger(),
-                "Raw UBX logging services ready: /gps/raw_log_set, /gps/raw_log_promote");
+                "Raw UBX logging services ready: /gps/raw_log_set, /gps/raw_log_promote, /gps/raw_health_snapshot");
   }
 
   ~GpsDriver() override {
@@ -196,6 +271,42 @@ public:
   }
 
 private:
+  struct RawHealthSnapshot {
+    bool raw_log_active{false};
+    bool rawx_seen{false};
+    bool sfrbx_seen{false};
+    bool gnss_invalid{false};
+    bool rawx_startup_failed{false};
+    bool sfrbx_startup_warned{false};
+    bool rawx_gap_warned{false};
+    bool rawx_gap_invalid{false};
+    std::string raw_log_path;
+    std::string raw_log_error;
+    std::string driver_boot_time;
+    std::string raw_log_start_time;
+    std::string first_raw_obs_time;
+    std::string last_raw_obs_time;
+    std::string first_sfrbx_time;
+    std::string last_sfrbx_time;
+    uint64_t raw_log_bytes{0};
+    uint64_t rawx_count{0};
+    uint64_t sfrbx_count{0};
+    uint64_t nav_sat_count{0};
+    uint64_t hpposllh_count{0};
+    uint64_t logging_failures{0};
+    uint64_t flush_count{0};
+    uint64_t fsync_count{0};
+    uint64_t serial_reconnects{0};
+    double raw_log_elapsed_sec{0.0};
+    double current_rawx_gap_sec{0.0};
+    double max_rawx_gap_sec{0.0};
+    double rawx_expected_epochs{0.0};
+    double rawx_coverage_ratio{0.0};
+    std::vector<std::string> warning_reasons;
+    std::vector<std::string> invalid_reasons;
+    std::string health_level{"idle"};
+  };
+
   rcl_interfaces::msg::SetParametersResult onParametersSet(
       const std::vector<rclcpp::Parameter>& parameters) {
     rcl_interfaces::msg::SetParametersResult result;
@@ -203,18 +314,10 @@ private:
     result.reason = "accepted";
 
     for (const auto& param : parameters) {
-      if (param.get_name() == "raw_log_target_path" && param.get_type() == rclcpp::ParameterType::PARAMETER_STRING) {
+      if (param.get_name() == "raw_log_target_path" &&
+          param.get_type() == rclcpp::ParameterType::PARAMETER_STRING) {
         std::lock_guard<std::mutex> lk(raw_log_mutex_);
         raw_log_target_path_ = param.as_string();
-      } else if (param.get_name() == "enable_raw_observation_messages" &&
-                 param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-        enable_raw_observation_messages_ = param.as_bool();
-      } else if (param.get_name() == "enable_nav_sat" &&
-                 param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-        enable_nav_sat_ = param.as_bool();
-      } else if (param.get_name() == "enable_hpposllh" &&
-                 param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-        enable_hpposllh_ = param.as_bool();
       }
     }
 
@@ -223,7 +326,7 @@ private:
 
   void onRawLogSet(const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
                    std::shared_ptr<std_srvs::srv::SetBool::Response> resp) {
-    std::string target_path = this->get_parameter("raw_log_target_path").as_string();
+    const std::string target_path = this->get_parameter("raw_log_target_path").as_string();
 
     std::lock_guard<std::mutex> lk(raw_log_mutex_);
 
@@ -235,7 +338,8 @@ private:
         return;
       }
 
-      if (raw_logging_active_.load() && raw_log_stream_.is_open() && current_raw_log_path_ == target_path) {
+      if (raw_logging_active_.load() && raw_log_stream_.is_open() &&
+          current_raw_log_path_ == target_path) {
         resp->success = true;
         resp->message = "Raw UBX logging already active: " + current_raw_log_path_;
         return;
@@ -245,7 +349,7 @@ private:
         closeRawLogLocked();
       }
 
-      if (!openRawLogLocked(target_path, false)) {
+      if (!openRawLogLocked(target_path, false, true)) {
         resp->success = false;
         resp->message = raw_log_last_error_;
         return;
@@ -292,6 +396,13 @@ private:
 
     resp->success = true;
     resp->message = "Raw UBX log promoted to: " + current_raw_log_path_;
+  }
+
+  void onRawHealthSnapshot(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
+                           std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    const RawHealthSnapshot snapshot = getRawHealthSnapshot();
+    resp->success = true;
+    resp->message = buildRawHealthJson(snapshot);
   }
 
   bool openSerial() {
@@ -341,7 +452,7 @@ private:
     tty.c_lflag = 0;
     tty.c_oflag = 0;
     tty.c_cc[VMIN] = 0;
-    tty.c_cc[VTIME] = 1;  // 100 ms read timeout
+    tty.c_cc[VTIME] = 1;
     tty.c_cflag |= (CLOCAL | CREAD);
     tty.c_cflag &= ~(PARENB | PARODD | CSTOPB | CRTSCTS);
 
@@ -371,29 +482,29 @@ private:
   void configureReceiver() {
     RCLCPP_INFO(this->get_logger(), "Configuring ZED-F9P receiver...");
 
-    usleep(100000);  // Let USB serial settle
+    usleep(100000);
 
     const uint16_t rate_ms = static_cast<uint16_t>(1000 / std::max(rate_hz_, 1));
     uint8_t set_rate[] = {
       UBX_SYNC1, UBX_SYNC2,
-      0x06, 0x08,  // CFG-RATE
+      0x06, 0x08,
       0x06, 0x00,
       static_cast<uint8_t>(rate_ms & 0xFF),
       static_cast<uint8_t>((rate_ms >> 8) & 0xFF),
-      0x01, 0x00,  // navRate = 1
-      0x01, 0x00,  // timeRef = GPS
+      0x01, 0x00,
+      0x01, 0x00,
       0x00, 0x00
     };
     sendUbxMessage(set_rate, sizeof(set_rate));
 
     uint8_t set_dyn[] = {
       UBX_SYNC1, UBX_SYNC2,
-      0x06, 0x8A,  // CFG-VALSET
+      0x06, 0x8A,
       0x09, 0x00,
       0x00,
-      0x01,        // RAM layer only
+      0x01,
       0x00, 0x00,
-      0x21, 0x00, 0x11, 0x20,  // CFG-NAVSPG-DYNMODEL
+      0x21, 0x00, 0x11, 0x20,
       static_cast<uint8_t>(dynamic_model_),
       0x00, 0x00
     };
@@ -412,12 +523,12 @@ private:
     }
 
     const uint8_t nmea_msgs[][2] = {
-      {0xF0, 0x00},  // GGA
-      {0xF0, 0x01},  // GLL
-      {0xF0, 0x02},  // GSA
-      {0xF0, 0x03},  // GSV
-      {0xF0, 0x04},  // RMC
-      {0xF0, 0x05},  // VTG
+      {0xF0, 0x00},
+      {0xF0, 0x01},
+      {0xF0, 0x02},
+      {0xF0, 0x03},
+      {0xF0, 0x04},
+      {0xF0, 0x05},
     };
     for (const auto& msg : nmea_msgs) {
       setMessageRate(msg[0], msg[1], 0x00);
@@ -453,7 +564,7 @@ private:
   void setMessageRate(uint8_t msg_class, uint8_t msg_id, uint8_t rate) {
     uint8_t cfg_msg[] = {
       UBX_SYNC1, UBX_SYNC2,
-      0x06, 0x01,  // CFG-MSG
+      0x06, 0x01,
       0x03, 0x00,
       msg_class, msg_id,
       rate,
@@ -496,7 +607,69 @@ private:
     return frame[frame.size() - 2] == ck_a && frame[frame.size() - 1] == ck_b;
   }
 
-  bool openRawLogLocked(const std::string& target_path, bool append) {
+  void resetRawHealthStateLocked(const std::chrono::steady_clock::time_point& now) {
+    raw_log_start_steady_ = now;
+    raw_log_start_wall_time_ = std::chrono::system_clock::now();
+    raw_log_start_iso_ = formatWallTime(raw_log_start_wall_time_.value());
+
+    last_flush_steady_ = now;
+    last_fsync_steady_ = now;
+
+    rawx_count_ = 0;
+    sfrbx_count_ = 0;
+    nav_sat_count_ = 0;
+    hpposllh_count_ = 0;
+    logging_failures_ = 0;
+    flush_count_ = 0;
+    fsync_count_ = 0;
+    max_rawx_gap_sec_ = 0.0;
+
+    rawx_first_steady_.reset();
+    rawx_last_steady_.reset();
+    sfrbx_first_steady_.reset();
+    sfrbx_last_steady_.reset();
+
+    rawx_first_iso_.clear();
+    rawx_last_iso_.clear();
+    sfrbx_first_iso_.clear();
+    sfrbx_last_iso_.clear();
+
+    rawx_startup_failed_ = false;
+    sfrbx_startup_warned_ = false;
+    rawx_gap_warned_ = false;
+    rawx_gap_invalid_ = false;
+    gnss_invalid_ = false;
+
+    warning_reasons_.clear();
+    invalid_reasons_.clear();
+  }
+
+  void markWarningLocked(const std::string& reason) {
+    appendUniqueReason(warning_reasons_, reason);
+  }
+
+  void markInvalidLocked(const std::string& reason) {
+    gnss_invalid_ = true;
+    appendUniqueReason(invalid_reasons_, reason);
+  }
+
+  void recordLoggingFailureLocked(const std::string& reason, bool stop_logging) {
+    ++logging_failures_;
+    raw_log_last_error_ = reason;
+    markInvalidLocked(reason);
+    if (stop_logging) {
+      if (raw_log_stream_.is_open()) {
+        raw_log_stream_.close();
+      }
+      if (raw_log_sync_fd_ >= 0) {
+        close(raw_log_sync_fd_);
+        raw_log_sync_fd_ = -1;
+      }
+      raw_logging_active_.store(false);
+    }
+  }
+
+  bool openRawLogLocked(const std::string& target_path, bool append, bool reset_health_state) {
     if (target_path.empty()) {
       raw_log_last_error_ = "raw_log_target_path is empty";
       return false;
@@ -521,6 +694,13 @@ private:
       return false;
     }
 
+    raw_log_sync_fd_ = open(path.c_str(), O_RDWR | O_CLOEXEC);
+    if (raw_log_sync_fd_ < 0) {
+      raw_log_stream_.close();
+      raw_log_last_error_ = "Failed to open raw UBX sync handle: " + std::string(strerror(errno));
+      return false;
+    }
+
     current_raw_log_path_ = target_path;
     raw_logging_active_.store(true);
 
@@ -532,6 +712,14 @@ private:
       raw_log_bytes_written_.store(0);
     }
 
+    const auto now = std::chrono::steady_clock::now();
+    if (reset_health_state || !raw_log_start_steady_.has_value()) {
+      resetRawHealthStateLocked(now);
+    } else {
+      last_flush_steady_ = now;
+      last_fsync_steady_ = now;
+    }
+
     raw_log_last_error_.clear();
     return true;
   }
@@ -539,7 +727,14 @@ private:
   void closeRawLogLocked() {
     if (raw_log_stream_.is_open()) {
       raw_log_stream_.flush();
+      if (raw_log_sync_fd_ >= 0) {
+        fsync(raw_log_sync_fd_);
+      }
       raw_log_stream_.close();
+    }
+    if (raw_log_sync_fd_ >= 0) {
+      close(raw_log_sync_fd_);
+      raw_log_sync_fd_ = -1;
     }
     raw_logging_active_.store(false);
   }
@@ -565,7 +760,7 @@ private:
 
     if (source == target) {
       if (!raw_log_stream_.is_open()) {
-        return openRawLogLocked(target.string(), true);
+        return openRawLogLocked(target.string(), true, false);
       }
       return true;
     }
@@ -601,7 +796,7 @@ private:
 
     current_raw_log_path_ = target.string();
 
-    if (was_active && !openRawLogLocked(current_raw_log_path_, true)) {
+    if (was_active && !openRawLogLocked(current_raw_log_path_, true, false)) {
       return false;
     }
 
@@ -615,6 +810,270 @@ private:
     return true;
   }
 
+  void updateRawLogMaintenanceLocked(const std::chrono::steady_clock::time_point& now) {
+    if (!raw_log_stream_.is_open()) {
+      return;
+    }
+
+    if (!last_flush_steady_.has_value()) {
+      last_flush_steady_ = now;
+    }
+    if (!last_fsync_steady_.has_value()) {
+      last_fsync_steady_ = now;
+    }
+
+    const double since_flush = std::chrono::duration<double>(now - *last_flush_steady_).count();
+    if (since_flush >= raw_log_flush_interval_sec_) {
+      raw_log_stream_.flush();
+      if (!raw_log_stream_) {
+        recordLoggingFailureLocked("Failed to flush raw UBX log", true);
+        RCLCPP_ERROR(this->get_logger(), "%s", raw_log_last_error_.c_str());
+        return;
+      }
+      ++flush_count_;
+      last_flush_steady_ = now;
+    }
+
+    const double since_fsync = std::chrono::duration<double>(now - *last_fsync_steady_).count();
+    if (raw_log_sync_fd_ >= 0 && since_fsync >= raw_log_fsync_interval_sec_) {
+      raw_log_stream_.flush();
+      if (!raw_log_stream_) {
+        recordLoggingFailureLocked("Failed to flush raw UBX log before fsync", true);
+        RCLCPP_ERROR(this->get_logger(), "%s", raw_log_last_error_.c_str());
+        return;
+      }
+      if (fsync(raw_log_sync_fd_) != 0) {
+        const std::string error = "Failed to fsync raw UBX log: " + std::string(strerror(errno));
+        recordLoggingFailureLocked(error, false);
+        RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 5000, "%s", error.c_str());
+      } else {
+        ++fsync_count_;
+        last_fsync_steady_ = now;
+      }
+    }
+  }
+
+  void observeVerifiedFrame(uint8_t msg_class, uint8_t msg_id) {
+    const auto now_steady = std::chrono::steady_clock::now();
+    const std::string now_iso = formatNowWallTime();
+
+    std::lock_guard<std::mutex> lk(raw_log_mutex_);
+    switch (msg_class) {
+      case UBX_CLASS_RXM:
+        if (msg_id == UBX_RXM_RAWX) {
+          ++rawx_count_;
+          if (!rawx_first_steady_.has_value()) {
+            rawx_first_steady_ = now_steady;
+            rawx_first_iso_ = now_iso;
+          }
+          if (rawx_last_steady_.has_value()) {
+            const double gap_sec =
+                std::chrono::duration<double>(now_steady - *rawx_last_steady_).count();
+            max_rawx_gap_sec_ = std::max(max_rawx_gap_sec_, gap_sec);
+          }
+          rawx_last_steady_ = now_steady;
+          rawx_last_iso_ = now_iso;
+        } else if (msg_id == UBX_RXM_SFRBX) {
+          ++sfrbx_count_;
+          if (!sfrbx_first_steady_.has_value()) {
+            sfrbx_first_steady_ = now_steady;
+            sfrbx_first_iso_ = now_iso;
+          }
+          sfrbx_last_steady_ = now_steady;
+          sfrbx_last_iso_ = now_iso;
+        }
+        break;
+      case UBX_CLASS_NAV:
+        if (msg_id == UBX_NAV_SAT) {
+          ++nav_sat_count_;
+        } else if (msg_id == UBX_NAV_HPPOSLLH) {
+          ++hpposllh_count_;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  void evaluateRawHealthLocked(const std::chrono::steady_clock::time_point& now) {
+    if (!raw_log_start_steady_.has_value()) {
+      return;
+    }
+
+    const double elapsed_sec = std::chrono::duration<double>(now - *raw_log_start_steady_).count();
+
+    if (rawx_count_ == 0 && elapsed_sec >= rawx_startup_timeout_sec_ && !rawx_startup_failed_) {
+      rawx_startup_failed_ = true;
+      const std::string reason =
+          "RAWX missing after startup window (" + std::to_string(rawx_startup_timeout_sec_) + " s)";
+      markInvalidLocked(reason);
+      RCLCPP_ERROR(this->get_logger(),
+                   "PPK raw observation health failed: %s", reason.c_str());
+    }
+
+    if (sfrbx_count_ == 0 && elapsed_sec >= sfrbx_startup_timeout_sec_ && !sfrbx_startup_warned_) {
+      sfrbx_startup_warned_ = true;
+      const std::string reason =
+          "SFRBX missing after startup window (" + std::to_string(sfrbx_startup_timeout_sec_) + " s)";
+      markWarningLocked(reason);
+      RCLCPP_WARN(this->get_logger(),
+                  "PPK raw navigation warning: %s", reason.c_str());
+    }
+
+    if (raw_logging_active_.load() && rawx_last_steady_.has_value()) {
+      const double current_gap_sec =
+          std::chrono::duration<double>(now - *rawx_last_steady_).count();
+      max_rawx_gap_sec_ = std::max(max_rawx_gap_sec_, current_gap_sec);
+
+      if (current_gap_sec > rawx_gap_warn_sec_ && !rawx_gap_warned_) {
+        rawx_gap_warned_ = true;
+        const std::string reason =
+            "RAWX gap exceeded warning threshold (" + std::to_string(rawx_gap_warn_sec_) + " s)";
+        markWarningLocked(reason);
+        RCLCPP_WARN(this->get_logger(), "PPK raw observation warning: %s", reason.c_str());
+      }
+
+      if (current_gap_sec > rawx_gap_fail_sec_ && !rawx_gap_invalid_) {
+        rawx_gap_invalid_ = true;
+        const std::string reason =
+            "RAWX gap exceeded failure threshold (" + std::to_string(rawx_gap_fail_sec_) + " s)";
+        markInvalidLocked(reason);
+        RCLCPP_ERROR(this->get_logger(), "PPK raw observation invalidated: %s", reason.c_str());
+      }
+    }
+  }
+
+  RawHealthSnapshot getRawHealthSnapshot() {
+    std::lock_guard<std::mutex> lk(raw_log_mutex_);
+    const auto now = std::chrono::steady_clock::now();
+    evaluateRawHealthLocked(now);
+
+    RawHealthSnapshot snapshot;
+    snapshot.raw_log_active = raw_logging_active_.load();
+    snapshot.rawx_seen = rawx_count_ > 0;
+    snapshot.sfrbx_seen = sfrbx_count_ > 0;
+    snapshot.gnss_invalid = gnss_invalid_;
+    snapshot.rawx_startup_failed = rawx_startup_failed_;
+    snapshot.sfrbx_startup_warned = sfrbx_startup_warned_;
+    snapshot.rawx_gap_warned = rawx_gap_warned_;
+    snapshot.rawx_gap_invalid = rawx_gap_invalid_;
+    snapshot.raw_log_path = current_raw_log_path_.empty() ? raw_log_target_path_ : current_raw_log_path_;
+    snapshot.raw_log_error = raw_log_last_error_;
+    snapshot.driver_boot_time = driver_boot_time_;
+    snapshot.raw_log_start_time = raw_log_start_iso_;
+    snapshot.first_raw_obs_time = rawx_first_iso_;
+    snapshot.last_raw_obs_time = rawx_last_iso_;
+    snapshot.first_sfrbx_time = sfrbx_first_iso_;
+    snapshot.last_sfrbx_time = sfrbx_last_iso_;
+    snapshot.raw_log_bytes = raw_log_bytes_written_.load();
+    snapshot.rawx_count = rawx_count_;
+    snapshot.sfrbx_count = sfrbx_count_;
+    snapshot.nav_sat_count = nav_sat_count_;
+    snapshot.hpposllh_count = hpposllh_count_;
+    snapshot.logging_failures = logging_failures_;
+    snapshot.flush_count = flush_count_;
+    snapshot.fsync_count = fsync_count_;
+    snapshot.serial_reconnects = serial_reconnects_.load();
+    snapshot.warning_reasons = warning_reasons_;
+    snapshot.invalid_reasons = invalid_reasons_;
+    snapshot.max_rawx_gap_sec = max_rawx_gap_sec_;
+
+    if (raw_log_start_steady_.has_value()) {
+      snapshot.raw_log_elapsed_sec =
+          std::chrono::duration<double>(now - *raw_log_start_steady_).count();
+      snapshot.rawx_expected_epochs = snapshot.raw_log_elapsed_sec * static_cast<double>(std::max(rate_hz_, 1));
+      if (snapshot.rawx_expected_epochs > 0.0) {
+        snapshot.rawx_coverage_ratio =
+            static_cast<double>(snapshot.rawx_count) / snapshot.rawx_expected_epochs;
+      }
+    }
+    if (rawx_last_steady_.has_value()) {
+      snapshot.current_rawx_gap_sec =
+          std::chrono::duration<double>(now - *rawx_last_steady_).count();
+    }
+
+    if (snapshot.gnss_invalid) {
+      snapshot.health_level = "error";
+    } else if (!snapshot.warning_reasons.empty()) {
+      snapshot.health_level = "warn";
+    } else if (snapshot.raw_log_active || !snapshot.raw_log_start_time.empty()) {
+      snapshot.health_level = "ok";
+    } else {
+      snapshot.health_level = "idle";
+    }
+
+    return snapshot;
+  }
+
+  std::string buildRawHealthJson(const RawHealthSnapshot& snapshot) const {
+    auto quoted_or_null = [](const std::string& value) {
+      return value.empty() ? std::string("null") : "\"" + jsonEscape(value) + "\"";
+    };
+
+    auto reasons_json = [](const std::vector<std::string>& reasons) {
+      std::ostringstream out;
+      out << "[";
+      for (size_t i = 0; i < reasons.size(); ++i) {
+        if (i > 0) {
+          out << ",";
+        }
+        out << "\"" << jsonEscape(reasons[i]) << "\"";
+      }
+      out << "]";
+      return out.str();
+    };
+
+    std::ostringstream json;
+    json << "{"
+         << "\"driver_boot_time\":" << quoted_or_null(snapshot.driver_boot_time) << ","
+         << "\"health_level\":\"" << snapshot.health_level << "\","
+         << "\"gnss_invalid\":" << (snapshot.gnss_invalid ? "true" : "false") << ","
+         << "\"raw_log_active\":" << (snapshot.raw_log_active ? "true" : "false") << ","
+         << "\"raw_log_path\":" << quoted_or_null(snapshot.raw_log_path) << ","
+         << "\"raw_log_error\":" << quoted_or_null(snapshot.raw_log_error) << ","
+         << "\"raw_log_start_time\":" << quoted_or_null(snapshot.raw_log_start_time) << ","
+         << "\"raw_log_bytes\":" << snapshot.raw_log_bytes << ","
+         << "\"logging_failures\":" << snapshot.logging_failures << ","
+         << "\"serial_reconnects\":" << snapshot.serial_reconnects << ","
+         << "\"flush_count\":" << snapshot.flush_count << ","
+         << "\"fsync_count\":" << snapshot.fsync_count << ","
+         << "\"rawx_seen\":" << (snapshot.rawx_seen ? "true" : "false") << ","
+         << "\"sfrbx_seen\":" << (snapshot.sfrbx_seen ? "true" : "false") << ","
+         << "\"rawx_count\":" << snapshot.rawx_count << ","
+         << "\"sfrbx_count\":" << snapshot.sfrbx_count << ","
+         << "\"nav_sat_count\":" << snapshot.nav_sat_count << ","
+         << "\"hpposllh_count\":" << snapshot.hpposllh_count << ","
+         << "\"first_raw_obs_time\":" << quoted_or_null(snapshot.first_raw_obs_time) << ","
+         << "\"last_raw_obs_time\":" << quoted_or_null(snapshot.last_raw_obs_time) << ","
+         << "\"first_sfrbx_time\":" << quoted_or_null(snapshot.first_sfrbx_time) << ","
+         << "\"last_sfrbx_time\":" << quoted_or_null(snapshot.last_sfrbx_time) << ","
+         << "\"raw_log_elapsed_sec\":" << snapshot.raw_log_elapsed_sec << ","
+         << "\"rawx_expected_epochs\":" << snapshot.rawx_expected_epochs << ","
+         << "\"rawx_coverage_ratio\":" << snapshot.rawx_coverage_ratio << ","
+         << "\"current_rawx_gap_sec\":" << snapshot.current_rawx_gap_sec << ","
+         << "\"max_rawx_gap_sec\":" << snapshot.max_rawx_gap_sec << ","
+         << "\"rawx_startup_timeout_sec\":" << rawx_startup_timeout_sec_ << ","
+         << "\"sfrbx_startup_timeout_sec\":" << sfrbx_startup_timeout_sec_ << ","
+         << "\"rawx_min_coverage_ratio\":" << rawx_min_coverage_ratio_ << ","
+         << "\"rawx_gap_warn_sec\":" << rawx_gap_warn_sec_ << ","
+         << "\"rawx_gap_fail_sec\":" << rawx_gap_fail_sec_ << ","
+         << "\"rawx_startup_failed\":" << (snapshot.rawx_startup_failed ? "true" : "false") << ","
+         << "\"sfrbx_startup_warned\":" << (snapshot.sfrbx_startup_warned ? "true" : "false") << ","
+         << "\"rawx_gap_warned\":" << (snapshot.rawx_gap_warned ? "true" : "false") << ","
+         << "\"rawx_gap_invalid\":" << (snapshot.rawx_gap_invalid ? "true" : "false") << ","
+         << "\"warning_reasons\":" << reasons_json(snapshot.warning_reasons) << ","
+         << "\"invalid_reasons\":" << reasons_json(snapshot.invalid_reasons)
+         << "}";
+    return json.str();
+  }
+
+  void publishRawHealth() {
+    const RawHealthSnapshot snapshot = getRawHealthSnapshot();
+    std_msgs::msg::String msg;
+    msg.data = buildRawHealthJson(snapshot);
+    raw_health_pub_->publish(msg);
+  }
+
   void writeRawBytes(const uint8_t* data, size_t len) {
     std::lock_guard<std::mutex> lk(raw_log_mutex_);
     if (!raw_logging_active_.load() || !raw_log_stream_.is_open()) {
@@ -623,15 +1082,13 @@ private:
 
     raw_log_stream_.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(len));
     if (!raw_log_stream_) {
-      raw_log_last_error_ = "Failed to write raw UBX bytes to log";
-      raw_log_stream_.close();
-      raw_logging_active_.store(false);
-      RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                            "%s", raw_log_last_error_.c_str());
+      recordLoggingFailureLocked("Failed to write raw UBX bytes to log", true);
+      RCLCPP_ERROR(this->get_logger(), "%s", raw_log_last_error_.c_str());
       return;
     }
 
     raw_log_bytes_written_.fetch_add(len);
+    updateRawLogMaintenanceLocked(std::chrono::steady_clock::now());
   }
 
   void serialLoop() {
@@ -707,6 +1164,8 @@ private:
           continue;
         }
 
+        observeVerifiedFrame(frame[2], frame[3]);
+
         if (frame[2] == UBX_CLASS_NAV && frame[3] == UBX_NAV_PVT &&
             payload_len >= sizeof(UbxNavPvt)) {
           processNavPvt(reinterpret_cast<const UbxNavPvt*>(&frame[6]));
@@ -738,7 +1197,8 @@ private:
     fix_msg.longitude = pvt->lon * 1e-7;
     fix_msg.altitude = pvt->hMSL * 1e-3;
 
-    fix_msg.position_covariance_type = sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+    fix_msg.position_covariance_type =
+        sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
     fix_msg.position_covariance[0] = h_acc_m * h_acc_m;
     fix_msg.position_covariance[4] = h_acc_m * h_acc_m;
     fix_msg.position_covariance[8] = v_acc_m * v_acc_m;
@@ -806,6 +1266,8 @@ private:
     }
     last_diag_time = current_time;
 
+    const RawHealthSnapshot raw_snapshot = getRawHealthSnapshot();
+
     auto diag_msg = diagnostic_msgs::msg::DiagnosticArray();
     diag_msg.header.stamp = now;
 
@@ -822,6 +1284,15 @@ private:
     } else {
       ds.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
       ds.message = "No GPS fix";
+    }
+
+    if (raw_snapshot.gnss_invalid) {
+      ds.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+      ds.message += "; raw GNSS invalid for PPK";
+    } else if (!raw_snapshot.warning_reasons.empty() &&
+               ds.level == diagnostic_msgs::msg::DiagnosticStatus::OK) {
+      ds.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+      ds.message += "; raw GNSS warnings present";
     }
 
     auto add_kv = [&](const std::string& key, const std::string& val) {
@@ -874,19 +1345,28 @@ private:
     snprintf(buf, sizeof(buf), "%.1f%%", accept_rate);
     add_kv("acceptance_rate", buf);
 
-    std::string raw_log_path;
-    std::string raw_log_error;
-    {
-      std::lock_guard<std::mutex> lk(raw_log_mutex_);
-      raw_log_path = current_raw_log_path_.empty() ? raw_log_target_path_ : current_raw_log_path_;
-      raw_log_error = raw_log_last_error_;
+    add_kv("raw_health_level", raw_snapshot.health_level);
+    add_kv("raw_log_active", raw_snapshot.raw_log_active ? "true" : "false");
+    add_kv("raw_log_path", raw_snapshot.raw_log_path);
+    add_kv("raw_log_bytes", std::to_string(raw_snapshot.raw_log_bytes));
+    add_kv("raw_log_elapsed_sec", std::to_string(raw_snapshot.raw_log_elapsed_sec));
+    add_kv("rawx_seen", raw_snapshot.rawx_seen ? "true" : "false");
+    add_kv("rawx_count", std::to_string(raw_snapshot.rawx_count));
+    add_kv("sfrbx_seen", raw_snapshot.sfrbx_seen ? "true" : "false");
+    add_kv("sfrbx_count", std::to_string(raw_snapshot.sfrbx_count));
+    add_kv("rawx_coverage_ratio", std::to_string(raw_snapshot.rawx_coverage_ratio));
+    add_kv("current_rawx_gap_sec", std::to_string(raw_snapshot.current_rawx_gap_sec));
+    add_kv("max_rawx_gap_sec", std::to_string(raw_snapshot.max_rawx_gap_sec));
+    add_kv("gnss_invalid", raw_snapshot.gnss_invalid ? "true" : "false");
+    add_kv("logging_failures", std::to_string(raw_snapshot.logging_failures));
+    if (!raw_snapshot.raw_log_error.empty()) {
+      add_kv("raw_log_error", raw_snapshot.raw_log_error);
     }
-
-    add_kv("raw_log_active", raw_logging_active_.load() ? "true" : "false");
-    add_kv("raw_log_path", raw_log_path);
-    add_kv("raw_log_bytes", std::to_string(raw_log_bytes_written_.load()));
-    if (!raw_log_error.empty()) {
-      add_kv("raw_log_error", raw_log_error);
+    if (!raw_snapshot.warning_reasons.empty()) {
+      add_kv("raw_warning_reasons", joinReasons(raw_snapshot.warning_reasons));
+    }
+    if (!raw_snapshot.invalid_reasons.empty()) {
+      add_kv("raw_invalid_reasons", joinReasons(raw_snapshot.invalid_reasons));
     }
 
     diag_msg.status.push_back(ds);
@@ -908,7 +1388,15 @@ private:
   bool enable_raw_observation_messages_;
   bool enable_nav_sat_;
   bool enable_hpposllh_;
+  double rawx_startup_timeout_sec_;
+  double sfrbx_startup_timeout_sec_;
+  double rawx_min_coverage_ratio_;
+  double rawx_gap_warn_sec_;
+  double rawx_gap_fail_sec_;
+  double raw_log_flush_interval_sec_;
+  double raw_log_fsync_interval_sec_;
   std::string raw_log_target_path_;
+  std::string driver_boot_time_;
 
   // Serial
   int fd_;
@@ -923,22 +1411,54 @@ private:
   std::atomic<uint64_t> checksum_errors_{0};
   std::atomic<uint64_t> serial_reconnects_{0};
 
-  // Raw logging
+  // Raw logging and health
   std::mutex raw_log_mutex_;
   std::ofstream raw_log_stream_;
+  int raw_log_sync_fd_{-1};
   std::string current_raw_log_path_;
   std::atomic<bool> raw_logging_active_{false};
   std::atomic<uint64_t> raw_log_bytes_written_{0};
   std::string raw_log_last_error_;
+  std::optional<std::chrono::steady_clock::time_point> raw_log_start_steady_;
+  std::optional<std::chrono::system_clock::time_point> raw_log_start_wall_time_;
+  std::string raw_log_start_iso_;
+  std::optional<std::chrono::steady_clock::time_point> rawx_first_steady_;
+  std::optional<std::chrono::steady_clock::time_point> rawx_last_steady_;
+  std::optional<std::chrono::steady_clock::time_point> sfrbx_first_steady_;
+  std::optional<std::chrono::steady_clock::time_point> sfrbx_last_steady_;
+  std::optional<std::chrono::steady_clock::time_point> last_flush_steady_;
+  std::optional<std::chrono::steady_clock::time_point> last_fsync_steady_;
+  std::string rawx_first_iso_;
+  std::string rawx_last_iso_;
+  std::string sfrbx_first_iso_;
+  std::string sfrbx_last_iso_;
+  uint64_t rawx_count_{0};
+  uint64_t sfrbx_count_{0};
+  uint64_t nav_sat_count_{0};
+  uint64_t hpposllh_count_{0};
+  uint64_t logging_failures_{0};
+  uint64_t flush_count_{0};
+  uint64_t fsync_count_{0};
+  double max_rawx_gap_sec_{0.0};
+  bool rawx_startup_failed_{false};
+  bool sfrbx_startup_warned_{false};
+  bool rawx_gap_warned_{false};
+  bool rawx_gap_invalid_{false};
+  bool gnss_invalid_{false};
+  std::vector<std::string> warning_reasons_;
+  std::vector<std::string> invalid_reasons_;
 
   // ROS interfaces
   rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr fix_raw_pub_;
   rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr fix_pub_;
   rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr vel_pub_;
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr raw_health_pub_;
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr raw_log_set_srv_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr raw_log_promote_srv_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr raw_health_snapshot_srv_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
+  rclcpp::TimerBase::SharedPtr health_timer_;
 };
 
 int main(int argc, char** argv) {

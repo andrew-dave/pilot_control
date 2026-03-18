@@ -30,6 +30,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
+from std_msgs.msg import String
 from std_srvs.srv import Trigger, SetBool
 from rcl_interfaces.srv import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
@@ -50,19 +51,31 @@ class DataCollectionCoordinator(Node):
         
         # Declare parameters
         self.declare_parameter('base_data_directory', '/R_DATA')
+        self.declare_parameter('scan_mode', 'outdoor')
         self.declare_parameter('start_sequence_delay', 1.0)  # Delay between start steps
         self.declare_parameter('gnss_temp_directory', '/tmp')
         self.declare_parameter('gnss_precapture_timeout_sec', 1800.0)
         self.declare_parameter('gnss_post_stop_delay_sec', 30.0)
+        self.declare_parameter('gnss_validation_min_file_size_bytes', 524288)
+        self.declare_parameter('gnss_validation_min_duration_sec', 60.0)
         
         # Get parameters
         self.base_data_dir = self.get_parameter('base_data_directory').value
+        self.scan_mode = str(self.get_parameter('scan_mode').value).strip().lower()
+        if self.scan_mode not in ('indoor', 'outdoor'):
+            raise ValueError(
+                f"scan_mode must be 'indoor' or 'outdoor', got '{self.scan_mode}'")
+        self.gnss_enabled = self.scan_mode == 'outdoor'
         self.start_delay = self.get_parameter('start_sequence_delay').value
         self.gnss_temp_directory = self.get_parameter('gnss_temp_directory').value
         self.gnss_precapture_timeout_sec = float(
             self.get_parameter('gnss_precapture_timeout_sec').value)
         self.gnss_post_stop_delay_sec = float(
             self.get_parameter('gnss_post_stop_delay_sec').value)
+        self.gnss_validation_min_file_size_bytes = int(
+            self.get_parameter('gnss_validation_min_file_size_bytes').value)
+        self.gnss_validation_min_duration_sec = float(
+            self.get_parameter('gnss_validation_min_duration_sec').value)
         
         # Dynamic state — set on each /dc/start
         self.day_folder = ''
@@ -80,6 +93,14 @@ class DataCollectionCoordinator(Node):
         self.gnss_precapture_path = ''
         self.gnss_precapture_started_at = None
         self.gnss_precapture_started_monotonic = None
+        self.preserved_gnss_precapture_paths = []
+        self.latest_gnss_health = {}
+        self.latest_gps_driver_boot_time = None
+        self.session_gps_driver_boot_time = None
+        self.gnss_driver_restarts = 0
+        self.gnss_invalid = False
+        self.gnss_invalid_reasons = []
+        self.gnss_warning_reasons = []
         
         # ==================== Service Servers ====================
         self.start_srv = self.create_service(
@@ -135,6 +156,8 @@ class DataCollectionCoordinator(Node):
             SetBool, '/gps/raw_log_set', callback_group=self.callback_group)
         self.gps_raw_log_promote_client = self.create_client(
             Trigger, '/gps/raw_log_promote', callback_group=self.callback_group)
+        self.gps_raw_health_snapshot_client = self.create_client(
+            Trigger, '/gps/raw_health_snapshot', callback_group=self.callback_group)
 
         # raw_map_saver service
         self.save_map_client = self.create_client(
@@ -158,13 +181,24 @@ class DataCollectionCoordinator(Node):
         self.gps_set_params_client = self.create_client(
             SetParameters, '/gps_driver/set_parameters', callback_group=self.callback_group)
 
+        self.gnss_health_sub = self.create_subscription(
+            String, '/gps/raw_health', self.gnss_health_callback, 10,
+            callback_group=self.callback_group)
+
         self.precapture_watchdog_timer = self.create_timer(
             30.0, self.precapture_watchdog_callback, callback_group=self.callback_group)
+        if self.gnss_enabled:
+            self.cleanup_stale_gnss_precaptures()
         
         self.get_logger().info('='*60)
         self.get_logger().info('DATA COLLECTION COORDINATOR STARTED')
         self.get_logger().info('='*60)
         self.get_logger().info(f'Base data directory: {self.base_data_dir}')
+        self.get_logger().info(f'Scan mode: {self.scan_mode}')
+        if self.gnss_enabled:
+            self.get_logger().info('GNSS collection: enabled for outdoor mode')
+        else:
+            self.get_logger().info('GNSS collection: disabled for indoor mode')
         self.get_logger().info('')
         self.get_logger().info('Available services:')
         self.get_logger().info('  /dc/start          - Start all data collection (B->G->R)')
@@ -210,10 +244,11 @@ class DataCollectionCoordinator(Node):
             return False, f'Service {service_name} exception: {e}'
 
     def set_node_param(self, param_client, param_name, param_value, node_label):
-        """Set a string parameter on a remote node. Returns True on success."""
+        """Set a string parameter on a remote node. Returns (success, message)."""
         if not param_client.wait_for_service(timeout_sec=2.0):
-            self.get_logger().warn(f'  {node_label}: parameter service not available')
-            return False
+            msg = f'{node_label}: parameter service not available'
+            self.get_logger().warn(f'  {msg}')
+            return False, msg
         
         param = Parameter()
         param.name = param_name
@@ -230,9 +265,30 @@ class DataCollectionCoordinator(Node):
             time.sleep(0.05)
         
         if not future.done():
-            self.get_logger().warn(f'  {node_label}: parameter update timed out')
-            return False
-        return True
+            msg = f'{node_label}: parameter update timed out'
+            self.get_logger().warn(f'  {msg}')
+            return False, msg
+
+        try:
+            result = future.result()
+        except Exception as e:
+            msg = f'{node_label}: parameter update exception: {e}'
+            self.get_logger().warn(f'  {msg}')
+            return False, msg
+
+        if result is None or not hasattr(result, 'results') or not result.results:
+            msg = f'{node_label}: parameter update returned no results'
+            self.get_logger().warn(f'  {msg}')
+            return False, msg
+
+        for res in result.results:
+            if not res.successful:
+                reason = res.reason if res.reason else 'parameter rejected'
+                msg = f'{node_label}: {param_name} rejected ({reason})'
+                self.get_logger().warn(f'  {msg}')
+                return False, msg
+
+        return True, f'{node_label}: {param_name} updated'
 
     def update_json_file(self, path: Path, updates: dict):
         """Merge updates into a JSON file, creating it if needed."""
@@ -247,6 +303,230 @@ class DataCollectionCoordinator(Node):
                 json.dump(data, f, indent=2)
         except Exception as e:
             self.get_logger().warn(f'Failed to update JSON file {path}: {e}')
+
+    def cleanup_stale_gnss_precaptures(self):
+        """Delete stale temporary GNSS precapture files on startup."""
+        temp_dir = Path(self.gnss_temp_directory)
+        if not temp_dir.exists():
+            return
+        removed = 0
+        for path in temp_dir.glob('gnss_precapture_*.ubx'):
+            try:
+                path.unlink()
+                removed += 1
+            except Exception as e:
+                self.get_logger().warn(f'Failed to delete stale GNSS precapture {path}: {e}')
+        if removed > 0:
+            self.get_logger().info(f'Removed {removed} stale GNSS precapture file(s) from {temp_dir}')
+
+    def append_unique_reason(self, reasons, reason: str):
+        if reason and reason not in reasons:
+            reasons.append(reason)
+
+    def extract_gnss_health_fields(self, health: dict) -> dict:
+        if not health:
+            return {}
+        return {
+            'driver_boot_time': health.get('driver_boot_time'),
+            'health_level': health.get('health_level'),
+            'gnss_invalid': health.get('gnss_invalid'),
+            'raw_log_active': health.get('raw_log_active'),
+            'raw_file_path': health.get('raw_log_path'),
+            'raw_log_bytes': health.get('raw_log_bytes'),
+            'logging_failures': health.get('logging_failures'),
+            'serial_reconnects': health.get('serial_reconnects'),
+            'flush_count': health.get('flush_count'),
+            'fsync_count': health.get('fsync_count'),
+            'rawx_seen': health.get('rawx_seen'),
+            'sfrbx_seen': health.get('sfrbx_seen'),
+            'rawx_count': health.get('rawx_count'),
+            'sfrbx_count': health.get('sfrbx_count'),
+            'nav_sat_count': health.get('nav_sat_count'),
+            'hpposllh_count': health.get('hpposllh_count'),
+            'first_raw_obs_time': health.get('first_raw_obs_time'),
+            'last_raw_obs_time': health.get('last_raw_obs_time'),
+            'first_sfrbx_time': health.get('first_sfrbx_time'),
+            'last_sfrbx_time': health.get('last_sfrbx_time'),
+            'raw_log_elapsed_sec': health.get('raw_log_elapsed_sec'),
+            'rawx_expected_epochs': health.get('rawx_expected_epochs'),
+            'rawx_coverage_ratio': health.get('rawx_coverage_ratio'),
+            'current_rawx_gap_sec': health.get('current_rawx_gap_sec'),
+            'max_rawx_gap_sec': health.get('max_rawx_gap_sec'),
+            'rawx_startup_failed': health.get('rawx_startup_failed'),
+            'sfrbx_startup_warned': health.get('sfrbx_startup_warned'),
+            'rawx_gap_warned': health.get('rawx_gap_warned'),
+            'rawx_gap_invalid': health.get('rawx_gap_invalid'),
+            'warning_reasons': health.get('warning_reasons', []),
+            'invalid_reasons': health.get('invalid_reasons', []),
+        }
+
+    def sync_gnss_status_to_metadata(self):
+        if not self.gnss_enabled:
+            return
+        updates = {
+            'gnss_invalid': self.gnss_invalid,
+            'gnss_invalid_reasons': self.gnss_invalid_reasons,
+            'gnss_warning_reasons': self.gnss_warning_reasons,
+            'driver_restarts': self.gnss_driver_restarts,
+            'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+        }
+        self.update_session_config(updates)
+        self.update_gnss_session(updates)
+        if self.latest_gnss_health:
+            self.update_gnss_session(self.extract_gnss_health_fields(self.latest_gnss_health))
+
+    def mark_gnss_warning(self, reason: str):
+        self.append_unique_reason(self.gnss_warning_reasons, reason)
+        self.sync_gnss_status_to_metadata()
+
+    def mark_gnss_invalid(self, reason: str):
+        was_invalid = self.gnss_invalid
+        self.gnss_invalid = True
+        self.append_unique_reason(self.gnss_invalid_reasons, reason)
+        self.sync_gnss_status_to_metadata()
+        if not was_invalid:
+            self.get_logger().error(f'GNSS session marked invalid for PPK: {reason}')
+        else:
+            self.get_logger().error(f'Additional GNSS invalid reason: {reason}')
+
+    def register_preserved_precapture_path(self, path_str: str):
+        if path_str and path_str not in self.preserved_gnss_precapture_paths:
+            self.preserved_gnss_precapture_paths.append(path_str)
+            self.sync_gnss_status_to_metadata()
+
+    def delete_preserved_precapture_paths(self):
+        for path_str in list(self.preserved_gnss_precapture_paths):
+            self.delete_file_if_exists(path_str)
+        self.preserved_gnss_precapture_paths = []
+
+    def gnss_health_callback(self, msg: String):
+        """Track live GNSS health for metadata, restart detection, and operator warnings."""
+        if not self.gnss_enabled:
+            return
+        try:
+            health = json.loads(msg.data)
+        except Exception as e:
+            self.get_logger().warn(f'Failed to parse /gps/raw_health JSON: {e}')
+            return
+
+        boot_time = health.get('driver_boot_time')
+        if boot_time:
+            if self.latest_gps_driver_boot_time and boot_time != self.latest_gps_driver_boot_time:
+                if self.gnss_precapture_active or self.collection_started:
+                    self.gnss_driver_restarts += 1
+                    self.mark_gnss_invalid('gps_driver restarted during GNSS logging session')
+            self.latest_gps_driver_boot_time = boot_time
+
+        self.latest_gnss_health = health
+
+        for reason in health.get('warning_reasons', []):
+            self.append_unique_reason(self.gnss_warning_reasons, reason)
+        if health.get('gnss_invalid'):
+            for reason in health.get('invalid_reasons', []):
+                self.append_unique_reason(self.gnss_invalid_reasons, reason)
+            self.gnss_invalid = True
+
+        self.sync_gnss_status_to_metadata()
+
+    def fetch_gnss_health_snapshot(self):
+        """Fetch the latest GNSS raw-health snapshot from gps_driver."""
+        if not self.gnss_enabled:
+            return {}
+        success, msg = self.call_service_sync(
+            self.gps_raw_health_snapshot_client, Trigger.Request(), '/gps/raw_health_snapshot', timeout=5.0)
+        if success:
+            try:
+                health = json.loads(msg)
+                self.latest_gnss_health = health
+                boot_time = health.get('driver_boot_time')
+                if boot_time:
+                    self.latest_gps_driver_boot_time = boot_time
+                for reason in health.get('warning_reasons', []):
+                    self.append_unique_reason(self.gnss_warning_reasons, reason)
+                if health.get('gnss_invalid'):
+                    self.gnss_invalid = True
+                    for reason in health.get('invalid_reasons', []):
+                        self.append_unique_reason(self.gnss_invalid_reasons, reason)
+                self.sync_gnss_status_to_metadata()
+                return health
+            except Exception as e:
+                self.get_logger().warn(f'Failed to decode GNSS health snapshot: {e}')
+        elif msg:
+            self.get_logger().warn(f'GNSS health snapshot unavailable: {msg}')
+        return dict(self.latest_gnss_health) if self.latest_gnss_health else {}
+
+    def cleanup_failed_start_section(self):
+        """Remove a newly-created section folder after a hard /dc/start failure."""
+        if self.section_folder and os.path.exists(self.section_folder):
+            try:
+                shutil.rmtree(self.section_folder)
+                self.get_logger().info(f'Removed failed start section folder: {self.section_folder}')
+            except Exception as e:
+                self.get_logger().warn(f'Failed to remove failed start section folder: {e}')
+        self.day_folder = ''
+        self.section_folder = ''
+        self.section_timestamp = ''
+        self.gnss_data_folder = ''
+        self.gnss_session_file = ''
+        self.gnss_raw_file = ''
+
+    def validate_gnss_session(self, health: dict):
+        """Validate the GNSS session against the agreed PPK readiness rules."""
+        if not self.gnss_enabled:
+            return [], []
+        warnings = []
+        invalid_reasons = []
+
+        if not health:
+            invalid_reasons.append('GNSS health snapshot unavailable at end of session')
+            return warnings, invalid_reasons
+
+        if self.gnss_raw_file:
+            if not os.path.exists(self.gnss_raw_file):
+                invalid_reasons.append('GNSS raw log file missing at end of session')
+            else:
+                file_size = os.path.getsize(self.gnss_raw_file)
+                if file_size < self.gnss_validation_min_file_size_bytes:
+                    invalid_reasons.append(
+                        f'GNSS raw log smaller than {self.gnss_validation_min_file_size_bytes} bytes')
+        else:
+            invalid_reasons.append('GNSS raw log file path was never assigned')
+
+        if not health.get('rawx_seen', False):
+            invalid_reasons.append('RAWX observations were never seen')
+
+        if not health.get('sfrbx_seen', False):
+            warnings.append('SFRBX navigation pages were never seen')
+
+        if bool(health.get('rawx_startup_failed', False)):
+            invalid_reasons.append('RAWX did not appear within the startup window')
+
+        raw_duration = float(health.get('raw_log_elapsed_sec') or 0.0)
+        if raw_duration < self.gnss_validation_min_duration_sec:
+            invalid_reasons.append(
+                f'GNSS raw logging duration below {self.gnss_validation_min_duration_sec:.1f} s')
+
+        min_ratio = float(health.get('rawx_min_coverage_ratio') or 0.0)
+        coverage_ratio = float(health.get('rawx_coverage_ratio') or 0.0)
+        if min_ratio > 0.0 and coverage_ratio < min_ratio:
+            invalid_reasons.append(
+                f'RAWX coverage ratio {coverage_ratio:.3f} below {min_ratio:.3f}')
+
+        if int(health.get('logging_failures') or 0) > 0:
+            invalid_reasons.append('GNSS raw logging recorded write/flush/fsync failures')
+
+        max_gap = float(health.get('max_rawx_gap_sec') or 0.0)
+        gap_fail = float(health.get('rawx_gap_fail_sec') or 0.0)
+        if gap_fail > 0.0 and max_gap > gap_fail:
+            invalid_reasons.append(
+                f'RAWX max gap {max_gap:.2f} s exceeded failure threshold {gap_fail:.2f} s')
+
+        for reason in health.get('warning_reasons', []):
+            self.append_unique_reason(warnings, reason)
+        for reason in health.get('invalid_reasons', []):
+            self.append_unique_reason(invalid_reasons, reason)
+
+        return warnings, invalid_reasons
 
     def replace_path_prefix(self, value, old_prefix: str, new_prefix: str):
         """Replace a path prefix in a stored string value if it matches."""
@@ -265,18 +545,24 @@ class DataCollectionCoordinator(Node):
         if self.gnss_session_file:
             self.update_json_file(Path(self.gnss_session_file), updates)
 
-    def set_gps_raw_log_target(self, path_value: str) -> bool:
+    def set_gps_raw_log_target(self, path_value: str):
         return self.set_node_param(
             self.gps_set_params_client, 'raw_log_target_path', path_value, 'gps_driver')
 
     def start_gps_raw_log(self, target_path: str):
-        """Set gps_driver raw log target path and start logging."""
-        if not self.set_gps_raw_log_target(target_path):
-            return False, 'gps_driver raw_log_target_path update failed'
+        """Set gps_driver raw log target path and start logging.
+
+        Returns:
+          (success, message, hard_failure)
+        """
+        success, msg = self.set_gps_raw_log_target(target_path)
+        if not success:
+            return False, msg, True
         req = SetBool.Request()
         req.data = True
-        return self.call_service_sync(
+        success, msg = self.call_service_sync(
             self.gps_raw_log_set_client, req, '/gps/raw_log_set', timeout=5.0)
+        return success, msg, False
 
     def stop_gps_raw_log(self):
         """Stop gps_driver raw logging."""
@@ -286,17 +572,25 @@ class DataCollectionCoordinator(Node):
             self.gps_raw_log_set_client, req, '/gps/raw_log_set', timeout=5.0)
 
     def promote_gps_raw_log(self, target_path: str):
-        """Promote the current raw log into the session folder and keep appending there."""
-        if not self.set_gps_raw_log_target(target_path):
-            return False, 'gps_driver raw_log_target_path update failed'
-        return self.call_service_sync(
+        """Promote the current raw log into the session folder and keep appending there.
+
+        Returns:
+          (success, message, hard_failure)
+        """
+        success, msg = self.set_gps_raw_log_target(target_path)
+        if not success:
+            return False, msg, True
+        success, msg = self.call_service_sync(
             self.gps_raw_log_promote_client, Trigger.Request(), '/gps/raw_log_promote', timeout=5.0)
+        return success, msg, False
 
     def build_gnss_precapture_path(self) -> str:
         stamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
         return str(Path(self.gnss_temp_directory) / f'gnss_precapture_{stamp}.ubx')
 
     def build_session_gnss_path(self) -> str:
+        if not self.gnss_enabled or not self.gnss_data_folder:
+            return ''
         stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         return str(Path(self.gnss_data_folder) / f'rover_{stamp}.ubx')
 
@@ -322,10 +616,18 @@ class DataCollectionCoordinator(Node):
         self.gnss_session_file = ''
         self.gnss_raw_file = ''
         self.section_timestamp = ''
+        self.preserved_gnss_precapture_paths = []
+        self.session_gps_driver_boot_time = self.latest_gps_driver_boot_time
+        self.gnss_driver_restarts = 0
+        self.gnss_invalid = False
+        self.gnss_invalid_reasons = []
+        self.gnss_warning_reasons = []
         self.reset_gnss_precapture_state()
 
     def precapture_watchdog_callback(self):
         """Stop and delete stale GNSS precapture logs if /dc/start never happens."""
+        if not self.gnss_enabled:
+            return
         if not self.gnss_precapture_active or self.collection_started:
             return
         if self.gnss_precapture_started_monotonic is None:
@@ -373,6 +675,7 @@ class DataCollectionCoordinator(Node):
 
         Returns True on success.
         """
+        section_path = None
         try:
             base = Path(self.base_data_dir)
             base.mkdir(parents=True, exist_ok=True)
@@ -394,23 +697,30 @@ class DataCollectionCoordinator(Node):
             # Sub-folders
             visual_data_folder = section_path / "Visual_data"
             gpr_scan_folder = section_path / "GPR_scan_data"
-            gnss_data_folder = section_path / "GNSS_data"
             visual_data_folder.mkdir(exist_ok=True)
             gpr_scan_folder.mkdir(exist_ok=True)
-            gnss_data_folder.mkdir(exist_ok=True)
 
+            gnss_data_folder = None
             self.section_folder = str(section_path)
             self.section_timestamp = timestamp
-            self.gnss_data_folder = str(gnss_data_folder)
-            self.gnss_session_file = str(section_path / 'gnss_session.json')
+            self.gnss_data_folder = ''
+            self.gnss_session_file = ''
             self.gnss_raw_file = ''
+            if self.gnss_enabled:
+                gnss_data_folder = section_path / "GNSS_data"
+                gnss_data_folder.mkdir(exist_ok=True)
+                self.gnss_data_folder = str(gnss_data_folder)
+                self.gnss_session_file = str(section_path / 'gnss_session.json')
 
             self.get_logger().info('')
             self.get_logger().info(f'Created new section: {section_name}')
             self.get_logger().info(f'  Path:        {section_path}')
             self.get_logger().info(f'  Visual data: {visual_data_folder}')
             self.get_logger().info(f'  GPR data:    {gpr_scan_folder}')
-            self.get_logger().info(f'  GNSS data:   {gnss_data_folder}')
+            if self.gnss_enabled:
+                self.get_logger().info(f'  GNSS data:   {gnss_data_folder}')
+            else:
+                self.get_logger().info('  GNSS data:   disabled for indoor mode')
 
             # Persist a session_config.json for offline tooling
             config = {
@@ -419,73 +729,117 @@ class DataCollectionCoordinator(Node):
                 'section_folder': str(section_path),
                 'visual_data_folder': str(visual_data_folder),
                 'gpr_scan_folder': str(gpr_scan_folder),
-                'gnss_data_folder': str(gnss_data_folder),
-                'gnss_session_file': self.gnss_session_file,
-                'gnss_raw_file': '',
                 'section_number': section_num,
                 'timestamp': timestamp,
                 'day_name': day_name,
                 'section_name': section_name,
+                'scan_mode': self.scan_mode,
+                'gnss_enabled': self.gnss_enabled,
             }
+            if self.gnss_enabled:
+                config.update({
+                    'gnss_data_folder': str(gnss_data_folder),
+                    'gnss_session_file': self.gnss_session_file,
+                    'gnss_raw_file': '',
+                })
             with open(section_path / 'session_config.json', 'w') as f:
                 json.dump(config, f, indent=2)
-            gnss_metadata = {
-                'section_folder': str(section_path),
-                'section_name': section_name,
-                'gnss_data_folder': str(gnss_data_folder),
-                'raw_file_path': '',
-                'precapture_start_time': self.gnss_precapture_started_at,
-                'collection_start_time': None,
-                'collection_end_time': None,
-                'bytes_written': 0,
-                'precapture_used': False,
-                'status': 'section_created',
-            }
-            with open(self.gnss_session_file, 'w') as f:
-                json.dump(gnss_metadata, f, indent=2)
+            if self.gnss_enabled:
+                gnss_metadata = {
+                    'section_folder': str(section_path),
+                    'section_name': section_name,
+                    'gnss_data_folder': str(gnss_data_folder),
+                    'raw_file_path': '',
+                    'precapture_start_time': self.gnss_precapture_started_at,
+                    'collection_start_time': None,
+                    'collection_end_time': None,
+                    'bytes_written': 0,
+                    'precapture_used': False,
+                    'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+                    'status': 'section_created',
+                    'health_level': 'idle',
+                    'scan_mode': self.scan_mode,
+                    'gnss_enabled': True,
+                    'gnss_invalid': self.gnss_invalid,
+                    'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                    'gnss_warning_reasons': self.gnss_warning_reasons,
+                    'driver_boot_time': self.latest_gps_driver_boot_time,
+                    'driver_restarts': self.gnss_driver_restarts,
+                    'rawx_seen': False,
+                    'sfrbx_seen': False,
+                    'first_raw_obs_time': None,
+                    'last_raw_obs_time': None,
+                    'logging_failures': 0,
+                }
+                with open(self.gnss_session_file, 'w') as f:
+                    json.dump(gnss_metadata, f, indent=2)
 
             # ---- Push new paths to downstream nodes ----
 
             # GPR scan controller
             self.get_logger().info('Updating gpr_scan_controller directory...')
-            if self.set_node_param(self.gpr_set_params_client,
-                                   'gpr_scan_data_directory',
-                                   str(gpr_scan_folder),
-                                   'gpr_scan_controller'):
-                self.call_service_sync(
-                    self.gpr_set_dir_client, Trigger.Request(), '/gpr_scan/set_directory')
-                self.get_logger().info(f'  GPR directory  -> {gpr_scan_folder}')
-            else:
-                self.get_logger().warn('  GPR directory update FAILED')
+            success, msg = self.set_node_param(self.gpr_set_params_client,
+                                               'gpr_scan_data_directory',
+                                               str(gpr_scan_folder),
+                                               'gpr_scan_controller')
+            if not success:
+                self.get_logger().error(f'  GPR directory update FAILED: {msg}')
+                raise RuntimeError(msg)
+            success, msg = self.call_service_sync(
+                self.gpr_set_dir_client, Trigger.Request(), '/gpr_scan/set_directory')
+            if not success:
+                self.get_logger().error(f'  GPR set_directory FAILED: {msg}')
+                raise RuntimeError(f'gpr_scan_controller set_directory failed: {msg}')
+            self.get_logger().info(f'  GPR directory  -> {gpr_scan_folder}')
 
             # Unified data collector
             self.get_logger().info('Updating unified_data_collector directory...')
-            if self.set_node_param(self.udc_set_params_client,
-                                   'visual_data_directory',
-                                   str(visual_data_folder),
-                                   'unified_data_collector'):
-                self.call_service_sync(
-                    self.udc_set_dir_client, Trigger.Request(), '/udc/set_directory')
-                self.get_logger().info(f'  UDC directory  -> {visual_data_folder}')
-            else:
-                self.get_logger().warn('  UDC directory update FAILED')
+            success, msg = self.set_node_param(self.udc_set_params_client,
+                                               'visual_data_directory',
+                                               str(visual_data_folder),
+                                               'unified_data_collector')
+            if not success:
+                self.get_logger().error(f'  UDC directory update FAILED: {msg}')
+                raise RuntimeError(msg)
+            success, msg = self.call_service_sync(
+                self.udc_set_dir_client, Trigger.Request(), '/udc/set_directory')
+            if not success:
+                self.get_logger().error(f'  UDC set_directory FAILED: {msg}')
+                raise RuntimeError(f'unified_data_collector set_directory failed: {msg}')
+            self.get_logger().info(f'  UDC directory  -> {visual_data_folder}')
 
             # Raw map saver
             self.get_logger().info('Updating raw_map_saver directory...')
-            if self.set_node_param(self.map_set_params_client,
-                                   'save_directory',
-                                   str(section_path),
-                                   'raw_map_saver'):
-                self.call_service_sync(
-                    self.map_set_dir_client, Trigger.Request(), '/raw_map_saver/set_directory')
-                self.get_logger().info(f'  Map directory  -> {section_path}')
-            else:
-                self.get_logger().warn('  Map directory update FAILED')
+            success, msg = self.set_node_param(self.map_set_params_client,
+                                               'save_directory',
+                                               str(section_path),
+                                               'raw_map_saver')
+            if not success:
+                self.get_logger().error(f'  Map directory update FAILED: {msg}')
+                raise RuntimeError(msg)
+            success, msg = self.call_service_sync(
+                self.map_set_dir_client, Trigger.Request(), '/raw_map_saver/set_directory')
+            if not success:
+                self.get_logger().error(f'  raw_map_saver set_directory FAILED: {msg}')
+                raise RuntimeError(f'raw_map_saver set_directory failed: {msg}')
+            self.get_logger().info(f'  Map directory  -> {section_path}')
+
+            self.sync_gnss_status_to_metadata()
 
             return True
 
         except Exception as e:
             self.get_logger().error(f'Failed to create new section: {e}')
+            if section_path and section_path.exists():
+                try:
+                    shutil.rmtree(section_path)
+                except Exception as cleanup_error:
+                    self.get_logger().warn(
+                        f'Failed to clean up incomplete section folder {section_path}: {cleanup_error}')
+            self.section_folder = ''
+            self.gnss_data_folder = ''
+            self.gnss_session_file = ''
+            self.gnss_raw_file = ''
             return False
 
     # ================================================================
@@ -496,24 +850,30 @@ class DataCollectionCoordinator(Node):
         """Start a temporary GNSS raw log before /dc/start creates a section folder."""
         del request
 
+        if not self.gnss_enabled:
+            self.get_logger().info('Indoor mode: GNSS precapture skipped')
+            response.success = True
+            response.message = 'Indoor mode: GNSS precapture skipped'
+            return response
+
         if self.collection_started:
             response.success = True
             response.message = 'Collection already started - GNSS session logging already active'
             return response
 
         if self.gnss_precapture_active:
-            self.get_logger().warn('GNSS precapture already active — restarting temporary raw log')
-            self.stop_gps_raw_log()
-            self.delete_file_if_exists(self.gnss_precapture_path)
-            self.reset_gnss_precapture_state()
+            response.success = True
+            response.message = f'GNSS precapture already active: {self.gnss_precapture_path}'
+            return response
 
         precapture_path = self.build_gnss_precapture_path()
-        success, msg = self.start_gps_raw_log(precapture_path)
+        success, msg, _hard_failure = self.start_gps_raw_log(precapture_path)
         if success:
             self.gnss_precapture_active = True
             self.gnss_precapture_path = precapture_path
             self.gnss_precapture_started_at = datetime.now().isoformat()
             self.gnss_precapture_started_monotonic = time.time()
+            self.fetch_gnss_health_snapshot()
             self.get_logger().info(f'GNSS precapture started: {precapture_path}')
             response.success = True
             response.message = f'GNSS precapture active: {precapture_path}'
@@ -562,51 +922,90 @@ class DataCollectionCoordinator(Node):
 
         # --- Step 1: GNSS raw logging ---
         self.get_logger().info('')
-        self.get_logger().info('Step 1/4: Starting/promoting GNSS raw logging...')
-        session_gnss_path = self.build_session_gnss_path()
-        collection_start_time = datetime.now().isoformat()
-        precapture_start_time = self.gnss_precapture_started_at
-        precapture_temp_path = self.gnss_precapture_path
-        precapture_used = False
-        gnss_ok = False
+        if self.gnss_enabled:
+            self.get_logger().info('Step 1/4: Starting/promoting GNSS raw logging...')
+            session_gnss_path = self.build_session_gnss_path()
+            collection_start_time = datetime.now().isoformat()
+            precapture_start_time = self.gnss_precapture_started_at
+            precapture_temp_path = self.gnss_precapture_path
+            precapture_used = False
+            gnss_ok = False
+            preserved_precapture = False
 
-        if self.gnss_precapture_active and self.gnss_precapture_path:
-            success, msg = self.promote_gps_raw_log(session_gnss_path)
-            if success:
-                precapture_used = True
-                gnss_ok = True
-                self.get_logger().info(f'  GNSS precapture promoted: {msg}')
-            else:
-                errors.append(f'GNSS promote: {msg}')
-                self.get_logger().error('  !!! GNSS RAW PROMOTE FAILED - PPK PRECAPTURE MAY BE LOST !!!')
-                self.get_logger().error(f'  GNSS promote failed: {msg}')
+            if self.gnss_precapture_active and self.gnss_precapture_path:
+                success, msg, hard_failure = self.promote_gps_raw_log(session_gnss_path)
+                if success:
+                    precapture_used = True
+                    gnss_ok = True
+                    self.get_logger().info(f'  GNSS precapture promoted: {msg}')
+                else:
+                    if hard_failure:
+                        self.get_logger().error(f'  Hard failure during GNSS precapture promotion: {msg}')
+                        self.cleanup_failed_start_section()
+                        response.success = False
+                        response.message = f'Failed to start collection: {msg}'
+                        return response
+                    errors.append(f'GNSS promote: {msg}')
+                    self.mark_gnss_invalid('GNSS precapture promotion failed; pre-motion GNSS continuity lost')
+                    self.register_preserved_precapture_path(precapture_temp_path)
+                    preserved_precapture = True
+                    self.get_logger().error('  !!! GNSS RAW PROMOTE FAILED - PPK PRECAPTURE MAY BE LOST !!!')
+                    self.get_logger().error(f'  GNSS promote failed and temp file preserved: {msg}')
 
-        if not gnss_ok:
-            success, msg = self.start_gps_raw_log(session_gnss_path)
-            if success:
-                gnss_ok = True
-                self.get_logger().info(f'  GNSS raw logging started: {msg}')
-            else:
-                errors.append(f'GNSS start: {msg}')
-                self.get_logger().error('  !!! GNSS RAW LOGGING FAILED - PPK DATA WILL BE UNAVAILABLE !!!')
-                self.get_logger().error(f'  GNSS raw log start failed: {msg}')
+            if not gnss_ok:
+                success, msg, hard_failure = self.start_gps_raw_log(session_gnss_path)
+                if success:
+                    gnss_ok = True
+                    self.get_logger().info(f'  GNSS raw logging started: {msg}')
+                else:
+                    if hard_failure:
+                        self.get_logger().error(f'  Hard failure during GNSS raw log start: {msg}')
+                        self.cleanup_failed_start_section()
+                        response.success = False
+                        response.message = f'Failed to start collection: {msg}'
+                        return response
+                    errors.append(f'GNSS start: {msg}')
+                    self.mark_gnss_invalid('GNSS raw logging failed to start')
+                    self.get_logger().error('  !!! GNSS RAW LOGGING FAILED - PPK DATA WILL BE UNAVAILABLE !!!')
+                    self.get_logger().error(f'  GNSS raw log start failed: {msg}')
 
-        if precapture_temp_path and not precapture_used:
-            self.delete_file_if_exists(precapture_temp_path)
-        self.reset_gnss_precapture_state()
+            self.reset_gnss_precapture_state()
 
-        self.gnss_raw_file = session_gnss_path if gnss_ok else ''
-        self.update_session_config({
-            'gnss_raw_file': self.gnss_raw_file,
-            'gnss_precapture_used': precapture_used,
-        })
-        self.update_gnss_session({
-            'raw_file_path': self.gnss_raw_file,
-            'precapture_start_time': precapture_start_time,
-            'collection_start_time': collection_start_time,
-            'precapture_used': precapture_used,
-            'status': 'recording' if gnss_ok else 'recording_with_gnss_error',
-        })
+            self.gnss_raw_file = session_gnss_path if gnss_ok else ''
+            health_snapshot = self.fetch_gnss_health_snapshot()
+            if health_snapshot:
+                self.session_gps_driver_boot_time = health_snapshot.get(
+                    'driver_boot_time', self.latest_gps_driver_boot_time)
+            self.update_session_config({
+                'gnss_raw_file': self.gnss_raw_file,
+                'gnss_precapture_used': precapture_used,
+                'gnss_invalid': self.gnss_invalid,
+                'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                'gnss_warning_reasons': self.gnss_warning_reasons,
+                'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+            })
+            self.update_gnss_session({
+                'raw_file_path': self.gnss_raw_file,
+                'precapture_start_time': precapture_start_time,
+                'collection_start_time': collection_start_time,
+                'precapture_used': precapture_used,
+                'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+                'driver_boot_time': self.session_gps_driver_boot_time,
+                'driver_restarts': self.gnss_driver_restarts,
+                'gnss_invalid': self.gnss_invalid,
+                'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                'gnss_warning_reasons': self.gnss_warning_reasons,
+                'status': 'recording' if gnss_ok else 'recording_with_gnss_error',
+            })
+            if health_snapshot:
+                self.update_gnss_session(self.extract_gnss_health_fields(health_snapshot))
+            if preserved_precapture:
+                self.get_logger().warn(
+                    f'  Preserved temp precapture for manual inspection: {precapture_temp_path}')
+        else:
+            self.get_logger().info('Step 1/4: Indoor mode - GNSS disabled for this session')
+            self.gnss_raw_file = ''
+            self.reset_gnss_precapture_state()
 
         # --- Step 2: rosbag (B key) ---
         self.get_logger().info('')
@@ -660,10 +1059,20 @@ class DataCollectionCoordinator(Node):
             self.get_logger().warn(response.message)
         else:
             response.success = True
-            response.message = f'All data collection started — {os.path.basename(self.section_folder)}'
+            if self.gnss_enabled:
+                response.message = f'All data collection started — {os.path.basename(self.section_folder)}'
+            else:
+                response.message = (
+                    f'All data collection started — {os.path.basename(self.section_folder)} '
+                    '(indoor mode, GNSS disabled)'
+                )
             self.get_logger().info('='*60)
             self.get_logger().info('DATA COLLECTION STARTED')
             self.get_logger().info(f'  Section:  {os.path.basename(self.section_folder)}')
+            if self.gnss_enabled:
+                self.get_logger().info('  GNSS:     Enabled (outdoor mode)')
+            else:
+                self.get_logger().info('  GNSS:     Disabled (indoor mode)')
             self.get_logger().info(f'  Rosbag:   Recording')
             self.get_logger().info(f'  GPR:      Scanning (actuator UP, motor ON)')
             self.get_logger().info(f'  Video:    Recording (RGB + thermal)')
@@ -798,6 +1207,7 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('='*60)
         
         errors = []
+        final_tag = tag
         
         # Step 1: Stop video recording (T key equivalent)
         self.get_logger().info('')
@@ -836,34 +1246,60 @@ class DataCollectionCoordinator(Node):
         
         # Step 4: Stop GNSS raw logging after a short tail window
         self.get_logger().info('')
-        if self.gnss_raw_file:
-            self.get_logger().info(
-                f'Step 4/5: Keeping GNSS raw logging active for {self.gnss_post_stop_delay_sec:.1f}s...')
-            time.sleep(self.gnss_post_stop_delay_sec)
-            success, msg = self.stop_gps_raw_log()
-            if not success:
-                errors.append(f'GNSS stop: {msg}')
-                self.get_logger().error(f'  GNSS raw log stop failed: {msg}')
+        if self.gnss_enabled:
+            if self.gnss_raw_file:
+                self.get_logger().info(
+                    f'Step 4/5: Keeping GNSS raw logging active for {self.gnss_post_stop_delay_sec:.1f}s...')
+                time.sleep(self.gnss_post_stop_delay_sec)
+                success, msg = self.stop_gps_raw_log()
+                if not success:
+                    errors.append(f'GNSS stop: {msg}')
+                    self.get_logger().error(f'  GNSS raw log stop failed: {msg}')
+                else:
+                    self.get_logger().info(f'  GNSS raw logging stopped: {msg}')
             else:
-                self.get_logger().info(f'  GNSS raw logging stopped: {msg}')
-        else:
-            self.get_logger().info('Step 4/5: GNSS raw logging was not active for this session')
+                self.get_logger().info('Step 4/5: GNSS raw logging was not active for this session')
 
-        collection_end_time = datetime.now().isoformat()
-        gnss_bytes_written = 0
-        if self.gnss_raw_file and os.path.exists(self.gnss_raw_file):
-            gnss_bytes_written = os.path.getsize(self.gnss_raw_file)
-        self.update_session_config({
-            'gnss_raw_file': self.gnss_raw_file,
-            'gnss_bytes_written': gnss_bytes_written,
-        })
-        self.update_gnss_session({
-            'raw_file_path': self.gnss_raw_file,
-            'collection_end_time': collection_end_time,
-            'bytes_written': gnss_bytes_written,
-            'status': 'saved' if not errors else 'saved_with_warnings',
-            'completion_tag': tag,
-        })
+            collection_end_time = datetime.now().isoformat()
+            gnss_bytes_written = 0
+            if self.gnss_raw_file and os.path.exists(self.gnss_raw_file):
+                gnss_bytes_written = os.path.getsize(self.gnss_raw_file)
+            health_snapshot = self.fetch_gnss_health_snapshot()
+            warnings, invalid_reasons = self.validate_gnss_session(health_snapshot)
+            for warning in warnings:
+                self.append_unique_reason(self.gnss_warning_reasons, warning)
+            for invalid_reason in invalid_reasons:
+                self.append_unique_reason(self.gnss_invalid_reasons, invalid_reason)
+            if invalid_reasons:
+                self.gnss_invalid = True
+
+            final_tag = f'{tag}_gnss_invalid' if self.gnss_invalid else tag
+
+            self.update_session_config({
+                'gnss_raw_file': self.gnss_raw_file,
+                'gnss_bytes_written': gnss_bytes_written,
+                'gnss_invalid': self.gnss_invalid,
+                'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                'gnss_warning_reasons': self.gnss_warning_reasons,
+                'driver_restarts': self.gnss_driver_restarts,
+                'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+            })
+            self.update_gnss_session({
+                'raw_file_path': self.gnss_raw_file,
+                'collection_end_time': collection_end_time,
+                'bytes_written': gnss_bytes_written,
+                'status': 'saved' if not errors else 'saved_with_warnings',
+                'completion_tag': final_tag,
+                'gnss_invalid': self.gnss_invalid,
+                'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                'gnss_warning_reasons': self.gnss_warning_reasons,
+                'driver_restarts': self.gnss_driver_restarts,
+                'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+            })
+            if health_snapshot:
+                self.update_gnss_session(self.extract_gnss_health_fields(health_snapshot))
+        else:
+            self.get_logger().info('Step 4/5: Indoor mode - skipping GNSS shutdown and validation')
 
         # Step 5: Save map (M key equivalent)
         self.get_logger().info('')
@@ -879,7 +1315,7 @@ class DataCollectionCoordinator(Node):
         # Step 6: Rename section folder with tag
         self.get_logger().info('')
         self.get_logger().info('Renaming section folder...')
-        new_folder_path = self._rename_section_folder(tag)
+        new_folder_path = self._rename_section_folder(final_tag)
         if new_folder_path:
             self.get_logger().info(f'  Section folder renamed to: {os.path.basename(new_folder_path)}')
         else:
@@ -887,7 +1323,10 @@ class DataCollectionCoordinator(Node):
             self.get_logger().error('  Failed to rename section folder')
         self.update_gnss_session({
             'status': 'saved' if not errors else 'saved_with_warnings',
-            'completion_tag': tag,
+            'completion_tag': final_tag,
+            'gnss_invalid': self.gnss_invalid,
+            'gnss_invalid_reasons': self.gnss_invalid_reasons,
+            'gnss_warning_reasons': self.gnss_warning_reasons,
         })
         
         # Reset state — ready for next /dc/start
@@ -902,9 +1341,19 @@ class DataCollectionCoordinator(Node):
             self.get_logger().warn(response.message)
         else:
             response.success = True
-            response.message = f'Data collection ended and saved as {tag}'
+            if self.gnss_enabled:
+                response.message = f'Data collection ended and saved as {final_tag}'
+            else:
+                response.message = (
+                    f'Data collection ended and saved as {final_tag} '
+                    '(indoor mode, GNSS disabled)'
+                )
             self.get_logger().info('='*60)
-            self.get_logger().info(f'DATA COLLECTION ENDED AND SAVED AS {tag.upper()}')
+            if self.gnss_enabled:
+                self.get_logger().info(f'DATA COLLECTION ENDED AND SAVED AS {final_tag.upper()}')
+            else:
+                self.get_logger().info(
+                    f'DATA COLLECTION ENDED AND SAVED AS {final_tag.upper()} (INDOOR MODE)')
             self.get_logger().info('='*60)
         
         self.get_logger().info('Ready for new section (call /dc/start)')
@@ -947,11 +1396,20 @@ class DataCollectionCoordinator(Node):
         
         # Step 4: Stop GNSS raw logging and delete temporary capture, if any
         self.get_logger().info('')
-        self.get_logger().info('Step 4/5: Stopping GNSS raw logging...')
-        self.stop_gps_raw_log()
-        if self.gnss_precapture_path:
-            self.delete_file_if_exists(self.gnss_precapture_path)
-            self.get_logger().info('  GNSS precapture temp file deleted')
+        deleted_precapture_artifacts = False
+        if self.gnss_enabled:
+            self.get_logger().info('Step 4/5: Stopping GNSS raw logging...')
+            self.stop_gps_raw_log()
+            if self.gnss_precapture_path:
+                self.delete_file_if_exists(self.gnss_precapture_path)
+                self.get_logger().info('  GNSS precapture temp file deleted')
+                deleted_precapture_artifacts = True
+            if self.preserved_gnss_precapture_paths:
+                self.delete_preserved_precapture_paths()
+                self.get_logger().info('  Preserved GNSS precapture temp files deleted')
+                deleted_precapture_artifacts = True
+        else:
+            self.get_logger().info('Step 4/5: Indoor mode - no GNSS data to stop or delete')
         
         # Step 5: Delete the entire section folder
         self.get_logger().info('')
@@ -968,9 +1426,9 @@ class DataCollectionCoordinator(Node):
                 response.success = False
                 response.message = f'Failed to delete folder: {e}'
         else:
-            if self.gnss_precapture_path:
+            if deleted_precapture_artifacts:
                 response.success = True
-                response.message = 'GNSS precapture deleted - no section folder existed yet'
+                response.message = 'GNSS precapture artifacts deleted - no section folder existed yet'
             else:
                 self.get_logger().warn(f'  Section folder not found: {self.section_folder}')
                 response.success = False
@@ -1008,7 +1466,13 @@ class DataCollectionCoordinator(Node):
         current_name = folder_path.name
         
         # Already tagged?
-        if current_name.endswith('_partial') or current_name.endswith('_complete'):
+        tagged_suffixes = (
+            '_partial',
+            '_complete',
+            '_partial_gnss_invalid',
+            '_complete_gnss_invalid',
+        )
+        if current_name.endswith(tagged_suffixes):
             self.get_logger().info(f'Folder already tagged: {current_name}')
             return str(folder_path)
         
@@ -1029,23 +1493,39 @@ class DataCollectionCoordinator(Node):
             # Update session_config.json
             config_file = new_path / 'session_config.json'
             if config_file.exists():
-                self.update_json_file(config_file, {
+                config_updates = {
                     'section_folder': str(new_path),
                     'section_name': new_name,
                     'completion_tag': tag,
-                    'gnss_data_folder': self.gnss_data_folder,
-                    'gnss_session_file': self.gnss_session_file,
-                    'gnss_raw_file': self.gnss_raw_file,
-                })
+                    'scan_mode': self.scan_mode,
+                    'gnss_enabled': self.gnss_enabled,
+                }
+                if self.gnss_enabled:
+                    config_updates.update({
+                        'gnss_data_folder': self.gnss_data_folder,
+                        'gnss_session_file': self.gnss_session_file,
+                        'gnss_raw_file': self.gnss_raw_file,
+                        'gnss_invalid': self.gnss_invalid,
+                        'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                        'gnss_warning_reasons': self.gnss_warning_reasons,
+                        'driver_restarts': self.gnss_driver_restarts,
+                        'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
+                    })
+                self.update_json_file(config_file, config_updates)
 
-            gnss_file = Path(self.gnss_session_file) if self.gnss_session_file else (new_path / 'gnss_session.json')
-            if gnss_file.exists():
+            gnss_file = Path(self.gnss_session_file) if self.gnss_session_file else None
+            if self.gnss_enabled and gnss_file and gnss_file.exists():
                 self.update_json_file(gnss_file, {
                     'section_folder': str(new_path),
                     'section_name': new_name,
                     'completion_tag': tag,
                     'gnss_data_folder': self.gnss_data_folder,
                     'raw_file_path': self.gnss_raw_file,
+                    'gnss_invalid': self.gnss_invalid,
+                    'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                    'gnss_warning_reasons': self.gnss_warning_reasons,
+                    'driver_restarts': self.gnss_driver_restarts,
+                    'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
                 })
             
             return str(new_path)

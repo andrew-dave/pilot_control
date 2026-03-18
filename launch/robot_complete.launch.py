@@ -1,6 +1,7 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import os
@@ -109,9 +110,15 @@ def generate_launch_description():
         default_value='/R_DATA',
         description='Base directory for all robot data collection.'
     )
+    declare_scan_mode_arg = DeclareLaunchArgument(
+        'scan_mode',
+        default_value='outdoor',
+        description="Scan mode: 'outdoor' enables GNSS, 'indoor' disables GNSS."
+    )
 
     # Base data directory — section folders are created dynamically by data_collection_coordinator
     base_data_dir = '/R_DATA'
+    scan_mode = LaunchConfiguration('scan_mode')
     
     # Odometry Tilt Corrector - transforms LiDAR frame to robot body frame
     # Uses calibration file if available, otherwise falls back to fixed 15° pitch
@@ -370,6 +377,7 @@ def generate_launch_description():
         executable='gps_driver',
         name='gps_driver',
         output='screen',
+        condition=IfCondition(PythonExpression(["'", scan_mode, "' == 'outdoor'"])),
         parameters=[{
             'device': '/dev/gps',  # Uses udev symlink (fallback: /dev/ttyACM0)
             'baud_rate': 38400,
@@ -387,6 +395,13 @@ def generate_launch_description():
             'enable_raw_observation_messages': True,
             'enable_nav_sat': True,
             'enable_hpposllh': True,
+            'rawx_startup_timeout_sec': 5.0,
+            'sfrbx_startup_timeout_sec': 20.0,
+            'rawx_min_coverage_ratio': 0.8,
+            'rawx_gap_warn_sec': 2.0,
+            'rawx_gap_fail_sec': 10.0,
+            'raw_log_flush_interval_sec': 1.0,
+            'raw_log_fsync_interval_sec': 5.0,
             'raw_log_target_path': '',
         }]
     )
@@ -424,10 +439,6 @@ def generate_launch_description():
             'rosbag_topics': [
                 '/Odometry',  # Raw Fast-LIO odometry
                 '/Odometry_tilt_corrected_diff',  # Tilt-corrected odometry from diff_drive_controller
-                '/gps/fix_raw',
-                '/gps/fix',
-                '/gps/vel',
-                '/gps/diag',
                 '/cmd_vel',
                 '/left/controller_status',
                 '/right/controller_status',
@@ -561,9 +572,12 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'base_data_directory': base_data_dir,
+            'scan_mode': scan_mode,
             'gnss_temp_directory': '/tmp',
             'gnss_precapture_timeout_sec': 1800.0,
             'gnss_post_stop_delay_sec': 30.0,
+            'gnss_validation_min_file_size_bytes': 524288,
+            'gnss_validation_min_duration_sec': 60.0,
         }]
     )
 
@@ -576,6 +590,7 @@ def generate_launch_description():
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
         declare_base_data_directory_arg,
+        declare_scan_mode_arg,
         
         # Zenoh bridge DDS (must start first for Microhard communication)
         zenoh_bridge,
