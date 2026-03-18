@@ -379,7 +379,7 @@ def generate_launch_description():
         output='screen',
         condition=IfCondition(PythonExpression(["'", scan_mode, "' == 'outdoor'"])),
         parameters=[{
-            'device': '/dev/gps',  # Uses udev symlink (fallback: /dev/ttyACM0)
+            'device': '/dev/gps',  # Requires stable udev symlink for the GPS receiver
             'baud_rate': 38400,
             'frame_id': 'gps_link',
             # Quality gating thresholds (for /gps/fix output)

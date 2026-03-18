@@ -242,7 +242,7 @@ public:
     serial_thread_ = std::thread(&GpsDriver::serialLoop, this);
 
     RCLCPP_INFO(this->get_logger(),
-                "GPS Driver started: device=%s baud=%d rate=%dHz dynamic_model=%d",
+                "GPS Driver started: requested_device=%s baud=%d rate=%dHz dynamic_model=%d",
                 device_.c_str(), baud_rate_, rate_hz_, dynamic_model_);
     RCLCPP_INFO(this->get_logger(),
                 "Quality gates: hAcc<%.1fm, numSV>=%d, pDOP<%.1f, 3D_fix=%s, gnss_fix_ok=%s",
@@ -265,9 +265,7 @@ public:
       std::lock_guard<std::mutex> lk(raw_log_mutex_);
       closeRawLogLocked();
     }
-    if (fd_ >= 0) {
-      close(fd_);
-    }
+    closeSerialDevice();
   }
 
 private:
@@ -306,6 +304,88 @@ private:
     std::vector<std::string> invalid_reasons;
     std::string health_level{"idle"};
   };
+
+  struct SerialStateSnapshot {
+    std::string active_device;
+    std::string validation_error;
+  };
+
+  void closeSerialDevice() {
+    if (fd_ >= 0) {
+      close(fd_);
+      fd_ = -1;
+    }
+    std::lock_guard<std::mutex> lk(serial_state_mutex_);
+    active_device_.clear();
+  }
+
+  SerialStateSnapshot getSerialStateSnapshot() {
+    std::lock_guard<std::mutex> lk(serial_state_mutex_);
+    return SerialStateSnapshot{active_device_, last_device_validation_error_};
+  }
+
+  bool looksLikeGnssTraffic(const std::vector<uint8_t>& probe) const {
+    for (size_t i = 0; i + 1 < probe.size(); ++i) {
+      if (probe[i] == UBX_SYNC1 && probe[i + 1] == UBX_SYNC2) {
+        return true;
+      }
+    }
+
+    for (size_t i = 0; i + 2 < probe.size(); ++i) {
+      if (probe[i] == '$' && probe[i + 1] == 'G' &&
+          (probe[i + 2] == 'P' || probe[i + 2] == 'N')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool validateSerialDevice(std::string* failure_reason) {
+    if (fd_ < 0) {
+      *failure_reason = "Serial device is not open";
+      return false;
+    }
+
+    constexpr auto kValidationWindow = std::chrono::milliseconds(1000);
+    constexpr size_t kMaxProbeBytes = 1024;
+    const auto deadline = std::chrono::steady_clock::now() + kValidationWindow;
+
+    std::vector<uint8_t> probe;
+    probe.reserve(kMaxProbeBytes);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+      uint8_t tmp[256];
+      const ssize_t n = read(fd_, tmp, sizeof(tmp));
+
+      if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+          continue;
+        }
+        *failure_reason =
+            "Serial validation read failed: " + std::string(strerror(errno));
+        return false;
+      }
+
+      if (n == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        continue;
+      }
+
+      probe.insert(probe.end(), tmp, tmp + n);
+      if (probe.size() > kMaxProbeBytes) {
+        probe.erase(probe.begin(), probe.end() - static_cast<std::ptrdiff_t>(kMaxProbeBytes));
+      }
+
+      if (looksLikeGnssTraffic(probe)) {
+        return true;
+      }
+    }
+
+    *failure_reason = "No GNSS-like UBX/NMEA traffic observed within 1.0 s";
+    return false;
+  }
 
   rcl_interfaces::msg::SetParametersResult onParametersSet(
       const std::vector<rclcpp::Parameter>& parameters) {
@@ -406,31 +486,27 @@ private:
   }
 
   bool openSerial() {
-    std::vector<std::string> devices = {device_, "/dev/ttyACM0"};
-
-    for (const auto& dev : devices) {
-      fd_ = open(dev.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-      if (fd_ >= 0) {
-        if (dev != device_) {
-          RCLCPP_WARN(this->get_logger(), "Primary device %s unavailable, using %s",
-                      device_.c_str(), dev.c_str());
-        }
-        break;
-      }
+    {
+      std::lock_guard<std::mutex> lk(serial_state_mutex_);
+      active_device_.clear();
+      last_device_validation_error_.clear();
     }
+    fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if (fd_ < 0) {
+      const std::string open_error = strerror(errno);
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                           "Cannot open GPS device: %s", strerror(errno));
+                           "Cannot open GPS requested_device=%s: %s",
+                           device_.c_str(), open_error.c_str());
       return false;
     }
 
     struct termios tty;
     memset(&tty, 0, sizeof(tty));
     if (tcgetattr(fd_, &tty) != 0) {
-      RCLCPP_ERROR(this->get_logger(), "tcgetattr failed: %s", strerror(errno));
-      close(fd_);
-      fd_ = -1;
+      RCLCPP_ERROR(this->get_logger(), "tcgetattr failed for requested_device=%s: %s",
+                   device_.c_str(), strerror(errno));
+      closeSerialDevice();
       return false;
     }
 
@@ -457,20 +533,44 @@ private:
     tty.c_cflag &= ~(PARENB | PARODD | CSTOPB | CRTSCTS);
 
     if (tcsetattr(fd_, TCSANOW, &tty) != 0) {
-      RCLCPP_ERROR(this->get_logger(), "tcsetattr failed: %s", strerror(errno));
-      close(fd_);
-      fd_ = -1;
+      RCLCPP_ERROR(this->get_logger(), "tcsetattr failed for requested_device=%s: %s",
+                   device_.c_str(), strerror(errno));
+      closeSerialDevice();
       return false;
     }
 
-    tcflush(fd_, TCIOFLUSH);
+    RCLCPP_INFO(this->get_logger(),
+                "Serial port opened: requested_device=%s active_device=%s @ %d baud",
+                device_.c_str(), device_.c_str(), baud_rate_);
+
+    std::string validation_error;
+    if (!validateSerialDevice(&validation_error)) {
+      {
+        std::lock_guard<std::mutex> lk(serial_state_mutex_);
+        last_device_validation_error_ = validation_error;
+      }
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "Rejected GPS device requested_device=%s active_device=%s: %s",
+                           device_.c_str(), device_.c_str(), validation_error.c_str());
+      closeSerialDevice();
+      return false;
+    }
+
+    {
+      std::lock_guard<std::mutex> lk(serial_state_mutex_);
+      active_device_ = device_;
+      last_device_validation_error_.clear();
+    }
     if (serial_open_count_ > 0) {
       serial_reconnects_++;
     }
     serial_open_count_++;
 
-    RCLCPP_INFO(this->get_logger(), "Serial port opened: %s @ %d baud",
-                device_.c_str(), baud_rate_);
+    RCLCPP_INFO(this->get_logger(),
+                "Validated GPS device: requested_device=%s active_device=%s",
+                device_.c_str(), device_.c_str());
+
+    tcflush(fd_, TCIOFLUSH);
 
     if (configure_receiver_) {
       configureReceiver();
@@ -480,7 +580,11 @@ private:
   }
 
   void configureReceiver() {
-    RCLCPP_INFO(this->get_logger(), "Configuring ZED-F9P receiver...");
+    const auto serial_state = getSerialStateSnapshot();
+    const std::string& config_device =
+        serial_state.active_device.empty() ? device_ : serial_state.active_device;
+    RCLCPP_INFO(this->get_logger(), "Configuring ZED-F9P receiver on %s...",
+                config_device.c_str());
 
     usleep(100000);
 
@@ -1072,6 +1176,41 @@ private:
     std_msgs::msg::String msg;
     msg.data = buildRawHealthJson(snapshot);
     raw_health_pub_->publish(msg);
+
+    const auto serial_state = getSerialStateSnapshot();
+    if (!serial_state.active_device.empty()) {
+      return;
+    }
+
+    auto diag_msg = diagnostic_msgs::msg::DiagnosticArray();
+    diag_msg.header.stamp = this->get_clock()->now();
+
+    diagnostic_msgs::msg::DiagnosticStatus ds;
+    ds.name = "GPS - ZED-F9P";
+    ds.hardware_id = "ublox_zed_f9p";
+    ds.level = serial_state.validation_error.empty()
+        ? diagnostic_msgs::msg::DiagnosticStatus::WARN
+        : diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    ds.message = serial_state.validation_error.empty()
+        ? "Waiting for requested GPS device"
+        : "Requested GPS device rejected before configuration";
+
+    auto add_kv = [&](const std::string& key, const std::string& val) {
+      diagnostic_msgs::msg::KeyValue kv;
+      kv.key = key;
+      kv.value = val;
+      ds.values.push_back(kv);
+    };
+
+    add_kv("requested_device", device_);
+    add_kv("active_device", "none");
+    add_kv("serial_reconnects", std::to_string(serial_reconnects_.load()));
+    if (!serial_state.validation_error.empty()) {
+      add_kv("device_validation_error", serial_state.validation_error);
+    }
+
+    diag_msg.status.push_back(ds);
+    diag_pub_->publish(diag_msg);
   }
 
   void writeRawBytes(const uint8_t* data, size_t len) {
@@ -1107,9 +1246,12 @@ private:
       const ssize_t n = read(fd_, tmp, sizeof(tmp));
       if (n < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-          RCLCPP_WARN(this->get_logger(), "Serial read error: %s", strerror(errno));
-          close(fd_);
-          fd_ = -1;
+          const auto serial_state = getSerialStateSnapshot();
+          const std::string failing_device =
+              serial_state.active_device.empty() ? device_ : serial_state.active_device;
+          RCLCPP_WARN(this->get_logger(), "Serial read error on %s: %s",
+                      failing_device.c_str(), strerror(errno));
+          closeSerialDevice();
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         continue;
@@ -1267,6 +1409,7 @@ private:
     last_diag_time = current_time;
 
     const RawHealthSnapshot raw_snapshot = getRawHealthSnapshot();
+    const auto serial_state = getSerialStateSnapshot();
 
     auto diag_msg = diagnostic_msgs::msg::DiagnosticArray();
     diag_msg.header.stamp = now;
@@ -1340,6 +1483,11 @@ private:
     add_kv("rejected_fixes", std::to_string(rejected_fixes_.load()));
     add_kv("checksum_errors", std::to_string(checksum_errors_.load()));
     add_kv("serial_reconnects", std::to_string(serial_reconnects_.load()));
+    add_kv("requested_device", device_);
+    add_kv("active_device", serial_state.active_device.empty() ? "none" : serial_state.active_device);
+    if (!serial_state.validation_error.empty()) {
+      add_kv("device_validation_error", serial_state.validation_error);
+    }
 
     const double accept_rate = msg_count_ > 0 ? 100.0 * good_fixes_ / msg_count_ : 0.0;
     snprintf(buf, sizeof(buf), "%.1f%%", accept_rate);
@@ -1403,6 +1551,9 @@ private:
   std::atomic<bool> running_;
   std::thread serial_thread_;
   uint64_t serial_open_count_{0};
+  std::mutex serial_state_mutex_;
+  std::string active_device_;
+  std::string last_device_validation_error_;
 
   // Statistics
   std::atomic<uint64_t> msg_count_{0};
