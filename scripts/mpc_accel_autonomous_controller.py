@@ -987,6 +987,7 @@ class MPCAccelController(Node):
         self.declare_parameter("slip_estimation_window", 1.0)
         self.declare_parameter("lookahead_distance", 0.5)
         self.declare_parameter("waypoints_csv_path", "")
+        self.declare_parameter("start_waypoint_trim_radius", 0.5)
 
         # Autonomy / behavior flags
         self.declare_parameter("mpc_autonomy_enabled_default", False)
@@ -1061,6 +1062,9 @@ class MPCAccelController(Node):
         )
         self.lookahead_distance = float(self.get_parameter("lookahead_distance").value)
         self.waypoints_csv_path = str(self.get_parameter("waypoints_csv_path").value)
+        self.start_waypoint_trim_radius = max(
+            0.0, float(self.get_parameter("start_waypoint_trim_radius").value)
+        )
 
         # Autonomy flags
         self.autonomy_enabled: bool = bool(
@@ -1573,6 +1577,39 @@ class MPCAccelController(Node):
             )
         return waypoints
 
+    def _trim_leading_waypoints_near_pose(
+        self,
+        waypoints: List[Tuple[float, float, int]],
+        source_label: str,
+    ) -> List[Tuple[float, float, int]]:
+        """
+        Trim stale entry waypoints that are already within the robot's start radius.
+
+        To preserve per-waypoint data-collection semantics, never trim past the
+        first waypoint whose dc flag would change the current collection state.
+        """
+        if not self.pose_initialized or len(waypoints) <= 1:
+            return waypoints
+
+        trim_radius = float(self.start_waypoint_trim_radius)
+        if trim_radius <= 0.0:
+            return waypoints
+
+        current_dc_flag = 1 if self.dc_active else 0
+        wp_x, wp_y, dc_flag = waypoints[0]
+        if int(dc_flag) != current_dc_flag:
+            return waypoints
+
+        dist = math.hypot(float(wp_x) - self.current_x, float(wp_y) - self.current_y)
+        if dist > trim_radius:
+            return waypoints
+
+        self.get_logger().info(
+            f"Trimmed 1 leading waypoint within "
+            f"{trim_radius:.2f} m of current pose for {source_label}"
+        )
+        return waypoints[1:]
+
     def _set_next_waypoint_target(self) -> None:
         """
         Set the next waypoint in the sequence as the current MPC target.
@@ -1677,6 +1714,10 @@ class MPCAccelController(Node):
                     "Odometry not initialized yet - cannot start waypoint navigation"
                 )
                 return
+
+            waypoints = self._trim_leading_waypoints_near_pose(
+                waypoints, "CSV waypoint start"
+            )
 
             # Initialize waypoint navigation
             self.waypoints = waypoints
@@ -1797,7 +1838,9 @@ class MPCAccelController(Node):
             return
 
         # Transfer pending waypoints to active navigation
-        self.waypoints = self.pending_waypoints.copy()
+        self.waypoints = self._trim_leading_waypoints_near_pose(
+            self.pending_waypoints.copy(), "F2C waypoint start"
+        )
         self.pending_waypoints = []  # Clear pending
         self.current_waypoint_index = 0
         self.waypoint_navigation_active = True
@@ -1923,9 +1966,6 @@ class MPCAccelController(Node):
             right_rps_eff = right_rps_target
 
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
-
-        if solve_ms is not None:
-            self.get_logger().debug(f"Yaw-align MPC solve time: {solve_ms:.3f} ms")
         return True
 
     def autonomy_enable_callback(self, msg: Bool) -> None:
@@ -2369,8 +2409,6 @@ class MPCAccelController(Node):
             left_rps_eff = left_rps_target
             right_rps_eff = right_rps_target
         
-        self.get_logger().info(f"left_rps_eff: {left_rps_eff:.3f}, right_rps_eff: {right_rps_eff:.3f}, left_rps_target: {left_rps_target:.3f}, right_rps_target: {right_rps_target:.3f}")
-
         self.publish_wheel_velocities(left_rps_eff, right_rps_eff)
 
         # For diagnostics: compute effective v and ω from compensated wheel velocities
@@ -2412,10 +2450,6 @@ class MPCAccelController(Node):
                 self.ref_traj_pub.publish(ref_msg)
         except Exception as e:
             self.get_logger().warn(f"Error publishing MPC accel diagnostics: {e}")
-
-        # Optional log for debugging
-        if solve_ms is not None:
-            self.get_logger().debug(f"AccelMPC solve time: {solve_ms:.3f} ms")
 
     # -----------------------------
     # Publishing helpers
