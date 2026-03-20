@@ -103,6 +103,18 @@ constexpr uint8_t UBX_NAV_SAT = 0x35;
 constexpr uint8_t UBX_RXM_SFRBX = 0x13;
 constexpr uint8_t UBX_RXM_RAWX = 0x15;
 
+constexpr uint32_t CFG_MSGOUT_UBX_NAV_PVT_USB = 0x20910009;
+constexpr uint32_t CFG_MSGOUT_UBX_NAV_HPPOSLLH_USB = 0x20910036;
+constexpr uint32_t CFG_MSGOUT_UBX_NAV_SAT_USB = 0x20910018;
+constexpr uint32_t CFG_MSGOUT_UBX_RXM_SFRBX_USB = 0x20910234;
+constexpr uint32_t CFG_MSGOUT_UBX_RXM_RAWX_USB = 0x209102A7;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_GGA_USB = 0x209100BD;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_GLL_USB = 0x209100CC;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_GSA_USB = 0x209100C2;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_GSV_USB = 0x209100C7;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_RMC_USB = 0x209100AE;
+constexpr uint32_t CFG_MSGOUT_NMEA_ID_VTG_USB = 0x209100B3;
+
 constexpr size_t UBX_MAX_PAYLOAD_LEN = 4096;
 constexpr size_t UBX_BUFFER_OVERFLOW_LIMIT = 65536;
 
@@ -614,29 +626,23 @@ private:
     };
     sendUbxMessage(set_dyn, sizeof(set_dyn));
 
-    setMessageRate(UBX_CLASS_NAV, UBX_NAV_PVT, 0x01);
+    setConfigItemU1(CFG_MSGOUT_UBX_NAV_PVT_USB, 0x01);
     if (enable_raw_observation_messages_) {
-      setMessageRate(UBX_CLASS_RXM, UBX_RXM_RAWX, 0x01);
-      setMessageRate(UBX_CLASS_RXM, UBX_RXM_SFRBX, 0x01);
+      setConfigItemU1(CFG_MSGOUT_UBX_RXM_RAWX_USB, 0x01);
+      setConfigItemU1(CFG_MSGOUT_UBX_RXM_SFRBX_USB, 0x01);
     }
     if (enable_nav_sat_) {
-      setMessageRate(UBX_CLASS_NAV, UBX_NAV_SAT, 0x01);
+      setConfigItemU1(CFG_MSGOUT_UBX_NAV_SAT_USB, 0x01);
     }
     if (enable_hpposllh_) {
-      setMessageRate(UBX_CLASS_NAV, UBX_NAV_HPPOSLLH, 0x01);
+      setConfigItemU1(CFG_MSGOUT_UBX_NAV_HPPOSLLH_USB, 0x01);
     }
-
-    const uint8_t nmea_msgs[][2] = {
-      {0xF0, 0x00},
-      {0xF0, 0x01},
-      {0xF0, 0x02},
-      {0xF0, 0x03},
-      {0xF0, 0x04},
-      {0xF0, 0x05},
-    };
-    for (const auto& msg : nmea_msgs) {
-      setMessageRate(msg[0], msg[1], 0x00);
-    }
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_GGA_USB, 0x00);
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_GLL_USB, 0x00);
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_GSA_USB, 0x00);
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_GSV_USB, 0x00);
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_RMC_USB, 0x00);
+    setConfigItemU1(CFG_MSGOUT_NMEA_ID_VTG_USB, 0x00);
 
     usleep(200000);
 
@@ -665,16 +671,22 @@ private:
                 rate_hz_, dynamic_model_, msg_list.str().c_str());
   }
 
-  void setMessageRate(uint8_t msg_class, uint8_t msg_id, uint8_t rate) {
-    uint8_t cfg_msg[] = {
+  void setConfigItemU1(uint32_t key, uint8_t value) {
+    std::vector<uint8_t> cfg_msg = {
       UBX_SYNC1, UBX_SYNC2,
-      0x06, 0x01,
-      0x03, 0x00,
-      msg_class, msg_id,
-      rate,
+      0x06, 0x8A,
+      0x09, 0x00,
+      0x00,
+      0x01,
+      0x00, 0x00,
+      static_cast<uint8_t>(key & 0xFF),
+      static_cast<uint8_t>((key >> 8) & 0xFF),
+      static_cast<uint8_t>((key >> 16) & 0xFF),
+      static_cast<uint8_t>((key >> 24) & 0xFF),
+      value,
       0x00, 0x00
     };
-    sendUbxMessage(cfg_msg, sizeof(cfg_msg));
+    sendUbxMessage(cfg_msg.data(), cfg_msg.size());
   }
 
   void sendUbxMessage(uint8_t* msg, size_t len) {
