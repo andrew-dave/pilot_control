@@ -10,12 +10,12 @@ def generate_launch_description():
     # Robot kinematics
     declare_wheel_radius_arg = DeclareLaunchArgument(
         "wheel_radius",
-        default_value="0.09",
+        default_value="0.096",
         description="Radius of the wheels in meters.",
     )
     declare_wheel_base_arg = DeclareLaunchArgument(
         "wheel_base",
-        default_value="0.32",
+        default_value="0.42",
         description="Distance between the two wheels in meters.",
     )
     declare_gear_ratio_arg = DeclareLaunchArgument(
