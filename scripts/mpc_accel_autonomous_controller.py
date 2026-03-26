@@ -1159,8 +1159,11 @@ class MPCAccelController(Node):
 
         # Autonomous data collection state
         self.dc_active: bool = False          # True while DC is running for this waypoint sequence
-        self.dc_paused_by_heartbeat: bool = False  # True when DC was paused due to heartbeat loss
+        self.dc_pause_reasons = set()         # Reasons currently holding DC in paused state
+        self.manual_override_active: bool = False
+        self._dc_state_lock = threading.Lock()
         self._dc_sequence_lock = threading.Lock()  # Prevent concurrent DC sequences
+        self._dc_sequence_phase = "idle"
 
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
@@ -1974,9 +1977,31 @@ class MPCAccelController(Node):
         When disabled, the controller will not publish ODrive commands even if
         targets or waypoints are available (teleop can control the robot).
         """
+        previous_state = self.autonomy_enabled
         self.autonomy_enabled = bool(msg.data)
         state = "ENABLED" if self.autonomy_enabled else "DISABLED"
         self.get_logger().info(f"MPC autonomy {state} via /mpc_autonomy_enable")
+
+        if not self.autonomy_enabled:
+            # A user-driven manual takeover should immediately halt MPC motion
+            # and pause the current collection session if one is active.
+            if not self.manual_override_active:
+                self.get_logger().info(
+                    'AUTO-DC: Manual teleop override requested - pausing collection')
+            self.manual_override_active = True
+            self.send_zero_velocity()
+            self._request_dc_pause('manual_override', blocking=False)
+            return
+
+        if self.manual_override_active:
+            self.manual_override_active = False
+            if self.heartbeat_enabled and not self._heartbeat_ok_now():
+                self._request_dc_pause('heartbeat', blocking=False)
+            if self._remove_dc_pause_reason('manual_override'):
+                self._maybe_resume_dc(blocking=False, source='manual override release')
+
+        if previous_state != self.autonomy_enabled and self.dc_active:
+            self.get_logger().info('AUTO-DC: Autonomy re-enabled while collection is active')
 
     def _auto_dc_enable_callback(self, msg: Bool) -> None:
         """Legacy toggle; per-waypoint DC tags control collection now."""
@@ -2044,6 +2069,86 @@ class MPCAccelController(Node):
             self.get_logger().error(f'DC {service_name} exception: {e}')
             return False
 
+    def _heartbeat_ok_now(self) -> bool:
+        """Check heartbeat freshness outside the control loop."""
+        if not self.heartbeat_enabled:
+            return True
+        if self.last_heartbeat_time is None:
+            return False
+        return (time.time() - self.last_heartbeat_time) <= self.heartbeat_timeout
+
+    def _dc_pause_reason_summary(self) -> str:
+        with self._dc_state_lock:
+            return ", ".join(sorted(self.dc_pause_reasons))
+
+    def _add_dc_pause_reason(self, reason: str) -> bool:
+        with self._dc_state_lock:
+            if reason in self.dc_pause_reasons:
+                return False
+            self.dc_pause_reasons.add(reason)
+            return True
+
+    def _remove_dc_pause_reason(self, reason: str) -> bool:
+        with self._dc_state_lock:
+            if reason not in self.dc_pause_reasons:
+                return False
+            self.dc_pause_reasons.remove(reason)
+            return True
+
+    def _clear_dc_pause_reasons(self) -> None:
+        with self._dc_state_lock:
+            self.dc_pause_reasons.clear()
+
+    def _request_dc_pause(self, reason: str, blocking: bool = False) -> None:
+        """Record a pause reason and pause the active collection session if needed."""
+        added = self._add_dc_pause_reason(reason)
+        if not added:
+            return
+        if not self.dc_active:
+            self.get_logger().info(
+                f"AUTO-DC: Registered pause reason '{reason}' while collection is inactive")
+            return
+
+        self.get_logger().info(f'AUTO-DC: Pausing data collection due to {reason}')
+        if blocking:
+            self._call_dc_service_blocking(
+                self.dc_pause_client, Trigger.Request(), '/dc/pause', timeout=10.0)
+        else:
+            self._call_dc_service_async(
+                self.dc_pause_client, Trigger.Request(), '/dc/pause')
+
+    def _maybe_resume_dc(self, blocking: bool = False, source: str = '') -> bool:
+        """Resume DC only when autonomy and heartbeat are both healthy."""
+        if not self.dc_active:
+            return False
+
+        reasons = self._dc_pause_reason_summary()
+        if reasons:
+            self.get_logger().info(
+                f'AUTO-DC: Keeping data collection paused ({reasons})')
+            return False
+
+        if not self.autonomy_enabled:
+            if source:
+                self.get_logger().info(
+                    f'AUTO-DC: Waiting to resume after {source}; autonomy is still disabled')
+            return False
+
+        if not self._heartbeat_ok_now():
+            self._add_dc_pause_reason('heartbeat')
+            if source:
+                self.get_logger().warn(
+                    f'AUTO-DC: Cannot resume after {source}; heartbeat is not current')
+            return False
+
+        if blocking:
+            return self._call_dc_service_blocking(
+                self.dc_resume_client, Trigger.Request(), '/dc/resume', timeout=10.0)
+
+        self._call_dc_service_async(
+            self.dc_resume_client, Trigger.Request(), '/dc/resume')
+        return True
+
     def _start_gnss_precapture_for_navigation(self, source: str) -> None:
         """
         Ask the coordinator to start temporary GNSS raw logging before motion.
@@ -2065,26 +2170,53 @@ class MPCAccelController(Node):
         Called when the robot reaches the first waypoint in a set.
         """
         with self._dc_sequence_lock:
-            self.get_logger().info('')
-            self.get_logger().info('='*60)
-            self.get_logger().info('AUTO-DC: Starting data collection...')
-            self.get_logger().info('='*60)
+            self._dc_sequence_phase = "starting"
+            try:
+                self.get_logger().info('')
+                self.get_logger().info('='*60)
+                self.get_logger().info('AUTO-DC: Starting data collection...')
+                self.get_logger().info('='*60)
 
-            ok = self._call_dc_service_blocking(
-                self.dc_start_client, Trigger.Request(), '/dc/start', timeout=15.0)
-            if ok:
+                ok = self._call_dc_service_blocking(
+                    self.dc_start_client, Trigger.Request(), '/dc/start', timeout=15.0)
+                if not ok:
+                    self.send_zero_velocity()
+                    self.get_logger().error(
+                        'AUTO-DC: /dc/start failed — autonomy remains disabled for operator intervention')
+                    return
+
                 self.dc_active = True
-            else:
-                self.get_logger().error('AUTO-DC: /dc/start failed — resuming autonomy anyway')
+                if self.heartbeat_enabled and not self._heartbeat_ok_now():
+                    self._add_dc_pause_reason('heartbeat')
 
-            # Wait before resuming robot motion
-            self.get_logger().info(
-                f'AUTO-DC: Waiting {self.auto_dc_start_delay:.1f}s before resuming...')
-            time.sleep(self.auto_dc_start_delay)
+                reasons = self._dc_pause_reason_summary()
+                if reasons:
+                    self.get_logger().info(
+                        f'AUTO-DC: Start completed with pause reasons active ({reasons}); '
+                        'pausing collection before resuming motion')
+                    self._call_dc_service_blocking(
+                        self.dc_pause_client, Trigger.Request(), '/dc/pause', timeout=10.0)
 
-            # Re-enable autonomy so the robot continues to the next waypoints
-            self.autonomy_enabled = True
-            self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+                # Wait before resuming robot motion
+                self.get_logger().info(
+                    f'AUTO-DC: Waiting {self.auto_dc_start_delay:.1f}s before resuming...')
+                time.sleep(self.auto_dc_start_delay)
+
+                if self.heartbeat_enabled and not self._heartbeat_ok_now():
+                    self._add_dc_pause_reason('heartbeat')
+
+                reasons = self._dc_pause_reason_summary()
+                if reasons:
+                    self.send_zero_velocity()
+                    self.get_logger().info(
+                        f'AUTO-DC: Autonomy remains disabled because collection is paused ({reasons})')
+                    return
+
+                # Re-enable autonomy so the robot continues to the next waypoints
+                self.autonomy_enabled = True
+                self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+            finally:
+                self._dc_sequence_phase = "idle"
 
     def _dc_end_sequence(self, reenable_autonomy: bool = False):
         """
@@ -2092,26 +2224,43 @@ class MPCAccelController(Node):
         Called when the robot reaches the last waypoint in a set.
         """
         with self._dc_sequence_lock:
-            self.get_logger().info(
-                f'AUTO-DC: Waiting {self.auto_dc_end_delay:.1f}s before ending DC...')
-            time.sleep(self.auto_dc_end_delay)
+            self._dc_sequence_phase = "ending"
+            try:
+                self.get_logger().info(
+                    f'AUTO-DC: Waiting {self.auto_dc_end_delay:.1f}s before ending DC...')
+                time.sleep(self.auto_dc_end_delay)
 
-            self.get_logger().info('')
-            self.get_logger().info('='*60)
-            self.get_logger().info('AUTO-DC: Ending data collection (complete)...')
-            self.get_logger().info('='*60)
+                self.get_logger().info('')
+                self.get_logger().info('='*60)
+                self.get_logger().info('AUTO-DC: Ending data collection (complete)...')
+                self.get_logger().info('='*60)
 
-            req = SetBool.Request()
-            req.data = True  # complete tag
-            self._call_dc_service_blocking(
-                self.dc_end_save_client, req, '/dc/end_and_save', timeout=20.0)
+                req = SetBool.Request()
+                req.data = True  # complete tag
+                ok = self._call_dc_service_blocking(
+                    self.dc_end_save_client, req, '/dc/end_and_save', timeout=20.0)
+                if not ok:
+                    self.send_zero_velocity()
+                    self.get_logger().error(
+                        'AUTO-DC: /dc/end_and_save failed — autonomy remains disabled')
+                    return
 
-            self.dc_active = False
-            self.get_logger().info('AUTO-DC: Data collection ended and saved')
+                self.dc_active = False
+                self._clear_dc_pause_reasons()
+                self.get_logger().info('AUTO-DC: Data collection ended and saved')
 
-            if reenable_autonomy:
-                self.autonomy_enabled = True
-                self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+                if reenable_autonomy:
+                    if self.manual_override_active:
+                        self.get_logger().info(
+                            'AUTO-DC: Leaving autonomy disabled because manual override is active')
+                    elif self.heartbeat_enabled and not self._heartbeat_ok_now():
+                        self.get_logger().warn(
+                            'AUTO-DC: Leaving autonomy disabled because heartbeat is not current')
+                    else:
+                        self.autonomy_enabled = True
+                        self.get_logger().info('AUTO-DC: Autonomy re-enabled — robot will continue')
+            finally:
+                self._dc_sequence_phase = "idle"
 
     def heartbeat_callback(self, msg: EmptyMsg) -> None:
         """
@@ -2121,6 +2270,7 @@ class MPCAccelController(Node):
         del msg  # unused
         current_time = time.time()
         self.last_heartbeat_time = current_time
+        cleared_pause_reason = self._remove_dc_pause_reason('heartbeat')
         
         # If heartbeat was previously lost, log recovery
         if self.heartbeat_lost:
@@ -2129,12 +2279,14 @@ class MPCAccelController(Node):
             self.get_logger().info(
                 "✓ Heartbeat RECOVERED - Zenoh bridge connection restored"
             )
-            # Resume DC if it was paused by heartbeat loss
-            if self.dc_active and self.dc_paused_by_heartbeat:
-                self.get_logger().info('AUTO-DC: Resuming data collection after heartbeat recovery')
-                self._call_dc_service_async(
-                    self.dc_resume_client, Trigger.Request(), '/dc/resume')
-                self.dc_paused_by_heartbeat = False
+            if cleared_pause_reason:
+                self.get_logger().info(
+                    'AUTO-DC: Heartbeat recovered - checking whether collection can resume')
+                self._maybe_resume_dc(blocking=False, source='heartbeat recovery')
+        elif cleared_pause_reason:
+            self.get_logger().info(
+                'AUTO-DC: First heartbeat received - checking whether collection can resume')
+            self._maybe_resume_dc(blocking=False, source='first heartbeat')
 
     # -----------------------------
     # Control loop
@@ -2159,6 +2311,8 @@ class MPCAccelController(Node):
                     "⏳ Waiting for first heartbeat from host_teleop..."
                 )
                 self._heartbeat_lost_logged = True
+            if self.dc_active:
+                self._request_dc_pause('heartbeat', blocking=False)
             return False
         
         # Check if heartbeat has timed out
@@ -2173,12 +2327,7 @@ class MPCAccelController(Node):
                 self.get_logger().error(
                     "🛑 SAFETY STOP: Sending zero velocities until heartbeat recovers"
                 )
-                # Pause DC on heartbeat loss
-                if self.dc_active and not self.dc_paused_by_heartbeat:
-                    self.get_logger().info('AUTO-DC: Pausing data collection due to heartbeat loss')
-                    self._call_dc_service_async(
-                        self.dc_pause_client, Trigger.Request(), '/dc/pause')
-                    self.dc_paused_by_heartbeat = True
+                self._request_dc_pause('heartbeat', blocking=False)
             return False
         
         return True

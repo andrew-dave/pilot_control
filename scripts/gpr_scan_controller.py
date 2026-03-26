@@ -123,6 +123,7 @@ class GPRScanController(Node):
         self.motor_enabled = False  # Gate to prevent motion before start event
         self.paused = False  # Pause state for data collection coordinator
         self.rosbag_paused = False  # Rosbag pause state
+        self.pause_pending_motor_restart = False
         
         # GPR motor state (from ODrive feedback)
         self.gpr_position = 0.0
@@ -285,6 +286,30 @@ class GPRScanController(Node):
             self.get_logger().info('Sent CLOSED_LOOP arming to /gpr axis')
         except Exception as exc:
             self.get_logger().warn(f"Arming failed: {exc}")
+
+    def _publish_zero_velocity(self):
+        """Publish an explicit zero-velocity command to the GPR ODrive."""
+        msg = ControlMessage()
+        msg.control_mode = 2  # VELOCITY_CONTROL
+        msg.input_mode = 1    # PASSTHROUGH
+        msg.input_vel = 0.0
+        msg.input_torque = 0.0
+        msg.input_pos = 0.0
+        self.gpr_motor_pub.publish(msg)
+
+    def _cancel_motor_start_timer(self):
+        if self.motor_start_timer:
+            self.motor_start_timer.cancel()
+            self.motor_start_timer = None
+
+    def _schedule_motor_start(self, delay_sec=None):
+        """Schedule the delayed GPR motor start after a fresh start or resume."""
+        self._cancel_motor_start_timer()
+        delay = self.gpr_motor_start_delay if delay_sec is None else max(0.0, float(delay_sec))
+        if delay <= 0.0:
+            self.delayed_gpr_motor_start()
+            return
+        self.motor_start_timer = self.create_timer(delay, self.delayed_gpr_motor_start)
     
     def gpr_status_callback(self, msg):
         """Store latest GPR motor status"""
@@ -367,6 +392,10 @@ class GPRScanController(Node):
         """Toggle GPR scanning on/off"""
         with self.lock:
             if not self.scanning:
+                if self.stopping or self.logging_active:
+                    response.success = False
+                    response.message = 'GPR stop cleanup still in progress - wait before starting a new scan'
+                    return response
                 # Start scanning
                 success = self.start_scan()
                 if success:
@@ -438,6 +467,10 @@ class GPRScanController(Node):
                 response.success = True
                 response.message = 'GPR scan already running'
                 return response
+            if self.stopping or self.logging_active:
+                response.success = False
+                response.message = 'GPR stop cleanup still in progress - wait before starting a new scan'
+                return response
             
             # Start scanning
             success = self.start_scan()
@@ -453,24 +486,38 @@ class GPRScanController(Node):
     def pause_callback(self, request, response):
         """Pause GPR scanning - stop motor and pause CSV logging"""
         with self.lock:
+            if not self.scanning and not self.logging_active and not self.stopping:
+                self.paused = False
+                response.success = True
+                response.message = 'GPR scan not active'
+                return response
             if self.paused:
                 response.success = True
                 response.message = 'Already paused'
                 return response
+            if self.stopping:
+                response.success = True
+                response.message = 'GPR scan is already stopping'
+                return response
             
+            self.pause_pending_motor_restart = (
+                self.motor_start_timer is not None and not self.gpr_motor_started
+            )
+            self._cancel_motor_start_timer()
             self.paused = True
+            if self.logging_active and self.csv_writer:
+                self.log_event_now('PAUSE')
+            self.current_event = None
             
-            # Stop GPR motor (set velocity to zero)
-            msg = ControlMessage()
-            msg.control_mode = 2  # VELOCITY_CONTROL
-            msg.input_mode = 1    # PASSTHROUGH
-            msg.input_vel = 0.0
-            msg.input_torque = 0.0
-            msg.input_pos = 0.0
-            self.gpr_motor_pub.publish(msg)
+            # Stop GPR motor immediately.
+            self._publish_zero_velocity()
             
             self.get_logger().info('='*60)
-            self.get_logger().info('GPR SCAN PAUSED - Motor stopped, CSV logging paused')
+            if self.pause_pending_motor_restart:
+                self.get_logger().info(
+                    'GPR SCAN PAUSED - Motor start timer cancelled, CSV logging paused')
+            else:
+                self.get_logger().info('GPR SCAN PAUSED - Motor stopped, CSV logging paused')
             self.get_logger().info('='*60)
             
             response.success = True
@@ -480,12 +527,28 @@ class GPRScanController(Node):
     def resume_callback(self, request, response):
         """Resume GPR scanning - restart motor and resume CSV logging"""
         with self.lock:
+            if not self.scanning and not self.logging_active and not self.stopping:
+                self.paused = False
+                response.success = True
+                response.message = 'GPR scan not active'
+                return response
             if not self.paused:
                 response.success = True
                 response.message = 'Not paused'
                 return response
+            if self.stopping:
+                response.success = False
+                response.message = 'Cannot resume while GPR stop cleanup is in progress'
+                return response
             
             self.paused = False
+            if self.logging_active and self.csv_writer:
+                self.log_event_now('RESUME')
+            if self.pause_pending_motor_restart and self.scanning and not self.gpr_motor_started:
+                self.get_logger().info(
+                    f'Resuming pre-motor delay for {self.gpr_motor_start_delay:.1f}s before restarting GPR motor')
+                self._schedule_motor_start(self.gpr_motor_start_delay)
+            self.pause_pending_motor_restart = False
             
             self.get_logger().info('='*60)
             self.get_logger().info('GPR SCAN RESUMED - Motor and CSV logging resumed')
@@ -515,9 +578,7 @@ class GPRScanController(Node):
             self.get_logger().info('='*60)
             
             # Cancel any pending motor-start timer (scan may still be in startup phase)
-            if self.motor_start_timer:
-                self.motor_start_timer.cancel()
-                self.motor_start_timer = None
+            self._cancel_motor_start_timer()
             
             # Cancel any previous stop timer (in case stop_scan was already called)
             if self.stop_timer:
@@ -526,6 +587,7 @@ class GPRScanController(Node):
             
             # Un-pause if paused, so the post-stop logging can write final rows
             self.paused = False
+            self.pause_pending_motor_restart = False
             
             # Log the KEY_PRESS_STOP event while CSV is still open
             if self.logging_active and self.csv_writer:
@@ -533,13 +595,7 @@ class GPRScanController(Node):
                 self.current_event = 'MOTOR_STOPPING'
             
             # Stop motor
-            msg = ControlMessage()
-            msg.control_mode = 2  # VELOCITY_CONTROL
-            msg.input_mode = 1    # PASSTHROUGH
-            msg.input_vel = 0.0
-            msg.input_torque = 0.0
-            msg.input_pos = 0.0
-            self.gpr_motor_pub.publish(msg)
+            self._publish_zero_velocity()
             self.get_logger().info('  ✓ GPR motor stopped')
             
             self.scanning = False
@@ -820,6 +876,8 @@ class GPRScanController(Node):
             self.log_file_handle.write(f'#   PRE_MOTOR - Waiting for motor start (50Hz logging active)\n')
             self.log_file_handle.write(f'#   GPR_MOTOR_START - GPR motor velocity command sent\n')
             self.log_file_handle.write(f'#   SCANNING - Normal scanning operation (50Hz logging)\n')
+            self.log_file_handle.write(f'#   PAUSE - Scan paused; motor stopped, actuator left in place\n')
+            self.log_file_handle.write(f'#   RESUME - Scan resumed after a pause\n')
             self.log_file_handle.write(f'#   KEY_PRESS_STOP - Stop key pressed (50Hz continues)\n')
             self.log_file_handle.write(f'#   MOTOR_STOPPING - Stopping motor (50Hz continues)\n')
             self.log_file_handle.write(f'#   POST_STOP - After motor stopped (50Hz continues)\n')
@@ -848,8 +906,16 @@ class GPRScanController(Node):
         
         # Step 2: Log KEY_PRESS_START and enable 50Hz logging IMMEDIATELY
         #self.current_event = 'KEY_PRESS_START'
+        self.paused = False
+        self.pause_pending_motor_restart = False
+        self.stopping = False
+        self._cancel_motor_start_timer()
+        if self.stop_timer:
+            self.stop_timer.cancel()
+            self.stop_timer = None
         self.logging_active = True
         self.start_sequence_time = time.time()
+        self.motor_enabled = False
         self.gpr_motor_started = False
         self.log_count = 0  # Reset log count for new scan
         # Immediate event log
@@ -879,10 +945,7 @@ class GPRScanController(Node):
         self.get_logger().info(f'⏳ 50Hz logging active, waiting {self.gpr_motor_start_delay}s before starting GPR motor...')
         
         # Use a timer to start the motor after delay (non-blocking)
-        self.motor_start_timer = self.create_timer(
-            self.gpr_motor_start_delay, 
-            self.delayed_gpr_motor_start
-        )
+        self._schedule_motor_start(self.gpr_motor_start_delay)
         
         # Set initial state
         self.scanning = True
@@ -897,9 +960,10 @@ class GPRScanController(Node):
     def delayed_gpr_motor_start(self):
         """Start GPR motor after delay - called by timer"""
         # Cancel the one-shot timer
-        if self.motor_start_timer:
-            self.motor_start_timer.cancel()
-            self.motor_start_timer = None
+        self._cancel_motor_start_timer()
+        if self.paused or not self.scanning or self.stopping:
+            self.get_logger().info('Skipping delayed GPR motor start because scan is paused or stopping')
+            return
         
         # Tag next GPR status row with GPR_MOTOR_START to log at ~100 Hz aligned to GPR timing
         self.current_event = 'GPR_MOTOR_START'
@@ -947,16 +1011,14 @@ class GPRScanController(Node):
         self.scanning = False
         self.stopping = True  # Enable post-stop logging phase
         self.post_stop_time = time.time()  # Mark when motor stopped
+        self.motor_enabled = False
+        self.gpr_motor_started = False
+        self.paused = False
+        self.pause_pending_motor_restart = False
+        self._cancel_motor_start_timer()
         
         # Send zero velocity command
-        msg = ControlMessage()
-        msg.control_mode = 2  # VELOCITY_CONTROL
-        msg.input_mode = 1    # PASSTHROUGH
-        msg.input_vel = 0.0
-        msg.input_torque = 0.0
-        msg.input_pos = 0.0
-        
-        self.gpr_motor_pub.publish(msg)
+        self._publish_zero_velocity()
         self.get_logger().info('✓ GPR motor velocity set to ZERO')
         self.get_logger().info(f'⏳ Continuing 50Hz logging for {self.post_stop_duration}s...')
         
@@ -1000,6 +1062,8 @@ class GPRScanController(Node):
         self.logging_active = False
         self.motor_enabled = False
         self.gpr_motor_started = False
+        self.paused = False
+        self.pause_pending_motor_restart = False
         
         if self.log_file_handle:
             try:
@@ -1027,6 +1091,7 @@ class GPRScanController(Node):
         """Send velocity command to GPR motor"""
         # Don't send velocity commands when paused
         if self.paused:
+            self._publish_zero_velocity()
             return
         
         if self.scanning and self.motor_enabled:

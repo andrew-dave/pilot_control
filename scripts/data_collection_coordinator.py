@@ -101,6 +101,7 @@ class DataCollectionCoordinator(Node):
         self.gnss_invalid = False
         self.gnss_invalid_reasons = []
         self.gnss_warning_reasons = []
+        self.reset_component_state()
         
         # ==================== Service Servers ====================
         self.start_srv = self.create_service(
@@ -242,6 +243,20 @@ class DataCollectionCoordinator(Node):
         except Exception as e:
             self.get_logger().error(f'Service {service_name} exception: {e}')
             return False, f'Service {service_name} exception: {e}'
+
+    def reset_component_state(self):
+        """Reset best-effort runtime state for coordinated collectors."""
+        self.video_recording_active = False
+        self.video_paused = False
+        self.gpr_scan_active = False
+        self.gpr_paused = False
+        self.rosbag_recording_active = False
+        self.rosbag_paused = False
+        self.gnss_logging_active = False
+
+    def _msg_contains(self, msg: str, *substrings: str) -> bool:
+        lower = (msg or '').lower()
+        return any(substr in lower for substr in substrings)
 
     def set_node_param(self, param_client, param_name, param_value, node_label):
         """Set a string parameter on a remote node. Returns (success, message)."""
@@ -469,6 +484,9 @@ class DataCollectionCoordinator(Node):
         self.gnss_data_folder = ''
         self.gnss_session_file = ''
         self.gnss_raw_file = ''
+        self.collection_started = False
+        self.is_paused = False
+        self.reset_component_state()
 
     def validate_gnss_session(self, health: dict):
         """Validate the GNSS session against the agreed PPK readiness rules."""
@@ -840,6 +858,7 @@ class DataCollectionCoordinator(Node):
             self.gnss_data_folder = ''
             self.gnss_session_file = ''
             self.gnss_raw_file = ''
+            self.reset_component_state()
             return False
 
     # ================================================================
@@ -907,6 +926,8 @@ class DataCollectionCoordinator(Node):
             response.message = 'Data collection already started — call /dc/end_and_save first'
             self.get_logger().warn('Data collection already started')
             return response
+
+        self.reset_component_state()
         
         # --- Step 0: fresh section folder ---
         self.get_logger().info('')
@@ -1006,6 +1027,7 @@ class DataCollectionCoordinator(Node):
             self.get_logger().info('Step 1/4: Indoor mode - GNSS disabled for this session')
             self.gnss_raw_file = ''
             self.reset_gnss_precapture_state()
+        self.gnss_logging_active = bool(self.gnss_raw_file)
 
         # --- Step 2: rosbag (B key) ---
         self.get_logger().info('')
@@ -1015,8 +1037,12 @@ class DataCollectionCoordinator(Node):
         if not success:
             errors.append(f'Rosbag start: {msg}')
             self.get_logger().error(f'  Rosbag start failed: {msg}')
+            self.rosbag_recording_active = False
+            self.rosbag_paused = False
         else:
             self.get_logger().info(f'  Rosbag recording started: {msg}')
+            self.rosbag_recording_active = True
+            self.rosbag_paused = False
 
         self.get_logger().info(f'  Waiting {delay}s before next step...')
         time.sleep(delay)
@@ -1029,8 +1055,12 @@ class DataCollectionCoordinator(Node):
         if not success:
             errors.append(f'GPR scan start: {msg}')
             self.get_logger().error(f'  GPR scan start failed: {msg}')
+            self.gpr_scan_active = False
+            self.gpr_paused = False
         else:
             self.get_logger().info(f'  GPR scan started: {msg}')
+            self.gpr_scan_active = True
+            self.gpr_paused = False
 
         self.get_logger().info(f'  Waiting {delay}s before next step...')
         time.sleep(delay)
@@ -1045,8 +1075,12 @@ class DataCollectionCoordinator(Node):
         if not success:
             errors.append(f'Video start: {msg}')
             self.get_logger().error(f'  Video recording start failed: {msg}')
+            self.video_recording_active = False
+            self.video_paused = False
         else:
             self.get_logger().info(f'  Video recording started: {msg}')
+            self.video_recording_active = True
+            self.video_paused = False
         
         self.collection_started = True
         self.collection_active = True
@@ -1054,8 +1088,8 @@ class DataCollectionCoordinator(Node):
         
         self.get_logger().info('')
         if errors:
-            response.success = False
-            response.message = f'Started with errors: {"; ".join(errors)}'
+            response.success = True
+            response.message = f'Started with warnings: {"; ".join(errors)}'
             self.get_logger().warn(response.message)
         else:
             response.success = True
@@ -1086,6 +1120,7 @@ class DataCollectionCoordinator(Node):
 
     def pause_callback(self, request, response):
         """Pause all data collection"""
+        del request
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('PAUSING DATA COLLECTION')
@@ -1097,32 +1132,58 @@ class DataCollectionCoordinator(Node):
             return response
         
         errors = []
-        
-        self.get_logger().info('Pausing unified_data_collector...')
-        success, msg = self.call_service_sync(
-            self.udc_pause_client, Trigger.Request(), '/udc/pause')
-        if not success:
-            errors.append(f'UDC pause: {msg}')
+        if self.video_recording_active or self.collection_started:
+            self.get_logger().info('Pausing unified_data_collector...')
+            success, msg = self.call_service_sync(
+                self.udc_pause_client, Trigger.Request(), '/udc/pause')
+            if success or self._msg_contains(msg, 'already paused'):
+                self.video_recording_active = True
+                self.video_paused = True
+                self.get_logger().info('  unified_data_collector paused')
+            elif self._msg_contains(msg, 'no active recording', 'already stopped'):
+                self.video_recording_active = False
+                self.video_paused = False
+                self.get_logger().warn('  unified_data_collector was not actively recording')
+            else:
+                errors.append(f'UDC pause: {msg}')
         else:
-            self.get_logger().info('  unified_data_collector paused')
-        
-        self.get_logger().info('Pausing gpr_scan_controller...')
-        success, msg = self.call_service_sync(
-            self.gpr_pause_client, Trigger.Request(), '/gpr_scan/pause')
-        if not success:
-            errors.append(f'GPR pause: {msg}')
+            self.get_logger().info('Skipping unified_data_collector pause (not recording)')
+
+        if self.gpr_scan_active or self.collection_started:
+            self.get_logger().info('Pausing gpr_scan_controller...')
+            success, msg = self.call_service_sync(
+                self.gpr_pause_client, Trigger.Request(), '/gpr_scan/pause')
+            if success or self._msg_contains(msg, 'already paused'):
+                self.gpr_scan_active = True
+                self.gpr_paused = True
+                self.get_logger().info('  gpr_scan_controller paused')
+            elif self._msg_contains(msg, 'gpr scan not active'):
+                self.gpr_scan_active = False
+                self.gpr_paused = False
+                self.get_logger().warn('  gpr_scan_controller was not actively scanning')
+            else:
+                errors.append(f'GPR pause: {msg}')
         else:
-            self.get_logger().info('  gpr_scan_controller paused')
-        
-        self.get_logger().info('Pausing rosbag recording...')
-        success, msg = self.call_service_sync(
-            self.rosbag_pause_client, Trigger.Request(), '/rosbag/pause')
-        if not success:
-            errors.append(f'Rosbag pause: {msg}')
+            self.get_logger().info('Skipping gpr_scan_controller pause (not scanning)')
+
+        if self.rosbag_recording_active or self.collection_started:
+            self.get_logger().info('Pausing rosbag recording...')
+            success, msg = self.call_service_sync(
+                self.rosbag_pause_client, Trigger.Request(), '/rosbag/pause')
+            if success or self._msg_contains(msg, 'already paused'):
+                self.rosbag_recording_active = True
+                self.rosbag_paused = True
+                self.get_logger().info('  rosbag recording paused')
+            elif self._msg_contains(msg, 'no rosbag recording active'):
+                self.rosbag_recording_active = False
+                self.rosbag_paused = False
+                self.get_logger().warn('  rosbag recording was not active')
+            else:
+                errors.append(f'Rosbag pause: {msg}')
         else:
-            self.get_logger().info('  rosbag recording paused')
-        
-        self.is_paused = True
+            self.get_logger().info('Skipping rosbag pause (not recording)')
+
+        self.is_paused = not errors
         
         if errors:
             response.success = False
@@ -1138,6 +1199,7 @@ class DataCollectionCoordinator(Node):
 
     def resume_callback(self, request, response):
         """Resume all data collection"""
+        del request
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('RESUMING DATA COLLECTION')
@@ -1149,32 +1211,55 @@ class DataCollectionCoordinator(Node):
             return response
         
         errors = []
-        
-        self.get_logger().info('Resuming unified_data_collector...')
-        success, msg = self.call_service_sync(
-            self.udc_resume_client, Trigger.Request(), '/udc/resume')
-        if not success:
-            errors.append(f'UDC resume: {msg}')
+        if self.video_recording_active and self.video_paused:
+            self.get_logger().info('Resuming unified_data_collector...')
+            success, msg = self.call_service_sync(
+                self.udc_resume_client, Trigger.Request(), '/udc/resume')
+            if success or self._msg_contains(msg, 'not paused'):
+                self.video_paused = False
+                self.get_logger().info('  unified_data_collector resumed')
+            elif self._msg_contains(msg, 'no active recording', 'already stopped'):
+                self.video_recording_active = False
+                self.video_paused = False
+                self.get_logger().warn('  unified_data_collector was not actively recording')
+            else:
+                errors.append(f'UDC resume: {msg}')
         else:
-            self.get_logger().info('  unified_data_collector resumed')
-        
-        self.get_logger().info('Resuming gpr_scan_controller...')
-        success, msg = self.call_service_sync(
-            self.gpr_resume_client, Trigger.Request(), '/gpr_scan/resume')
-        if not success:
-            errors.append(f'GPR resume: {msg}')
+            self.get_logger().info('Skipping unified_data_collector resume (not paused)')
+
+        if self.gpr_scan_active and self.gpr_paused:
+            self.get_logger().info('Resuming gpr_scan_controller...')
+            success, msg = self.call_service_sync(
+                self.gpr_resume_client, Trigger.Request(), '/gpr_scan/resume')
+            if success or self._msg_contains(msg, 'not paused'):
+                self.gpr_paused = False
+                self.get_logger().info('  gpr_scan_controller resumed')
+            elif self._msg_contains(msg, 'gpr scan not active'):
+                self.gpr_scan_active = False
+                self.gpr_paused = False
+                self.get_logger().warn('  gpr_scan_controller was not actively scanning')
+            else:
+                errors.append(f'GPR resume: {msg}')
         else:
-            self.get_logger().info('  gpr_scan_controller resumed')
-        
-        self.get_logger().info('Resuming rosbag recording...')
-        success, msg = self.call_service_sync(
-            self.rosbag_resume_client, Trigger.Request(), '/rosbag/resume')
-        if not success:
-            errors.append(f'Rosbag resume: {msg}')
+            self.get_logger().info('Skipping gpr_scan_controller resume (not paused)')
+
+        if self.rosbag_recording_active and self.rosbag_paused:
+            self.get_logger().info('Resuming rosbag recording...')
+            success, msg = self.call_service_sync(
+                self.rosbag_resume_client, Trigger.Request(), '/rosbag/resume')
+            if success or self._msg_contains(msg, 'not paused'):
+                self.rosbag_paused = False
+                self.get_logger().info('  rosbag recording resumed')
+            elif self._msg_contains(msg, 'no rosbag recording active'):
+                self.rosbag_recording_active = False
+                self.rosbag_paused = False
+                self.get_logger().warn('  rosbag recording was not active')
+            else:
+                errors.append(f'Rosbag resume: {msg}')
         else:
-            self.get_logger().info('  rosbag recording resumed')
-        
-        self.is_paused = False
+            self.get_logger().info('Skipping rosbag resume (not paused)')
+
+        self.is_paused = bool(errors)
         
         if errors:
             response.success = False
@@ -1212,42 +1297,57 @@ class DataCollectionCoordinator(Node):
         # Step 1: Stop video recording (T key equivalent)
         self.get_logger().info('')
         self.get_logger().info('Step 1/4: Stopping video recording + CSV logging...')
-        req = SetBool.Request()
-        req.data = False
-        success, msg = self.call_service_sync(
-            self.video_record_client, req, '/video_record_set')
-        if not success:
-            errors.append(f'Video stop: {msg}')
-            self.get_logger().error(f'  Video stop failed: {msg}')
+        if self.video_recording_active or self.collection_started:
+            req = SetBool.Request()
+            req.data = False
+            success, msg = self.call_service_sync(
+                self.video_record_client, req, '/video_record_set')
+            if success or self._msg_contains(msg, 'already stopped', 'no active recording'):
+                self.video_recording_active = False
+                self.video_paused = False
+                self.get_logger().info('  Video recording + CSV logging stopped')
+            else:
+                errors.append(f'Video stop: {msg}')
+                self.get_logger().error(f'  Video stop failed: {msg}')
         else:
-            self.get_logger().info('  Video recording + CSV logging stopped')
+            self.get_logger().info('  Video recording was already stopped')
         
         # Step 2: Stop GPR scan (G key toggle equivalent)
         self.get_logger().info('')
         self.get_logger().info('Step 2/4: Stopping GPR scan (motor + logging + actuator)...')
-        success, msg = self.call_service_sync(
-            self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
-        if not success:
-            errors.append(f'GPR stop: {msg}')
-            self.get_logger().error(f'  GPR stop failed: {msg}')
+        if self.gpr_scan_active or self.gpr_paused or self.collection_started:
+            success, msg = self.call_service_sync(
+                self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
+            if success or self._msg_contains(msg, 'gpr scan not active'):
+                self.gpr_scan_active = False
+                self.gpr_paused = False
+                self.get_logger().info('  GPR scan stopped (actuator lowered)')
+            else:
+                errors.append(f'GPR stop: {msg}')
+                self.get_logger().error(f'  GPR stop failed: {msg}')
         else:
-            self.get_logger().info('  GPR scan stopped (actuator lowered)')
+            self.get_logger().info('  GPR scan was already stopped')
         
         # Step 3: Stop rosbag recording (B key toggle equivalent)
         self.get_logger().info('')
         self.get_logger().info('Step 3/4: Stopping rosbag recording...')
-        success, msg = self.call_service_sync(
-            self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
-        if not success:
-            errors.append(f'Rosbag stop: {msg}')
-            self.get_logger().error(f'  Rosbag stop failed: {msg}')
+        if self.rosbag_recording_active or self.rosbag_paused or self.collection_started:
+            success, msg = self.call_service_sync(
+                self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
+            if success or self._msg_contains(msg, 'no rosbag recording active'):
+                self.rosbag_recording_active = False
+                self.rosbag_paused = False
+                self.get_logger().info('  Rosbag recording stopped')
+            else:
+                errors.append(f'Rosbag stop: {msg}')
+                self.get_logger().error(f'  Rosbag stop failed: {msg}')
         else:
-            self.get_logger().info('  Rosbag recording stopped')
+            self.get_logger().info('  Rosbag recording was already stopped')
         
         # Step 4: Stop GNSS raw logging after a short tail window
         self.get_logger().info('')
         if self.gnss_enabled:
-            if self.gnss_raw_file:
+            if self.gnss_logging_active and self.gnss_raw_file:
                 self.get_logger().info(
                     f'Step 4/5: Keeping GNSS raw logging active for {self.gnss_post_stop_delay_sec:.1f}s...')
                 time.sleep(self.gnss_post_stop_delay_sec)
@@ -1256,6 +1356,7 @@ class DataCollectionCoordinator(Node):
                     errors.append(f'GNSS stop: {msg}')
                     self.get_logger().error(f'  GNSS raw log stop failed: {msg}')
                 else:
+                    self.gnss_logging_active = False
                     self.get_logger().info(f'  GNSS raw logging stopped: {msg}')
             else:
                 self.get_logger().info('Step 4/5: GNSS raw logging was not active for this session')
@@ -1332,12 +1433,13 @@ class DataCollectionCoordinator(Node):
         # Reset state — ready for next /dc/start
         self.collection_started = False
         self.is_paused = False
+        self.reset_component_state()
         self.reset_gnss_session_state()
         
         self.get_logger().info('')
         if errors:
-            response.success = False
-            response.message = f'Ended with errors: {"; ".join(errors)}'
+            response.success = True
+            response.message = f'Ended with warnings: {"; ".join(errors)}'
             self.get_logger().warn(response.message)
         else:
             response.success = True
@@ -1369,6 +1471,7 @@ class DataCollectionCoordinator(Node):
         End data collection and delete all session data.
         Stops all processes and removes the entire Section folder.
         """
+        del request
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('ENDING DATA COLLECTION — DELETING ALL DATA')
@@ -1377,29 +1480,46 @@ class DataCollectionCoordinator(Node):
         # Step 1: Stop video recording + CSV logging
         self.get_logger().info('')
         self.get_logger().info('Step 1/5: Stopping video recording + CSV logging...')
-        req = SetBool.Request()
-        req.data = False
-        self.call_service_sync(self.video_record_client, req, '/video_record_set')
-        self.get_logger().info('  Video recording + CSV logging stopped')
+        if self.video_recording_active or self.collection_started:
+            req = SetBool.Request()
+            req.data = False
+            self.call_service_sync(self.video_record_client, req, '/video_record_set')
+            self.video_recording_active = False
+            self.video_paused = False
+            self.get_logger().info('  Video recording + CSV logging stopped')
+        else:
+            self.get_logger().info('  Video recording was already stopped')
         
         # Step 2: Stop GPR scan controller
         self.get_logger().info('')
         self.get_logger().info('Step 2/5: Stopping GPR scan (motor + logging + actuator)...')
-        self.call_service_sync(self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
-        self.get_logger().info('  gpr_scan_controller stopped (actuator lowered)')
+        if self.gpr_scan_active or self.gpr_paused or self.collection_started:
+            self.call_service_sync(self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
+            self.gpr_scan_active = False
+            self.gpr_paused = False
+            self.get_logger().info('  gpr_scan_controller stopped (actuator lowered)')
+        else:
+            self.get_logger().info('  gpr_scan_controller was already stopped')
         
         # Step 3: Stop rosbag recording
         self.get_logger().info('')
         self.get_logger().info('Step 3/5: Stopping rosbag recording...')
-        self.call_service_sync(self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
-        self.get_logger().info('  rosbag recording stopped')
+        if self.rosbag_recording_active or self.rosbag_paused or self.collection_started:
+            self.call_service_sync(self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
+            self.rosbag_recording_active = False
+            self.rosbag_paused = False
+            self.get_logger().info('  rosbag recording stopped')
+        else:
+            self.get_logger().info('  rosbag recording was already stopped')
         
         # Step 4: Stop GNSS raw logging and delete temporary capture, if any
         self.get_logger().info('')
         deleted_precapture_artifacts = False
         if self.gnss_enabled:
             self.get_logger().info('Step 4/5: Stopping GNSS raw logging...')
-            self.stop_gps_raw_log()
+            if self.gnss_logging_active:
+                self.stop_gps_raw_log()
+                self.gnss_logging_active = False
             if self.gnss_precapture_path:
                 self.delete_file_if_exists(self.gnss_precapture_path)
                 self.get_logger().info('  GNSS precapture temp file deleted')
@@ -1438,6 +1558,7 @@ class DataCollectionCoordinator(Node):
         self.collection_started = False
         self.is_paused = False
         self.section_folder = ''
+        self.reset_component_state()
         self.reset_gnss_session_state()
         
         self.get_logger().info('')

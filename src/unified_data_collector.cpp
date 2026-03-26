@@ -320,6 +320,10 @@ public:
   void start(){ running_=true; th_=std::thread([this]{ run(); }); }
   void stop(){ running_=false; cv_.notify_all(); if (th_.joinable()) th_.join(); }
   void enqueue(CsvJob&& j){ { std::lock_guard<std::mutex> lk(m_); q_.emplace_back(std::move(j)); } cv_.notify_one(); }
+  bool waitUntilIdle(std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lk(m_);
+    return idle_cv_.wait_for(lk, timeout, [&]{ return q_.empty() && !processing_; });
+  }
 
 private:
   static std::string save_float32_bin(const ThermFrame& f, const fs::path& dir, const std::string& stem) {
@@ -368,13 +372,14 @@ private:
 
   void run(){
     int rows_since_flush = 0;
-    while (running_) {
+    while (running_ || !q_.empty()) {
       CsvJob job;
       {
         std::unique_lock<std::mutex> lk(m_);
         cv_.wait(lk,[&]{ return !q_.empty() || !running_; });
         if (!running_ && q_.empty()) break;
         job = std::move(q_.front()); q_.pop_front();
+        processing_ = true;
       }
       
       std::ostringstream s; s << "odom" << job.odom_ns << "_thermal" << job.cam_ns 
@@ -410,12 +415,19 @@ private:
           << (job.camera_switching ? "1" : "0") << "," << job.streaming_camera << "\n";
 
       if (++rows_since_flush >= flush_every_rows_) { csv.flush(); rows_since_flush = 0; }
+      {
+        std::lock_guard<std::mutex> lk(m_);
+        processing_ = false;
+        if (q_.empty()) idle_cv_.notify_all();
+      }
     }
   }
 
   std::thread th_;
   std::mutex m_; std::condition_variable cv_; std::deque<CsvJob> q_;
+  std::condition_variable idle_cv_;
   std::atomic<bool> running_{false};
+  bool processing_{false};
   int flush_every_rows_;
 };
 
@@ -518,6 +530,14 @@ public:
   }
 
 private:
+  void waitForWriterDrain(const char* reason, std::chrono::milliseconds timeout = std::chrono::milliseconds(3000)) {
+    if (!writer_.waitUntilIdle(timeout)) {
+      RCLCPP_WARN(this->get_logger(),
+                  "Timed out waiting for queued frame writes during %s; closing files anyway",
+                  reason);
+    }
+  }
+
   void declare_parameters() {
     // Thermal/odometry params
     this->declare_parameter<std::string>("fastlio_odom_topic", cfg_.odom_topic);
@@ -614,12 +634,19 @@ private:
   // ---------- Pause/Resume/Stop handlers ----------
   void onPause(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
                std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    if (!recording_active_) {
+      paused_ = false;
+      resp->success = true;
+      resp->message = "No active recording";
+      return;
+    }
     if (paused_) {
       resp->success = true;
       resp->message = "Already paused";
       return;
     }
     paused_ = true;
+    waitForWriterDrain("pause");
     RCLCPP_INFO(this->get_logger(), "Data collection PAUSED - frames will not be saved");
     resp->success = true;
     resp->message = "Data collection paused";
@@ -627,6 +654,12 @@ private:
   
   void onResume(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*req*/,
                 std::shared_ptr<std_srvs::srv::Trigger::Response> resp) {
+    if (!recording_active_) {
+      paused_ = false;
+      resp->success = true;
+      resp->message = "No active recording";
+      return;
+    }
     if (!paused_) {
       resp->success = true;
       resp->message = "Not paused";
@@ -650,6 +683,7 @@ private:
     
     recording_active_ = false;
     paused_ = false;
+    waitForWriterDrain("stop");
     
     // Close CSV file
     if (csv_stream_ && csv_stream_->is_open()) {
@@ -966,6 +1000,7 @@ private:
                       "camera_switching,streaming_camera\n";
       csv_stream_->flush();
       
+      paused_ = false;
       recording_active_ = true;
       resp->success = true;
       resp->message = "Recording started to: " + session_dir_.string();
@@ -977,6 +1012,8 @@ private:
         return;
       }
       recording_active_ = false;
+      paused_ = false;
+      waitForWriterDrain("recording stop");
       
       // Close CSV file
       if (csv_stream_ && csv_stream_->is_open()) {
