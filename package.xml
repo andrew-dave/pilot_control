@@ -23,8 +23,9 @@
   <depend>eigen3_cmake_module</depend>
   <depend>eigen</depend>
   <depend>diagnostic_msgs</depend>
-  <build_depend>opencv4</build_depend>
-  <exec_depend>opencv4</exec_depend>
+  <build_depend>libopencv-dev</build_depend>
+  <exec_depend>libopencv-dev</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
 
   <!-- Optional: required only for LattePanda serial bridge -->
   <build_depend>python3-serial</build_depend>
