@@ -38,32 +38,69 @@ find_package(OpenCV QUIET COMPONENTS core imgproc videoio imgcodecs highgui)
 
 # ==================== JPEG XL Detection Function ====================
 function(setup_jpegxl TARGET_NAME)
-  # Try multiple possible locations for JPEG XL
-  set(JXL_POSSIBLE_PATHS 
-    "/home/${USER}/libjxl"
-    "/home/roofus/libjxl" 
-    "/home/avenblake/libjxl"
-    "/usr/local/libjxl"
-    "/opt/libjxl")
-  
-  set(JXL_ROOT_DIR "")
-  foreach(PATH ${JXL_POSSIBLE_PATHS})
-    if(EXISTS "${PATH}/build/lib/include/jxl/encode.h" AND EXISTS "${PATH}/build/lib/libjxl.so")
-      set(JXL_ROOT_DIR "${PATH}")
-      break()
-    endif()
-  endforeach()
-  
-  if(JXL_ROOT_DIR)
-    set(JXL_INCLUDE_DIR "${JXL_ROOT_DIR}/build/lib/include")
-    set(JXL_LIB_DIR "${JXL_ROOT_DIR}/build/lib")
-    message(STATUS "Found JPEG XL at: ${JXL_ROOT_DIR}")
-    
+  set(JXL_INCLUDE_DIR "")
+  set(JXL_LIBRARIES "")
+
+  # Prefer a standard system-wide install so both robots use the same layout.
+  find_path(JXL_SYSTEM_INCLUDE_DIR
+    NAMES jxl/encode.h
+    PATHS /usr/local/include /usr/include
+    NO_DEFAULT_PATH
+  )
+  find_library(JXL_SYSTEM_LIBRARY
+    NAMES jxl libjxl
+    PATHS /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu
+    NO_DEFAULT_PATH
+  )
+  find_library(JXL_SYSTEM_THREADS_LIBRARY
+    NAMES jxl_threads libjxl_threads
+    PATHS /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu
+    NO_DEFAULT_PATH
+  )
+  find_library(JXL_SYSTEM_CMS_LIBRARY
+    NAMES jxl_cms libjxl_cms
+    PATHS /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu
+    NO_DEFAULT_PATH
+  )
+
+  if(JXL_SYSTEM_INCLUDE_DIR AND JXL_SYSTEM_LIBRARY AND JXL_SYSTEM_THREADS_LIBRARY AND JXL_SYSTEM_CMS_LIBRARY)
+    set(JXL_INCLUDE_DIR "${JXL_SYSTEM_INCLUDE_DIR}")
+    set(JXL_LIBRARIES
+      "${JXL_SYSTEM_LIBRARY}"
+      "${JXL_SYSTEM_THREADS_LIBRARY}"
+      "${JXL_SYSTEM_CMS_LIBRARY}")
+    message(STATUS "Found JPEG XL via system install: ${JXL_SYSTEM_LIBRARY}")
+  else()
+    # Backward-compatible fallback for existing local source builds.
+    set(JXL_POSSIBLE_PATHS
+      "/home/${USER}/libjxl"
+      "/home/roofus/libjxl"
+      "/home/avenblake/libjxl"
+      "/usr/local/libjxl"
+      "/opt/libjxl")
+
+    foreach(PATH ${JXL_POSSIBLE_PATHS})
+      set(CANDIDATE_INCLUDE_DIR "${PATH}/build/lib/include")
+      set(CANDIDATE_LIB_DIR "${PATH}/build/lib")
+
+      if(EXISTS "${CANDIDATE_INCLUDE_DIR}/jxl/encode.h"
+        AND EXISTS "${CANDIDATE_LIB_DIR}/libjxl.so"
+        AND EXISTS "${CANDIDATE_LIB_DIR}/libjxl_threads.so"
+        AND EXISTS "${CANDIDATE_LIB_DIR}/libjxl_cms.so")
+        set(JXL_INCLUDE_DIR "${CANDIDATE_INCLUDE_DIR}")
+        set(JXL_LIBRARIES
+          "${CANDIDATE_LIB_DIR}/libjxl.so"
+          "${CANDIDATE_LIB_DIR}/libjxl_threads.so"
+          "${CANDIDATE_LIB_DIR}/libjxl_cms.so")
+        message(STATUS "Found JPEG XL via local source build: ${PATH}")
+        break()
+      endif()
+    endforeach()
+  endif()
+
+  if(JXL_INCLUDE_DIR AND JXL_LIBRARIES)
     target_include_directories(${TARGET_NAME} PUBLIC ${JXL_INCLUDE_DIR})
-    target_link_libraries(${TARGET_NAME} 
-      ${JXL_LIB_DIR}/libjxl.so
-      ${JXL_LIB_DIR}/libjxl_threads.so
-      ${JXL_LIB_DIR}/libjxl_cms.so)
+    target_link_libraries(${TARGET_NAME} ${JXL_LIBRARIES})
     target_compile_definitions(${TARGET_NAME} PRIVATE HAVE_JPEGXL=1)
     message(STATUS "JPEG XL support enabled for ${TARGET_NAME}")
   else()
@@ -182,9 +219,6 @@ endif()
 
 # === UNIFIED DATA COLLECTOR (Thermal + Dual Cameras + Odometry) ===
 if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
-  # Find JPEG XL library
-  pkg_check_modules(LIBJXL QUIET libjxl)
-  
   add_executable(unified_data_collector src/unified_data_collector.cpp)
   target_compile_features(unified_data_collector PUBLIC cxx_std_17)
   ament_target_dependencies(unified_data_collector rclcpp nav_msgs std_srvs sensor_msgs std_msgs)
@@ -194,7 +228,7 @@ if(PkgConfig_FOUND AND GSTREAMER_FOUND AND GLIB2_FOUND AND OpenCV_FOUND)
     ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES} ${GLIB2_LIBRARIES} ${OpenCV_LIBS}
     seekcamera)
   
-  # Add JPEG XL support using custom-built library
+  # Add JPEG XL support when available.
   setup_jpegxl(unified_data_collector)
   
   install(TARGETS unified_data_collector DESTINATION lib/${PROJECT_NAME})
@@ -209,7 +243,7 @@ if(OpenCV_FOUND)
   target_include_directories(simple_camera_capture PUBLIC ${OpenCV_INCLUDE_DIRS})
   target_link_libraries(simple_camera_capture ${OpenCV_LIBS})
   
-  # Add JPEG XL support using custom-built library
+  # Add JPEG XL support when available.
   setup_jpegxl(simple_camera_capture)
   
   install(TARGETS simple_camera_capture DESTINATION lib/${PROJECT_NAME})
@@ -224,7 +258,7 @@ if(OpenCV_FOUND)
   target_include_directories(jpegxl_test_simple PUBLIC ${OpenCV_INCLUDE_DIRS})
   target_link_libraries(jpegxl_test_simple ${OpenCV_LIBS})
   
-  # Add JPEG XL support using custom-built library
+  # Add JPEG XL support when available.
   setup_jpegxl(jpegxl_test_simple)
   
   install(TARGETS jpegxl_test_simple DESTINATION lib/${PROJECT_NAME})
