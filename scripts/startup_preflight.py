@@ -55,9 +55,44 @@ import struct
 import signal
 import subprocess
 import serial
+import yaml
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
 from typing import Optional, List, Dict, Any
+
+DEFAULT_ROBOT_CONFIG_FILE = os.environ.get(
+    'PILOT_ROBOT_CONFIG',
+    os.path.expanduser('~/pilot_config/robot.yaml')
+)
+DEFAULT_LEFT_CAMERA_DEVICE = '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0'
+DEFAULT_RIGHT_CAMERA_DEVICE = '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0'
+
+
+def load_robot_config(config_path: str, logger) -> Dict[str, Any]:
+    """Load machine-local robot config from outside the git repo."""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+        if not isinstance(config, dict):
+            logger.warn(
+                f'Robot config {config_path} ignored: top-level YAML must be a mapping')
+            return {}
+        logger.info(f'Robot config loaded from {config_path}')
+        return config
+    except FileNotFoundError:
+        logger.info(f'Robot config not found at {config_path}; using built-in defaults')
+    except Exception as exc:
+        logger.warn(f'Failed to load robot config {config_path}: {exc}')
+    return {}
+
+
+def config_value(config: Dict[str, Any], dotted_key: str, default):
+    current = config
+    for part in dotted_key.split('.'):
+        if not isinstance(current, dict) or part not in current:
+            return default
+        current = current[part]
+    return current
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -227,14 +262,18 @@ class StartupPreflight(Node):
     def __init__(self):
         super().__init__('startup_preflight')
 
+        self.declare_parameter('robot_config_file', DEFAULT_ROBOT_CONFIG_FILE)
+        self.robot_config_file = str(self.get_parameter('robot_config_file').value)
+        self.robot_config = load_robot_config(self.robot_config_file, self.get_logger())
+
         # ── Parameters ──
         # Camera
         # Camera serial-based paths (from /dev/v4l/by-id/ on the robot)
         # 3728... = Left camera, 0F12... = Right camera
         self.declare_parameter('left_device',
-            '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0')
+            config_value(self.robot_config, 'cameras.left_device', DEFAULT_LEFT_CAMERA_DEVICE))
         self.declare_parameter('right_device',
-            '/dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0')
+            config_value(self.robot_config, 'cameras.right_device', DEFAULT_RIGHT_CAMERA_DEVICE))
         self.declare_parameter('brightness_min', 15.0)
         self.declare_parameter('variance_min', 50.0)
         self.declare_parameter('sharpness_min', 50.0)      # Laplacian variance
@@ -251,13 +290,17 @@ class StartupPreflight(Node):
         self.declare_parameter('lidar_check_duration', 5.0)
 
         # RF
-        self.declare_parameter('rf_target_ip', '192.168.168.100')
+        self.declare_parameter(
+            'rf_target_ip',
+            config_value(self.robot_config, 'preflight.rf_target_ip', '192.168.168.100'))
         self.declare_parameter('rf_ping_count', 5)
         self.declare_parameter('rf_max_loss_pct', 20.0)
         self.declare_parameter('rf_max_rtt_ms', 200.0)
 
         # GPS
-        self.declare_parameter('gps_device', '/dev/gps')
+        self.declare_parameter(
+            'gps_device',
+            config_value(self.robot_config, 'gps.device', '/dev/gps'))
         self.declare_parameter('gps_baud', 38400)
         self.declare_parameter('gps_min_sats', 8)
         self.declare_parameter('gps_max_hacc_m', 5.0)
@@ -266,10 +309,18 @@ class StartupPreflight(Node):
         self.declare_parameter('skip_gps_check', False)
 
         # Motors
-        self.declare_parameter('can_interface', 'can0')
-        self.declare_parameter('can_bitrate', 250000)
-        self.declare_parameter('left_node_id', 0)
-        self.declare_parameter('right_node_id', 1)
+        self.declare_parameter(
+            'can_interface',
+            config_value(self.robot_config, 'can.interface', 'can0'))
+        self.declare_parameter(
+            'can_bitrate',
+            int(config_value(self.robot_config, 'can.bitrate', 250000)))
+        self.declare_parameter(
+            'left_node_id',
+            int(config_value(self.robot_config, 'can.left_node_id', 0)))
+        self.declare_parameter(
+            'right_node_id',
+            int(config_value(self.robot_config, 'can.right_node_id', 1)))
         self.declare_parameter('motor_test_vel', 0.3)
         self.declare_parameter('motor_test_duration', 1.5)
         self.declare_parameter('motor_stop_duration', 1.0)

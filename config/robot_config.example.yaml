@@ -1,0 +1,31 @@
+# Copy this file outside the git repo, e.g. to ~/pilot_config/robot.yaml
+# The launch and startup_preflight scripts will use ~/pilot_config/robot.yaml by
+# default, or the path in the PILOT_ROBOT_CONFIG environment variable.
+
+robot:
+  wheel_radius: 0.096
+  wheel_base: 0.42
+
+can:
+  interface: can0
+  bitrate: 250000
+  left_node_id: 0
+  right_node_id: 1
+  gpr_node_id: 2
+
+cameras:
+  left_device: /dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_3728140416020900-video-index0
+  right_device: /dev/v4l/by-id/usb-e-con_systems_See3CAM_24CUG_0F12140416020900-video-index0
+
+stream:
+  host: 192.168.168.100
+  port: 5600
+
+gps:
+  device: /dev/gps
+
+arduino:
+  serial_port: /dev/arduino
+
+preflight:
+  rf_target_ip: 192.168.168.100
