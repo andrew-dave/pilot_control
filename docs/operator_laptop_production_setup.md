@@ -51,7 +51,7 @@ sudo timedatectl set-timezone <Region/City>
 sudo timedatectl set-ntp true
 ```
 
-## 2. Git And Workspace Layout
+## 2. Git, SSH, And Workspace Layout
 
 Install git tooling:
 
@@ -59,6 +59,58 @@ Install git tooling:
 sudo apt install -y git git-lfs
 git lfs install
 ```
+
+### 2.1 Configure Git Identity
+
+Set the operator identity that will be used for local commits and tags:
+
+```bash
+git config --global user.name "<Your Name>"
+git config --global user.email "<your-email@example.com>"
+```
+
+Verify:
+
+```bash
+git config --global --get user.name
+git config --global --get user.email
+```
+
+### 2.2 Configure SSH Repo Access
+
+Most production laptops should use SSH clone URLs rather than HTTPS.
+
+Create a key if needed:
+
+```bash
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+test -f ~/.ssh/id_ed25519 || ssh-keygen -t ed25519 -C "<your-email@example.com>"
+chmod 600 ~/.ssh/id_ed25519
+chmod 644 ~/.ssh/id_ed25519.pub
+cat ~/.ssh/id_ed25519.pub
+```
+
+Add the printed public key to the git host account used for this workspace
+before cloning.
+
+Trust and test the git host:
+
+```bash
+touch ~/.ssh/known_hosts
+chmod 644 ~/.ssh/known_hosts
+ssh-keyscan -H <git-host> >> ~/.ssh/known_hosts
+ssh -T git@<git-host>
+```
+
+Notes:
+
+- replace `<git-host>` with your real git SSH host such as `github.com`,
+  `gitlab.com`, or your team's internal forge
+- if your forge uses a username other than `git`, use that username in the SSH
+  test command
+- some git hosts print a success message but still exit non-zero for `ssh -T`;
+  that is acceptable if the message confirms authentication worked
 
 Create the workspace:
 
@@ -75,7 +127,7 @@ The minimum source tree this laptop guide assumes is:
 ### Option A: Monorepo
 
 ```bash
-git clone --recurse-submodules <workspace-repo-url> ~/pilot_ws
+git clone --recurse-submodules <workspace-repo-ssh-url> ~/pilot_ws
 cd ~/pilot_ws
 git checkout <approved-tag-or-commit>
 git submodule update --init --recursive
@@ -86,8 +138,8 @@ git submodule update --init --recursive
 ```bash
 cd ~/pilot_ws/src
 
-git clone <pilot_control-repo-url> pilot_control
-git clone <ros_odrive-repo-url> ros_odrive
+git clone <pilot_control-repo-ssh-url> pilot_control
+git clone <ros_odrive-repo-ssh-url> ros_odrive
 ```
 
 Pin both repos to the approved release commit or tag used by your team.
@@ -472,6 +524,8 @@ aws sts get-caller-identity
 The laptop is ready only when all items below are true:
 
 - Ubuntu 22.04 is fully updated
+- git `user.name` and `user.email` are configured
+- SSH key-based access to the workspace git host works
 - the workspace contains `pilot_control` and `odrive_can`
 - `odrive_can` and `pilot_control` build successfully
 - Fields2Cover is installed system-wide under `/usr/local`
