@@ -273,6 +273,23 @@ constexpr double kWaypointDuplicateEpsilon = 1e-6;
 constexpr double kConnectorObstacleClearanceM = 0.3;
 constexpr const char* kOperationCancelledMessage = "Operation cancelled";
 
+QString obstacleDetectorModeKey(GroundModelMode mode) {
+    switch (mode) {
+        case GroundModelMode::LocalHeightField:
+            return "local_height_field";
+        case GroundModelMode::SinglePlane:
+        default:
+            return "single_plane";
+    }
+}
+
+GroundModelMode obstacleDetectorModeFromKey(const QString& key) {
+    if (key == "local_height_field") {
+        return GroundModelMode::LocalHeightField;
+    }
+    return GroundModelMode::SinglePlane;
+}
+
 PathStateList dedupePathStates(const PathStateList& path) {
     PathStateList filtered;
     filtered.reserve(path.size());
@@ -3281,6 +3298,40 @@ QWidget* CoverageGUI::buildF2CControls() {
     connect(btn_delete_selected_obstacle_, &QPushButton::clicked, this, &CoverageGUI::deleteSelectedObstacle);
     v->addWidget(btn_delete_selected_obstacle_);
 
+    QHBoxLayout* obstacle_mode_layout = new QHBoxLayout();
+    obstacle_mode_layout->addWidget(new QLabel("Ground model"));
+    combo_obstacle_detector_mode_ = new QComboBox();
+    combo_obstacle_detector_mode_->addItem(
+        "Single plane", obstacleDetectorModeKey(GroundModelMode::SinglePlane));
+    combo_obstacle_detector_mode_->addItem(
+        "Local height field", obstacleDetectorModeKey(GroundModelMode::LocalHeightField));
+    combo_obstacle_detector_mode_->setToolTip(
+        "Ground model used by auto obstacle detection.\n"
+        "Single plane: best for flat or gently tilted terrain.\n"
+        "Local height field: smooth local terrain estimate from driven footprint samples.");
+    {
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
+        const QString saved_mode = settings.value(
+            "obstacle_detector_mode",
+            obstacleDetectorModeKey(GroundModelMode::SinglePlane)).toString();
+        const int idx = combo_obstacle_detector_mode_->findData(saved_mode);
+        if (idx >= 0) {
+            combo_obstacle_detector_mode_->setCurrentIndex(idx);
+        }
+    }
+    connect(combo_obstacle_detector_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+                if (!combo_obstacle_detector_mode_) {
+                    return;
+                }
+                QSettings settings("PilotControl", "BDRCoveragePlanner");
+                settings.setValue(
+                    "obstacle_detector_mode",
+                    combo_obstacle_detector_mode_->currentData().toString());
+            });
+    obstacle_mode_layout->addWidget(combo_obstacle_detector_mode_, 1);
+    v->addLayout(obstacle_mode_layout);
+
     btn_auto_detect_obstacles_ = new QPushButton("Auto-detect Obstacles");
     btn_auto_detect_obstacles_->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
     btn_auto_detect_obstacles_->setToolTip(
@@ -5826,16 +5877,29 @@ void CoverageGUI::autoDetectObstacles() {
         path_snapshot = !driven_path_snapshot_.empty() ? driven_path_snapshot_ : robot_trail_states_;
     }
 
+    const QString detector_mode_key = combo_obstacle_detector_mode_
+        ? combo_obstacle_detector_mode_->currentData().toString()
+        : obstacleDetectorModeKey(GroundModelMode::SinglePlane);
+    const GroundModelMode detector_mode = obstacleDetectorModeFromKey(detector_mode_key);
+    const QString detector_mode_label = combo_obstacle_detector_mode_
+        ? combo_obstacle_detector_mode_->currentText()
+        : QStringLiteral("Single plane");
+
     auto_detect_obstacles_running_ = true;
     if (btn_auto_detect_obstacles_) {
         btn_auto_detect_obstacles_->setEnabled(false);
     }
+    if (combo_obstacle_detector_mode_) {
+        combo_obstacle_detector_mode_->setEnabled(false);
+    }
 
-    beginProgressOperation("Auto-detecting obstacles...", true, true);
-    setStatus("Auto-detecting obstacles (AUTO mode)...");
+    beginProgressOperation(
+        QString("Auto-detecting obstacles (%1)...").arg(detector_mode_label), true, true);
+    setStatus(QString("Auto-detecting obstacles (%1)...").arg(detector_mode_label));
 
     PointCloudPtr cloud = pcd_points_;
     ObstacleDetectionParams params;  // defaults mirror the Python script
+    params.ground_model_mode = detector_mode;
 
     auto future = QtConcurrent::run([cloud, path_snapshot, display_roi, params]() mutable {
         ObstacleDetectionResult result = detectObstaclesAuto(cloud, path_snapshot, nullptr, params);
@@ -5931,6 +5995,9 @@ void CoverageGUI::onAutoDetectObstaclesFinished() {
     if (btn_auto_detect_obstacles_) {
         btn_auto_detect_obstacles_->setEnabled(true);
     }
+    if (combo_obstacle_detector_mode_) {
+        combo_obstacle_detector_mode_->setEnabled(true);
+    }
 
     const bool cancelled = progress_cancel_requested_.load();
     endProgressOperation();
@@ -5957,9 +6024,13 @@ void CoverageGUI::onAutoDetectObstaclesFinished() {
     clearCoverage();
     refreshPlot();
 
-    setStatus(QString("Auto-detected %1 obstacle(s) (%2 hole(s))")
+    const QString detector_mode_label = combo_obstacle_detector_mode_
+        ? combo_obstacle_detector_mode_->currentText()
+        : QStringLiteral("Single plane");
+    setStatus(QString("Auto-detected %1 obstacle(s) (%2 hole(s)) using %3")
                   .arg(obstacles_.size())
-                  .arg(result.stats.total_holes),
+                  .arg(result.stats.total_holes)
+                  .arg(detector_mode_label),
               6000);
 }
 
@@ -8426,6 +8497,9 @@ PlanningPreset CoverageGUI::gatherCurrentSettings() const {
     if (combo_decomp_type_) preset.decomp_type = combo_decomp_type_->currentData().toString();
     if (chk_axial_turns_) preset.axial_turns = chk_axial_turns_->isChecked();
     if (spin_waypoint_spacing_) preset.waypoint_spacing = spin_waypoint_spacing_->value();
+    if (combo_obstacle_detector_mode_) {
+        preset.obstacle_detector_mode = combo_obstacle_detector_mode_->currentData().toString();
+    }
     
     // Execution
     if (spin_robot_speed_) preset.robot_speed = spin_robot_speed_->value();
@@ -8525,6 +8599,7 @@ void CoverageGUI::applyPreset(const PlanningPreset& preset) {
         spin_turn_, chk_auto_align_, radio_long_, radio_perp_,
         combo_route_pattern_, combo_path_planner_, chk_decomposition_,
         combo_decomp_type_, chk_axial_turns_, spin_waypoint_spacing_,
+        combo_obstacle_detector_mode_,
         spin_robot_speed_
     };
     
@@ -8579,6 +8654,10 @@ void CoverageGUI::applyPreset(const PlanningPreset& preset) {
     }
     if (chk_axial_turns_) chk_axial_turns_->setChecked(preset.axial_turns);
     if (spin_waypoint_spacing_) spin_waypoint_spacing_->setValue(preset.waypoint_spacing);
+    if (combo_obstacle_detector_mode_) {
+        int idx = combo_obstacle_detector_mode_->findData(preset.obstacle_detector_mode);
+        if (idx >= 0) combo_obstacle_detector_mode_->setCurrentIndex(idx);
+    }
     
     // Execution
     if (spin_robot_speed_) spin_robot_speed_->setValue(preset.robot_speed);
@@ -8591,6 +8670,12 @@ void CoverageGUI::applyPreset(const PlanningPreset& preset) {
     // Update UI that depends on these values
     if (combo_downsample_) {
         updateDownsampleUI(combo_downsample_->currentText());
+    }
+    if (combo_obstacle_detector_mode_) {
+        QSettings settings("PilotControl", "BDRCoveragePlanner");
+        settings.setValue(
+            "obstacle_detector_mode",
+            combo_obstacle_detector_mode_->currentData().toString());
     }
 }
 

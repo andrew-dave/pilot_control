@@ -51,6 +51,7 @@ QJsonObject PlanningPreset::toJson() const {
     coverage["decomp_type"] = decomp_type;
     coverage["axial_turns"] = axial_turns;
     coverage["waypoint_spacing"] = waypoint_spacing;
+    coverage["obstacle_detector_mode"] = obstacle_detector_mode;
     json["coverage"] = coverage;
     
     // Execution
@@ -98,6 +99,7 @@ PlanningPreset PlanningPreset::fromJson(const QJsonObject& json) {
     preset.decomp_type = coverage["decomp_type"].toString("trapezoidal");
     preset.axial_turns = coverage["axial_turns"].toBool(false);
     preset.waypoint_spacing = coverage["waypoint_spacing"].toDouble(0.5);
+    preset.obstacle_detector_mode = coverage["obstacle_detector_mode"].toString("single_plane");
     
     // Execution
     QJsonObject execution = json["execution"].toObject();

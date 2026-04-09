@@ -722,6 +722,7 @@ private:
     
     // Obstacle controls
     QPushButton* btn_obstacle_;
+    QComboBox* combo_obstacle_detector_mode_ = nullptr;
     QPushButton* btn_auto_detect_obstacles_ = nullptr;
     QPushButton* btn_delete_selected_obstacle_ = nullptr;
     QPushButton* btn_obstacle_clear_;

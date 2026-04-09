@@ -44,6 +44,7 @@ struct PlanningPreset {
     QString decomp_type = "trapezoidal";
     bool axial_turns = false;
     double waypoint_spacing = 0.5;
+    QString obstacle_detector_mode = "single_plane";
     
     // Execution parameters
     double robot_speed = 0.3;

@@ -3,10 +3,13 @@
  * @brief Automatic obstacle detection from a 3D point cloud + driven path.
  *
  * This is a C++ port of `scripts/test_scripts/test_obstacle_detection.py`.
- * It uses the driven path to sample "footprint ground" points, fits a plane
- * with RANSAC, extracts obstacle candidates above/below the ground band,
- * removes outliers, clusters with DBSCAN, merges nearby clusters, and then
- * polygonizes each merged group.
+ * It uses the driven path to sample "footprint ground" points, then either:
+ * - fits a single plane with RANSAC, or
+ * - estimates a smooth local height field from nearby ground samples.
+ *
+ * It then extracts obstacle candidates above/below the ground band, removes
+ * outliers, clusters with DBSCAN, merges nearby clusters, and polygonizes each
+ * merged group.
  *
  * This port tracks the evolving Python reference implementation, including:
  * - grid-based polygonization with optional coarser contour extraction
@@ -29,6 +32,11 @@ enum class ObstaclePolygonMode {
     Grid,
 };
 
+enum class GroundModelMode {
+    SinglePlane,
+    LocalHeightField,
+};
+
 struct ObstacleDetectionParams {
     // Robot dimensions (metres) - defaults match the Python script.
     double robot_length_m = 0.31;
@@ -36,10 +44,16 @@ struct ObstacleDetectionParams {
     double footprint_margin_m = 0.10;
 
     // Ground detection
+    GroundModelMode ground_model_mode = GroundModelMode::SinglePlane;
     double ground_z_max = 0.0;
     int ransac_iters = 300;
     double ransac_thresh_m = 0.03;
     double ground_band_m = 0.05;
+    double local_ground_cell_m = 0.20;
+    double local_ground_radius_m = 1.00;
+    int local_ground_knn = 32;
+    int local_ground_min_pts = 8;
+    double local_ground_slope_reg = 0.05;
 
     // Obstacle extraction
     double obstacle_z_max = 0.30;

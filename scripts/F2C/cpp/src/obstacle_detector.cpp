@@ -31,6 +31,7 @@ void setObstacleCancelCallback(ObstacleCancelCallback callback) {
 namespace {
 
 static constexpr double kEps = 1e-12;
+static constexpr double kLocalGroundSeedQuantile = 0.20;
 
 static double signedArea2D(const Polygon2D& ring) {
     if (ring.size() < 3) return 0.0;
@@ -141,6 +142,16 @@ struct PlaneModel {
     double d = 0.0;  // n·p + d = 0
 };
 
+static const char* groundModelName(GroundModelMode mode) {
+    switch (mode) {
+        case GroundModelMode::LocalHeightField:
+            return "local_height_field";
+        case GroundModelMode::SinglePlane:
+        default:
+            return "single_plane";
+    }
+}
+
 static double signedDist(const PlaneModel& pl, const pcl::PointXYZ& p) {
     return pl.nx * p.x + pl.ny * p.y + pl.nz * p.z + pl.d;
 }
@@ -209,13 +220,290 @@ static double medianZ(const PointCloudPtr& cloud) {
     return static_cast<double>(z[mid]);
 }
 
+static PlaneModel flatPlaneAtZ(double z) {
+    PlaneModel plane;
+    plane.nx = 0.0;
+    plane.ny = 0.0;
+    plane.nz = 1.0;
+    plane.d = -z;
+    return plane;
+}
+
+static PlaneModel fallbackPlaneFromGround(
+    const PointCloudPtr& ground_cloud,
+    int ransac_iters,
+    double ransac_thresh_m) {
+    if (!ground_cloud || ground_cloud->empty()) {
+        return PlaneModel{};
+    }
+    if (ground_cloud->size() < 20) {
+        return flatPlaneAtZ(medianZ(ground_cloud));
+    }
+    return fitPlaneRansac(ground_cloud, ransac_iters, ransac_thresh_m);
+}
+
+struct GroundCellKey {
+    int ix = 0;
+    int iy = 0;
+
+    bool operator==(const GroundCellKey& other) const {
+        return ix == other.ix && iy == other.iy;
+    }
+};
+
+struct GroundCellKeyHash {
+    size_t operator()(const GroundCellKey& key) const {
+        const uint64_t x = static_cast<uint32_t>(key.ix);
+        const uint64_t y = static_cast<uint32_t>(key.iy);
+        return static_cast<size_t>((x << 32) ^ y);
+    }
+};
+
+struct GroundCellAccum {
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    size_t xy_count = 0;
+    std::vector<float> z_values;
+};
+
+static size_t quantileIndex(size_t n, double q) {
+    if (n == 0) {
+        return 0;
+    }
+    q = std::clamp(q, 0.0, 1.0);
+    return std::min(
+        n - 1,
+        static_cast<size_t>(std::floor(q * static_cast<double>(n - 1))));
+}
+
+static PointCloudPtr aggregateGroundSeedsQuantileXY(
+    const PointCloudPtr& cloud,
+    double cell_m,
+    double quantile) {
+    if (!cloud) return PointCloudPtr(new PointCloud);
+    if (cloud->empty()) return PointCloudPtr(new PointCloud);
+    if (cell_m <= kEps) {
+        return cloud;
+    }
+
+    std::unordered_map<GroundCellKey, GroundCellAccum, GroundCellKeyHash> cells;
+    cells.reserve(cloud->size());
+    for (const auto& pt : cloud->points) {
+        const int ix = static_cast<int>(std::floor(pt.x / cell_m));
+        const int iy = static_cast<int>(std::floor(pt.y / cell_m));
+        GroundCellAccum& cell = cells[GroundCellKey{ix, iy}];
+        cell.sum_x += pt.x;
+        cell.sum_y += pt.y;
+        cell.xy_count++;
+        cell.z_values.push_back(pt.z);
+    }
+
+    PointCloudPtr out(new PointCloud);
+    out->reserve(cells.size());
+    for (auto& kv : cells) {
+        GroundCellAccum& cell = kv.second;
+        if (cell.xy_count == 0 || cell.z_values.empty()) {
+            continue;
+        }
+        const size_t qidx = quantileIndex(cell.z_values.size(), quantile);
+        std::nth_element(cell.z_values.begin(), cell.z_values.begin() + qidx, cell.z_values.end());
+        const double x = cell.sum_x / static_cast<double>(cell.xy_count);
+        const double y = cell.sum_y / static_cast<double>(cell.xy_count);
+        const double z = static_cast<double>(cell.z_values[qidx]);
+        out->push_back(pcl::PointXYZ(static_cast<float>(x),
+                                     static_cast<float>(y),
+                                     static_cast<float>(z)));
+    }
+    return out;
+}
+
+struct LocalHeightFieldModel {
+    PointCloudPtr xy_support;
+    std::vector<double> z_support;
+    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
+    PlaneModel fallback_plane;
+    int knn = 32;
+    int min_pts = 8;
+    double radius_m = 1.0;
+    double slope_reg = 0.05;
+    bool prefer_global_plane = false;
+    bool valid = false;
+};
+
+static double percentileAbsPlaneResidual(
+    const PointCloudPtr& cloud,
+    const PlaneModel& plane,
+    double q) {
+    if (!cloud || cloud->empty()) {
+        return std::numeric_limits<double>::infinity();
+    }
+
+    q = std::clamp(q, 0.0, 1.0);
+    std::vector<double> residuals;
+    residuals.reserve(cloud->size());
+    for (const auto& pt : cloud->points) {
+        residuals.push_back(std::abs(signedDist(plane, pt)));
+    }
+    const size_t idx = std::min(
+        residuals.size() - 1,
+        static_cast<size_t>(std::floor(q * static_cast<double>(residuals.size() - 1))));
+    std::nth_element(residuals.begin(), residuals.begin() + static_cast<std::ptrdiff_t>(idx), residuals.end());
+    return residuals[idx];
+}
+
+static LocalHeightFieldModel buildLocalHeightFieldModel(
+    const PointCloudPtr& ground_cloud,
+    const ObstacleDetectionParams& params) {
+    LocalHeightFieldModel model;
+    model.knn = std::max(3, params.local_ground_knn);
+    model.min_pts = std::max(3, params.local_ground_min_pts);
+    model.radius_m = std::max(0.10, params.local_ground_radius_m);
+    model.slope_reg = std::max(0.0, params.local_ground_slope_reg);
+    PointCloudPtr seeds = aggregateGroundSeedsQuantileXY(
+        ground_cloud, params.local_ground_cell_m, kLocalGroundSeedQuantile);
+    const PointCloudPtr plane_support =
+        (seeds && seeds->size() >= static_cast<size_t>(model.min_pts)) ? seeds : ground_cloud;
+    model.fallback_plane = fallbackPlaneFromGround(
+        plane_support, params.ransac_iters, params.ransac_thresh_m);
+
+    const double planar_residual_gate_m = std::max(
+        0.015, std::min(0.5 * params.ground_band_m, 1.5 * params.ransac_thresh_m));
+    const double planar_p90_residual_m =
+        percentileAbsPlaneResidual(plane_support, model.fallback_plane, 0.90);
+    if (std::isfinite(planar_p90_residual_m) && planar_p90_residual_m <= planar_residual_gate_m) {
+        model.prefer_global_plane = true;
+        return model;
+    }
+
+    if (!seeds || seeds->size() < static_cast<size_t>(model.min_pts)) {
+        return model;
+    }
+
+    model.xy_support.reset(new PointCloud);
+    model.xy_support->reserve(seeds->size());
+    model.z_support.reserve(seeds->size());
+    for (const auto& pt : seeds->points) {
+        model.xy_support->push_back(
+            pcl::PointXYZ(pt.x, pt.y, 0.0f));
+        model.z_support.push_back(static_cast<double>(pt.z));
+    }
+
+    if (model.xy_support->size() < static_cast<size_t>(model.min_pts)) {
+        return model;
+    }
+
+    model.tree.setInputCloud(model.xy_support);
+    model.valid = true;
+    return model;
+}
+
+static bool estimateLocalGroundPlane(
+    const LocalHeightFieldModel& model,
+    double x,
+    double y,
+    PlaneModel* plane_out) {
+    if (!plane_out) {
+        return false;
+    }
+    if (model.prefer_global_plane) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+    if (!model.valid || !model.xy_support || model.xy_support->empty()) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    if (static_cast<int>(model.xy_support->size()) < model.min_pts) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    std::vector<int> nn_idx;
+    std::vector<float> nn_dist2;
+    nn_idx.reserve(static_cast<size_t>(model.knn));
+    nn_dist2.reserve(static_cast<size_t>(model.knn));
+    const pcl::PointXYZ query(static_cast<float>(x), static_cast<float>(y), 0.0f);
+    const int found = model.tree.radiusSearch(
+        query, static_cast<float>(model.radius_m), nn_idx, nn_dist2, model.knn);
+    if (found < model.min_pts) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    double support_scale = model.radius_m;
+    if (found > 0) {
+        support_scale = std::max(
+            support_scale,
+            std::sqrt(std::max(
+                0.0, static_cast<double>(nn_dist2[static_cast<size_t>(found - 1)]))));
+    }
+    support_scale = std::max(support_scale, 0.10);
+    const double sigma2 = std::max(support_scale * support_scale, 1e-6);
+
+    Eigen::Matrix3d lhs = Eigen::Matrix3d::Zero();
+    Eigen::Vector3d rhs = Eigen::Vector3d::Zero();
+    double sum_w = 0.0;
+    for (int i = 0; i < found; ++i) {
+        const int idx = nn_idx[static_cast<size_t>(i)];
+        const auto& seed = model.xy_support->points[static_cast<size_t>(idx)];
+        const double dx = static_cast<double>(seed.x) - x;
+        const double dy = static_cast<double>(seed.y) - y;
+        const double d2 = dx * dx + dy * dy;
+        double w = std::exp(-0.5 * d2 / sigma2);
+        w = std::max(w, 1e-3);
+
+        const Eigen::Vector3d phi(dx, dy, 1.0);
+        lhs += w * (phi * phi.transpose());
+        rhs += w * phi * model.z_support[static_cast<size_t>(idx)];
+        sum_w += w;
+    }
+
+    if (sum_w <= 1e-9) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    const double lambda = model.slope_reg * std::max(sum_w, 1.0);
+    lhs(0, 0) += lambda;
+    lhs(1, 1) += lambda;
+
+    Eigen::LDLT<Eigen::Matrix3d> solver(lhs);
+    if (solver.info() != Eigen::Success) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    const Eigen::Vector3d coeff = solver.solve(rhs);
+    if (solver.info() != Eigen::Success || !coeff.allFinite()) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    const double a = coeff.x();
+    const double b = coeff.y();
+    const double c = coeff.z();
+    const double norm = std::sqrt(1.0 + a * a + b * b);
+    if (!std::isfinite(norm) || norm <= 1e-9) {
+        *plane_out = model.fallback_plane;
+        return false;
+    }
+
+    plane_out->nx = -a / norm;
+    plane_out->ny = -b / norm;
+    plane_out->nz = 1.0 / norm;
+    plane_out->d = (a * x + b * y - c) / norm;
+    return true;
+}
+
 static PointCloudPtr extractFootprintGround(
     const PointCloudPtr& cloud,
     const std::vector<PathState>& path,
     double robot_length_m,
     double robot_width_m,
     double footprint_margin_m,
-    double z_max) {
+    double z_max,
+    bool enforce_z_max = true) {
     if (!cloud || cloud->empty()) return PointCloudPtr(new PointCloud);
     if (path.empty()) return PointCloudPtr(new PointCloud);
 
@@ -245,7 +533,7 @@ static PointCloudPtr extractFootprintGround(
     nn_dist2.resize(std::max(1, K));
 
     for (const auto& pt : cloud->points) {
-        if (pt.z > z_max) continue;
+        if (enforce_z_max && pt.z > z_max) continue;
 
         pcl::PointXYZ q(pt.x, pt.y, 0.0f);
         int found = path_tree.nearestKSearch(q, K, nn_idx, nn_dist2);
@@ -1713,10 +2001,41 @@ ObstacleDetectionResult detectObstaclesAuto(
     // ------------------------------------------------------------------
     PointCloudPtr fp_ground(new PointCloud);
     if (!path.empty()) {
-        fp_ground = extractFootprintGround(
-            scoped_cloud, path,
-            params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
-            params.ground_z_max);
+        if (params.ground_model_mode == GroundModelMode::LocalHeightField) {
+            PointCloudPtr fp_ground_strict = extractFootprintGround(
+                scoped_cloud, path,
+                params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
+                params.ground_z_max, true);
+            PointCloudPtr fp_ground_relaxed = extractFootprintGround(
+                scoped_cloud, path,
+                params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
+                params.ground_z_max, false);
+
+            PointCloudPtr strict_seed_preview = aggregateGroundSeedsQuantileXY(
+                fp_ground_strict, params.local_ground_cell_m, kLocalGroundSeedQuantile);
+            PointCloudPtr relaxed_seed_preview = aggregateGroundSeedsQuantileXY(
+                fp_ground_relaxed, params.local_ground_cell_m, kLocalGroundSeedQuantile);
+            const size_t strict_cells = strict_seed_preview ? strict_seed_preview->size() : 0;
+            const size_t relaxed_cells = relaxed_seed_preview ? relaxed_seed_preview->size() : 0;
+            const size_t min_seed_cells = static_cast<size_t>(std::max(3, params.local_ground_min_pts));
+            const bool use_strict_support =
+                strict_cells >= min_seed_cells &&
+                (relaxed_cells == 0 || (10 * strict_cells) >= (6 * relaxed_cells));
+            fp_ground = use_strict_support ? fp_ground_strict : fp_ground_relaxed;
+
+            std::cout << "[ObstacleDetect] Ground: using footprint path ("
+                      << (use_strict_support ? "z-capped" : "relaxed")
+                      << ", poses=" << path.size()
+                      << ", points=" << fp_ground->size()
+                      << ", support_cells="
+                      << (use_strict_support ? strict_cells : relaxed_cells)
+                      << ", z_max=" << params.ground_z_max << ")\n";
+        } else {
+            fp_ground = extractFootprintGround(
+                scoped_cloud, path,
+                params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
+                params.ground_z_max, true);
+        }
         if (fp_ground->size() < 10) {
             // Fallback: z-threshold
             std::cout << "[ObstacleDetect] Ground: footprint sample too small ("
@@ -1730,7 +2049,7 @@ ObstacleDetectionResult detectObstaclesAuto(
                 }
                 if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
             }
-        } else {
+        } else if (params.ground_model_mode != GroundModelMode::LocalHeightField) {
             std::cout << "[ObstacleDetect] Ground: using footprint path (poses="
                       << path.size() << ", points=" << fp_ground->size()
                       << ", z_max=" << params.ground_z_max << ")\n";
@@ -1752,13 +2071,23 @@ ObstacleDetectionResult detectObstaclesAuto(
     }
 
     PlaneModel plane;
-    if (fp_ground->size() < 20) {
+    LocalHeightFieldModel local_ground;
+    if (params.ground_model_mode == GroundModelMode::LocalHeightField) {
+        std::cout << "[ObstacleDetect] Ground: building local height field (n="
+                  << fp_ground->size() << ", cell=" << params.local_ground_cell_m
+                  << ", knn=" << params.local_ground_knn
+                  << ", radius=" << params.local_ground_radius_m << ")\n";
+        local_ground = buildLocalHeightFieldModel(fp_ground, params);
+        plane = local_ground.fallback_plane;
+        std::cout << "[ObstacleDetect] Ground: local height field "
+                  << (local_ground.valid ? "enabled" : "falling back to plane")
+                  << " (support="
+                  << (local_ground.xy_support ? local_ground.xy_support->size() : 0)
+                  << ", mode=" << groundModelName(params.ground_model_mode) << ")\n";
+    } else if (fp_ground->size() < 20) {
         std::cout << "[ObstacleDetect] Ground: using median-Z flat plane (n="
                   << fp_ground->size() << ")\n";
-        plane.nx = 0.0;
-        plane.ny = 0.0;
-        plane.nz = 1.0;
-        plane.d = -medianZ(fp_ground);
+        plane = flatPlaneAtZ(medianZ(fp_ground));
     } else {
         std::cout << "[ObstacleDetect] Ground: fitting RANSAC plane (n="
                   << fp_ground->size() << ", iters=" << params.ransac_iters
@@ -1781,13 +2110,26 @@ ObstacleDetectionResult detectObstaclesAuto(
         if ((candidate_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
             return res;
         }
-        double sd = signedDist(plane, pt);
+        PlaneModel active_plane = plane;
+        if (params.ground_model_mode == GroundModelMode::LocalHeightField) {
+            estimateLocalGroundPlane(
+                local_ground, static_cast<double>(pt.x), static_cast<double>(pt.y), &active_plane);
+        }
+        double sd = signedDist(active_plane, pt);
         bool is_ground = std::abs(sd) <= params.ground_band_m;
         if (is_ground) {
             ground_band_count++;
         }
-        bool positive = (sd > params.ground_band_m) && (pt.z <= params.obstacle_z_max);
-        bool trough = (sd < -(params.ground_band_m + params.trough_depth_m)) && (pt.z <= params.ground_z_max);
+        bool positive = false;
+        bool trough = false;
+        if (params.ground_model_mode == GroundModelMode::LocalHeightField) {
+            positive = (sd > params.ground_band_m) && (sd <= params.obstacle_z_max);
+            trough = (sd < -(params.ground_band_m + params.trough_depth_m));
+        } else {
+            positive = (sd > params.ground_band_m) && (pt.z <= params.obstacle_z_max);
+            trough = (sd < -(params.ground_band_m + params.trough_depth_m)) &&
+                     (pt.z <= params.ground_z_max);
+        }
         if (positive || trough) {
             obstacle_raw->push_back(pt);
         }
