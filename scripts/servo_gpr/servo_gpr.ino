@@ -19,56 +19,57 @@
 //  int pulse = 1500 + rpm * 8;   // 10 µs per RPM (500 µs / 50 RPM)
 //  driveServo.writeMicroseconds(pulse);
 //}
+int ft = 946,ss=214;
 
 void gprPower() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(190);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
   delay(3500);
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
 }
 
 void linestart() {
-  analogWrite(LIN_ACT_PWM, 250);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 250);
+  delay(ft);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(100);
-  analogWrite(LIN_ACT_PWM, 250);
+  delay(ss);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(100);
-  analogWrite(LIN_ACT_PWM, 250);
+  delay(ss);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
 }
 
 void linestop() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(600);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(ft);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(600);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
