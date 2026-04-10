@@ -448,11 +448,59 @@ df -h /R_DATA
 stat -c '%n %F %U:%G %a' /R_DATA
 ```
 
-If you are provisioning a new data disk, format and mount it as ext4, then add
-it to `/etc/fstab` with its UUID. Example mountpoint:
+If this robot was restored from a cloned image and drops into emergency mode on
+boot, the most common cause is a stale `/R_DATA` UUID from the source machine in
+`/etc/fstab`.
+
+In that case:
+
+1. log in through the emergency shell
+2. inspect `lsblk -f` and `cat /etc/fstab`
+3. temporarily comment out the stale `/R_DATA` line in `/etc/fstab`
+4. continue booting normally
+5. install and provision the new SSD, then replace the commented line with the
+   new UUID
+
+If you are provisioning a new data SSD or replacement partition, use a fresh
+filesystem and a fresh UUID instead of reusing the source robot's `fstab`
+entry.
+
+Identify the new disk first:
+
+```bash
+lsblk -o NAME,SIZE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL
+```
+
+If the target partition does not exist yet, create it:
+
+```bash
+sudo parted /dev/<new-disk> -- mklabel gpt
+sudo parted /dev/<new-disk> -- mkpart primary ext4 1MiB 100%
+```
+
+If the partition exists in `lsblk` but `blkid /dev/<new-disk-partition>`
+prints nothing, that usually means the partition exists but no filesystem has
+been created yet. Format it:
+
+```bash
+sudo mkfs.ext4 -L R_DATA /dev/<new-disk-partition>
+sudo blkid /dev/<new-disk-partition>
+```
+
+Add the new UUID to `/etc/fstab`. During clone bring-up, `nofail` is
+recommended so a missing or not-yet-installed data SSD does not force the robot
+back into emergency mode:
+
+```fstab
+UUID=<new-r-data-uuid> /R_DATA ext4 defaults,nofail 0 2
+```
+
+Create the mountpoint, test it, and set ownership:
 
 ```bash
 sudo mkdir -p /R_DATA
+sudo mount -a
+df -h /R_DATA
 sudo chown "$USER:$USER" /R_DATA
 ```
 

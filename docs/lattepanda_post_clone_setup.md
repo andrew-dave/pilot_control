@@ -199,6 +199,69 @@ df -h /R_DATA
 stat -c '%n %F %U:%G %a' /R_DATA
 ```
 
+If the cloned robot boots into emergency mode before the new SSD is installed,
+the most common cause is a stale `/R_DATA` UUID from the source machine in
+`/etc/fstab`.
+
+Recover like this:
+
+```bash
+journalctl -xb -p err..alert
+lsblk -f
+cat /etc/fstab
+```
+
+Then temporarily comment out the stale `/R_DATA` line in `/etc/fstab`, boot the
+robot normally, and finish the SSD setup below.
+
+If the new robot does not have a data SSD yet, or the source UUID is no longer
+valid, provision the new SSD with a fresh filesystem and a fresh UUID instead of
+reusing the old `fstab` entry.
+
+Identify the target disk first:
+
+```bash
+lsblk -o NAME,SIZE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL
+```
+
+If the target partition does not exist yet, create it:
+
+```bash
+sudo parted /dev/<new-disk> -- mklabel gpt
+sudo parted /dev/<new-disk> -- mkpart primary ext4 1MiB 100%
+```
+
+If the partition exists in `lsblk` but:
+
+- `sudo blkid /dev/<new-disk-partition>` prints nothing
+- `lsblk -f` shows a blank `FSTYPE`
+
+that usually means the partition exists but no filesystem has been created yet.
+Format it:
+
+```bash
+sudo mkfs.ext4 -L R_DATA /dev/<new-disk-partition>
+sudo blkid /dev/<new-disk-partition>
+```
+
+Add the new UUID to `/etc/fstab`. During clone bring-up, `nofail` is
+recommended so the robot still boots cleanly even if the SSD is temporarily not
+detected:
+
+```fstab
+UUID=<new-r-data-uuid> /R_DATA ext4 defaults,nofail 0 2
+```
+
+Test the mount before rebooting:
+
+```bash
+sudo mkdir -p /R_DATA
+sudo mount -a
+df -h /R_DATA
+stat -c '%n %F %U:%G %a' /R_DATA
+sudo chown "$USER:$USER" /R_DATA
+```
+
 Create the expected subdirectories if needed:
 
 ```bash
