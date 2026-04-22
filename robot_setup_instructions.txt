@@ -1,0 +1,96 @@
+Robot Setup Instructions (pilot_control auth)
+============================================
+
+This file describes the one-time setup required on each robot so the
+Coverage Planner GUI can log in using robot_id + PIN.
+
+Prerequisites
+-------------
+1) ROS2 Humble installed on the robot.
+2) Robot workspace contains the pilot_control package:
+   ~/pilot_ws/src/pilot_control
+
+
+Step 1: Build and install the package
+-------------------------------------
+source /opt/ros/humble/setup.bash
+cd ~/pilot_ws
+colcon build --packages-select pilot_control --symlink-install
+source ~/pilot_ws/install/setup.bash
+
+
+Step 2: Make pilot_control_auth available to non-interactive SSH
+----------------------------------------------------------------
+The GUI calls this over SSH. Non-interactive shells often do not source ROS.
+Create a global symlink so it is always on PATH:
+
+sudo ln -sf ~/pilot_ws/install/pilot_control/lib/pilot_control/pilot_control_auth /usr/local/bin/pilot_control_auth
+
+Verify:
+which pilot_control_auth
+
+Expected output:
+/usr/local/bin/pilot_control_auth
+
+
+Step 3: Provision auth files (one-time per robot)
+-------------------------------------------------
+Pick a robot ID and a 6-digit PIN.
+
+3.1) Robot ID (must match GUI input exactly)
+ROBOT_ID="Roofus#001"
+echo "$ROBOT_ID" | sudo tee /etc/pilot_robot_id >/dev/null
+
+3.2) Auth secret (HMAC key)
+sudo dd if=/dev/urandom of=/etc/pilot_auth_secret.key bs=32 count=1 status=none
+
+3.3) PIN hash (stores only a hash, not the PIN)
+python3 - <<'PY' | sudo tee /etc/pilot_access_pin.hash >/dev/null
+import getpass, os, base64, hashlib
+pin = getpass.getpass("PIN (6 digits): ")
+if len(pin) != 6 or not pin.isdigit():
+    raise SystemExit("PIN must be exactly 6 digits")
+iters = 200_000
+salt = os.urandom(16)
+dk = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, iters)
+def b64(x): return base64.urlsafe_b64encode(x).decode().rstrip("=")
+print(f"pbkdf2_sha256${iters}${b64(salt)}${b64(dk)}")
+PY
+
+
+Step 4: Permissions (required)
+------------------------------
+The auth CLI runs as the robot user (e.g., roofus). Ensure files are readable.
+
+sudo mkdir -p /var/lib/pilot_control
+sudo chown roofus:roofus /etc/pilot_robot_id /etc/pilot_access_pin.hash /etc/pilot_auth_secret.key /var/lib/pilot_control
+sudo chmod 600 /etc/pilot_robot_id /etc/pilot_access_pin.hash /etc/pilot_auth_secret.key
+
+Note: Replace "roofus" with your actual robot username if different.
+
+
+Step 5: Test locally on the robot
+---------------------------------
+pilot_control_auth login --robot-id "Roofus#001" --pin-stdin --json
+
+Enter the PIN when prompted. On success, JSON is returned with a token.
+
+
+Step 6: Test over SSH from the laptop
+-------------------------------------
+ssh roofus@<ROBOT_IP> pilot_control_auth --help
+
+If this fails with "command not found", check:
+  - The symlink in /usr/local/bin
+  - PATH for non-interactive shells
+  - That the package was built and installed
+r
+
+Step 7: Login from the Coverage Planner GUI
+--------------------------------------------
+Robot ID:  Roofus#001
+Access code: <the 6-digit PIN you set>
+
+If login fails, check the GUI error message and verify that
+/etc/pilot_robot_id, /etc/pilot_access_pin.hash, and /etc/pilot_auth_secret.key
+exist and are readable by the robot user.

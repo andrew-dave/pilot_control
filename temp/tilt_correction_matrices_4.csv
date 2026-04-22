@@ -1,0 +1,30 @@
+# Tilt Calibration Results
+# Generated: 2026-02-25 14:24:15
+# Samples collected: 100
+#
+# Pitch Angle: -165.304408 degrees (-2.885106 radians)
+#
+# Acceleration Body Frame (raw IMU average, normalized)
+accel_body_x,-0.253683
+accel_body_y,-0.001805
+accel_body_z,0.967286
+#
+# R_align (Tilt Alignment Matrix - pitch only)
+-0.96728727,0.00000000,-0.25368352
+0.00000000,1.00000000,0.00000000
+0.25368352,0.00000000,-0.96728727
+#
+# R_flip (Coordinate Flip Matrix)
+-1.00000000,0.00000000,0.00000000
+0.00000000,1.00000000,0.00000000
+0.00000000,0.00000000,-1.00000000
+#
+# R_map (Final Transformation: R_flip @ R_align)
+0.96728727,0.00000000,0.25368352
+0.00000000,1.00000000,0.00000000
+-0.25368352,0.00000000,0.96728727
+#
+# Gravity After Correction (should be [0, 0, -1])
+gravity_corrected_x,0.000000
+gravity_corrected_y,-0.001805
+gravity_corrected_z,0.999998

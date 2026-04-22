@@ -11,7 +11,7 @@ octomap_server:
     # Core map settings
     # -----------------------------------------------------------
     frame_id: foot_init            # OctoMap’s fixed reference frame
-    resolution: 0.10               # Voxel edge length [m] – start with 10 cm
+    resolution: 0.05               # Voxel edge length [m] – start with 10 cm
     compress_map: true             # lossless compression to shrink RAM/ROS msgs
     filter_speckles: true          # remove isolated single-voxel noise
 
@@ -26,7 +26,7 @@ octomap_server:
     # -----------------------------------------------------------
     sensor_model:
       max_range: 60.0             # [m] ignore returns beyond this range
-      prob_hit: 0.7               # P(occupied | hit)
+      prob_hit: 0.4               # P(occupied | hit)
       prob_miss: 0.4              # P(free | miss)
       thres_min: 0.12             # log-odds clamping (free)
       thres_max: 0.97             # log-odds clamping (occupied)
@@ -35,8 +35,8 @@ octomap_server:
     # 2-D projection (Nav2 / coverage planner)
     # -----------------------------------------------------------
     publish_2d_map: true
-    2d_min_z: -0.20               # keep voxels within this vertical band
-    2d_max_z:  0.50               #   (adjust to match roof height variation)
+    2d_min_z: -0.10               # keep voxels within this vertical band
+    2d_max_z:  0.30               #   (adjust to match roof height variation)
 
     # -----------------------------------------------------------
     # Misc

@@ -19,56 +19,57 @@
 //  int pulse = 1500 + rpm * 8;   // 10 µs per RPM (500 µs / 50 RPM)
 //  driveServo.writeMicroseconds(pulse);
 //}
+int ft = 946,ss=214;
 
 void gprPower() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(150);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
   delay(3500);
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
 }
 
 void linestart() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(ft);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(ss);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(ss);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
 }
 
 void linestop() {
-  analogWrite(LIN_ACT_PWM, 150);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, HIGH);
   digitalWrite(LIN_ACT_2, LOW);
-  delay(200);
-  analogWrite(LIN_ACT_PWM, 150);
+  delay(ft);
+  analogWrite(LIN_ACT_PWM, 255);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, HIGH);
-  delay(200);
+  delay(ft);
   analogWrite(LIN_ACT_PWM, 0);
   digitalWrite(LIN_ACT_1, LOW);
   digitalWrite(LIN_ACT_2, LOW);
@@ -85,12 +86,19 @@ void setup() {
 //  setServoRPM(0);   // ensure stopped
 
   // Power on the GPR at startup
-  gprPower();
+  // gprPower();
+  // linestart();
+  linestop();
 }
 
 void loop() {
   if (Serial.available() > 0) {
     char inputChar = Serial.read();
+    
+    if (inputChar == 'O') {
+      gprPower();
+      // power off gpr
+    }      
 
     if (inputChar == 'L') {
       linestart();

@@ -1,0 +1,318 @@
+[0.000000] (-) TimerEvent: {}
+[0.000280] (pilot_control) JobQueued: {'identifier': 'pilot_control', 'dependencies': OrderedDict()}
+[0.000329] (pilot_control) JobStarted: {'identifier': 'pilot_control'}
+[0.010800] (pilot_control) JobProgress: {'identifier': 'pilot_control', 'progress': 'cmake'}
+[0.011494] (pilot_control) Command: {'cmd': ['/usr/bin/cmake', '/home/avenblake/pilot_ws/src/pilot_control', '-DCMAKE_INSTALL_PREFIX=/home/avenblake/pilot_ws/src/pilot_control/install/pilot_control'], 'cwd': '/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'avenblake'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/avenblake/pilot_ws/install/odrive_ros2_control/lib:/home/avenblake/pilot_ws/install/odrive_can/lib:/home/avenblake/pilot_ws/install/fields2cover/lib:/home/avenblake/deepsandws/install/foxglove_bridge/lib:/opt/ros/humble/opt/zenoh_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/opt/ortools_vendor/lib:/opt/ros/humble/lib:/usr/local/lib:$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/lib'), ('HOME', '/home/avenblake'), ('CYCLONEDDS_URI', 'file:///home/avenblake/cyclone_loopback.xml'), ('OLDPWD', '/home/avenblake/pilot_ws/src/pilot_control/scripts'), ('DESKTOP_SESSION', 'ubuntu-xorg'), ('NVM_BIN', '/home/avenblake/.nvm/versions/node/v24.12.0/bin'), ('NVM_INC', '/home/avenblake/.nvm/versions/node/v24.12.0/include/node'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('MANAGERPID', '1830'), ('SYSTEMD_EXEC_PID', '2422'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator21a9d5db22c73a993ff0b42f64b396873'), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '3509'), ('NVM_DIR', '/home/avenblake/.nvm'), ('COLCON_PREFIX_PATH', '/home/avenblake/pilot_ws/install:/home/avenblake/deepsandws/install'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'avenblake'), ('JOURNAL_STREAM', '8:23560'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/home/avenblake/pilot_ws/install/fields2cover/lib/x86_64-linux-gnu/pkgconfig:/home/avenblake/pilot_ws/install/fields2cover/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'avenblake'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/avenblake/.nvm/versions/node/v24.12.0/bin:/opt/ros/humble/opt/ortools_vendor/bin:/opt/ros/humble/bin:/home/avenblake/.cargo/bin:/home/avenblake/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/andrew:@/tmp/.ICE-unix/2195,unix/andrew:/tmp/.ICE-unix/2195'), ('INVOCATION_ID', 'e072d8808edc4a7d8f986aa9584b77aa'), ('XDG_MENU_PREFIX', 'gnome-'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('RMW_IMPLEMENTATION', 'rmw_cyclonedds_cpp'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu-xorg'), ('XAUTHORITY', '/run/user/1000/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1000/keyring/ssh'), ('ROS_DOMAIN_ID', '0'), ('AMENT_PREFIX_PATH', '/home/avenblake/pilot_ws/install/pilot_control:/home/avenblake/pilot_ws/install/odrive_botwheel_explorer:/home/avenblake/pilot_ws/install/odrive_ros2_control:/home/avenblake/pilot_ws/install/odrive_can:/home/avenblake/deepsandws/install/foxglove_bridge:/home/avenblake/deepsandws/install/deploadblade:/home/avenblake/deepsandws/install/deepsand_mig:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('TERMINATOR_UUID', 'urn:uuid:dc901b2b-4ea1-44f0-a33d-388ea9e572da'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu-xorg'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('GPG_AGENT_INFO', '/run/user/1000/gnupg/S.gpg-agent:0:1'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu-xorg:/etc/xdg'), ('NVM_CD_FLAGS', ''), ('XDG_DATA_DIRS', '/usr/share/ubuntu-xorg:/usr/share/gnome:/home/avenblake/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/avenblake/pilot_ws/install/odrive_can/local/lib/python3.10/dist-packages:/home/avenblake/pilot_ws/install/fields2cover/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('CMAKE_PREFIX_PATH', '/home/avenblake/pilot_ws/install/pilot_control:/home/avenblake/pilot_ws/install/odrive_botwheel_explorer:/home/avenblake/pilot_ws/install/odrive_ros2_control:/home/avenblake/pilot_ws/install/odrive_can:/home/avenblake/pilot_ws/install/fields2cover:/home/avenblake/deepsandws/install/foxglove_bridge:/home/avenblake/deepsandws/install/deploadblade:/home/avenblake/deepsandws/install/deepsand_mig:/opt/ros/humble')]), 'shell': False}
+[0.099613] (-) TimerEvent: {}
+[0.180535] (pilot_control) StdoutLine: {'line': b'-- The C compiler identification is GNU 11.4.0\n'}
+[0.199803] (-) TimerEvent: {}
+[0.300559] (-) TimerEvent: {}
+[0.401177] (-) TimerEvent: {}
+[0.436185] (pilot_control) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 11.4.0\n'}
+[0.460005] (pilot_control) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.501321] (-) TimerEvent: {}
+[0.601905] (-) TimerEvent: {}
+[0.702667] (-) TimerEvent: {}
+[0.713764] (pilot_control) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.728685] (pilot_control) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[0.729459] (pilot_control) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.730712] (pilot_control) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.737363] (pilot_control) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.802821] (-) TimerEvent: {}
+[0.903257] (-) TimerEvent: {}
+[0.971156] (pilot_control) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[0.999934] (pilot_control) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[1.000689] (pilot_control) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[1.001997] (pilot_control) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[1.003324] (-) TimerEvent: {}
+[1.016135] (pilot_control) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[1.103444] (-) TimerEvent: {}
+[1.204142] (-) TimerEvent: {}
+[1.292158] (pilot_control) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter \n'}
+[1.304090] (-) TimerEvent: {}
+[1.404369] (-) TimerEvent: {}
+[1.464005] (pilot_control) StdoutLine: {'line': b'-- Found rclcpp: 16.0.18 (/opt/ros/humble/share/rclcpp/cmake)\n'}
+[1.504497] (-) TimerEvent: {}
+[1.534510] (pilot_control) StdoutLine: {'line': b'-- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)\n'}
+[1.544942] (pilot_control) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[1.559019] (pilot_control) StdoutLine: {'line': b'-- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)\n'}
+[1.584687] (pilot_control) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.604610] (-) TimerEvent: {}
+[1.609609] (pilot_control) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.678711] (pilot_control) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)\n'}
+[1.683534] (pilot_control) StdoutLine: {'line': b'-- Found rmw_cyclonedds_cpp: 1.3.4 (/opt/ros/humble/share/rmw_cyclonedds_cpp/cmake)\n'}
+[1.704721] (-) TimerEvent: {}
+[1.718353] (pilot_control) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_cyclonedds_cpp' as default\n"}
+[1.735896] (pilot_control) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[1.804840] (-) TimerEvent: {}
+[1.854236] (pilot_control) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[1.854625] (pilot_control) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[1.904960] (-) TimerEvent: {}
+[1.963549] (pilot_control) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success\n'}
+[1.964830] (pilot_control) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[2.005100] (-) TimerEvent: {}
+[2.072649] (pilot_control) StdoutLine: {'line': b'-- Found geometry_msgs: 4.9.1 (/opt/ros/humble/share/geometry_msgs/cmake)\n'}
+[2.105375] (-) TimerEvent: {}
+[2.110908] (pilot_control) StdoutLine: {'line': b'-- Found nav_msgs: 4.9.1 (/opt/ros/humble/share/nav_msgs/cmake)\n'}
+[2.157973] (pilot_control) StdoutLine: {'line': b'-- Found tf2_ros: 0.25.19 (/opt/ros/humble/share/tf2_ros/cmake)\n'}
+[2.205423] (-) TimerEvent: {}
+[2.305818] (-) TimerEvent: {}
+[2.380231] (pilot_control) StdoutLine: {'line': b'-- Found odrive_can: 0.0.1 (/home/avenblake/pilot_ws/install/odrive_can/share/odrive_can/cmake)\n'}
+[2.404523] (pilot_control) StdoutLine: {'line': b'-- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)\n'}
+[2.405856] (-) TimerEvent: {}
+[2.428565] (pilot_control) StdoutLine: {'line': b'-- Found std_srvs: 4.9.1 (/opt/ros/humble/share/std_srvs/cmake)\n'}
+[2.446309] (pilot_control) StdoutLine: {'line': b'-- Found tf2_geometry_msgs: 0.25.19 (/opt/ros/humble/share/tf2_geometry_msgs/cmake)\n'}
+[2.464769] (pilot_control) StdoutLine: {'line': b'-- Found eigen3_cmake_module: 0.1.1 (/opt/ros/humble/share/eigen3_cmake_module/cmake)\n'}
+[2.466570] (pilot_control) StdoutLine: {'line': b'-- Found Eigen3: TRUE (found version "3.4.0") \n'}
+[2.466761] (pilot_control) StdoutLine: {'line': b'-- Ensuring Eigen3 include directory is part of orocos-kdl CMake target\n'}
+[2.471232] (pilot_control) StdoutLine: {'line': b'-- Found tf2_sensor_msgs: 0.25.19 (/opt/ros/humble/share/tf2_sensor_msgs/cmake)\n'}
+[2.496699] (pilot_control) StdoutLine: {'line': b"-- Checking for module 'eigen3'\n"}
+[2.505965] (-) TimerEvent: {}
+[2.515752] (pilot_control) StdoutLine: {'line': b'--   Found eigen3, version 3.4.0\n'}
+[2.606145] (-) TimerEvent: {}
+[2.619967] (pilot_control) StdoutLine: {'line': b'-- Found Eigen: /usr/include/eigen3 (Required is at least version "3.1") \n'}
+[2.620444] (pilot_control) StdoutLine: {'line': b'-- Eigen found (include: /usr/include/eigen3, version: 3.4.0)\n'}
+[2.706297] (-) TimerEvent: {}
+[2.745633] (pilot_control) StdoutLine: {'line': b'-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found suitable version "1.74.0", minimum required is "1.65.0") found components: system filesystem date_time iostreams serialization \n'}
+[2.778467] (pilot_control) StdoutLine: {'line': b"-- Checking for module 'flann'\n"}
+[2.799277] (pilot_control) StdoutLine: {'line': b'--   Found flann, version 1.9.1\n'}
+[2.806380] (-) TimerEvent: {}
+[2.860154] (pilot_control) StdoutLine: {'line': b'-- Found FLANN: /usr/lib/x86_64-linux-gnu/libflann_cpp.so  \n'}
+[2.860500] (pilot_control) StdoutLine: {'line': b'-- FLANN found (include: /usr/include, lib: /usr/lib/x86_64-linux-gnu/libflann_cpp.so)\n'}
+[2.906486] (-) TimerEvent: {}
+[2.923914] (pilot_control) StdoutLine: {'line': b'-- Found GLEW: /usr/lib/x86_64-linux-gnu/libGLEW.so  \n'}
+[2.936581] (pilot_control) StdoutLine: {'line': b'-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so  found components: OpenGL GLX \n'}
+[3.006607] (-) TimerEvent: {}
+[3.106957] (-) TimerEvent: {}
+[3.207368] (-) TimerEvent: {}
+[3.307970] (-) TimerEvent: {}
+[3.341351] (pilot_control) StdoutLine: {'line': b'-- Found MPI_C: /usr/lib/x86_64-linux-gnu/libmpi.so (found version "3.1") \n'}
+[3.342724] (pilot_control) StdoutLine: {'line': b'-- Found MPI: TRUE (found version "3.1") found components: C \n'}
+[3.355984] (pilot_control) StdoutLine: {'line': b'-- Found JsonCpp: /usr/lib/x86_64-linux-gnu/libjsoncpp.so (found suitable version "1.9.5", minimum required is "0.7.0") \n'}
+[3.397499] (pilot_control) StdoutLine: {'line': b'-- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found version "1.2.11") \n'}
+[3.408154] (-) TimerEvent: {}
+[3.464671] (pilot_control) StdoutLine: {'line': b'-- Found PNG: /usr/lib/x86_64-linux-gnu/libpng.so (found version "1.6.37") \n'}
+[3.493882] (pilot_control) StdoutLine: {'line': b'-- Found Eigen3: /usr/include/eigen3 (found version "3.4.0") \n'}
+[3.508262] (-) TimerEvent: {}
+[3.608539] (-) TimerEvent: {}
+[3.617395] (pilot_control) StdoutLine: {'line': b'-- Found X11: /usr/include   \n'}
+[3.617859] (pilot_control) StdoutLine: {'line': b'-- Looking for XOpenDisplay in /usr/lib/x86_64-linux-gnu/libX11.so;/usr/lib/x86_64-linux-gnu/libXext.so\n'}
+[3.697129] (pilot_control) StdoutLine: {'line': b'-- Looking for XOpenDisplay in /usr/lib/x86_64-linux-gnu/libX11.so;/usr/lib/x86_64-linux-gnu/libXext.so - found\n'}
+[3.697303] (pilot_control) StdoutLine: {'line': b'-- Looking for gethostbyname\n'}
+[3.708671] (-) TimerEvent: {}
+[3.787592] (pilot_control) StdoutLine: {'line': b'-- Looking for gethostbyname - found\n'}
+[3.787970] (pilot_control) StdoutLine: {'line': b'-- Looking for connect\n'}
+[3.808787] (-) TimerEvent: {}
+[3.909176] (-) TimerEvent: {}
+[3.946547] (pilot_control) StdoutLine: {'line': b'-- Looking for connect - found\n'}
+[3.947009] (pilot_control) StdoutLine: {'line': b'-- Looking for remove\n'}
+[4.009282] (-) TimerEvent: {}
+[4.076465] (pilot_control) StdoutLine: {'line': b'-- Looking for remove - found\n'}
+[4.076816] (pilot_control) StdoutLine: {'line': b'-- Looking for shmat\n'}
+[4.109366] (-) TimerEvent: {}
+[4.157639] (pilot_control) StdoutLine: {'line': b'-- Looking for shmat - found\n'}
+[4.157948] (pilot_control) StdoutLine: {'line': b'-- Looking for IceConnectionNumber in ICE\n'}
+[4.209538] (-) TimerEvent: {}
+[4.310104] (-) TimerEvent: {}
+[4.395929] (pilot_control) StdoutLine: {'line': b'-- Looking for IceConnectionNumber in ICE - found\n'}
+[4.410256] (-) TimerEvent: {}
+[4.510945] (-) TimerEvent: {}
+[4.611626] (-) TimerEvent: {}
+[4.712280] (-) TimerEvent: {}
+[4.741852] (pilot_control) StdoutLine: {'line': b'-- Found EXPAT: /usr/lib/x86_64-linux-gnu/libexpat.so (found version "2.4.7") \n'}
+[4.751273] (pilot_control) StdoutLine: {'line': b'-- Found double-conversion: /usr/lib/x86_64-linux-gnu/libdouble-conversion.so  \n'}
+[4.761862] (pilot_control) StdoutLine: {'line': b'-- Found LZ4: /usr/lib/x86_64-linux-gnu/liblz4.so (found version "1.9.3") \n'}
+[4.770125] (pilot_control) StdoutLine: {'line': b'-- Found LZMA: /usr/lib/x86_64-linux-gnu/liblzma.so (found version "5.2.5") \n'}
+[4.812433] (-) TimerEvent: {}
+[4.876078] (pilot_control) StdoutLine: {'line': b'-- Found JPEG: /usr/lib/x86_64-linux-gnu/libjpeg.so (found version "80") \n'}
+[4.896679] (pilot_control) StdoutLine: {'line': b'-- Found TIFF: /usr/lib/x86_64-linux-gnu/libtiff.so (found version "4.3.0")  \n'}
+[4.912579] (-) TimerEvent: {}
+[4.914928] (pilot_control) StdoutLine: {'line': b'-- Found Freetype: /usr/lib/x86_64-linux-gnu/libfreetype.so (found version "2.11.1") \n'}
+[4.938206] (pilot_control) StdoutLine: {'line': b'-- Found utf8cpp: /usr/include/utf8cpp  \n'}
+[5.012695] (-) TimerEvent: {}
+[5.074565] (pilot_control) StdoutLine: {'line': b"-- Checking for module 'libusb-1.0'\n"}
+[5.093079] (pilot_control) StdoutLine: {'line': b'--   Found libusb-1.0, version 1.0.25\n'}
+[5.112802] (-) TimerEvent: {}
+[5.173756] (pilot_control) StdoutLine: {'line': b'-- Found libusb: /usr/lib/x86_64-linux-gnu/libusb-1.0.so  \n'}
+[5.178734] (pilot_control) StdoutLine: {'line': b'-- Found OpenNI: /usr/lib/libOpenNI.so;libusb::libusb (found version "1.5.4.0") \n'}
+[5.179193] (pilot_control) StdoutLine: {'line': b'-- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)\n'}
+[5.213026] (-) TimerEvent: {}
+[5.313884] (-) TimerEvent: {}
+[5.414465] (-) TimerEvent: {}
+[5.420307] (pilot_control) StdoutLine: {'line': b'-- Found OpenNI2: /usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb (found version "2.2.0.33") \n'}
+[5.420834] (pilot_control) StdoutLine: {'line': b'-- OpenNI2 found (version: 2.2.0.33, include: /usr/include/openni2, lib: /usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb)\n'}
+[5.421377] (pilot_control) StderrLine: {'line': b'\x1b[0m** WARNING ** io features related to pcap will be disabled\x1b[0m\n'}
+[5.514586] (-) TimerEvent: {}
+[5.615013] (-) TimerEvent: {}
+[5.653074] (pilot_control) StdoutLine: {'line': b'-- Eigen found (include: /usr/include/eigen3, version: 3.4.0)\n'}
+[5.659842] (pilot_control) StdoutLine: {'line': b'-- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)\n'}
+[5.668783] (pilot_control) StdoutLine: {'line': b'-- OpenNI2 found (version: 2.2.0.33, include: /usr/include/openni2, lib: /usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb)\n'}
+[5.715104] (-) TimerEvent: {}
+[5.810345] (pilot_control) StdoutLine: {'line': b'-- Found Qhull version 8.0.2\n'}
+[5.815185] (-) TimerEvent: {}
+[5.915552] (-) TimerEvent: {}
+[5.949951] (pilot_control) StdoutLine: {'line': b'-- OpenNI found (version: 1.5.4.0, include: /usr/include/ni, lib: /usr/lib/libOpenNI.so;libusb::libusb)\n'}
+[6.015651] (-) TimerEvent: {}
+[6.080801] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_COMMON\n'}
+[6.081639] (pilot_control) StdoutLine: {'line': b'-- Found PCL_COMMON: /usr/lib/x86_64-linux-gnu/libpcl_common.so  \n'}
+[6.081880] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_KDTREE\n'}
+[6.082570] (pilot_control) StdoutLine: {'line': b'-- Found PCL_KDTREE: /usr/lib/x86_64-linux-gnu/libpcl_kdtree.so  \n'}
+[6.082826] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_OCTREE\n'}
+[6.106495] (pilot_control) StdoutLine: {'line': b'-- Found PCL_OCTREE: /usr/lib/x86_64-linux-gnu/libpcl_octree.so  \n'}
+[6.106681] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_SEARCH\n'}
+[6.107337] (pilot_control) StdoutLine: {'line': b'-- Found PCL_SEARCH: /usr/lib/x86_64-linux-gnu/libpcl_search.so  \n'}
+[6.107472] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_SAMPLE_CONSENSUS\n'}
+[6.108489] (pilot_control) StdoutLine: {'line': b'-- Found PCL_SAMPLE_CONSENSUS: /usr/lib/x86_64-linux-gnu/libpcl_sample_consensus.so  \n'}
+[6.108649] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_FILTERS\n'}
+[6.109347] (pilot_control) StdoutLine: {'line': b'-- Found PCL_FILTERS: /usr/lib/x86_64-linux-gnu/libpcl_filters.so  \n'}
+[6.109516] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_2D\n'}
+[6.109700] (pilot_control) StdoutLine: {'line': b'-- Found PCL_2D: /usr/include/pcl-1.12  \n'}
+[6.109847] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_GEOMETRY\n'}
+[6.110288] (pilot_control) StdoutLine: {'line': b'-- Found PCL_GEOMETRY: /usr/include/pcl-1.12  \n'}
+[6.110390] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_IO\n'}
+[6.111196] (pilot_control) StdoutLine: {'line': b'-- Found PCL_IO: /usr/lib/x86_64-linux-gnu/libpcl_io.so  \n'}
+[6.111410] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_FEATURES\n'}
+[6.112109] (pilot_control) StdoutLine: {'line': b'-- Found PCL_FEATURES: /usr/lib/x86_64-linux-gnu/libpcl_features.so  \n'}
+[6.112304] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_ML\n'}
+[6.112969] (pilot_control) StdoutLine: {'line': b'-- Found PCL_ML: /usr/lib/x86_64-linux-gnu/libpcl_ml.so  \n'}
+[6.113088] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_SEGMENTATION\n'}
+[6.113826] (pilot_control) StdoutLine: {'line': b'-- Found PCL_SEGMENTATION: /usr/lib/x86_64-linux-gnu/libpcl_segmentation.so  \n'}
+[6.113975] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_VISUALIZATION\n'}
+[6.114734] (pilot_control) StdoutLine: {'line': b'-- Found PCL_VISUALIZATION: /usr/lib/x86_64-linux-gnu/libpcl_visualization.so  \n'}
+[6.114935] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_SURFACE\n'}
+[6.115633] (pilot_control) StdoutLine: {'line': b'-- Found PCL_SURFACE: /usr/lib/x86_64-linux-gnu/libpcl_surface.so  \n'}
+[6.115721] (-) TimerEvent: {}
+[6.115904] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_REGISTRATION\n'}
+[6.116534] (pilot_control) StdoutLine: {'line': b'-- Found PCL_REGISTRATION: /usr/lib/x86_64-linux-gnu/libpcl_registration.so  \n'}
+[6.116762] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_KEYPOINTS\n'}
+[6.117570] (pilot_control) StdoutLine: {'line': b'-- Found PCL_KEYPOINTS: /usr/lib/x86_64-linux-gnu/libpcl_keypoints.so  \n'}
+[6.117749] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_TRACKING\n'}
+[6.118457] (pilot_control) StdoutLine: {'line': b'-- Found PCL_TRACKING: /usr/lib/x86_64-linux-gnu/libpcl_tracking.so  \n'}
+[6.118625] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_RECOGNITION\n'}
+[6.119301] (pilot_control) StdoutLine: {'line': b'-- Found PCL_RECOGNITION: /usr/lib/x86_64-linux-gnu/libpcl_recognition.so  \n'}
+[6.119536] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_STEREO\n'}
+[6.120237] (pilot_control) StdoutLine: {'line': b'-- Found PCL_STEREO: /usr/lib/x86_64-linux-gnu/libpcl_stereo.so  \n'}
+[6.120371] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_APPS\n'}
+[6.120985] (pilot_control) StdoutLine: {'line': b'-- Found PCL_APPS: /usr/lib/x86_64-linux-gnu/libpcl_apps.so  \n'}
+[6.121541] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_IN_HAND_SCANNER\n'}
+[6.121757] (pilot_control) StdoutLine: {'line': b'-- Found PCL_IN_HAND_SCANNER: /usr/include/pcl-1.12  \n'}
+[6.121868] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_MODELER\n'}
+[6.122058] (pilot_control) StdoutLine: {'line': b'-- Found PCL_MODELER: /usr/include/pcl-1.12  \n'}
+[6.122175] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_POINT_CLOUD_EDITOR\n'}
+[6.122710] (pilot_control) StdoutLine: {'line': b'-- Found PCL_POINT_CLOUD_EDITOR: /usr/include/pcl-1.12  \n'}
+[6.122818] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_OUTOFCORE\n'}
+[6.123577] (pilot_control) StdoutLine: {'line': b'-- Found PCL_OUTOFCORE: /usr/lib/x86_64-linux-gnu/libpcl_outofcore.so  \n'}
+[6.123796] (pilot_control) StdoutLine: {'line': b'-- looking for PCL_PEOPLE\n'}
+[6.124442] (pilot_control) StdoutLine: {'line': b'-- Found PCL_PEOPLE: /usr/lib/x86_64-linux-gnu/libpcl_people.so  \n'}
+[6.125181] (pilot_control) StdoutLine: {'line': b'-- Found PCL: pcl_common;pcl_kdtree;pcl_octree;pcl_search;pcl_sample_consensus;pcl_filters;pcl_io;pcl_features;pcl_ml;pcl_segmentation;pcl_visualization;pcl_surface;pcl_registration;pcl_keypoints;pcl_tracking;pcl_recognition;pcl_stereo;pcl_apps;pcl_outofcore;pcl_people;Boost::system;Boost::filesystem;Boost::date_time;Boost::iostreams;Boost::serialization;/usr/lib/libOpenNI.so;libusb::libusb;/usr/lib/x86_64-linux-gnu/libOpenNI2.so;libusb::libusb;VTK::ChartsCore;VTK::CommonColor;VTK::CommonComputationalGeometry;VTK::CommonCore;VTK::CommonDataModel;VTK::CommonExecutionModel;VTK::CommonMath;VTK::CommonMisc;VTK::CommonTransforms;VTK::FiltersCore;VTK::FiltersExtraction;VTK::FiltersGeneral;VTK::FiltersGeometry;VTK::FiltersModeling;VTK::FiltersSources;VTK::ImagingCore;VTK::ImagingSources;VTK::InteractionImage;VTK::InteractionStyle;VTK::InteractionWidgets;VTK::IOCore;VTK::IOGeometry;VTK::IOImage;VTK::IOLegacy;VTK::IOPLY;VTK::RenderingAnnotation;VTK::RenderingCore;VTK::RenderingContext2D;VTK::RenderingLOD;VTK::RenderingFreeType;VTK::ViewsCore;VTK::ViewsContext2D;VTK::RenderingOpenGL2;VTK::GUISupportQt;FLANN::FLANN;QHULL::QHULL  \n'}
+[6.127988] (pilot_control) StdoutLine: {'line': b'-- Found pcl_conversions: 2.4.5 (/opt/ros/humble/share/pcl_conversions/cmake)\n'}
+[6.156927] (pilot_control) StdoutLine: {'line': b'-- Found Eigen3: TRUE (found version "3.4.0") \n'}
+[6.160530] (pilot_control) StdoutLine: {'line': b'-- Found diagnostic_msgs: 4.9.1 (/opt/ros/humble/share/diagnostic_msgs/cmake)\n'}
+[6.215818] (-) TimerEvent: {}
+[6.316155] (-) TimerEvent: {}
+[6.416715] (-) TimerEvent: {}
+[6.517413] (-) TimerEvent: {}
+[6.618081] (-) TimerEvent: {}
+[6.718722] (-) TimerEvent: {}
+[6.819098] (-) TimerEvent: {}
+[6.841325] (pilot_control) StdoutLine: {'line': b'-- Found JPEG XL at: /home/avenblake/libjxl\n'}
+[6.841539] (pilot_control) StdoutLine: {'line': b'-- JPEG XL support enabled for unified_data_collector\n'}
+[6.841611] (pilot_control) StdoutLine: {'line': b'-- Found JPEG XL at: /home/avenblake/libjxl\n'}
+[6.841672] (pilot_control) StdoutLine: {'line': b'-- JPEG XL support enabled for simple_camera_capture\n'}
+[6.841785] (pilot_control) StdoutLine: {'line': b'-- Found JPEG XL at: /home/avenblake/libjxl\n'}
+[6.841844] (pilot_control) StdoutLine: {'line': b'-- JPEG XL support enabled for jpegxl_test_simple\n'}
+[6.843076] (pilot_control) StdoutLine: {'line': b'-- thermal_check will be built (SeekCamera + OpenCV found)\n'}
+[6.846280] (pilot_control) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)\n'}
+[6.919183] (-) TimerEvent: {}
+[7.019475] (-) TimerEvent: {}
+[7.119759] (-) TimerEvent: {}
+[7.220102] (-) TimerEvent: {}
+[7.285312] (pilot_control) StdoutLine: {'line': b"-- Added test 'cppcheck' to perform static code analysis on C / C++ code\n"}
+[7.286424] (pilot_control) StdoutLine: {'line': b'-- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/avenblake/pilot_ws/src/pilot_control/include>\n'}
+[7.286516] (pilot_control) StdoutLine: {'line': b'-- Configured cppcheck exclude dirs and/or files: \n'}
+[7.317213] (pilot_control) StdoutLine: {'line': b"-- Added test 'flake8' to check Python code syntax and style conventions\n"}
+[7.320177] (-) TimerEvent: {}
+[7.377697] (pilot_control) StdoutLine: {'line': b"-- Added test 'lint_cmake' to check CMake code style\n"}
+[7.407988] (pilot_control) StdoutLine: {'line': b"-- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257\n"}
+[7.420250] (-) TimerEvent: {}
+[7.520458] (-) TimerEvent: {}
+[7.620684] (-) TimerEvent: {}
+[7.640427] (pilot_control) StdoutLine: {'line': b"-- Added test 'uncrustify' to check C / C++ code style\n"}
+[7.640569] (pilot_control) StdoutLine: {'line': b'-- Configured uncrustify additional arguments: \n'}
+[7.673225] (pilot_control) StdoutLine: {'line': b"-- Added test 'xmllint' to check XML markup files\n"}
+[7.677038] (pilot_control) StdoutLine: {'line': b'-- Configuring done\n'}
+[7.720773] (-) TimerEvent: {}
+[7.821010] (-) TimerEvent: {}
+[7.888272] (pilot_control) StdoutLine: {'line': b'-- Generating done\n'}
+[7.921105] (-) TimerEvent: {}
+[7.936379] (pilot_control) StdoutLine: {'line': b'-- Build files have been written to: /home/avenblake/pilot_ws/src/pilot_control/build/pilot_control\n'}
+[7.961503] (pilot_control) CommandEnded: {'returncode': 0}
+[7.962386] (pilot_control) JobProgress: {'identifier': 'pilot_control', 'progress': 'build'}
+[7.963287] (pilot_control) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control', '--', '-j12', '-l12'], 'cwd': '/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'avenblake'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/avenblake/pilot_ws/install/odrive_ros2_control/lib:/home/avenblake/pilot_ws/install/odrive_can/lib:/home/avenblake/pilot_ws/install/fields2cover/lib:/home/avenblake/deepsandws/install/foxglove_bridge/lib:/opt/ros/humble/opt/zenoh_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/opt/ortools_vendor/lib:/opt/ros/humble/lib:/usr/local/lib:$LD_LIBRARY_PATH:/usr/local/lib:/usr/local/lib'), ('HOME', '/home/avenblake'), ('CYCLONEDDS_URI', 'file:///home/avenblake/cyclone_loopback.xml'), ('OLDPWD', '/home/avenblake/pilot_ws/src/pilot_control/scripts'), ('DESKTOP_SESSION', 'ubuntu-xorg'), ('NVM_BIN', '/home/avenblake/.nvm/versions/node/v24.12.0/bin'), ('NVM_INC', '/home/avenblake/.nvm/versions/node/v24.12.0/include/node'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('MANAGERPID', '1830'), ('SYSTEMD_EXEC_PID', '2422'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator21a9d5db22c73a993ff0b42f64b396873'), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '3509'), ('NVM_DIR', '/home/avenblake/.nvm'), ('COLCON_PREFIX_PATH', '/home/avenblake/pilot_ws/install:/home/avenblake/deepsandws/install'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'avenblake'), ('JOURNAL_STREAM', '8:23560'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/home/avenblake/pilot_ws/install/fields2cover/lib/x86_64-linux-gnu/pkgconfig:/home/avenblake/pilot_ws/install/fields2cover/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'avenblake'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/avenblake/.nvm/versions/node/v24.12.0/bin:/opt/ros/humble/opt/ortools_vendor/bin:/opt/ros/humble/bin:/home/avenblake/.cargo/bin:/home/avenblake/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/andrew:@/tmp/.ICE-unix/2195,unix/andrew:/tmp/.ICE-unix/2195'), ('INVOCATION_ID', 'e072d8808edc4a7d8f986aa9584b77aa'), ('XDG_MENU_PREFIX', 'gnome-'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('RMW_IMPLEMENTATION', 'rmw_cyclonedds_cpp'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu-xorg'), ('XAUTHORITY', '/run/user/1000/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1000/keyring/ssh'), ('ROS_DOMAIN_ID', '0'), ('AMENT_PREFIX_PATH', '/home/avenblake/pilot_ws/install/pilot_control:/home/avenblake/pilot_ws/install/odrive_botwheel_explorer:/home/avenblake/pilot_ws/install/odrive_ros2_control:/home/avenblake/pilot_ws/install/odrive_can:/home/avenblake/deepsandws/install/foxglove_bridge:/home/avenblake/deepsandws/install/deploadblade:/home/avenblake/deepsandws/install/deepsand_mig:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('TERMINATOR_UUID', 'urn:uuid:dc901b2b-4ea1-44f0-a33d-388ea9e572da'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu-xorg'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('GPG_AGENT_INFO', '/run/user/1000/gnupg/S.gpg-agent:0:1'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/avenblake/pilot_ws/src/pilot_control/build/pilot_control'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu-xorg:/etc/xdg'), ('NVM_CD_FLAGS', ''), ('XDG_DATA_DIRS', '/usr/share/ubuntu-xorg:/usr/share/gnome:/home/avenblake/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/avenblake/pilot_ws/install/odrive_can/local/lib/python3.10/dist-packages:/home/avenblake/pilot_ws/install/fields2cover/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('CMAKE_PREFIX_PATH', '/home/avenblake/pilot_ws/install/pilot_control:/home/avenblake/pilot_ws/install/odrive_botwheel_explorer:/home/avenblake/pilot_ws/install/odrive_ros2_control:/home/avenblake/pilot_ws/install/odrive_can:/home/avenblake/pilot_ws/install/fields2cover:/home/avenblake/deepsandws/install/foxglove_bridge:/home/avenblake/deepsandws/install/deploadblade:/home/avenblake/deepsandws/install/deepsand_mig:/opt/ros/humble')]), 'shell': False}
+[8.021429] (-) TimerEvent: {}
+[8.036259] (pilot_control) StdoutLine: {'line': b'[ 11%] \x1b[32mBuilding CXX object CMakeFiles/pose_controller.dir/src/pose_controller.cpp.o\x1b[0m\n'}
+[8.036596] (pilot_control) StdoutLine: {'line': b'[ 11%] \x1b[32mBuilding CXX object CMakeFiles/local_nav_grid_publisher.dir/src/local_nav_grid_publisher.cpp.o\x1b[0m\n'}
+[8.036730] (pilot_control) StdoutLine: {'line': b'[ 11%] \x1b[32mBuilding CXX object CMakeFiles/diff_drive_controller.dir/src/diff_drive_controller.cpp.o\x1b[0m\n'}
+[8.039284] (pilot_control) StdoutLine: {'line': b'[ 17%] \x1b[32mBuilding CXX object CMakeFiles/shutdown_service.dir/src/shutdown_service.cpp.o\x1b[0m\n'}
+[8.039626] (pilot_control) StdoutLine: {'line': b'[ 17%] \x1b[32mBuilding CXX object CMakeFiles/pcd_processor.dir/src/pcd_processor.cpp.o\x1b[0m\n'}
+[8.039745] (pilot_control) StdoutLine: {'line': b'[ 17%] \x1b[32mBuilding CXX object CMakeFiles/raw_map_saver.dir/src/raw_map_saver.cpp.o\x1b[0m\n'}
+[8.042236] (pilot_control) StdoutLine: {'line': b'[ 20%] \x1b[32mBuilding CXX object CMakeFiles/point_cloud_downsampler.dir/src/point_cloud_downsampler.cpp.o\x1b[0m\n'}
+[8.042464] (pilot_control) StdoutLine: {'line': b'[ 23%] \x1b[32mBuilding CXX object CMakeFiles/laser_map_rotator.dir/src/laser_map_rotator.cpp.o\x1b[0m\n'}
+[8.042584] (pilot_control) StdoutLine: {'line': b'[ 26%] \x1b[32mBuilding CXX object CMakeFiles/host_teleop.dir/src/host_teleop.cpp.o\x1b[0m\n'}
+[8.042672] (pilot_control) StdoutLine: {'line': b'[ 29%] \x1b[32mBuilding CXX object CMakeFiles/gps_driver.dir/src/gps_driver.cpp.o\x1b[0m\n'}
+[8.043394] (pilot_control) StdoutLine: {'line': b'[ 32%] \x1b[32mBuilding CXX object CMakeFiles/gpr_motion_follower.dir/src/gpr_motion_follower.cpp.o\x1b[0m\n'}
+[8.048943] (pilot_control) StdoutLine: {'line': b'[ 35%] \x1b[32mBuilding CXX object CMakeFiles/video_recorder.dir/src/video_recorder.cpp.o\x1b[0m\n'}
+[8.121926] (-) TimerEvent: {}
+[8.222870] (-) TimerEvent: {}
+[8.324212] (-) TimerEvent: {}
+[8.424718] (-) TimerEvent: {}
+[8.525234] (-) TimerEvent: {}
+[8.629214] (-) TimerEvent: {}
+[8.729715] (-) TimerEvent: {}
+[8.830464] (-) TimerEvent: {}
+[8.932976] (-) TimerEvent: {}
+[9.034167] (-) TimerEvent: {}
+[9.135198] (-) TimerEvent: {}
+[9.236058] (-) TimerEvent: {}
+[9.337874] (-) TimerEvent: {}
+[9.439894] (-) TimerEvent: {}
+[9.540822] (-) TimerEvent: {}
+[9.643322] (-) TimerEvent: {}
+[9.744010] (-) TimerEvent: {}
+[9.844644] (-) TimerEvent: {}
+[9.945360] (-) TimerEvent: {}
+[10.047271] (-) TimerEvent: {}
+[10.147899] (-) TimerEvent: {}
+[10.252320] (-) TimerEvent: {}
+[10.353393] (-) TimerEvent: {}
+[10.458183] (-) TimerEvent: {}
+[10.559920] (-) TimerEvent: {}
+[10.660798] (-) TimerEvent: {}
+[10.761394] (-) TimerEvent: {}
+[10.864116] (-) TimerEvent: {}
+[10.964981] (-) TimerEvent: {}
+[11.065854] (-) TimerEvent: {}
+[11.166646] (-) TimerEvent: {}
+[11.267523] (-) TimerEvent: {}
+[11.368511] (-) TimerEvent: {}
+[11.470149] (-) TimerEvent: {}
+[11.572305] (-) TimerEvent: {}
+[11.673544] (-) TimerEvent: {}
+[11.779568] (-) TimerEvent: {}
+[11.880115] (-) TimerEvent: {}
+[11.980562] (-) TimerEvent: {}
+[12.080965] (-) TimerEvent: {}
+[12.192487] (-) TimerEvent: {}
+[12.295269] (-) TimerEvent: {}
+[12.402443] (-) TimerEvent: {}
+[12.504300] (-) TimerEvent: {}
+[12.605033] (-) TimerEvent: {}
+[12.711660] (-) TimerEvent: {}
+[12.828516] (-) TimerEvent: {}
+[12.974188] (-) TimerEvent: {}
+[13.203652] (-) TimerEvent: {}
+[14.763752] (-) TimerEvent: {}
+[19.165112] (-) TimerEvent: {}
+[25.668315] (-) TimerEvent: {}
+[44.317645] (-) TimerEvent: {}
+[171.386462] (-) TimerEvent: {}

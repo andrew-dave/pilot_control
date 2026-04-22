@@ -47,8 +47,8 @@ public:
     // Streaming
     this->declare_parameter<std::string>("stream_host", "172.16.10.121");
     this->declare_parameter<int>("stream_port", 5600);
-    this->declare_parameter<int>("stream_bitrate_kbps", 800);
-    this->declare_parameter<int>("rtp_mtu", 1200);
+    this->declare_parameter<int>("stream_bitrate_kbps", 800);   // Conservative for FPV at 480x360@25fps
+    this->declare_parameter<int>("rtp_mtu", 1400);  // Larger MTU for efficiency
 
     if (this->get_parameter("enable_record_service").as_bool()) {
       record_srv_ = this->create_service<std_srvs::srv::SetBool>(
@@ -154,13 +154,15 @@ private:
         << "! queue "
         << "! filesink name=rec_sink async=false sync=false ";
 
-    // Stream branch (leaky) — exact chain requested
-    oss << " T. ! queue leaky=downstream max-size-buffers=120 max-size-bytes=0 max-size-time=0 "
-        << "! videorate ! video/x-raw,framerate=15/1 "
-        << "! videoscale ! video/x-raw,width=640,height=480 "
-        << "! x264enc tune=zerolatency speed-preset=ultrafast bitrate=" << stream_bitrate << " key-int-max=30 bframes=0 "
-        << "! video/x-h264,stream-format=byte-stream,alignment=au "
-        << "! rtph264pay pt=96 config-interval=1 mtu=" << rtp_mtu << " "
+    // FPV-optimized low-latency streaming using Intel VA-API hardware encoder
+    oss << " T. ! queue leaky=downstream max-size-buffers=30 max-size-bytes=0 max-size-time=0 "
+        << "! videorate ! video/x-raw,framerate=20/1 "
+        << "! videoscale ! video/x-raw,width=480,height=360 "
+        << "! videoconvert ! video/x-raw,format=NV12 "
+        << "! vaapih264enc rate-control=cbr bitrate=" << stream_bitrate 
+        << " keyframe-period=20 tune=low-power "
+        << "! h264parse config-interval=1 "
+        << "! rtph264pay pt=96 mtu=" << rtp_mtu << " "
         << "! udpsink host=" << stream_host << " port=" << stream_port << " sync=false ";
 
     // ---- RIGHT camera (record only) ----

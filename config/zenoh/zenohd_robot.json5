@@ -1,0 +1,77 @@
+{
+  // Robot-side Zenoh router config (router mode)
+  mode: "router",
+
+  // Disable discovery mechanisms that rely on multicast/gossip (not used over Microhard).
+  scouting: { multicast: { enabled: false }, gossip: { enabled: false } },
+
+  // Listen for laptop clients on the Microhard network.
+  listen: { endpoints: { router: ["tcp/0.0.0.0:7447"] } },
+
+  plugins: {
+    ros2dds: {
+      // Only bridge the interfaces required for BDR_CP field operations.
+      // This prevents high-bandwidth LiDAR/map topics from saturating the Microhard link.
+      allow: {
+        // Robot -> Laptop topics
+        publishers: [
+          "^/stream_status$",
+          "^/stream_camera_status$",
+          "^/thermal/summary$",
+          "^/thermal/thumb$",
+          "^/local_nav_grid$",
+          "^/Odometry$",
+          "^/Odometry_tilt_corrected_diff$",
+          "^/left/controller_status$",
+          "^/right/controller_status$",
+          "^/gpr/controller_status$",
+          "^/path$",
+          "^/tf$",
+          "^/tf_static$",
+          "^/livox/imu$",
+          "^/mpc_accel/cmd_twist$",
+          "^/mpc_accel/error_state$",
+          "^/mpc_accel/reference_trajectory$",
+          "^/mpc_accel/delta_cmd$"
+        ],
+
+        // Laptop -> Robot topics
+        subscribers: [
+          "^/cmd_vel$",
+          "^/stream_camera_select$",
+          "^/stream_target_ip$",
+          "^/host_teleop/heartbeat$",
+          "^/mpc_autonomy_enable$",
+          "^/f2c_waypoints$",
+          "^/start_waypoint_navigation$",
+          "^/set_target_pose$",
+          "^/mpc_auto_dc_enable$"
+        ],
+
+        // Laptop service clients -> Robot service servers
+        service_servers: [
+          "^/video_record_set$",
+          "^/save_raw_map$",
+          "^/publish_map_once$",
+          "^/left/request_axis_state$",
+          "^/right/request_axis_state$",
+          "^/gpr/request_axis_state$",
+          "^/gpr_line_start$",
+          "^/gpr_line_stop$",
+          "^/gpr_scan/toggle$",
+          "^/gpr_power_off$",
+          "^/rosbag/toggle$",
+          "^/rosbag/start$",
+          "^/rosbag/pause$",
+          "^/rosbag/resume$",
+          "^/rosbag/stop$"
+        ],
+
+        service_clients: [],
+        action_servers: [],
+        action_clients: []
+      }
+    }
+  }
+}
+

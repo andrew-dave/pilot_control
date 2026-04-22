@@ -1,0 +1,4 @@
+# Arduino UNO R4 Minima - create stable symlink
+# Install with: sudo cp /path/to/this/file /etc/udev/rules.d/
+# Then reload: sudo udevadm control --reload-rules && sudo udevadm trigger
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0069", SYMLINK+="arduino", MODE="0666", GROUP="dialout"

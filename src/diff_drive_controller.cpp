@@ -1,12 +1,21 @@
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/clock.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <odrive_can/msg/control_message.hpp>
 #include <odrive_can/msg/controller_status.hpp>
 #include <odrive_can/srv/axis_state.hpp>
+#include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <deque>
+#include <array>
+#include <Eigen/Dense>
 
 #include <signal.h>
 #include <atomic>
@@ -40,7 +49,7 @@ public:
         // Drive geometry
         this->declare_parameter<double>("wheel_radius", 0.072); // 144 mm dia wheels -> 0.072 m radius
         this->declare_parameter<double>("wheel_base",   0.35);
-        this->declare_parameter<double>("gear_ratio",   10.0);
+        this->declare_parameter<double>("gear_ratio",   1.0);
 
         // Drive behavior
         this->declare_parameter<double>("velocity_multiplier",    1.0);
@@ -51,20 +60,32 @@ public:
         // Motor inversion (signs)
         this->declare_parameter<bool>("invert_left",   false);   // adjust to your wiring
         this->declare_parameter<bool>("invert_right",  true);
-        this->declare_parameter<bool>("invert_third",  false);
+        // this->declare_parameter<bool>("invert_third",  false);  // GPR: DISABLED
 
         // GPR (node 2) kinematics (60 mm dia virtual wheel by default, direct 1:1)
-        this->declare_parameter<double>("third_wheel_radius", 0.03); // 60 mm dia -> 0.03 m radius
-        this->declare_parameter<double>("third_gear_ratio",   1.0);  // direct
+        // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+        // this->declare_parameter<double>("third_wheel_radius", 0.03); // 60 mm dia -> 0.03 m radius
+        // this->declare_parameter<double>("third_gear_ratio",   1.0);  // direct
 
         // GPR gating
-        this->declare_parameter<bool>("gpr_forward_only", false);     // rotate only when moving forward
-        this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
-        this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
+        // this->declare_parameter<bool>("gpr_forward_only", false);     // rotate only when moving forward
+        // this->declare_parameter<bool>("gpr_gate_turns",   false);    // optionally stop during turns
+        // this->declare_parameter<double>("gpr_turn_rate_thresh", 0.25); // rad/s
         // Allow GPR to continue during residual coast after cmd_vel stops
-        this->declare_parameter<bool>("gpr_follow_coast", false);
-        this->declare_parameter<int>("gpr_coast_timeout_ms", 1000);
-        this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
+        // this->declare_parameter<bool>("gpr_follow_coast", false);
+        // this->declare_parameter<int>("gpr_coast_timeout_ms", 1000);
+        // this->declare_parameter<double>("gpr_min_vx_follow", 0.02);
+
+        // Fast-LIO odometry input (for GPR velocity drive)
+        this->declare_parameter<bool>("gpr_use_fastlio_odom", true);
+        this->declare_parameter<std::string>("fastlio_odom_topic", "/Odometry");
+        this->declare_parameter<int>("fastlio_timeout_ms", 500);
+        this->declare_parameter<int>("fastlio_delta_window", 10);
+        
+        // Tilt correction parameters (matching pose_controller.py)
+        this->declare_parameter<std::string>("accel_topic", "/livox/imu");
+        this->declare_parameter<int>("accel_samples", 10);
+        this->declare_parameter<std::string>("corrected_odom_topic", "/Odometry_tilt_corrected_diff_cpp");
 
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
@@ -77,34 +98,54 @@ public:
 
         invert_left_           = this->get_parameter("invert_left").as_bool();
         invert_right_          = this->get_parameter("invert_right").as_bool();
-        invert_third_          = this->get_parameter("invert_third").as_bool();
+        // invert_third_          = this->get_parameter("invert_third").as_bool();  // GPR: DISABLED
 
-        third_wheel_radius_    = this->get_parameter("third_wheel_radius").as_double();
-        third_gear_ratio_      = this->get_parameter("third_gear_ratio").as_double();
+        // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+        // third_wheel_radius_    = this->get_parameter("third_wheel_radius").as_double();
+        // third_gear_ratio_      = this->get_parameter("third_gear_ratio").as_double();
 
-        gpr_forward_only_      = this->get_parameter("gpr_forward_only").as_bool();
-        gpr_gate_turns_        = this->get_parameter("gpr_gate_turns").as_bool();
-        gpr_turn_rate_thresh_  = this->get_parameter("gpr_turn_rate_thresh").as_double();
-        gpr_follow_coast_      = this->get_parameter("gpr_follow_coast").as_bool();
-        gpr_coast_timeout_ms_  = this->get_parameter("gpr_coast_timeout_ms").as_int();
-        gpr_min_vx_follow_     = this->get_parameter("gpr_min_vx_follow").as_double();
+        // gpr_forward_only_      = this->get_parameter("gpr_forward_only").as_bool();
+        // gpr_gate_turns_        = this->get_parameter("gpr_gate_turns").as_bool();
+        // gpr_turn_rate_thresh_  = this->get_parameter("gpr_turn_rate_thresh").as_double();
+        // gpr_follow_coast_      = this->get_parameter("gpr_follow_coast").as_bool();
+        // gpr_coast_timeout_ms_  = this->get_parameter("gpr_coast_timeout_ms").as_int();
+        // gpr_min_vx_follow_     = this->get_parameter("gpr_min_vx_follow").as_double();
+
+        gpr_use_fastlio_odom_  = this->get_parameter("gpr_use_fastlio_odom").as_bool();
+        fastlio_odom_topic_    = this->get_parameter("fastlio_odom_topic").as_string();
+        fastlio_timeout_ms_    = this->get_parameter("fastlio_timeout_ms").as_int();
+        fastlio_delta_window_  = this->get_parameter("fastlio_delta_window").as_int();
+        if (fastlio_delta_window_ < 1) fastlio_delta_window_ = 1;
+        
+        accel_topic_           = this->get_parameter("accel_topic").as_string();
+        accel_samples_target_  = this->get_parameter("accel_samples").as_int();
+        corrected_odom_topic_  = this->get_parameter("corrected_odom_topic").as_string();
 
         RCLCPP_INFO(get_logger(),
-            "Drive: r=%.3f m, base=%.3f m, gear=%.2f | GPR: r=%.3f m, gear=%.2f | invert L/R/3=%d/%d/%d",
-            wheel_radius_, wheel_base_, gear_ratio_, third_wheel_radius_, third_gear_ratio_,
-            invert_left_, invert_right_, invert_third_);
+            "Drive: r=%.3f m, base=%.3f m, gear=%.2f | invert L/R=%d/%d",
+            wheel_radius_, wheel_base_, gear_ratio_,
+            invert_left_, invert_right_);
 
         // ---------------- Interfaces ----------------
         odom_pub_        = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
         left_motor_pub_  = this->create_publisher<odrive_can::msg::ControlMessage>("/left/control_message", 10);
         right_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/right/control_message", 10);
-        third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
+        
+        // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+        // third_motor_pub_ = this->create_publisher<odrive_can::msg::ControlMessage>("/gpr/control_message", 10);
+        // gpr_vx_pub_      = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps", 10);
+        // gpr_vx_raw_pub_  = this->create_publisher<std_msgs::msg::Float32>("/gpr/velocity_mps_raw", 10);
+        // gpr_distance_pub_ = this->create_publisher<std_msgs::msg::Float32>("/gpr/travel_distance_m", 10);
+        // gpr_fastlio_delta_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/gpr/fastlio_delta_xyz", 10);
+        
+        // Tilt-corrected odometry republishing moved to odom_tilt_corrector.py
+        // odom_corrected_pub_ = this->create_publisher<nav_msgs::msg::Odometry>(corrected_odom_topic_, 10);
 
         tf_broadcaster_  = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         left_axis_client_  = this->create_client<odrive_can::srv::AxisState>("/left/request_axis_state");
         right_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/right/request_axis_state");
-        third_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
+        // third_axis_client_ = this->create_client<odrive_can::srv::AxisState>("/gpr/request_axis_state");
 
         cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
             "cmd_vel", 10, std::bind(&DiffDriveController::cmd_vel_callback, this, std::placeholders::_1));
@@ -113,12 +154,33 @@ public:
             "/left/controller_status", 10, std::bind(&DiffDriveController::left_status_callback, this, std::placeholders::_1));
         right_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
             "/right/controller_status", 10, std::bind(&DiffDriveController::right_status_callback, this, std::placeholders::_1));
-        third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
-            "/gpr/controller_status", 10, std::bind(&DiffDriveController::third_status_callback, this, std::placeholders::_1));
+        
+        // MPC autonomy enable subscription - when active, ignore cmd_vel to let MPC control motors
+        mpc_autonomy_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+            "/mpc_autonomy_enable", 10, std::bind(&DiffDriveController::mpc_autonomy_callback, this, std::placeholders::_1));
+        RCLCPP_INFO(this->get_logger(), "Subscribed to /mpc_autonomy_enable for MPC handoff");
+        
+        // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+        // third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
+        //     "/gpr/controller_status", 10, std::bind(&DiffDriveController::third_status_callback, this, std::placeholders::_1));
+
+        // Optional: subscribe to Fast-LIO odometry for GPR speed estimation
+        // Disable Fast-LIO odom subscription for tilt-corrected republishing (handled by Python node)
+        // if (gpr_use_fastlio_odom_) {
+        //     fastlio_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        //         fastlio_odom_topic_, 10, std::bind(&DiffDriveController::fastlio_odom_callback, this, std::placeholders::_1));
+        // }
+        
+        // IMU subscription for gravity-based tilt correction
+        // Disable IMU subscription for tilt-corrected republishing (handled by Python node)
+        // imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+        //     accel_topic_, 10, std::bind(&DiffDriveController::imu_callback, this, std::placeholders::_1));
 
         // Timers
         odom_timer_ = this->create_wall_timer(100ms, std::bind(&DiffDriveController::update_odometry, this)); // 10 Hz
-        gpr_timer_  = this->create_wall_timer(50ms,  std::bind(&DiffDriveController::update_gpr_motor, this)); // 20 Hz
+        
+        // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+        // gpr_timer_  = this->create_wall_timer(50ms,  std::bind(&DiffDriveController::update_gpr_motor, this)); // 20 Hz
 
         // Arm motors a moment after start
         arm_timer_  = this->create_wall_timer(200ms, [this]() {
@@ -132,9 +194,11 @@ public:
     // ---------------- Motor State Helpers ----------------
     void arm_motors() {
         RCLCPP_INFO(this->get_logger(), "Waiting for ODrive services to become available...");
+        // if (!left_axis_client_->wait_for_service(3s) ||
+        //     !right_axis_client_->wait_for_service(3s) ||
+        //     !third_axis_client_->wait_for_service(3s)) { // UNDO-GPR
         if (!left_axis_client_->wait_for_service(3s) ||
-            !right_axis_client_->wait_for_service(3s) ||
-            !third_axis_client_->wait_for_service(3s)) {
+            !right_axis_client_->wait_for_service(3s)) {
             RCLCPP_FATAL(this->get_logger(), "ODrive services not available after waiting. Shutting down.");
             g_shutdown_requested = true;
             return;
@@ -144,7 +208,7 @@ public:
         request->axis_requested_state = 8; // CLOSED_LOOP
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
-        third_axis_client_->async_send_request(request);
+        // third_axis_client_->async_send_request(request); // UNDO-GPR
     }
 
     void disarm_motors() {
@@ -153,12 +217,213 @@ public:
         request->axis_requested_state = 1; // IDLE
         left_axis_client_->async_send_request(request);
         right_axis_client_->async_send_request(request);
-        third_axis_client_->async_send_request(request);
+        // third_axis_client_->async_send_request(request); // UNDO-GPR
     }
 
 private:
+    // -------------------- Quaternion/Matrix Helper Methods (matching pose_controller.py) --------------------
+    static std::array<double, 4> quat_normalize(const std::array<double, 4>& q) {
+        double norm = std::sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+        if (norm < 1e-12) {
+            return {0.0, 0.0, 0.0, 1.0};
+        }
+        return {q[0]/norm, q[1]/norm, q[2]/norm, q[3]/norm};
+    }
+
+    static std::array<double, 4> quat_from_axis_angle(const std::array<double, 3>& axis, double angle) {
+        double half = angle * 0.5;
+        double s = std::sin(half);
+        return {axis[0]*s, axis[1]*s, axis[2]*s, std::cos(half)};
+    }
+
+    static std::array<double, 4> quat_multiply(const std::array<double, 4>& q1, const std::array<double, 4>& q2) {
+        return {
+            q1[3]*q2[0] + q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1],
+            q1[3]*q2[1] - q1[0]*q2[2] + q1[1]*q2[3] + q1[2]*q2[0],
+            q1[3]*q2[2] + q1[0]*q2[1] - q1[1]*q2[0] + q1[2]*q2[3],
+            q1[3]*q2[3] - q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2]
+        };
+    }
+
+    static std::array<double, 4> quat_conjugate(const std::array<double, 4>& q) {
+        return {-q[0], -q[1], -q[2], q[3]};
+    }
+
+    static std::array<double, 3> rotate_vector_by_quat(const std::array<double, 4>& q, const std::array<double, 3>& v) {
+        std::array<double, 4> v_quat = {v[0], v[1], v[2], 0.0};
+        auto temp = quat_multiply(q, v_quat);
+        auto result = quat_multiply(temp, quat_conjugate(q));
+        return {result[0], result[1], result[2]};
+    }
+
+    static std::array<double, 4> compute_alignment_quat_between(const std::array<double, 3>& from_vec, 
+                                                                 const std::array<double, 3>& to_vec) {
+        // Normalize input vectors
+        double fx = from_vec[0], fy = from_vec[1], fz = from_vec[2];
+        double norm_from = std::sqrt(fx*fx + fy*fy + fz*fz);
+        if (norm_from < 1e-6) {
+            return {0.0, 0.0, 0.0, 1.0};
+        }
+        fx /= norm_from; fy /= norm_from; fz /= norm_from;
+
+        double tx = to_vec[0], ty = to_vec[1], tz = to_vec[2];
+        double norm_to = std::sqrt(tx*tx + ty*ty + tz*tz);
+        if (norm_to < 1e-6) {
+            return {0.0, 0.0, 0.0, 1.0};
+        }
+        tx /= norm_to; ty /= norm_to; tz /= norm_to;
+
+        // Compute rotation axis (cross product)
+        std::array<double, 3> axis = {
+            fy*tz - fz*ty,
+            fz*tx - fx*tz,
+            fx*ty - fy*tx
+        };
+        double axis_norm = std::sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+        double dot = fx*tx + fy*ty + fz*tz;
+
+        // Handle special cases
+        if (axis_norm < 1e-6) {
+            if (dot > 0) {
+                // Vectors are parallel
+                return {0.0, 0.0, 0.0, 1.0};
+            } else {
+                // Vectors are opposite - 180 degree rotation
+                // Find a perpendicular axis
+                std::array<double, 3> perp_axis = {1.0, 0.0, 0.0};
+                if (std::abs(fx) > 0.9) {
+                    perp_axis = {0.0, 1.0, 0.0};
+                }
+                return quat_from_axis_angle(perp_axis, M_PI);
+            }
+        }
+
+        axis[0] /= axis_norm; axis[1] /= axis_norm; axis[2] /= axis_norm;
+        double angle = std::atan2(axis_norm, dot);
+        return quat_from_axis_angle(axis, angle);
+    }
+
+    static std::array<double, 3> quat_to_rpy(const std::array<double, 4>& q) {
+        // Convert quaternion to roll, pitch, yaw (radians)
+        double x = q[0], y = q[1], z = q[2], w = q[3];
+        
+        // Roll (x-axis rotation)
+        double sinr_cosp = 2.0 * (w * x + y * z);
+        double cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
+        double roll = std::atan2(sinr_cosp, cosr_cosp);
+        
+        // Pitch (y-axis rotation)
+        double sinp = 2.0 * (w * y - z * x);
+        double pitch;
+        if (std::abs(sinp) >= 1.0) {
+            pitch = std::copysign(M_PI / 2.0, sinp);  // Use 90 degrees if out of range
+        } else {
+            pitch = std::asin(sinp);
+        }
+        
+        // Yaw (z-axis rotation)
+        double siny_cosp = 2.0 * (w * z + x * y);
+        double cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
+        double yaw = std::atan2(siny_cosp, cosy_cosp);
+        
+        return {roll, pitch, yaw};
+    }
+
+    static Eigen::Matrix3d rpy_to_matrix(double roll, double pitch, double yaw) {
+        // R = Rz(yaw) * Ry(pitch) * Rx(roll)
+        double cr = std::cos(roll),  sr = std::sin(roll);
+        double cp = std::cos(pitch), sp = std::sin(pitch);
+        double cy = std::cos(yaw),   sy = std::sin(yaw);
+        
+        Eigen::Matrix3d Rz, Ry, Rx;
+        Rz << cy, -sy, 0.0,
+              sy,  cy, 0.0,
+             0.0, 0.0, 1.0;
+        
+        Ry << cp, 0.0,  sp,
+             0.0, 1.0, 0.0,
+             -sp, 0.0,  cp;
+        
+        Rx << 1.0, 0.0, 0.0,
+             0.0,  cr, -sr,
+             0.0,  sr,  cr;
+        
+        return Rz * Ry * Rx;
+    }
+
+    static Eigen::Matrix3d quat_to_matrix(const std::array<double, 4>& q) {
+        double x = q[0], y = q[1], z = q[2], w = q[3];
+        Eigen::Matrix3d R;
+        R(0,0) = 1 - 2*(y*y + z*z);
+        R(0,1) = 2*(x*y - w*z);
+        R(0,2) = 2*(x*z + w*y);
+        R(1,0) = 2*(x*y + w*z);
+        R(1,1) = 1 - 2*(x*x + z*z);
+        R(1,2) = 2*(y*z - w*x);
+        R(2,0) = 2*(x*z - w*y);
+        R(2,1) = 2*(y*z + w*x);
+        R(2,2) = 1 - 2*(x*x + y*y);
+        return R;
+    }
+
+    static std::array<double, 4> matrix_to_quat(const Eigen::Matrix3d& R) {
+        double trace = R.trace();
+        std::array<double, 4> q;
+        if (trace > 0.0) {
+            double s = 0.5 / std::sqrt(trace + 1.0);
+            q[3] = 0.25 / s;
+            q[0] = (R(2,1) - R(1,2)) * s;
+            q[1] = (R(0,2) - R(2,0)) * s;
+            q[2] = (R(1,0) - R(0,1)) * s;
+        } else {
+            if (R(0,0) > R(1,1) && R(0,0) > R(2,2)) {
+                double s = 2.0 * std::sqrt(1.0 + R(0,0) - R(1,1) - R(2,2));
+                q[3] = (R(2,1) - R(1,2)) / s;
+                q[0] = 0.25 * s;
+                q[1] = (R(0,1) + R(1,0)) / s;
+                q[2] = (R(0,2) + R(2,0)) / s;
+            } else if (R(1,1) > R(2,2)) {
+                double s = 2.0 * std::sqrt(1.0 + R(1,1) - R(0,0) - R(2,2));
+                q[3] = (R(0,2) - R(2,0)) / s;
+                q[0] = (R(0,1) + R(1,0)) / s;
+                q[1] = 0.25 * s;
+                q[2] = (R(1,2) + R(2,1)) / s;
+            } else {
+                double s = 2.0 * std::sqrt(1.0 + R(2,2) - R(0,0) - R(1,1));
+                q[3] = (R(1,0) - R(0,1)) / s;
+                q[0] = (R(0,2) + R(2,0)) / s;
+                q[1] = (R(1,2) + R(2,1)) / s;
+                q[2] = 0.25 * s;
+            }
+        }
+        return quat_normalize(q);
+    }
+
+
+    // ---------------- MPC Autonomy Callback ----------------
+    void mpc_autonomy_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+        bool new_state = msg->data;
+        if (new_state != mpc_autonomy_active_) {
+            mpc_autonomy_active_ = new_state;
+            if (mpc_autonomy_active_) {
+                RCLCPP_INFO(this->get_logger(), "🤖 MPC AUTONOMY ENABLED - diff_drive_controller yielding motor control");
+                // Don't send any command - just yield control to MPC immediately
+            } else {
+                RCLCPP_INFO(this->get_logger(), "🎮 MANUAL TELEOP ENABLED - diff_drive_controller resuming motor control");
+            }
+        }
+    }
+
     // ---------------- Command Velocity ----------------
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
+        // SAFETY: When MPC autonomy is active, ignore all cmd_vel commands
+        // This prevents fighting for motor control between teleop and MPC
+        if (mpc_autonomy_active_) {
+            // Don't log every ignored message to avoid spam, but update time
+            last_cmd_time_ = this->get_clock()->now();
+            return;
+        }
+        
         const double linear_vel  = msg->linear.x;   // m/s
         const double angular_vel = msg->angular.z;  // rad/s
         last_cmd_time_           = this->get_clock()->now();
@@ -175,7 +440,7 @@ private:
         double left_wheel_mps  = linear_vel - (angular_vel * wheel_base_ / 2.0);
 
         // Apply turn speed multiplier to the rotational component only
-        double rot_term = (angular_vel * wheel_base_ / 2.0) * (turn_speed_multiplier_ - 1.0);
+        double rot_term = (angular_vel * wheel_base_ / 2.0);
         right_wheel_mps += rot_term;
         left_wheel_mps  -= rot_term;
 
@@ -185,8 +450,8 @@ private:
         const double left_wheel_turns  = left_wheel_mps  / wheel_circumference;
 
         // Wheel turns/s -> motor turns/s via gearbox
-        double right_motor_rps_cmd = right_wheel_turns * gear_ratio_ * velocity_multiplier_;
-        double left_motor_rps_cmd  = left_wheel_turns  * gear_ratio_ * velocity_multiplier_;
+        double right_motor_rps_cmd = right_wheel_turns;
+        double left_motor_rps_cmd  = left_wheel_turns;
 
         // Build messages
         odrive_can::msg::ControlMessage right_msg;
@@ -204,7 +469,7 @@ private:
         right_motor_pub_->publish(right_msg);
         left_motor_pub_ ->publish(left_msg);
 
-        // NOTE: Do NOT command the third motor here. It's controlled by update_gpr_motor()
+        // NOTE: GPR motor control moved to gpr_scan_controller.py
     }
 
     // ---------------- Feedback Callbacks ----------------
@@ -214,9 +479,11 @@ private:
     void right_status_callback(const odrive_can::msg::ControllerStatus::SharedPtr msg) {
         current_right_vel_ = msg->vel_estimate;  // motor turns/s
     }
-    void third_status_callback(const odrive_can::msg::ControllerStatus::SharedPtr msg) {
-        current_third_vel_ = msg->vel_estimate;  // motor turns/s
-    }
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // void third_status_callback(const odrive_can::msg::ControllerStatus::SharedPtr msg) {
+    //     current_third_vel_ = msg->vel_estimate;  // motor turns/s
+    // }
 
     // ---------------- Odometry ----------------
     void update_odometry() {
@@ -224,7 +491,11 @@ private:
 
         // Watchdog: if no cmd_vel recently, coast all motors
         const double ms_since_cmd = (current_time - last_cmd_time_).seconds() * 1000.0;
-        if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
+        if (mpc_autonomy_active_) {
+            // When MPC is active we intentionally stay silent - do not send zero torque packets.
+            // Keep last_cmd_time_ fresh so that teleop resumes cleanly once MPC is disabled.
+            last_cmd_time_ = current_time;
+        } else if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
             send_zero_torque();
         }
 
@@ -288,61 +559,199 @@ private:
         last_time_ = current_time;
     }
 
-    // ---------------- GPR motor updater (forward-only gating) ----------------
-    void update_gpr_motor() {
-        // Watchdog for GPR control: if stale, stop third motor
-        const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
-        // If command is stale, optionally follow measured coast for a short window
-        if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
-            if (!(gpr_follow_coast_ &&
-                  ms_since_cmd <= static_cast<double>(gpr_coast_timeout_ms_) &&
-                  std::abs(meas_vx_) > gpr_min_vx_follow_)) {
-                send_zero_torque_third();
-                return;
-            }
-            // else fall through to compute drive from measured velocities
+    // ---------------- GPR motor updater (absolute position from travel distance) ----------------
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // void update_gpr_motor() {
+    //     // Watchdog for GPR control: if stale, stop third motor
+    //     const double ms_since_cmd = (this->get_clock()->now() - last_cmd_time_).seconds() * 1000.0;
+    //     // If command is stale, optionally follow measured coast for a short window
+    //     if (ms_since_cmd > static_cast<double>(stop_timeout_ms_)) {
+    //         if (!(gpr_follow_coast_ &&
+    //               ms_since_cmd <= static_cast<double>(gpr_coast_timeout_ms_) &&
+    //               std::abs(meas_vx_) > gpr_min_vx_follow_)) {
+    //             send_zero_torque_third();
+    //             return;
+    //         }
+    //         // else fall through to compute drive from measured velocities
+    //     }
+
+    //     const double wz = meas_wz_;  // yaw rate rad/s (from wheel-based odom)
+
+    //     // Forward-only gating
+    //     // if (gpr_forward_only_) {
+    //     //     if (vx <= velocity_deadband_) {
+    //     //         send_zero_torque_third();
+    //     //         return;
+    //     //     }
+    //     // } else {
+    //     //     if (std::abs(vx) <= velocity_deadband_) {
+    //     //         send_zero_torque_third();
+    //     //         return;
+    //     //     }
+    //     // }
+
+    //     // Optional: gate out during turns
+    //     if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
+    //         send_zero_torque_third();
+    //         return;
+    //     }
+
+    //     // Compute desired absolute GPR motor position (turns) from total travel distance
+    //     // turns = (distance_m / circumference_m) * gear_ratio * velocity_multiplier
+    //     const double third_circ = 2.0 * M_PI * third_wheel_radius_;
+    //     double turns_target = (total_travel_m_ / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+
+    //     // Apply inversion/sign convention consistent with previous velocity command path
+    //     double pos_cmd_turns = invert_third_ ? -turns_target : turns_target;
+
+    //     // Send absolute position command using trap trajectory for smooth motion
+    //     odrive_can::msg::ControlMessage msg;
+    //     msg.control_mode = odrv::POSITION_CONTROL;
+    //     msg.input_mode   = odrv::TRAP_TRAJ;
+    //     msg.input_torque = 0.0;
+    //     msg.input_vel    = 0.0;
+    //     msg.input_pos    = pos_cmd_turns;
+
+    //     //third_motor_pub_->publish(msg);
+    // }
+
+    // ---------------- IMU callback for gravity-based tilt correction ----------------
+    void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
+        if (accel_initialized_) {
+            return;  // Already have enough samples
         }
 
-        // Prefer command-based start for immediate response; fall back to measured after timeout
-        const bool cmd_fresh = ms_since_cmd <= static_cast<double>(stop_timeout_ms_);
-        const double vx = cmd_fresh ? last_cmd_linear_x_ : meas_vx_;  // forward m/s
-        const double wz = meas_wz_;  // yaw rate rad/s
+        // Collect linear acceleration samples
+        accel_samples_.push_back(msg->linear_acceleration.x);
+        accel_samples_.push_back(msg->linear_acceleration.y);
+        accel_samples_.push_back(msg->linear_acceleration.z);
 
-        // Forward-only gating
-        if (gpr_forward_only_) {
-            if (vx <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
+        // Check if we have enough samples (3 values per sample)
+        if (static_cast<int>(accel_samples_.size()) >= accel_samples_target_ * 3) {
+            // Compute average
+            double sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
+            int num_samples = accel_samples_target_;
+            for (int i = 0; i < num_samples; i++) {
+                sum_x += accel_samples_[i * 3 + 0];
+                sum_y += accel_samples_[i * 3 + 1];
+                sum_z += accel_samples_[i * 3 + 2];
             }
-        } else {
-            if (std::abs(vx) <= velocity_deadband_) {
-                send_zero_torque_third();
-                return;
-            }
+            accel_avg_[0] = sum_x / num_samples;
+            accel_avg_[1] = sum_y / num_samples;
+            accel_avg_[2] = sum_z / num_samples;
+
+            accel_initialized_ = true;
+            RCLCPP_INFO(this->get_logger(), "IMU acceleration averaged: accel_avg=[%.3f, %.3f, %.3f] (body frame)",
+                        accel_avg_[0], accel_avg_[1], accel_avg_[2]);
+            RCLCPP_INFO(this->get_logger(), "  Waiting for first odometry to compute alignment using body orientation...");
         }
+    }
 
-        // Optional: gate out during turns
-        if (gpr_gate_turns_ && std::abs(wz) > gpr_turn_rate_thresh_) {
-            send_zero_torque_third();
+    // ---------------- Fast-LIO odometry callback (with tilt correction) ----------------
+    void fastlio_odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+        // Wait for IMU-based tilt correction to be initialized
+        if (!accel_initialized_) {
             return;
         }
 
-        // Map measured forward speed to motor turns/s
-        const double third_circ = 2.0 * M_PI * third_wheel_radius_;
-        double turns_per_sec = (vx / third_circ) * third_gear_ratio_ * velocity_multiplier_;
+        // Extract raw pose
+        double raw_px = msg->pose.pose.position.x;
+        double raw_py = msg->pose.pose.position.y;
+        double raw_pz = msg->pose.pose.position.z;
+        
+        std::array<double, 4> raw_quat = {
+            msg->pose.pose.orientation.x,
+            msg->pose.pose.orientation.y,
+            msg->pose.pose.orientation.z,
+            msg->pose.pose.orientation.w
+        };
 
-        // If forward-only, do not allow negative speed
-        if (gpr_forward_only_ && turns_per_sec < 0.0) {
-            turns_per_sec = 0.0;
+        // On first odometry, establish the map frame transformation
+        if (!odom_initialized_) {
+            // Store world origin
+            p0_world_[0] = raw_px;
+            p0_world_[1] = raw_py;
+            p0_world_[2] = raw_pz;
+
+            // Rotate acceleration from body frame to world frame using current body orientation
+            Eigen::Matrix3d R_wb = quat_to_matrix(raw_quat);
+            Eigen::Vector3d accel_body(accel_avg_[0], accel_avg_[1], accel_avg_[2]);
+            accel_body.normalize();
+            Eigen::Vector3d accel_world = R_wb * accel_body;
+
+            // Compute alignment quaternion to align world-frame acceleration to [0, 0, -1]
+            std::array<double, 3> a_world = {accel_world[0], accel_world[1], accel_world[2]};
+            std::array<double, 3> z_down = {0.0, 0.0, -1.0};
+            align_quat_ = compute_alignment_quat_between(a_world, z_down);
+
+            // Compute R_flip with correct axis flips: X flipped, Y unchanged, Z flipped
+            Eigen::Matrix3d R_flip;
+            R_flip << -1,  0,  0,
+                       0,  1,  0,
+                       0,  0, -1;
+
+            // Compute R_align from alignment quaternion via RPY (matches pose_controller.py)
+            std::array<double, 3> rpy = quat_to_rpy(align_quat_);
+            double rx = rpy[0], ry = rpy[1], rz = rpy[2];
+            Eigen::Matrix3d R_align = rpy_to_matrix(rx, ry, rz);
+
+            // Compute combined map rotation: R_map = R_flip @ R_align
+            R_map_ = R_flip * R_align;
+
+            odom_initialized_ = true;
+            RCLCPP_INFO(this->get_logger(), "Fast-LIO odometry tilt correction initialized at origin [%.3f, %.3f, %.3f]",
+                        p0_world_[0], p0_world_[1], p0_world_[2]);
+            RCLCPP_INFO(this->get_logger(), "  accel_world=[%.3f, %.3f, %.3f]",
+                        accel_world[0], accel_world[1], accel_world[2]);
+            RCLCPP_INFO(this->get_logger(), "  align_quat=[%.4f, %.4f, %.4f, %.4f]",
+                        align_quat_[0], align_quat_[1], align_quat_[2], align_quat_[3]);
+            RCLCPP_INFO(this->get_logger(), "  align_rpy(deg)=[%.2f, %.2f, %.2f]",
+                        rx * 180.0 / M_PI, ry * 180.0 / M_PI, rz * 180.0 / M_PI);
         }
 
-        odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::VELOCITY_CONTROL;
-        msg.input_mode   = odrv::VEL_RAMP;
-        msg.input_torque = 0.0;
-        msg.input_vel    = invert_third_ ? -turns_per_sec : turns_per_sec;
+        // Transform position: p_local = R_map @ (p_raw - p0_world)
+        Eigen::Vector3d p_raw(raw_px - p0_world_[0], raw_py - p0_world_[1], raw_pz - p0_world_[2]);
+        Eigen::Vector3d p_local = R_map_ * p_raw;
 
-        third_motor_pub_->publish(msg);
+        // Transform orientation: R_local = R_map @ R_raw
+        Eigen::Matrix3d R_raw = quat_to_matrix(raw_quat);
+        Eigen::Matrix3d R_local = R_map_ * R_raw;
+        std::array<double, 4> local_quat = matrix_to_quat(R_local);
+
+        // Transform linear velocity: vel_local = R_map @ vel_raw
+        Eigen::Vector3d vel_raw(
+            msg->twist.twist.linear.x,
+            msg->twist.twist.linear.y,
+            msg->twist.twist.linear.z
+        );
+        Eigen::Vector3d vel_local = R_map_ * vel_raw;
+
+        // Angular velocity (copy full vector as-is, planar control uses z)
+
+        // Publish corrected odometry (mirror pose_controller.py)
+        nav_msgs::msg::Odometry odom_corrected;
+        odom_corrected.header = msg->header;
+        odom_corrected.child_frame_id = msg->child_frame_id;
+
+        odom_corrected.pose.pose.position.x = p_local[0];
+        odom_corrected.pose.pose.position.y = p_local[1];
+        odom_corrected.pose.pose.position.z = p_local[2];
+
+        odom_corrected.pose.pose.orientation.x = local_quat[0];
+        odom_corrected.pose.pose.orientation.y = local_quat[1];
+        odom_corrected.pose.pose.orientation.z = local_quat[2];
+        odom_corrected.pose.pose.orientation.w = local_quat[3];
+
+        odom_corrected.twist.twist.linear.x = vel_local[0];
+        odom_corrected.twist.twist.linear.y = vel_local[1];
+        odom_corrected.twist.twist.linear.z = 0.0;
+
+        // Keep angular twist as-is (planar control uses z)
+        odom_corrected.twist.twist.angular = msg->twist.twist.angular;
+
+        // Do not set covariances to match pose_controller.py defaults
+
+        odom_corrected_pub_->publish(odom_corrected);
     }
 
     // ---------------- Helpers ----------------
@@ -354,17 +763,18 @@ private:
         msg.input_torque = 0.0;
         left_motor_pub_->publish(msg);
         right_motor_pub_->publish(msg);
-        third_motor_pub_->publish(msg);
+        // third_motor_pub_->publish(msg); // UNDO-GPR
     }
 
-    void send_zero_torque_third(){
-        odrive_can::msg::ControlMessage msg;
-        msg.control_mode = odrv::TORQUE_CONTROL;
-        msg.input_mode   = odrv::PASSTHROUGH;
-        msg.input_vel    = 0.0;
-        msg.input_torque = 0.0;
-        third_motor_pub_->publish(msg);
-    }
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // void send_zero_torque_third(){
+    //     odrive_can::msg::ControlMessage msg;
+    //     msg.control_mode = odrv::VELOCITY_CONTROL;
+    //     msg.input_mode   = odrv::PASSTHROUGH;
+    //     msg.input_vel    = 0.0;
+    //     msg.input_torque = 0.0;
+    //     // third_motor_pub_->publish(msg); // UNDO-GPR
+    // }
 
     // ---------------- Members ----------------
     // Params
@@ -372,29 +782,60 @@ private:
     double velocity_multiplier_{1.0}, turn_speed_multiplier_{1.0}, velocity_deadband_{0.01};
     int    stop_timeout_ms_{500};
 
-    bool   invert_left_{true}, invert_right_{false}, invert_third_{false};
-    double third_wheel_radius_{0.03}, third_gear_ratio_{1.0};
-
-    bool   gpr_forward_only_{true}, gpr_gate_turns_{false};
-    double gpr_turn_rate_thresh_{0.25};
-    bool   gpr_follow_coast_{true};
-    int    gpr_coast_timeout_ms_{2000};
-    double gpr_min_vx_follow_{0.02};
+    bool   invert_left_{true}, invert_right_{false};
+    
+    // MPC autonomy state - when true, ignore cmd_vel and let MPC control motors
+    bool   mpc_autonomy_active_{false};
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // bool   invert_third_{false};
+    // double third_wheel_radius_{0.03}, third_gear_ratio_{1.0};
+    // bool   gpr_forward_only_{true}, gpr_gate_turns_{false};
+    // double gpr_turn_rate_thresh_{0.25};
+    // bool   gpr_follow_coast_{true};
+    // int    gpr_coast_timeout_ms_{2000};
+    // double gpr_min_vx_follow_{0.02};
 
     // ROS I/O
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_, third_motor_pub_;
-    rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_, third_axis_client_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_corrected_pub_;
+    rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr left_motor_pub_, right_motor_pub_;
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // rclcpp::Publisher<odrive_can::msg::ControlMessage>::SharedPtr third_motor_pub_;
+    // rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_pub_;
+    // rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_vx_raw_pub_;
+    // rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr gpr_fastlio_delta_pub_;
+    // rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gpr_distance_pub_;
+    
+    rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr left_axis_client_, right_axis_client_;
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // rclcpp::Client<odrive_can::srv::AxisState>::SharedPtr third_axis_client_;
+    
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-    rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_, third_status_sub_;
-    rclcpp::TimerBase::SharedPtr odom_timer_, arm_timer_, gpr_timer_;
+    rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_sub_;
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr third_status_sub_;
+    
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_odom_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+    rclcpp::TimerBase::SharedPtr odom_timer_, arm_timer_;
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // rclcpp::TimerBase::SharedPtr gpr_timer_;
+    
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     // State
     rclcpp::Time last_time_, last_cmd_time_;
     double current_left_vel_  = 0.0; // motor turns/s (raw from ODrive)
     double current_right_vel_ = 0.0;
-    double current_third_vel_ = 0.0;
+    
+    // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
+    // double current_third_vel_ = 0.0;
 
     double meas_vx_ = 0.0; // measured linear x (m/s)
     double meas_wz_ = 0.0; // measured yaw (rad/s)
@@ -402,6 +843,24 @@ private:
     double last_cmd_linear_x_ = 0.0; // last commanded forward m/s
 
     double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
+
+    // Fast-LIO state for GPR drive (removed unused members)
+    bool   gpr_use_fastlio_odom_{true};
+    std::string fastlio_odom_topic_{"/Odometry"};
+    int    fastlio_timeout_ms_{500};
+    int    fastlio_delta_window_{5};
+
+    // Tilt correction state (matching pose_controller.py)
+    std::string accel_topic_{"/livox/imu"};
+    std::string corrected_odom_topic_{"/Odometry_tilt_corrected_diff"};
+    int    accel_samples_target_{10};
+    bool   accel_initialized_{false};
+    bool   odom_initialized_{false};
+    std::vector<double> accel_samples_;
+    std::array<double, 3> accel_avg_{0.0, 0.0, 0.0};
+    std::array<double, 4> align_quat_{0.0, 0.0, 0.0, 1.0};
+    std::array<double, 3> p0_world_{0.0, 0.0, 0.0};
+    Eigen::Matrix3d R_map_{Eigen::Matrix3d::Identity()};
 };
 
 int main(int argc, char* argv[]) {

@@ -1,0 +1,25 @@
+# LiDAR to Robot Frame Transformation
+# Generated: 2026-02-25 14:24:46
+#
+# LiDAR mount pitch: 15.0 degrees (fixed)
+# Initial yaw removed: -0.01 degrees
+#
+# Transformation formula:
+#   p_robot = R_map @ (p_raw - p0_world)
+#   R_robot = R_map @ R_raw
+#   v_robot = R_lidar_to_robot @ v_raw
+#
+# Origin (first odometry position)
+p0_world_x,0.008378
+p0_world_y,-0.012279
+p0_world_z,0.013851
+#
+# R_lidar_to_robot (pitch correction matrix)
+0.96728727,0.00000000,0.25368352
+0.00000000,1.00000000,0.00000000
+-0.25368352,0.00000000,0.96728727
+#
+# R_map (full transformation matrix)
+0.96728725,-0.00021927,0.25368352
+0.00021210,0.99999998,0.00005562
+-0.25368352,0.00000000,0.96728727

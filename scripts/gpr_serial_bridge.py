@@ -11,7 +11,7 @@ class GPRSerialBridge(Node):
         super().__init__('gpr_serial_bridge')
         
         # Declare parameters
-        self.declare_parameter('serial_port', '/dev/ttyACM1')
+        self.declare_parameter('serial_port', '/dev/arduino')  # stable udev symlink
         self.declare_parameter('baud_rate', 9600)
         
         # Get parameters
@@ -39,10 +39,17 @@ class GPRSerialBridge(Node):
             self.line_stop_callback
         )
         
+        self.power_off_service = self.create_service(
+            Trigger, 
+            'gpr_power_off', 
+            self.power_off_callback
+        )
+        
         self.get_logger().info(f'GPR Serial Bridge started on {self.serial_port}')
         self.get_logger().info('Services available:')
-        self.get_logger().info('  /gpr_line_start - Send "L" to Arduino')
-        self.get_logger().info('  /gpr_line_stop  - Send "K" to Arduino')
+        self.get_logger().info('  /gpr_line_start - Send "K" twice to Arduino')
+        self.get_logger().info('  /gpr_line_stop  - Send "L" to Arduino')
+        self.get_logger().info('  /gpr_power_off  - Send "O" to Arduino')
     
     def connect_serial(self):
         """Connect to Arduino serial port"""
@@ -73,25 +80,43 @@ class GPRSerialBridge(Node):
             return False
     
     def line_start_callback(self, request, response):
-        """Service callback for line start (send 'L')"""
-        if self.send_command('L'):
-            response.success = True
-            response.message = 'Line start command sent to Arduino'
-            self.scan_active = True
+        """Service callback for line start (send 'K' twice with 1 second delay)"""
+        first_success = self.send_command('K')
+        if first_success:
+            time.sleep(1)
+            second_success = self.send_command('K')
+            if second_success:
+                response.success = True
+                response.message = 'Line start commands (K, K) sent to Arduino'
+                self.scan_active = True
+            else:
+                response.success = False
+                response.message = 'Failed to send second K command'
         else:
             response.success = False
-            response.message = 'Failed to send line start command'
+            response.message = 'Failed to send first K command'
         return response
     
     def line_stop_callback(self, request, response):
-        """Service callback for line stop (send 'K')"""
-        if self.send_command('K'):
+        """Service callback for line stop (send 'L')"""
+        if self.send_command('L'):
             response.success = True
             response.message = 'Line stop command sent to Arduino'
             self.scan_active = False
         else:
             response.success = False
             response.message = 'Failed to send line stop command'
+        return response
+    
+    def power_off_callback(self, request, response):
+        """Service callback for GPR power off (send 'O')"""
+        if self.send_command('O'):
+            response.success = True
+            response.message = 'GPR power off command sent to Arduino'
+            self.scan_active = False
+        else:
+            response.success = False
+            response.message = 'Failed to send GPR power off command'
         return response
 
 def main(args=None):
@@ -109,4 +134,4 @@ def main(args=None):
         rclpy.shutdown()
 
 if __name__ == '__main__':
-    main() 
+    main()

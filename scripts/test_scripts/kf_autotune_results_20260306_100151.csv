@@ -1,0 +1,1 @@
+trial,score,acc_cov,gyr_cov,b_acc_cov,b_gyr_cov,final_dist_m,final_yaw_rad,max_radius_m,oob_events,e_spin_m,e_fb_m,e_rta_m,e_rtb_m,e_fig8_m,v_ref_rmse_mps,w_ref_rmse_radps,v_ref_bias_mps,w_ref_bias_radps,vel_ref_samples,planned_motion_sec,actual_motion_sec,motion_duration_error_sec,drift_0p5_m,drift_1p0_m,drift_0p5_yaw_rad,drift_1p0_yaw_rad
