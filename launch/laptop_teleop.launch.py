@@ -5,6 +5,51 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 import os
+import yaml
+
+
+DEFAULT_LAPTOP_CONFIG_FILE = os.environ.get(
+    'PILOT_LAPTOP_CONFIG',
+    os.path.expanduser('~/pilot_config/laptop.yaml')
+)
+
+
+def load_laptop_config(config_path=DEFAULT_LAPTOP_CONFIG_FILE):
+    """Load machine-local laptop config from outside the git repo."""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+        if not isinstance(config, dict):
+            print(f"[Laptop Config] Ignoring {config_path}: top-level YAML must be a mapping")
+            return {}
+        print(f"[Laptop Config] Loaded external config: {config_path}")
+        return config
+    except FileNotFoundError:
+        print(f"[Laptop Config] No external config at {config_path}; using in-repo defaults")
+    except Exception as exc:
+        print(f"[Laptop Config] Failed to load {config_path}: {exc}; using in-repo defaults")
+    return {}
+
+
+def config_value(config, dotted_key, default):
+    current = config
+    for part in dotted_key.split('.'):
+        if not isinstance(current, dict) or part not in current:
+            return default
+        current = current[part]
+    return current
+
+
+def as_launch_bool(value, default):
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('1', 'true', 'yes', 'on'):
+            return 'true'
+        if normalized in ('0', 'false', 'no', 'off'):
+            return 'false'
+    return 'true' if default else 'false'
 
 
 def _make_zenoh_bridge(context, *args, **kwargs):
@@ -35,24 +80,26 @@ def _make_zenoh_bridge(context, *args, **kwargs):
     ]
 
 def generate_launch_description():
+    laptop_config = load_laptop_config()
+
     declare_robot_ip_arg = DeclareLaunchArgument(
         'robot_ip',
-        default_value='192.168.168.101',
+        default_value=str(config_value(laptop_config, 'teleop.robot_ip', '192.168.168.101')),
         description='Robot Microhard IP for Zenoh (tcp/<robot_ip>:7447).'
     )
     declare_use_xterm_arg = DeclareLaunchArgument(
         'use_xterm',
-        default_value='true',
+        default_value=as_launch_bool(config_value(laptop_config, 'teleop.use_xterm', True), True),
         description='Launch host_teleop in xterm window when true.'
     )
     declare_interactive_sdl_arg = DeclareLaunchArgument(
         'interactive_sdl',
-        default_value='true',
+        default_value=as_launch_bool(config_value(laptop_config, 'teleop.interactive_sdl', True), True),
         description='Enable SDL keyboard window in host_teleop.'
     )
     declare_cmd_vel_enabled_arg = DeclareLaunchArgument(
         'cmd_vel_enabled',
-        default_value='true',
+        default_value=as_launch_bool(config_value(laptop_config, 'teleop.cmd_vel_enabled', True), True),
         description='Enable cmd_vel publishing from host_teleop.'
     )
     

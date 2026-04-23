@@ -123,12 +123,55 @@ Pin every repo to the approved release commit or tag used by your team.
 
 ## 3. Install ROS 2 Humble And System Dependencies
 
-Install ROS 2 Humble and the non-ROS packages used by the current robot-side
-stack:
+On a fresh Ubuntu image, first do the official ROS 2 Humble apt bootstrap.
+
+Set a UTF-8 locale:
+
+```bash
+sudo apt update
+sudo apt install -y locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+```
+
+Enable `universe` and install the official ROS apt source package:
+
+```bash
+sudo apt install -y software-properties-common curl
+sudo add-apt-repository universe -y
+
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-apt-source.deb
+
+sudo apt update
+```
+
+Add the Zenoh signing key and repository in its own source-list file:
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -L https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key | sudo gpg --dearmor --yes --output /etc/apt/keyrings/zenoh-public-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee /etc/apt/sources.list.d/zenoh.list > /dev/null
+
+sudo apt update
+```
+
+Important:
+
+- keep the Zenoh repo in `/etc/apt/sources.list.d/zenoh.list`
+- do not place the Zenoh repo directly in `/etc/apt/sources.list`, because
+  tools such as `add-apt-repository` can rewrite that file in unsafe ways for
+  third-party repos
+
+Then install ROS 2 Humble and the non-ROS packages used by the current
+robot-side stack:
 
 ```bash
 sudo apt install -y \
   ros-humble-desktop \
+  ros-dev-tools \
   ros-humble-rmw-cyclonedds-cpp \
   ros-humble-cyclonedds \
   python3-colcon-common-extensions \
@@ -153,6 +196,9 @@ sudo apt install -y \
   gstreamer1.0-tools \
   gstreamer1.0-plugins-base \
   gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly \
+  gstreamer1.0-vaapi \
   zenohd \
   zenoh-plugin-ros2dds
 ```
@@ -176,9 +222,15 @@ source ~/.bashrc
 
 Notes:
 
+- If `/opt/ros/humble/setup.bash` already exists, the ROS repository bootstrap
+  may already be present, but it is still safe to verify it.
 - `libjxl-dev` is not reliably available on Ubuntu 22.04 in the way this robot
   stack needs.
 - Install `libbrotli-dev` above, then build `libjxl` from source in Step 5.
+- The robot-side video sender paths depend on runtime GStreamer elements such as
+  `x264enc`, `h264parse`, and `rtph264pay`; the low-latency Intel hardware path
+  also uses `vaapih264enc`, so those plugin packages are intentional runtime
+  requirements.
 
 ## 4. Install Seek Thermal SDK
 
@@ -593,6 +645,8 @@ Before first launch:
 source ~/.bashrc
 ldconfig -p | grep -E 'livox|seekcamera|jxl'
 ip -details link show can0
+gst-inspect-1.0 x264enc h264parse rtph264pay
+gst-inspect-1.0 vaapih264enc || echo "VA-API encoder unavailable; software x264 path will be used"
 ros2 run pilot_control startup_preflight
 ros2 run pilot_control tilt_calibration
 ```
@@ -636,6 +690,8 @@ The robot is ready only when all items below are true:
   `fast_lio`, and `pilot_control`
 - `serial` also builds if you are using the separate multi-repo layout that
   includes it
+- the required robot-side GStreamer encoder elements resolve, with
+  `vaapih264enc` present when Intel VA-API acceleration is expected
 - `startup_preflight` passes
 - `tilt_calibration` passes
 - `robot_complete.launch.py` starts cleanly

@@ -21,6 +21,7 @@ This guide covers:
 - system-wide Fields2Cover install for full coverage-planning features
 - `host_teleop` build and launch
 - production coverage planner build and runtime setup
+- machine-local laptop config at `~/pilot_config/laptop.yaml`
 - SSH and robot registry setup for planner login and uploads
 - validation and first launch
 
@@ -29,10 +30,18 @@ Assumptions:
 - target OS is `Ubuntu 22.04 LTS`
 - target ROS distro is `Humble`
 - target workspace is `~/pilot_ws`
+- laptop-specific teleop config lives outside git in `~/pilot_config/laptop.yaml`
 - robot-side stack is already provisioned with
   `src/pilot_control/docs/lattepanda_robot_production_setup.md`
 - robot auth setup from `src/pilot_control/robot_setup_instructions.txt` is
   complete on the robot
+
+Optional guided path:
+
+- run `src/pilot_control/install_operator_laptop_production.sh` from the repo to
+  execute an interactive step-by-step installer
+- the installer supports step skipping and writes a completed/skipped/failed
+  summary at the end
 
 ## 1. Baseline Ubuntu Setup
 
@@ -146,12 +155,55 @@ Pin both repos to the approved release commit or tag used by your team.
 
 ## 3. Install ROS 2 Humble And Laptop Build Dependencies
 
-Install ROS, DDS, Zenoh, and the non-ROS packages needed to build the current
-laptop-side stack:
+On a fresh Ubuntu image, first do the official ROS 2 Humble apt bootstrap.
+
+Set a UTF-8 locale:
+
+```bash
+sudo apt update
+sudo apt install -y locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+```
+
+Enable `universe` and install the official ROS apt source package:
+
+```bash
+sudo apt install -y software-properties-common curl
+sudo add-apt-repository universe -y
+
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-apt-source.deb
+
+sudo apt update
+```
+
+Add the Zenoh signing key and repository in its own source-list file:
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -L https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key | sudo gpg --dearmor --yes --output /etc/apt/keyrings/zenoh-public-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee /etc/apt/sources.list.d/zenoh.list > /dev/null
+
+sudo apt update
+```
+
+Important:
+
+- keep the Zenoh repo in `/etc/apt/sources.list.d/zenoh.list`
+- do not place the Zenoh repo directly in `/etc/apt/sources.list`, because
+  tools such as `add-apt-repository` can rewrite that file in unsafe ways for
+  third-party repos
+
+Then install ROS, DDS, Zenoh, and the non-ROS packages needed to build the
+current laptop-side stack:
 
 ```bash
 sudo apt install -y \
   ros-humble-desktop \
+  ros-dev-tools \
   ros-humble-rmw-cyclonedds-cpp \
   ros-humble-cyclonedds \
   ros-humble-pcl-conversions \
@@ -172,6 +224,10 @@ sudo apt install -y \
   gstreamer1.0-tools \
   gstreamer1.0-plugins-base \
   gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-libav \
+  gstreamer1.0-x \
+  gstreamer1.0-gl \
   zenohd \
   zenoh-plugin-ros2dds
 ```
@@ -191,10 +247,16 @@ source /opt/ros/humble/setup.bash
 
 Notes:
 
+- If `/opt/ros/humble/setup.bash` already exists, the ROS repository bootstrap
+  may already be present, but it is still safe to verify it.
 - Keep the extra apt packages from this guide even if `rosdep install` later
   reports success.
 - The current `pilot_control` CMake files require several build-time packages
   that are not fully represented in `package.xml`.
+- The planner's embedded laptop-side video viewer uses GStreamer runtime
+  elements including `rtph264depay`, `h264parse`, `avdec_h264`, and
+  `autovideosink`, so the extra runtime plugin packages above are intentional
+  and not just build dependencies.
 
 ## 4. Install Fields2Cover System-Wide
 
@@ -366,6 +428,34 @@ Expected:
 - `0`
 - `file:///home/$USER/cyclone_loopback.xml`
 
+### 8.1 Create The Machine-Local Laptop Config
+
+Keep laptop-specific teleop defaults outside git, just like the robot-side
+`robot.yaml`.
+
+Create:
+
+```bash
+mkdir -p ~/pilot_config
+cp -n ~/pilot_ws/src/pilot_control/config/laptop_config.example.yaml ~/pilot_config/laptop.yaml
+nano ~/pilot_config/laptop.yaml
+```
+
+Review these values at minimum:
+
+- `teleop.robot_ip` must match the deployed robot IP you intend to reach over
+  the Microhard link
+- `teleop.use_xterm` controls whether `host_teleop` starts in a separate
+  `xterm`
+- `teleop.interactive_sdl` controls whether the SDL keyboard window is enabled
+- `teleop.cmd_vel_enabled` controls whether teleop publishes `/cmd_vel`
+
+If you intentionally store the config elsewhere:
+
+```bash
+export PILOT_LAPTOP_CONFIG=/full/path/to/laptop.yaml
+```
+
 ## 9. Configure SSH For Non-Interactive Robot Access
 
 The production coverage planner uses `ssh`, `scp`, and `rsync` in batch mode.
@@ -427,7 +517,7 @@ EOF
 Review these values at minimum:
 
 - `robot_id` must match `/etc/pilot_robot_id` on the robot exactly
-- `host` must match the robot IP you use for `laptop_teleop.launch.py`
+- `host` must match `teleop.robot_ip` in `~/pilot_config/laptop.yaml`
 - `ssh_user` must match the robot login user
 - `robot_data_path` should usually remain `/R_DATA`
 - `default_remote_upload_dir` should usually remain `/R_DATA/waypoints`
@@ -467,6 +557,7 @@ ros2 interface show odrive_can/srv/AxisState
 ros2 pkg prefix pilot_control
 test -x ~/pilot_ws/src/pilot_control/scripts/F2C/cpp/build/bdr_coverage_planner
 zenohd --version
+gst-inspect-1.0 rtph264depay h264parse avdec_h264 videoconvert autovideosink
 ```
 
 ### 12.1 Launch Laptop Teleop
@@ -475,8 +566,11 @@ Start the laptop bridge and SDL teleop window:
 
 ```bash
 source ~/.bashrc
-ros2 launch pilot_control laptop_teleop.launch.py robot_ip:=192.168.168.101
+ros2 launch pilot_control laptop_teleop.launch.py
 ```
+
+For a one-off override without editing `~/pilot_config/laptop.yaml`, append a
+launch argument such as `robot_ip:=192.168.168.101`.
 
 Expected:
 
@@ -531,7 +625,11 @@ The laptop is ready only when all items below are true:
 - Fields2Cover is installed system-wide under `/usr/local`
 - the planner build reports both Fields2Cover and CGAL found
 - `zenohd` and `zenoh-plugin-ros2dds` are installed
+- the required laptop-side GStreamer runtime elements resolve via
+  `gst-inspect-1.0`
 - `~/cyclone_loopback.xml` exists
+- `~/pilot_config/laptop.yaml` matches the deployed robot and preferred teleop
+  behavior
 - `RMW_IMPLEMENTATION`, `ROS_DOMAIN_ID`, and `CYCLONEDDS_URI` are correct
 - SSH batch-mode access to the robot succeeds without password prompts
 - `~/.config/PilotControl/BDRCoveragePlanner/robots.json` matches the deployed

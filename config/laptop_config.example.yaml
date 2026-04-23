@@ -1,0 +1,12 @@
+# Copy this file outside the git repo, e.g. to ~/pilot_config/laptop.yaml
+# laptop_teleop.launch.py will use ~/pilot_config/laptop.yaml by default, or the
+# path in the PILOT_LAPTOP_CONFIG environment variable.
+#
+# Keep teleop.robot_ip aligned with the matching robot host in:
+#   ~/.config/PilotControl/BDRCoveragePlanner/robots.json
+
+teleop:
+  robot_ip: 192.168.168.101
+  use_xterm: true
+  interactive_sdl: true
+  cmd_vel_enabled: true
