@@ -174,13 +174,17 @@ sudo apt install -y \
   ros-dev-tools \
   ros-humble-rmw-cyclonedds-cpp \
   ros-humble-cyclonedds \
+  ros-humble-pcl-conversions \
+  ros-humble-rosbag2-storage-mcap \
   python3-colcon-common-extensions \
   python3-rosdep \
   python3-vcstool \
+  python3-pip \
   python3-dev \
   python3-numpy \
   python3-opencv \
   python3-serial \
+  python3-scipy \
   python3-yaml \
   build-essential \
   cmake \
@@ -227,6 +231,10 @@ Notes:
 - `libjxl-dev` is not reliably available on Ubuntu 22.04 in the way this robot
   stack needs.
 - Install `libbrotli-dev` above, then build `libjxl` from source in Step 5.
+- `gpr_scan_controller.py` records bags with `ros2 bag ... --storage mcap`, so
+  `ros-humble-rosbag2-storage-mcap` is an intentional runtime dependency.
+- `robot_complete.launch.py` starts the Accel MPC controller; `python3-scipy`
+  is installed above and `osqp` is installed in Step 4.1.
 - The robot-side video sender paths depend on runtime GStreamer elements such as
   `x264enc`, `h264parse`, and `rtph264pay`; the low-latency Intel hardware path
   also uses `vaapih264enc`, so those plugin packages are intentional runtime
@@ -254,6 +262,26 @@ dpkg -s seekthermal-sdk-dev
 ls /usr/include/seekcamera
 ls /lib/libseekcamera* /usr/lib/libseekcamera* 2>/dev/null
 ```
+
+## 4.1 Install Accel MPC Python Solver
+
+`robot_complete.launch.py` starts
+`src/pilot_control/scripts/mpc_accel_autonomous_controller.py`. That controller
+requires both `scipy.sparse` and `osqp` in the same Python environment used by
+ROS 2.
+
+Install and verify:
+
+```bash
+python3 -m pip install --user osqp
+python3 -c "import osqp; from scipy import sparse; print('Accel MPC Python deps OK')"
+```
+
+Notes:
+
+- `python3-scipy` is already included in the apt install list from Step 3.
+- If you launch ROS nodes from a custom virtual environment, install both
+  `osqp` and `scipy` there too.
 
 ## 5. Build And Install JPEG XL System-Wide
 
@@ -317,7 +345,8 @@ Review these values at minimum:
 - `stream.host`
 - `stream.port`
 - `gps.device`
-- `arduino.serial_port`
+- `arduino.serial_port` (normally keep this at `/dev/arduino`; use a raw
+  `/dev/ttyACM*` path only as a temporary fallback while fixing udev)
 - `preflight.rf_target_ip`
 
 If you intentionally store the config elsewhere:
@@ -488,7 +517,27 @@ Verify:
 ls -l /dev/arduino
 ls -l /dev/gps
 ls -l /dev/v4l/by-id
+lsusb | rg "8036|Arduino|Leonardo"
 ```
+
+On new robots, `/dev/arduino` should resolve to the LattePanda's onboard
+Leonardo-compatible controller, usually a `/dev/ttyACM*` device behind the
+stable symlink.
+
+If `/dev/arduino` is missing:
+
+- confirm the repo copy of `src/pilot_control/config/99-arduino.rules` was
+  installed and reloaded
+- inspect the live ACM device with
+  `udevadm info -a -n /dev/ttyACM0 | rg "idVendor|idProduct"`
+- temporarily set `arduino.serial_port` in `~/pilot_config/robot.yaml` to the
+  live `/dev/ttyACM*` path until the udev rule matches that robot
+- keep `/dev/ttyACM*` as a temporary recovery path only; production should use
+  `/dev/arduino`
+
+Flash `src/pilot_control/scripts/servo_gpr/servo_gpr.ino` to that onboard
+controller using the Leonardo board profile, for example
+`arduino:avr:leonardo`, then confirm the board comes back at `/dev/arduino`.
 
 ## 10. Create Or Verify `/R_DATA`
 
@@ -681,10 +730,11 @@ The robot is ready only when all items below are true:
 - every repo is pinned to the approved commit or tag
 - Seek SDK is installed and detectable
 - `libjxl` is installed system-wide under `/usr/local`
+- Accel MPC Python dependencies resolve (`osqp` and `scipy`)
 - `~/pilot_config/robot.yaml` matches the physical robot
 - `/R_DATA` is mounted and writable
 - the Livox NIC reaches `192.168.1.127`
-- `/dev/arduino` and `/dev/gps` are correct
+- the onboard Leonardo resolves to `/dev/arduino` and `/dev/gps` is correct
 - camera by-id paths are correct
 - the workspace build succeeds for `odrive_can`, `livox_ros_driver2`,
   `fast_lio`, and `pilot_control`

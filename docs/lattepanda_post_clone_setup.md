@@ -180,7 +180,8 @@ Review at minimum:
 - `stream.host`
 - `stream.port`
 - `gps.device`
-- `arduino.serial_port`
+- `arduino.serial_port` (normally keep `/dev/arduino`; use `/dev/ttyACM*` only
+  as a temporary fallback while fixing udev)
 - `preflight.rf_target_ip`
 
 If you use a non-default path:
@@ -313,6 +314,7 @@ Make sure the cloned robot still sees the expected stable device paths:
 ls -l /dev/arduino
 ls -l /dev/gps
 ls -l /dev/v4l/by-id
+lsusb | rg "8036|Arduino|Leonardo"
 ```
 
 The most important checks are:
@@ -320,6 +322,18 @@ The most important checks are:
 - `/dev/arduino`
 - `/dev/gps`
 - the two expected RGB camera by-id paths
+
+On new robots, `/dev/arduino` should point to the LattePanda's onboard
+Leonardo-compatible controller, usually a `/dev/ttyACM*` device behind the
+stable symlink.
+
+If `/dev/arduino` is missing after restoring the clone:
+
+- reinstall and reload `src/pilot_control/config/99-arduino.rules`
+- inspect the live ACM device with
+  `udevadm info -a -n /dev/ttyACM0 | rg "idVendor|idProduct"`
+- temporarily set `arduino.serial_port` in `~/pilot_config/robot.yaml` to the
+  live `/dev/ttyACM*` path until the udev rule matches that robot
 
 If the camera IDs differ on the new robot, update `~/pilot_config/robot.yaml`
 before launching.
@@ -412,7 +426,7 @@ The cloned robot is ready only when all items below are true:
 - `~/pilot_config/robot.yaml` matches the physical robot
 - `/R_DATA` is mounted and writable
 - Livox networking matches the target robot
-- `/dev/arduino` and `/dev/gps` are correct
+- the onboard Leonardo resolves to `/dev/arduino` and `/dev/gps` is correct
 - camera by-id paths are correct
 - `startup_preflight` passes
 - tilt calibration is present or recreated

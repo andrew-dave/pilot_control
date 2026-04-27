@@ -1,4 +1,6 @@
-# Arduino UNO R4 Minima - create stable symlink
+# LattePanda onboard Arduino Leonardo-compatible MCU - create stable symlink
 # Install with: sudo cp /path/to/this/file /etc/udev/rules.d/
+# Verify the live board with lsusb if your unit reports a different VID/PID.
 # Then reload: sudo udevadm control --reload-rules && sudo udevadm trigger
-SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0069", SYMLINK+="arduino", MODE="0666", GROUP="dialout"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8036", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="arduino", MODE="0666", GROUP="dialout"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2a03", ATTRS{idProduct}=="8036", ENV{ID_MM_DEVICE_IGNORE}="1", SYMLINK+="arduino", MODE="0666", GROUP="dialout"

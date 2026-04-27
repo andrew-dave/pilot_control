@@ -211,6 +211,7 @@ sudo apt install -y \
   python3-rosdep \
   python3-vcstool \
   python3-pip \
+  python3-yaml \
   build-essential \
   cmake \
   pkg-config \
@@ -253,6 +254,9 @@ Notes:
   reports success.
 - The current `pilot_control` CMake files require several build-time packages
   that are not fully represented in `package.xml`.
+- `laptop_teleop.launch.py` loads `~/pilot_config/laptop.yaml` directly, so
+  `python3-yaml` is an intentional runtime dependency and not just a ROS build
+  extra.
 - The planner's embedded laptop-side video viewer uses GStreamer runtime
   elements including `rtph264depay`, `h264parse`, `avdec_h264`, and
   `autovideosink`, so the extra runtime plugin packages above are intentional
