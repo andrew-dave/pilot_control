@@ -1292,6 +1292,11 @@ class MPCAccelController(Node):
         self.delta_cmd_pub = self.create_publisher(
             Float64MultiArray, "/mpc_accel/delta_cmd", 10
         )
+        # Planner/UI hook: emits a segment-complete status when one published
+        # waypoint sequence reaches its final target.
+        self.scan_segment_status_pub = self.create_publisher(
+            String, "/scan_segment_status", 10
+        )
 
         # ODrive axis state / clear error clients for arming/disarming
         self.left_axis_client = self.create_client(
@@ -2262,6 +2267,15 @@ class MPCAccelController(Node):
             finally:
                 self._dc_sequence_phase = "idle"
 
+    def _publish_scan_segment_status(self, status: str) -> None:
+        """Best-effort status topic for planner segment sequencing."""
+        try:
+            msg = String()
+            msg.data = str(status)
+            self.scan_segment_status_pub.publish(msg)
+        except Exception as exc:
+            self.get_logger().warn(f"Failed to publish /scan_segment_status: {exc}")
+
     def heartbeat_callback(self, msg: EmptyMsg) -> None:
         """
         Heartbeat callback from host_teleop via Zenoh bridge.
@@ -2441,6 +2455,7 @@ class MPCAccelController(Node):
                     f"{distance_along_line_remaining:.3f} m "
                     f"(threshold: {self.target_reached_threshold:.3f} m)"
                 )
+                self._publish_scan_segment_status("segment_complete")
 
                 # Final waypoint: ensure DC ends and saves if active.
                 if self.dc_active:
