@@ -32,7 +32,8 @@
           "^/mpc_accel/cmd_twist$",
           "^/mpc_accel/error_state$",
           "^/mpc_accel/reference_trajectory$",
-          "^/mpc_accel/delta_cmd$"
+          "^/mpc_accel/delta_cmd$",
+          "^/scan_segment_status$"
         ],
 
         // Laptop -> Robot topics
@@ -60,6 +61,8 @@
           "^/gpr_line_stop$",
           "^/gpr_scan/toggle$",
           "^/gpr_power_off$",
+          "^/dc/pause$",
+          "^/dc/resume$",
           "^/rosbag/toggle$",
           "^/rosbag/start$",
           "^/rosbag/pause$",
