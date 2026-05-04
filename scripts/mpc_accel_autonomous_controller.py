@@ -2254,6 +2254,12 @@ class MPCAccelController(Node):
                 self._clear_dc_pause_reasons()
                 self.get_logger().info('AUTO-DC: Data collection ended and saved')
 
+                # Notify planner that the segment recording is fully closed out
+                # (file flushed, actuator retracted). The OCU waits on this
+                # before publishing the next segment to avoid racing the
+                # GP8800 actuator's start/stop cycle.
+                self._publish_scan_segment_status("segment_saved")
+
                 if reenable_autonomy:
                     if self.manual_override_active:
                         self.get_logger().info(
