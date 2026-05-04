@@ -81,7 +81,20 @@ class DataCollectionCoordinator(Node):
         self.day_folder = ''
         self.section_folder = ''
         self.section_timestamp = ''
-        
+
+        # Mission-scoped GNSS state. Raw UBX is logged once across an entire
+        # operator mission (multiple /dc/start ↔ /dc/end_and_save cycles) into
+        # a single .ubx file, instead of per-section. PPK uses the mission
+        # file plus per-section start/end timestamps to slice playback.
+        self.mission_folder = ''
+        self.mission_timestamp = ''
+        self.mission_gnss_folder = ''
+        self.mission_gnss_path = ''
+        self.mission_gnss_started_at = None
+        self.mission_gnss_active = False
+        self.mission_section_history = []
+        self.mission_active_section_start = None
+
         # State tracking
         self.is_paused = False
         self.collection_active = True   # Assume active — stop services should always work
@@ -121,6 +134,9 @@ class DataCollectionCoordinator(Node):
             callback_group=self.callback_group)
         self.end_delete_srv = self.create_service(
             Trigger, '/dc/end_and_delete', self.end_and_delete_callback,
+            callback_group=self.callback_group)
+        self.finalize_mission_srv = self.create_service(
+            Trigger, '/dc/finalize_mission', self.finalize_mission_callback,
             callback_group=self.callback_group)
         
         # ==================== Service Clients ====================
@@ -208,6 +224,7 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('  /dc/resume         - Resume data collection')
         self.get_logger().info('  /dc/end_and_save   - End and save (data: 0=partial, 1=complete)')
         self.get_logger().info('  /dc/end_and_delete - End and delete all session data')
+        self.get_logger().info('  /dc/finalize_mission - Stop continuous GNSS + finalize mission folder')
         self.get_logger().info('')
         self.get_logger().info('Section folders are created dynamically on /dc/start')
         self.get_logger().info('='*60)
@@ -630,6 +647,10 @@ class DataCollectionCoordinator(Node):
             self.gnss_precapture_path = ''
 
     def reset_gnss_session_state(self):
+        # Note: this only resets PER-SECTION gnss bookkeeping. Mission-scoped
+        # GNSS state (mission_gnss_*, mission_section_history) intentionally
+        # persists across /dc/end_and_save so the same UBX file keeps logging
+        # for the next section. /dc/finalize_mission resets the mission state.
         self.gnss_data_folder = ''
         self.gnss_session_file = ''
         self.gnss_raw_file = ''
@@ -641,6 +662,246 @@ class DataCollectionCoordinator(Node):
         self.gnss_invalid_reasons = []
         self.gnss_warning_reasons = []
         self.reset_gnss_precapture_state()
+
+    # ================================================================
+    #  Mission-scoped GNSS (continuous UBX across multiple sections)
+    # ================================================================
+
+    def reset_mission_state(self):
+        self.mission_folder = ''
+        self.mission_timestamp = ''
+        self.mission_gnss_folder = ''
+        self.mission_gnss_path = ''
+        self.mission_gnss_started_at = None
+        self.mission_gnss_active = False
+        self.mission_section_history = []
+        self.mission_active_section_start = None
+
+    def mission_config_path(self) -> Path:
+        if not self.mission_folder:
+            return Path('')
+        return Path(self.mission_folder) / 'mission_config.json'
+
+    def update_mission_config(self, updates: dict):
+        path = self.mission_config_path()
+        if path and str(path):
+            self.update_json_file(path, updates)
+
+    def build_mission_gnss_path(self, mission_folder: Path, timestamp: str) -> str:
+        gnss_folder = mission_folder / 'GNSS_data'
+        gnss_folder.mkdir(parents=True, exist_ok=True)
+        self.mission_gnss_folder = str(gnss_folder)
+        return str(gnss_folder / f'rover_{datetime.now().strftime("%Y%m%d")}_{timestamp}.ubx')
+
+    def ensure_mission_session(self) -> bool:
+        """Lazily create the mission folder + start continuous GNSS logging.
+
+        Returns True on success (mission already active is also success).
+        Returns False on hard GNSS failure when GNSS is enabled.
+        """
+        if self.mission_gnss_active and self.mission_gnss_path:
+            return True
+
+        try:
+            base = Path(self.base_data_dir)
+            base.mkdir(parents=True, exist_ok=True)
+            now = datetime.now()
+            day_path = base / now.strftime('%B_%d_%Y')
+            day_path.mkdir(parents=True, exist_ok=True)
+            timestamp = now.strftime('%H%M%S')
+            mission_path = day_path / f'Mission_{timestamp}'
+            # Highly unlikely collision; if it happens, append seconds-ms.
+            if mission_path.exists():
+                mission_path = day_path / f'Mission_{timestamp}_{now.strftime("%f")[:3]}'
+            mission_path.mkdir(parents=True, exist_ok=True)
+
+            self.mission_folder = str(mission_path)
+            self.mission_timestamp = timestamp
+            self.mission_section_history = []
+        except Exception as e:
+            self.get_logger().error(f'Failed to create mission folder: {e}')
+            return False
+
+        if not self.gnss_enabled:
+            # Indoor mode: no UBX log, but we still create the mission folder
+            # so the per-section session_config can reference it for grouping.
+            self.mission_gnss_active = False
+            self.mission_gnss_path = ''
+            self.mission_gnss_started_at = None
+            self.update_mission_config({
+                'mission_folder': self.mission_folder,
+                'mission_timestamp': self.mission_timestamp,
+                'gnss_enabled': False,
+                'mission_started_at': now.isoformat(),
+                'mission_finalized_at': None,
+                'mission_gnss_path': '',
+                'sections': [],
+            })
+            self.get_logger().info(
+                f'Mission folder created (indoor mode, no GNSS): {self.mission_folder}')
+            return True
+
+        try:
+            target_path = self.build_mission_gnss_path(Path(self.mission_folder), timestamp)
+        except Exception as e:
+            self.get_logger().error(f'Failed to prepare mission GNSS folder: {e}')
+            return False
+
+        # Promote precapture if active so we keep continuity from boot;
+        # otherwise start a fresh session.
+        if self.gnss_precapture_active and self.gnss_precapture_path:
+            success, msg, hard_failure = self.promote_gps_raw_log(target_path)
+            if not success:
+                if hard_failure:
+                    self.get_logger().error(
+                        f'Mission GNSS bootstrap (promote) hard-failed: {msg}')
+                    return False
+                self.get_logger().error(
+                    f'Mission GNSS promote failed: {msg} — falling through to fresh start')
+                self.register_preserved_precapture_path(self.gnss_precapture_path)
+            else:
+                self.get_logger().info(f'Mission GNSS promoted from precapture: {msg}')
+                self.mission_gnss_path = target_path
+                self.mission_gnss_active = True
+
+        if not self.mission_gnss_active:
+            success, msg, hard_failure = self.start_gps_raw_log(target_path)
+            if not success:
+                if hard_failure:
+                    self.get_logger().error(
+                        f'Mission GNSS bootstrap (start) hard-failed: {msg}')
+                    return False
+                self.get_logger().error(
+                    f'Mission GNSS raw log start failed: {msg} — mission GNSS will be unavailable')
+                self.mark_gnss_invalid('Mission GNSS raw logging failed to start')
+                return False
+            self.mission_gnss_path = target_path
+            self.mission_gnss_active = True
+            self.get_logger().info(f'Mission GNSS raw logging started: {msg}')
+
+        self.reset_gnss_precapture_state()
+        self.mission_gnss_started_at = datetime.now().isoformat()
+        self.update_mission_config({
+            'mission_folder': self.mission_folder,
+            'mission_timestamp': self.mission_timestamp,
+            'gnss_enabled': True,
+            'mission_started_at': self.mission_gnss_started_at,
+            'mission_finalized_at': None,
+            'mission_gnss_path': self.mission_gnss_path,
+            'sections': [],
+        })
+        self.get_logger().info(f'Mission folder created: {self.mission_folder}')
+        return True
+
+    def mission_gnss_bytes_written(self) -> int:
+        if self.mission_gnss_path and os.path.exists(self.mission_gnss_path):
+            try:
+                return os.path.getsize(self.mission_gnss_path)
+            except OSError:
+                return 0
+        return 0
+
+    def record_section_start_in_mission(self, section_name: str):
+        self.mission_active_section_start = {
+            'section_name': section_name,
+            'section_folder': self.section_folder,
+            'start_time': datetime.now().isoformat(),
+            'gnss_bytes_at_start': self.mission_gnss_bytes_written(),
+        }
+
+    def record_section_end_in_mission(self, completion_tag: str, deleted: bool = False):
+        if not self.mission_active_section_start:
+            return
+        entry = dict(self.mission_active_section_start)
+        entry['end_time'] = datetime.now().isoformat()
+        entry['gnss_bytes_at_end'] = self.mission_gnss_bytes_written()
+        entry['completion_tag'] = completion_tag
+        entry['deleted'] = deleted
+        # Refresh section_folder in case it was renamed (e.g. _complete suffix).
+        if self.section_folder:
+            entry['section_folder'] = self.section_folder
+        self.mission_section_history.append(entry)
+        self.mission_active_section_start = None
+        if self.mission_folder:
+            self.update_mission_config({'sections': self.mission_section_history})
+
+    def finalize_mission_callback(self, request, response):
+        """Stop continuous mission GNSS logging and finalize mission_config.json.
+
+        Called by the OCU when the operator presses Complete Mission, before
+        the launch tree is torn down. Idempotent: returns success if no mission
+        is active.
+        """
+        del request
+        self.get_logger().info('')
+        self.get_logger().info('=' * 60)
+        self.get_logger().info('FINALIZING MISSION')
+        self.get_logger().info('=' * 60)
+
+        if not self.mission_folder and not self.mission_gnss_active:
+            response.success = True
+            response.message = 'No active mission to finalize'
+            self.get_logger().info(response.message)
+            return response
+
+        # Defensively close any in-flight section so its slice is captured
+        # even if the operator hit Complete Mission mid-section.
+        if self.mission_active_section_start:
+            self.get_logger().warn(
+                'Active section still open at finalize — recording as partial')
+            self.record_section_end_in_mission('partial', deleted=False)
+
+        gnss_stop_msg = 'GNSS was not active'
+        gnss_stop_ok = True
+        if self.gnss_enabled and self.mission_gnss_active:
+            self.get_logger().info('Stopping continuous mission GNSS raw logging...')
+            success, msg = self.stop_gps_raw_log()
+            gnss_stop_ok = success
+            gnss_stop_msg = msg or ''
+            if success:
+                self.get_logger().info(f'  Mission GNSS stopped: {msg}')
+            else:
+                self.get_logger().error(f'  Mission GNSS stop failed: {msg}')
+
+            # Brief settle so the driver flushes the final UBX block before we
+            # report bytes_written. 1 s is enough — the 30 s legacy delay was
+            # for ZED-F9P RAWX cool-down and is not needed here because we
+            # never tore down the driver during the mission.
+            time.sleep(1.0)
+
+        bytes_written = self.mission_gnss_bytes_written()
+        finalized_at = datetime.now().isoformat()
+
+        if self.mission_folder:
+            self.update_mission_config({
+                'mission_finalized_at': finalized_at,
+                'mission_gnss_path': self.mission_gnss_path,
+                'mission_gnss_bytes_written': bytes_written,
+                'mission_gnss_stop_ok': gnss_stop_ok,
+                'mission_gnss_stop_message': gnss_stop_msg,
+                'sections': self.mission_section_history,
+                'gnss_invalid': self.gnss_invalid,
+                'gnss_invalid_reasons': self.gnss_invalid_reasons,
+                'gnss_warning_reasons': self.gnss_warning_reasons,
+                'driver_restarts': self.gnss_driver_restarts,
+            })
+
+        self.get_logger().info('=' * 60)
+        self.get_logger().info(
+            f'MISSION FINALIZED — sections={len(self.mission_section_history)} '
+            f'gnss_bytes={bytes_written}')
+        self.get_logger().info('=' * 60)
+
+        # Reset mission state so the next launch session (or the next Complete
+        # Mission cycle within the same launch) starts fresh.
+        self.reset_mission_state()
+        self.mission_gnss_active = False
+
+        response.success = True
+        response.message = (
+            f'Mission finalized: gnss_bytes={bytes_written}, gnss_stop_ok={gnss_stop_ok}'
+        )
+        return response
 
     def precapture_watchdog_callback(self):
         """Stop and delete stale GNSS precapture logs if /dc/start never happens."""
@@ -718,16 +979,17 @@ class DataCollectionCoordinator(Node):
             visual_data_folder.mkdir(exist_ok=True)
             gpr_scan_folder.mkdir(exist_ok=True)
 
-            gnss_data_folder = None
+            # NOTE: We no longer create a per-section GNSS_data folder. The
+            # raw UBX is logged once into the mission folder
+            # (/R_DATA/<day>/Mission_<HHMMSS>/GNSS_data/rover_*.ubx) for the
+            # entire mission. Per-section GNSS metadata still lives in
+            # <section>/gnss_session.json and references the mission file.
             self.section_folder = str(section_path)
             self.section_timestamp = timestamp
             self.gnss_data_folder = ''
             self.gnss_session_file = ''
             self.gnss_raw_file = ''
             if self.gnss_enabled:
-                gnss_data_folder = section_path / "GNSS_data"
-                gnss_data_folder.mkdir(exist_ok=True)
-                self.gnss_data_folder = str(gnss_data_folder)
                 self.gnss_session_file = str(section_path / 'gnss_session.json')
 
             self.get_logger().info('')
@@ -736,7 +998,7 @@ class DataCollectionCoordinator(Node):
             self.get_logger().info(f'  Visual data: {visual_data_folder}')
             self.get_logger().info(f'  GPR data:    {gpr_scan_folder}')
             if self.gnss_enabled:
-                self.get_logger().info(f'  GNSS data:   {gnss_data_folder}')
+                self.get_logger().info('  GNSS data:   continuous mission UBX (see mission_folder)')
             else:
                 self.get_logger().info('  GNSS data:   disabled for indoor mode')
 
@@ -756,9 +1018,12 @@ class DataCollectionCoordinator(Node):
             }
             if self.gnss_enabled:
                 config.update({
-                    'gnss_data_folder': str(gnss_data_folder),
+                    'gnss_data_folder': '',
                     'gnss_session_file': self.gnss_session_file,
-                    'gnss_raw_file': '',
+                    'gnss_raw_file': self.mission_gnss_path,
+                    'mission_folder': self.mission_folder,
+                    'mission_gnss_path': self.mission_gnss_path,
+                    'gnss_continuous_mission_mode': True,
                 })
             with open(section_path / 'session_config.json', 'w') as f:
                 json.dump(config, f, indent=2)
@@ -766,8 +1031,11 @@ class DataCollectionCoordinator(Node):
                 gnss_metadata = {
                     'section_folder': str(section_path),
                     'section_name': section_name,
-                    'gnss_data_folder': str(gnss_data_folder),
-                    'raw_file_path': '',
+                    'gnss_data_folder': '',
+                    'mission_folder': self.mission_folder,
+                    'mission_gnss_path': self.mission_gnss_path,
+                    'gnss_continuous_mission_mode': True,
+                    'raw_file_path': self.mission_gnss_path,
                     'precapture_start_time': self.gnss_precapture_started_at,
                     'collection_start_time': None,
                     'collection_end_time': None,
@@ -941,65 +1209,38 @@ class DataCollectionCoordinator(Node):
         errors = []
         delay = self.start_delay
 
-        # --- Step 1: GNSS raw logging ---
+        # --- Step 1: Bootstrap mission GNSS (continuous across all sections) ---
         self.get_logger().info('')
         if self.gnss_enabled:
-            self.get_logger().info('Step 1/4: Starting/promoting GNSS raw logging...')
-            session_gnss_path = self.build_session_gnss_path()
             collection_start_time = datetime.now().isoformat()
-            precapture_start_time = self.gnss_precapture_started_at
             precapture_temp_path = self.gnss_precapture_path
-            precapture_used = False
-            gnss_ok = False
-            preserved_precapture = False
+            precapture_start_time = self.gnss_precapture_started_at
 
-            if self.gnss_precapture_active and self.gnss_precapture_path:
-                success, msg, hard_failure = self.promote_gps_raw_log(session_gnss_path)
-                if success:
-                    precapture_used = True
-                    gnss_ok = True
-                    self.get_logger().info(f'  GNSS precapture promoted: {msg}')
-                else:
-                    if hard_failure:
-                        self.get_logger().error(f'  Hard failure during GNSS precapture promotion: {msg}')
-                        self.cleanup_failed_start_section()
-                        response.success = False
-                        response.message = f'Failed to start collection: {msg}'
-                        return response
-                    errors.append(f'GNSS promote: {msg}')
-                    self.mark_gnss_invalid('GNSS precapture promotion failed; pre-motion GNSS continuity lost')
-                    self.register_preserved_precapture_path(precapture_temp_path)
-                    preserved_precapture = True
-                    self.get_logger().error('  !!! GNSS RAW PROMOTE FAILED - PPK PRECAPTURE MAY BE LOST !!!')
-                    self.get_logger().error(f'  GNSS promote failed and temp file preserved: {msg}')
+            if self.mission_gnss_active and self.mission_gnss_path:
+                self.get_logger().info(
+                    f'Step 1/4: Mission GNSS already streaming continuously — reusing {os.path.basename(self.mission_gnss_path)}')
+            else:
+                self.get_logger().info('Step 1/4: Bootstrapping continuous mission GNSS raw logging...')
+                if not self.ensure_mission_session():
+                    self.cleanup_failed_start_section()
+                    response.success = False
+                    response.message = 'Failed to start collection: mission GNSS bootstrap failed'
+                    return response
 
-            if not gnss_ok:
-                success, msg, hard_failure = self.start_gps_raw_log(session_gnss_path)
-                if success:
-                    gnss_ok = True
-                    self.get_logger().info(f'  GNSS raw logging started: {msg}')
-                else:
-                    if hard_failure:
-                        self.get_logger().error(f'  Hard failure during GNSS raw log start: {msg}')
-                        self.cleanup_failed_start_section()
-                        response.success = False
-                        response.message = f'Failed to start collection: {msg}'
-                        return response
-                    errors.append(f'GNSS start: {msg}')
-                    self.mark_gnss_invalid('GNSS raw logging failed to start')
-                    self.get_logger().error('  !!! GNSS RAW LOGGING FAILED - PPK DATA WILL BE UNAVAILABLE !!!')
-                    self.get_logger().error(f'  GNSS raw log start failed: {msg}')
-
-            self.reset_gnss_precapture_state()
-
-            self.gnss_raw_file = session_gnss_path if gnss_ok else ''
+            # Per-section bookkeeping: this section's metadata still references
+            # the (mission-wide) raw file, plus its own start/end timestamps so
+            # the PPK pipeline can slice the .ubx by section.
+            self.gnss_raw_file = self.mission_gnss_path
+            self.record_section_start_in_mission(os.path.basename(self.section_folder))
             health_snapshot = self.fetch_gnss_health_snapshot()
             if health_snapshot:
                 self.session_gps_driver_boot_time = health_snapshot.get(
                     'driver_boot_time', self.latest_gps_driver_boot_time)
             self.update_session_config({
+                'mission_folder': self.mission_folder,
+                'mission_gnss_path': self.mission_gnss_path,
                 'gnss_raw_file': self.gnss_raw_file,
-                'gnss_precapture_used': precapture_used,
+                'gnss_continuous_mission_mode': True,
                 'gnss_invalid': self.gnss_invalid,
                 'gnss_invalid_reasons': self.gnss_invalid_reasons,
                 'gnss_warning_reasons': self.gnss_warning_reasons,
@@ -1007,27 +1248,34 @@ class DataCollectionCoordinator(Node):
             })
             self.update_gnss_session({
                 'raw_file_path': self.gnss_raw_file,
+                'mission_folder': self.mission_folder,
+                'mission_gnss_path': self.mission_gnss_path,
                 'precapture_start_time': precapture_start_time,
                 'collection_start_time': collection_start_time,
-                'precapture_used': precapture_used,
+                'gnss_continuous_mission_mode': True,
                 'preserved_precapture_paths': self.preserved_gnss_precapture_paths,
                 'driver_boot_time': self.session_gps_driver_boot_time,
                 'driver_restarts': self.gnss_driver_restarts,
                 'gnss_invalid': self.gnss_invalid,
                 'gnss_invalid_reasons': self.gnss_invalid_reasons,
                 'gnss_warning_reasons': self.gnss_warning_reasons,
-                'status': 'recording' if gnss_ok else 'recording_with_gnss_error',
+                'status': 'recording' if self.mission_gnss_active else 'recording_with_gnss_error',
             })
             if health_snapshot:
                 self.update_gnss_session(self.extract_gnss_health_fields(health_snapshot))
-            if preserved_precapture:
+            if precapture_temp_path and not self.mission_gnss_active:
                 self.get_logger().warn(
                     f'  Preserved temp precapture for manual inspection: {precapture_temp_path}')
         else:
             self.get_logger().info('Step 1/4: Indoor mode - GNSS disabled for this session')
+            # Still create a mission folder so per-section configs can group
+            # under a single mission, even without GNSS.
+            if not self.mission_folder:
+                self.ensure_mission_session()
+            self.record_section_start_in_mission(os.path.basename(self.section_folder))
             self.gnss_raw_file = ''
             self.reset_gnss_precapture_state()
-        self.gnss_logging_active = bool(self.gnss_raw_file)
+        self.gnss_logging_active = bool(self.mission_gnss_active)
 
         # --- Step 2: rosbag (B key) ---
         self.get_logger().info('')
@@ -1344,27 +1592,16 @@ class DataCollectionCoordinator(Node):
         else:
             self.get_logger().info('  Rosbag recording was already stopped')
         
-        # Step 4: Stop GNSS raw logging after a short tail window
+        # Step 4: GNSS keeps streaming continuously across sections — we no
+        # longer stop the raw UBX log here. The mission-wide log is closed
+        # only by /dc/finalize_mission (or launch shutdown). We still snapshot
+        # bytes written so per-section metadata records the slice boundary.
         self.get_logger().info('')
         if self.gnss_enabled:
-            if self.gnss_logging_active and self.gnss_raw_file:
-                self.get_logger().info(
-                    f'Step 4/5: Keeping GNSS raw logging active for {self.gnss_post_stop_delay_sec:.1f}s...')
-                time.sleep(self.gnss_post_stop_delay_sec)
-                success, msg = self.stop_gps_raw_log()
-                if not success:
-                    errors.append(f'GNSS stop: {msg}')
-                    self.get_logger().error(f'  GNSS raw log stop failed: {msg}')
-                else:
-                    self.gnss_logging_active = False
-                    self.get_logger().info(f'  GNSS raw logging stopped: {msg}')
-            else:
-                self.get_logger().info('Step 4/5: GNSS raw logging was not active for this session')
-
+            self.get_logger().info(
+                'Step 4/5: GNSS continuous mode — keeping mission raw log active across section boundary')
             collection_end_time = datetime.now().isoformat()
-            gnss_bytes_written = 0
-            if self.gnss_raw_file and os.path.exists(self.gnss_raw_file):
-                gnss_bytes_written = os.path.getsize(self.gnss_raw_file)
+            gnss_bytes_written = self.mission_gnss_bytes_written()
             health_snapshot = self.fetch_gnss_health_snapshot()
             warnings, invalid_reasons = self.validate_gnss_session(health_snapshot)
             for warning in warnings:
@@ -1377,8 +1614,11 @@ class DataCollectionCoordinator(Node):
             final_tag = f'{tag}_gnss_invalid' if self.gnss_invalid else tag
 
             self.update_session_config({
+                'mission_folder': self.mission_folder,
+                'mission_gnss_path': self.mission_gnss_path,
                 'gnss_raw_file': self.gnss_raw_file,
                 'gnss_bytes_written': gnss_bytes_written,
+                'gnss_continuous_mission_mode': True,
                 'gnss_invalid': self.gnss_invalid,
                 'gnss_invalid_reasons': self.gnss_invalid_reasons,
                 'gnss_warning_reasons': self.gnss_warning_reasons,
@@ -1387,8 +1627,11 @@ class DataCollectionCoordinator(Node):
             })
             self.update_gnss_session({
                 'raw_file_path': self.gnss_raw_file,
+                'mission_folder': self.mission_folder,
+                'mission_gnss_path': self.mission_gnss_path,
                 'collection_end_time': collection_end_time,
                 'bytes_written': gnss_bytes_written,
+                'gnss_continuous_mission_mode': True,
                 'status': 'saved' if not errors else 'saved_with_warnings',
                 'completion_tag': final_tag,
                 'gnss_invalid': self.gnss_invalid,
@@ -1429,7 +1672,11 @@ class DataCollectionCoordinator(Node):
             'gnss_invalid_reasons': self.gnss_invalid_reasons,
             'gnss_warning_reasons': self.gnss_warning_reasons,
         })
-        
+
+        # Append the (renamed) section to the mission history so PPK can
+        # later slice the continuous UBX into per-section windows.
+        self.record_section_end_in_mission(final_tag, deleted=False)
+
         # Reset state — ready for next /dc/start
         self.collection_started = False
         self.is_paused = False
@@ -1512,14 +1759,15 @@ class DataCollectionCoordinator(Node):
         else:
             self.get_logger().info('  rosbag recording was already stopped')
         
-        # Step 4: Stop GNSS raw logging and delete temporary capture, if any
+        # Step 4: Mission GNSS keeps streaming continuously — discarding a
+        # single section never stops the mission UBX log. We only clean up
+        # any leftover precapture temp files (which only exist before the
+        # first /dc/start of a launch session).
         self.get_logger().info('')
         deleted_precapture_artifacts = False
         if self.gnss_enabled:
-            self.get_logger().info('Step 4/5: Stopping GNSS raw logging...')
-            if self.gnss_logging_active:
-                self.stop_gps_raw_log()
-                self.gnss_logging_active = False
+            self.get_logger().info(
+                'Step 4/5: GNSS continuous mode — mission raw log unaffected by section discard')
             if self.gnss_precapture_path:
                 self.delete_file_if_exists(self.gnss_precapture_path)
                 self.get_logger().info('  GNSS precapture temp file deleted')
@@ -1554,13 +1802,17 @@ class DataCollectionCoordinator(Node):
                 response.success = False
                 response.message = f'Section folder not found: {self.section_folder}'
         
+        # Record this section as deleted in the mission history (if a mission
+        # is active) so PPK can mark the slice as discarded.
+        self.record_section_end_in_mission('deleted', deleted=True)
+
         # Reset state
         self.collection_started = False
         self.is_paused = False
         self.section_folder = ''
         self.reset_component_state()
         self.reset_gnss_session_state()
-        
+
         self.get_logger().info('')
         if response.success:
             self.get_logger().info('='*60)
