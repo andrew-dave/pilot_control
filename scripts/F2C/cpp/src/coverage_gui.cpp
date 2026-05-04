@@ -312,6 +312,25 @@ static bool pointsAreDedupedEquivalent(const Point2D& a, const Point2D& b) {
            std::fabs(a.y - b.y) <= kWaypointDuplicateEpsilon;
 }
 
+static bool segmentMatchesPathSlice(
+    const PathStateList& path,
+    size_t start_index,
+    size_t end_index,
+    const PathStateList& segment) {
+    if (start_index > end_index || end_index >= path.size()) {
+        return false;
+    }
+    if (segment.size() != (end_index - start_index + 1)) {
+        return false;
+    }
+    for (size_t i = 0; i < segment.size(); ++i) {
+        if (!pointsAreDedupedEquivalent(path[start_index + i].point, segment[i].point)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static int countLeadingConnectorFlags(const std::vector<int>& flags) {
     int count = 0;
     while (count < static_cast<int>(flags.size()) && flags[static_cast<size_t>(count)] == 0) {
@@ -6333,8 +6352,21 @@ std::vector<int> CoverageGUI::selectedScanSegmentIndices() const {
     return out;
 }
 
-PathStateList CoverageGUI::buildPublishPathFromSegments(const std::vector<int>& indices) const {
+PathStateList CoverageGUI::buildPublishPathFromSegments(
+    const std::vector<int>& indices,
+    std::vector<int>* flags) const {
     PathStateList combined;
+    std::vector<int> combined_flags;
+    const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+    PathStateList planned_path;
+    std::vector<int> planned_flags;
+    const bool build_segment_flags = flags != nullptr;
+    if (build_segment_flags && !path_.empty()) {
+        planned_path = dedupePathStates(path_);
+        planned_flags = buildPlannedDataCollectionFlags(
+            planned_path.size(), collect_data, planned_path_is_home_, path_connector_prefix_count_);
+    }
+
     for (int idx : indices) {
         if (idx < 0 || idx >= static_cast<int>(scan_segments_.size())) continue;
         const auto& seg = scan_segments_[idx].path;
@@ -6347,8 +6379,44 @@ PathStateList CoverageGUI::buildPublishPathFromSegments(const std::vector<int>& 
             }
         }
         combined.insert(combined.end(), seg.begin() + start, seg.end());
+        if (!build_segment_flags) {
+            continue;
+        }
+
+        const auto& scan_segment = scan_segments_[idx];
+        const bool can_use_planned_flags =
+            !planned_path.empty() &&
+            planned_flags.size() == planned_path.size() &&
+            segmentMatchesPathSlice(
+                planned_path,
+                scan_segment.start_index,
+                scan_segment.end_index,
+                scan_segment.path);
+
+        if (can_use_planned_flags) {
+            const size_t flag_begin = std::min(
+                scan_segment.start_index + start, planned_flags.size());
+            const size_t flag_end = std::min(
+                scan_segment.end_index + static_cast<size_t>(1), planned_flags.size());
+            combined_flags.insert(
+                combined_flags.end(),
+                planned_flags.begin() + static_cast<std::ptrdiff_t>(flag_begin),
+                planned_flags.begin() + static_cast<std::ptrdiff_t>(flag_end));
+        } else {
+            combined_flags.insert(
+                combined_flags.end(),
+                seg.size() - start,
+                collect_data ? 1 : 0);
+        }
     }
-    return dedupePathStates(combined);
+
+    if (!build_segment_flags) {
+        return dedupePathStates(combined);
+    }
+
+    dedupePathWithFlags(combined, combined_flags);
+    *flags = std::move(combined_flags);
+    return combined;
 }
 
 void CoverageGUI::refreshScanSegmentList() {
@@ -6412,6 +6480,8 @@ void CoverageGUI::generateScanSegments() {
     auto addSeg = [&](size_t a, size_t b, const QString& name) {
         ScanSegment s;
         s.name = name;
+        s.start_index = a;
+        s.end_index = b;
         s.start_m = cum[a];
         s.end_m = cum[b];
         s.length_m = s.end_m - s.start_m;
@@ -6475,18 +6545,21 @@ void CoverageGUI::publishSelectedScanSegments() {
         QMessageBox::information(this, "No selection", "Select one or more scan segments.");
         return;
     }
-    PathStateList publish_path = buildPublishPathFromSegments(idxs);
+    std::vector<int> publish_flags;
+    PathStateList publish_path = buildPublishPathFromSegments(idxs, &publish_flags);
     if (publish_path.size() < 2) {
         QMessageBox::warning(this, "No path", "Selected segments are empty.");
         return;
     }
-    publish_path = dedupePathStates(publish_path);
 
     std_msgs::msg::Float64MultiArray msg;
-    msg.data.reserve(publish_path.size() * 2);
-    for (const auto& state : publish_path) {
+    msg.data.reserve(publish_path.size() * 3);
+    for (size_t i = 0; i < publish_path.size(); ++i) {
+        const auto& state = publish_path[i];
+        const int dc_flag = (i < publish_flags.size()) ? publish_flags[i] : 0;
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
+        msg.data.push_back(static_cast<double>(dc_flag));
     }
     waypoint_pub_->publish(msg);
 

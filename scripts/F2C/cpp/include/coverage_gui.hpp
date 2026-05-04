@@ -564,7 +564,9 @@ private:
     void generateScanSegments();
     void refreshScanSegmentList();
     std::vector<int> selectedScanSegmentIndices() const;
-    PathStateList buildPublishPathFromSegments(const std::vector<int>& indices) const;
+    PathStateList buildPublishPathFromSegments(
+        const std::vector<int>& indices,
+        std::vector<int>* flags = nullptr) const;
     int estimateTurns(const PathStateList& seg) const;
     void publishSelectedScanSegments();
     void startSelectedScanSegments();
@@ -595,6 +597,8 @@ private:
     struct ScanSegment {
         QString name;
         PathStateList path;
+        size_t start_index = 0;
+        size_t end_index = 0;
         double start_m = 0.0;
         double end_m = 0.0;
         double length_m = 0.0;
