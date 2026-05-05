@@ -63,6 +63,8 @@
           "^/gpr_power_off$",
           "^/dc/pause$",
           "^/dc/resume$",
+          "^/dc/cancel_scan$",
+          "^/dc/finalize_mission$",
           "^/rosbag/toggle$",
           "^/rosbag/start$",
           "^/rosbag/pause$",
