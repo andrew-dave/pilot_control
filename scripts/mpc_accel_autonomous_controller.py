@@ -1327,6 +1327,18 @@ class MPCAccelController(Node):
             10,
         )
 
+        # Cross-process DC state reset. Published by data_collection_coordinator
+        # at the end of /dc/cancel_scan so we drop our local dc_active /
+        # pause_reasons / waypoint nav state. Without this the next /dc/start
+        # is silently skipped because dc_active stays True across the cancel
+        # boundary. See docs/instructions.md EC-001.
+        self.dc_state_reset_sub = self.create_subscription(
+            String,
+            "/dc/state_reset",
+            self._on_dc_state_reset,
+            10,
+        )
+
         # Motor arming state
         self._arm_attempts = 0
         self._arm_max_attempts = 5
@@ -2103,6 +2115,50 @@ class MPCAccelController(Node):
     def _clear_dc_pause_reasons(self) -> None:
         with self._dc_state_lock:
             self.dc_pause_reasons.clear()
+
+    def _on_dc_state_reset(self, msg: String) -> None:
+        """
+        Coordinator told us the global DC state was wiped (today: only fired
+        from /dc/cancel_scan). Drop every process-local flag that depended
+        on the now-defunct mission so the next /dc/start can run cleanly.
+
+        Acquires _dc_sequence_lock so any in-flight _dc_start_sequence /
+        _dc_end_sequence completes first — worst-case wait is the
+        /dc/end_and_save service timeout (~20 s) but the cancel button is
+        gated behind E-Stop / manual override on the OCU, so DC is almost
+        always already idle by the time this fires.
+
+        See docs/instructions.md EC-001.
+        """
+        reason = (msg.data or "").strip() or "(empty)"
+        self.get_logger().warn(
+            f"AUTO-DC: /dc/state_reset received (reason='{reason}') — "
+            f"resetting local DC + waypoint nav state"
+        )
+
+        with self._dc_sequence_lock:
+            had_active = self.dc_active
+            self.dc_active = False
+            self._dc_sequence_phase = "idle"
+
+            # Drop waypoint nav state inside the same lock so we don't race
+            # against an in-flight start/end sequence that was just unblocked
+            # above. Future /f2c_waypoints will repopulate.
+            self.waypoint_navigation_active = False
+            self.waypoints = []
+            self.current_waypoint_index = 0
+            self.has_target = False
+            self.target_x = 0.0
+            self.target_y = 0.0
+            self.previous_waypoint = None
+
+        # _clear_dc_pause_reasons takes _dc_state_lock (different lock); fine
+        # to call outside _dc_sequence_lock and avoids any nesting confusion.
+        self._clear_dc_pause_reasons()
+
+        self.get_logger().info(
+            f"AUTO-DC: Local state reset complete (was dc_active={had_active})"
+        )
 
     def _request_dc_pause(self, reason: str, blocking: bool = False) -> None:
         """Record a pause reason and pause the active collection session if needed."""

@@ -138,6 +138,9 @@ class DataCollectionCoordinator(Node):
         self.finalize_mission_srv = self.create_service(
             Trigger, '/dc/finalize_mission', self.finalize_mission_callback,
             callback_group=self.callback_group)
+        self.cancel_scan_srv = self.create_service(
+            Trigger, '/dc/cancel_scan', self.cancel_scan_callback,
+            callback_group=self.callback_group)
         
         # ==================== Service Clients ====================
         # unified_data_collector services
@@ -202,6 +205,16 @@ class DataCollectionCoordinator(Node):
             String, '/gps/raw_health', self.gnss_health_callback, 10,
             callback_group=self.callback_group)
 
+        # Cross-process state-reset broadcast. Other DC-aware nodes (today
+        # just mpc_accel_autonomous_controller, but the channel is generic)
+        # subscribe and drop any stale local DC flags. See
+        # docs/instructions.md EC-001 for the bug this fixed (cancel-then-
+        # replan left dc_active=True in the controller, blocking the next
+        # /dc/start). Payload is a String so future cancel-like events
+        # (e.g. 'mission_finalized') can reuse the topic.
+        self.dc_state_reset_pub = self.create_publisher(
+            String, '/dc/state_reset', 10)
+
         self.precapture_watchdog_timer = self.create_timer(
             30.0, self.precapture_watchdog_callback, callback_group=self.callback_group)
         if self.gnss_enabled:
@@ -225,6 +238,7 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('  /dc/end_and_save   - End and save (data: 0=partial, 1=complete)')
         self.get_logger().info('  /dc/end_and_delete - End and delete all session data')
         self.get_logger().info('  /dc/finalize_mission - Stop continuous GNSS + finalize mission folder')
+        self.get_logger().info('  /dc/cancel_scan      - Abort whole scan: stop DC + delete all section data + mission folder')
         self.get_logger().info('')
         self.get_logger().info('Section folders are created dynamically on /dc/start')
         self.get_logger().info('='*60)
@@ -1820,6 +1834,191 @@ class DataCollectionCoordinator(Node):
             self.get_logger().info('='*60)
             self.get_logger().info('Ready for new section (call /dc/start)')
         
+        return response
+
+    def cancel_scan_callback(self, request, response):
+        """
+        Abort the entire scan: stop active data collection, then delete every
+        section folder produced this mission (including the in-flight section)
+        and the mission folder itself (continuous UBX log + mission_config.json).
+
+        Pipeline processes (unified_data_collector, gpr_scan_controller,
+        rosbag2, gps_driver) stay alive — only their data on disk is removed
+        and their session state is reset. The OCU is expected to navigate the
+        operator back to Map Processing after this call returns.
+        """
+        del request
+        self.get_logger().info('')
+        self.get_logger().info('=' * 60)
+        self.get_logger().info('CANCELLING SCAN — deleting ALL collected mission data')
+        self.get_logger().info('=' * 60)
+
+        # Snapshot the mission folder + history BEFORE we tear anything down,
+        # because reset_mission_state() below clears them.
+        mission_folder_snapshot = self.mission_folder
+        section_history_snapshot = list(self.mission_section_history)
+        active_section_folder = self.section_folder
+
+        errors = []
+
+        # Step 1: Stop video recording + CSV logging
+        self.get_logger().info('')
+        self.get_logger().info('Step 1/6: Stopping video recording + CSV logging...')
+        if self.video_recording_active or self.collection_started:
+            req = SetBool.Request()
+            req.data = False
+            self.call_service_sync(self.video_record_client, req, '/video_record_set')
+            self.video_recording_active = False
+            self.video_paused = False
+            self.get_logger().info('  Video recording + CSV logging stopped')
+        else:
+            self.get_logger().info('  Video recording was already stopped')
+
+        # Step 2: Stop GPR scan controller (lowers actuator)
+        self.get_logger().info('')
+        self.get_logger().info('Step 2/6: Stopping GPR scan (motor + logging + actuator)...')
+        if self.gpr_scan_active or self.gpr_paused or self.collection_started:
+            self.call_service_sync(self.gpr_stop_client, Trigger.Request(), '/gpr_scan/stop')
+            self.gpr_scan_active = False
+            self.gpr_paused = False
+            self.get_logger().info('  gpr_scan_controller stopped (actuator lowered)')
+        else:
+            self.get_logger().info('  gpr_scan_controller was already stopped')
+
+        # Step 3: Stop rosbag recording
+        self.get_logger().info('')
+        self.get_logger().info('Step 3/6: Stopping rosbag recording...')
+        if self.rosbag_recording_active or self.rosbag_paused or self.collection_started:
+            self.call_service_sync(self.rosbag_stop_client, Trigger.Request(), '/rosbag/stop')
+            self.rosbag_recording_active = False
+            self.rosbag_paused = False
+            self.get_logger().info('  rosbag recording stopped')
+        else:
+            self.get_logger().info('  rosbag recording was already stopped')
+
+        # Step 4: Stop continuous mission GNSS raw logging (entire mission is
+        # being thrown away — no need to preserve any UBX bytes).
+        self.get_logger().info('')
+        if self.gnss_enabled and self.mission_gnss_active:
+            self.get_logger().info('Step 4/6: Stopping continuous mission GNSS raw logging...')
+            success, msg = self.stop_gps_raw_log()
+            if success:
+                self.get_logger().info(f'  Mission GNSS stopped: {msg}')
+            else:
+                err = f'GNSS stop failed: {msg}'
+                self.get_logger().error(f'  {err}')
+                errors.append(err)
+            # No 30 s drain — we're deleting the file anyway.
+            time.sleep(0.5)
+        else:
+            self.get_logger().info('Step 4/6: GNSS not active — nothing to stop')
+
+        # Also clean any leftover precapture artifacts that might still be on
+        # disk (only relevant if cancel fired before the first /dc/start).
+        if self.gnss_enabled:
+            if self.gnss_precapture_path:
+                self.delete_file_if_exists(self.gnss_precapture_path)
+            if self.preserved_gnss_precapture_paths:
+                self.delete_preserved_precapture_paths()
+
+        # Step 5: Delete the in-flight section folder (if one was started this
+        # mission and still exists on disk under its original or _partial name).
+        self.get_logger().info('')
+        self.get_logger().info('Step 5/6: Deleting current section folder...')
+        if active_section_folder and os.path.exists(active_section_folder):
+            try:
+                self.get_logger().info(f'  Deleting: {active_section_folder}')
+                shutil.rmtree(active_section_folder)
+                self.get_logger().info('  Current section folder deleted')
+            except Exception as e:
+                err = f'Failed to delete current section: {e}'
+                self.get_logger().error(f'  {err}')
+                errors.append(err)
+        else:
+            self.get_logger().info('  No current section folder to delete')
+
+        # Step 6: Delete every prior section folder recorded in the mission
+        # history, then delete the mission folder itself (UBX + config + any
+        # leftover children). This is best-effort: missing/already-deleted
+        # paths are silently skipped, but real failures are reported.
+        self.get_logger().info('')
+        self.get_logger().info(
+            f'Step 6/6: Deleting {len(section_history_snapshot)} prior section folder(s) '
+            f'+ mission folder...')
+
+        deleted_sections = 0
+        for entry in section_history_snapshot:
+            section_path = entry.get('section_folder')
+            if not section_path:
+                continue
+            if section_path == active_section_folder:
+                continue  # already handled in Step 5
+            if not os.path.exists(section_path):
+                continue
+            try:
+                self.get_logger().info(f'  Deleting prior section: {section_path}')
+                shutil.rmtree(section_path)
+                deleted_sections += 1
+            except Exception as e:
+                err = f'Failed to delete {section_path}: {e}'
+                self.get_logger().error(f'  {err}')
+                errors.append(err)
+
+        if mission_folder_snapshot and os.path.exists(mission_folder_snapshot):
+            try:
+                self.get_logger().info(f'  Deleting mission folder: {mission_folder_snapshot}')
+                shutil.rmtree(mission_folder_snapshot)
+                self.get_logger().info('  Mission folder deleted (GNSS + config + leftovers)')
+            except Exception as e:
+                err = f'Failed to delete mission folder {mission_folder_snapshot}: {e}'
+                self.get_logger().error(f'  {err}')
+                errors.append(err)
+        else:
+            self.get_logger().info('  No mission folder on disk to delete')
+
+        # Reset all per-mission and per-section state so the next /dc/start
+        # bootstraps a fresh mission from scratch.
+        self.collection_started = False
+        self.collection_active = True
+        self.is_paused = False
+        self.section_folder = ''
+        self.day_folder = ''
+        self.section_number = 0
+        self.reset_component_state()
+        self.reset_gnss_session_state()
+        self.reset_mission_state()
+        self.mission_gnss_active = False
+
+        # Tell every other DC-aware node to drop its local state. Critical:
+        # mpc_accel_autonomous_controller's dc_active / pause_reasons /
+        # waypoint nav state are process-local and would otherwise stay stale
+        # across the cancel boundary, blocking the next /dc/start (EC-001 in
+        # docs/instructions.md). We publish even if errors occurred above —
+        # the coordinator's own state has already been wiped, so the
+        # controller MUST follow or the next scan will desync.
+        try:
+            reset_msg = String()
+            reset_msg.data = 'cancelled'
+            self.dc_state_reset_pub.publish(reset_msg)
+            self.get_logger().info('  Published /dc/state_reset = "cancelled"')
+        except Exception as e:
+            self.get_logger().error(f'  Failed to publish /dc/state_reset: {e}')
+
+        if errors:
+            response.success = False
+            response.message = (
+                f'Scan cancelled with errors: deleted {deleted_sections} prior section(s); '
+                f'errors: {"; ".join(errors)}')
+            self.get_logger().error(response.message)
+        else:
+            response.success = True
+            response.message = (
+                f'Scan cancelled — deleted current section + {deleted_sections} prior section(s) '
+                f'+ mission folder')
+
+        self.get_logger().info('=' * 60)
+        self.get_logger().info('SCAN CANCELLED — pipeline still running, ready for next mission')
+        self.get_logger().info('=' * 60)
         return response
 
     # ================================================================
