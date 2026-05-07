@@ -35,6 +35,7 @@ This script is intentionally simpler than the slip-aware MPC controller:
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rcl_interfaces.msg import SetParametersResult
 
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray, String, Bool, Empty as EmptyMsg
@@ -963,6 +964,7 @@ class MPCAccelController(Node):
 
         self.declare_parameter("control_frequency", 10.0)
         self.declare_parameter("max_linear_velocity", 0.4)
+        self.declare_parameter("desired_linear_speed", 0.4)
         self.declare_parameter("max_angular_velocity", 2.0)
 
         self.declare_parameter("mpc_horizon", 50)
@@ -1039,6 +1041,11 @@ class MPCAccelController(Node):
 
         self.control_freq = float(self.get_parameter("control_frequency").value)
         self.max_linear_vel = float(self.get_parameter("max_linear_velocity").value)
+        self.desired_linear_speed = self._clamp_desired_linear_speed(
+            self.get_parameter("desired_linear_speed").value
+        )
+        # Desired speed is also the hard linear cap during navigation.
+        self.max_linear_vel = self.desired_linear_speed
         self.max_angular_vel = float(self.get_parameter("max_angular_velocity").value)
 
         self.mpc_horizon = int(self.get_parameter("mpc_horizon").value)
@@ -1358,6 +1365,9 @@ class MPCAccelController(Node):
             self._soft_shutdown_service,
         )
 
+        # Allow live speed changes while keeping the same straight-path geometry.
+        self.add_on_set_parameters_callback(self._on_parameter_change)
+
         # Control loop timer
         period = 1.0 / self.control_freq if self.control_freq > 0.0 else 0.1
         self.control_timer = self.create_timer(period, self.control_loop)
@@ -1365,7 +1375,10 @@ class MPCAccelController(Node):
         self.get_logger().info("=" * 60)
         self.get_logger().info("Acceleration-based MPC Controller started")
         self.get_logger().info(f"Horizon: {self.mpc_horizon}, dt: {self.mpc_dt:.3f} s")
-        self.get_logger().info(f"Max v: {self.max_linear_vel:.2f} m/s, Max ω: {self.max_angular_vel:.2f} rad/s")
+        self.get_logger().info(
+            f"Linear cruise/max v: {self.max_linear_vel:.2f} m/s, "
+            f"Max ω: {self.max_angular_vel:.2f} rad/s"
+        )
         if self.heartbeat_enabled:
             self.get_logger().info(f"Safety: Heartbeat monitoring ENABLED (timeout: {self.heartbeat_timeout:.1f}s)")
         else:
@@ -1375,6 +1388,72 @@ class MPCAccelController(Node):
     # -----------------------------
     # Callbacks
     # -----------------------------
+    def _clamp_desired_linear_speed(self, value: float) -> float:
+        """Validate a requested cruise speed."""
+        try:
+            speed = float(value)
+        except (TypeError, ValueError):
+            speed = 0.0
+
+        if not math.isfinite(speed):
+            speed = 0.0
+
+        return max(0.0, speed)
+
+    def _set_navigation_speed(self, value: float) -> float:
+        """Set both desired speed and max linear velocity to the same value."""
+        speed = self._clamp_desired_linear_speed(value)
+        self.desired_linear_speed = speed
+        self.max_linear_vel = speed
+        if hasattr(self, "mpc"):
+            self.mpc._v_min_base = -speed
+            self.mpc._v_max_base = speed
+            self._apply_active_linear_speed_limit()
+        return speed
+
+    def _active_linear_speed_limit(self) -> float:
+        """Current cruise-speed envelope used by MPC and command clipping."""
+        return max(0.0, float(self.desired_linear_speed))
+
+    def _apply_active_linear_speed_limit(self) -> float:
+        """Apply the selected cruise speed as the active MPC linear bound."""
+        active_limit = self._active_linear_speed_limit()
+        self.mpc.v_min = -active_limit
+        self.mpc.v_max = active_limit
+        self.v_cmd = float(np.clip(self.v_cmd, -active_limit, active_limit))
+        return active_limit
+
+    def _on_parameter_change(self, params):
+        """Handle live speed changes while keeping the straight-path geometry."""
+        updated_fields: List[str] = []
+
+        for param in params:
+            if param.name in ("desired_linear_speed", "max_linear_velocity"):
+                try:
+                    new_speed = float(param.value)
+                except (TypeError, ValueError):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be a finite float",
+                    )
+                if not math.isfinite(new_speed) or new_speed < 0.0:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be >= 0",
+                    )
+                applied_speed = self._set_navigation_speed(new_speed)
+                updated_fields.append(f"{param.name}={applied_speed:.3f}")
+
+        if updated_fields:
+            active_limit = self._apply_active_linear_speed_limit()
+            self.get_logger().info(
+                "[param update] "
+                + ", ".join(updated_fields)
+                + f", active_linear_limit={active_limit:.3f}"
+            )
+
+        return SetParametersResult(successful=True)
+
     def odometry_callback(self, msg: Odometry) -> None:
         """
         Process odometry for POSITION only.
@@ -1473,8 +1552,9 @@ class MPCAccelController(Node):
 
         distance_to_target_along_path = (1.0 - t_closest) * path_length
 
-        # Nominal spacing based on cruising speed and MPC time step
-        cruising_speed = min(0.5, self.max_linear_vel)
+        # Advance the reference in time with desired_speed * dt while keeping the
+        # same straight-line spatial path from start to target.
+        cruising_speed = self._active_linear_speed_limit()
         waypoint_spacing = cruising_speed * self.mpc_dt
 
         waypoints: List[np.ndarray] = []
@@ -1913,8 +1993,7 @@ class MPCAccelController(Node):
         self.target_reached = False
         self.v_cmd = 0.0
         self.omega_cmd = 0.0
-        self.mpc.v_min = -self.max_linear_vel
-        self.mpc.v_max = self.max_linear_vel
+        self._apply_active_linear_speed_limit()
 
     def _run_yaw_align_mpc(self) -> bool:
         """
@@ -2561,7 +2640,7 @@ class MPCAccelController(Node):
                 ref_y = self.path_start_y + t_ref * path_dy
                 path_heading = math.atan2(path_dy, path_dx)
 
-                cruising_speed = min(0.5, self.max_linear_vel)
+                cruising_speed = self._active_linear_speed_limit()
                 ref_waypoint = np.array(
                     [
                         ref_x,
@@ -2592,9 +2671,8 @@ class MPCAccelController(Node):
         v_body = self.v_cmd
         omega_body = self.omega_cmd
 
-        # Normal segment tracking: keep default linear velocity bounds enabled.
-        self.mpc.v_min = -self.max_linear_vel
-        self.mpc.v_max = self.max_linear_vel
+        # Keep the selected cruise speed as the solver's active linear envelope.
+        active_linear_limit = self._apply_active_linear_speed_limit()
 
         # Solve MPC for Δu
         du0, solve_ms, solution = self.mpc.solve(err, v_body, omega_body, ref_traj)
@@ -2602,7 +2680,11 @@ class MPCAccelController(Node):
         # Integrate Δu into command velocities (MPC's internal state)
         dv = float(du0[0])
         domega = float(du0[1])
-        self.v_cmd = np.clip(self.v_cmd + dv, -self.max_linear_vel, self.max_linear_vel)
+        self.v_cmd = np.clip(
+            self.v_cmd + dv,
+            -active_linear_limit,
+            active_linear_limit,
+        )
         self.omega_cmd = np.clip(self.omega_cmd + domega, -self.max_angular_vel, self.max_angular_vel)
 
         # Convert MPC's (v_cmd, ω_cmd) to TARGET wheel velocities (rad/s)

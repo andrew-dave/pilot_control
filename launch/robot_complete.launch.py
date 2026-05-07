@@ -154,6 +154,14 @@ def generate_launch_description():
         default_value='1.0',
         description='A multiplier to tune the robot turning speed.'
     )
+    declare_mpc_desired_linear_speed_arg = DeclareLaunchArgument(
+        'mpc_desired_linear_speed',
+        default_value=str(config_value(robot_config, 'autonomy.mpc_desired_linear_speed', 0.4)),
+        description=(
+            'Cruise speed for the accel MPC in m/s. '
+            'This value is also used as the MPC linear speed cap.'
+        )
+    )
     
     declare_base_data_directory_arg = DeclareLaunchArgument(
         'base_data_directory',
@@ -576,7 +584,16 @@ def generate_launch_description():
 
             # Control parameters
             'control_frequency': 10.0,          # Hz
-            'max_linear_velocity': 0.4,         # m/s
+            'max_linear_velocity': PythonExpression([
+                LaunchConfiguration('mpc_desired_linear_speed'),
+                ' * ',
+                LaunchConfiguration('velocity_multiplier')
+            ]),
+            'desired_linear_speed': PythonExpression([
+                LaunchConfiguration('mpc_desired_linear_speed'),
+                ' * ',
+                LaunchConfiguration('velocity_multiplier')
+            ]),
             'max_angular_velocity': 2.0,        # rad/s
 
             # MPC parameters (Accel controller)
@@ -672,6 +689,7 @@ def generate_launch_description():
         declare_gpr_node_id_arg,
         declare_velocity_multiplier_arg,
         declare_turn_speed_multiplier_arg,
+        declare_mpc_desired_linear_speed_arg,
         declare_base_data_directory_arg,
         declare_scan_mode_arg,
         declare_left_camera_device_arg,
