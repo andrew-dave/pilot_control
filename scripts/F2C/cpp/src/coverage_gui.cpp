@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <chrono>
 #include <atomic>
+#include <future>
 #include <limits>
 #include <stdexcept>
 #include <sstream>
@@ -54,8 +55,65 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <rcl_interfaces/srv/set_parameters.hpp>
 
 namespace f2c_cpp {
+
+namespace {
+
+constexpr char kMpcSetParametersService[] = "/mpc_accel_autonomous_controller/set_parameters";
+constexpr char kMpcDesiredSpeedParameter[] = "desired_linear_speed";
+
+bool setMpcDesiredLinearSpeed(
+    const rclcpp::Node::SharedPtr& ros_node,
+    double speed_mps,
+    QString* error_out = nullptr) {
+    auto set_error = [&](const QString& message) {
+        if (error_out) {
+            *error_out = message;
+        }
+        return false;
+    };
+
+    if (!ros_node) {
+        return set_error("ROS2 node is not available.");
+    }
+    if (!std::isfinite(speed_mps) || speed_mps < 0.0) {
+        return set_error(QString("Robot speed %1 m/s is invalid.").arg(speed_mps, 0, 'f', 2));
+    }
+
+    auto client = ros_node->create_client<rcl_interfaces::srv::SetParameters>(
+        kMpcSetParametersService);
+    if (!client->wait_for_service(std::chrono::milliseconds(1500))) {
+        return set_error(
+            QString("MPC parameter service %1 is unavailable.")
+                .arg(kMpcSetParametersService));
+    }
+
+    auto request = std::make_shared<rcl_interfaces::srv::SetParameters::Request>();
+    request->parameters.push_back(
+        rclcpp::Parameter(kMpcDesiredSpeedParameter, speed_mps).to_parameter_msg());
+
+    auto future = client->async_send_request(request);
+    if (future.wait_for(std::chrono::seconds(2)) != std::future_status::ready) {
+        return set_error("Timed out waiting for MPC speed update.");
+    }
+
+    const auto response = future.get();
+    if (!response) {
+        return set_error("MPC speed update returned no response.");
+    }
+    for (const auto& result : response->results) {
+        if (!result.successful) {
+            const QString reason = QString::fromStdString(result.reason);
+            return set_error(
+                reason.isEmpty() ? "MPC rejected the desired speed update." : reason);
+        }
+    }
+    return true;
+}
+
+}  // namespace
 
 // =============================================================================
 // VideoStreamWidget Implementation
@@ -3467,7 +3525,8 @@ QGroupBox* CoverageGUI::buildCoverageStatsControls() {
     spin_robot_speed_->setRange(0.1, 5.0);
     spin_robot_speed_->setSingleStep(0.1);
     spin_robot_speed_->setValue(0.5);
-    spin_robot_speed_->setToolTip("Used to estimate mission time");
+    spin_robot_speed_->setToolTip(
+        "Used to estimate mission time and sent to the MPC desired_linear_speed when publishing.");
     speed_layout->addWidget(spin_robot_speed_);
     layout->addLayout(speed_layout);
     
@@ -6552,6 +6611,18 @@ void CoverageGUI::publishSelectedScanSegments() {
         return;
     }
 
+    const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
+    QString speed_error;
+    if (!setMpcDesiredLinearSpeed(ros_node_, publish_speed_mps, &speed_error)) {
+        QMessageBox::warning(
+            this,
+            "MPC Speed Update Failed",
+            QString("Could not set desired_linear_speed to %1 m/s before publishing scan segments.\n\n%2")
+                .arg(publish_speed_mps, 0, 'f', 2)
+                .arg(speed_error));
+        return;
+    }
+
     std_msgs::msg::Float64MultiArray msg;
     msg.data.reserve(publish_path.size() * 3);
     for (size_t i = 0; i < publish_path.size(); ++i) {
@@ -6566,7 +6637,12 @@ void CoverageGUI::publishSelectedScanSegments() {
     waypoints_published_ = true;
     if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
     if (btn_quick_start_) btn_quick_start_->setEnabled(true);
-    setStatus(QString("Published %1 scan(s), %2 points").arg(idxs.size()).arg(publish_path.size()), 4000);
+    setStatus(
+        QString("Published %1 scan(s), %2 points @ %3 m/s")
+            .arg(idxs.size())
+            .arg(publish_path.size())
+            .arg(publish_speed_mps, 0, 'f', 2),
+        4000);
 }
 
 void CoverageGUI::startSelectedScanSegments() {
@@ -6869,6 +6945,18 @@ void CoverageGUI::publishWaypoints() {
             export_path.size(), collect_data, planned_path_is_home_, planned_connector_prefix_count);
     }
 
+    const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
+    QString speed_error;
+    if (!setMpcDesiredLinearSpeed(ros_node_, publish_speed_mps, &speed_error)) {
+        QMessageBox::warning(
+            this,
+            "MPC Speed Update Failed",
+            QString("Could not set desired_linear_speed to %1 m/s before publishing waypoints.\n\n%2")
+                .arg(publish_speed_mps, 0, 'f', 2)
+                .arg(speed_error));
+        return;
+    }
+
     std_msgs::msg::Float64MultiArray msg;
     msg.data.reserve(export_path.size() * 3);
     for (size_t i = 0; i < export_path.size(); ++i) {
@@ -6880,7 +6968,12 @@ void CoverageGUI::publishWaypoints() {
     waypoint_pub_->publish(msg);
     waypoints_published_ = true;
 
-    setStatus(QString("📡 Published %1 %2 waypoints").arg(export_path.size()).arg(mode_label), 5000);
+    setStatus(
+        QString("📡 Published %1 %2 waypoints @ %3 m/s")
+            .arg(export_path.size())
+            .arg(mode_label)
+            .arg(publish_speed_mps, 0, 'f', 2),
+        5000);
     if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
     if (btn_quick_start_) btn_quick_start_->setEnabled(true);
 }
