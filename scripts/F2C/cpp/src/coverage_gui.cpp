@@ -25,6 +25,7 @@
 #include <QStandardPaths>
 #include <QSignalBlocker>
 #include <QThread>
+#include <QDateTime>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QJsonArray>
@@ -63,6 +64,10 @@ namespace {
 
 constexpr char kMpcSetParametersService[] = "/mpc_accel_autonomous_controller/set_parameters";
 constexpr char kMpcDesiredSpeedParameter[] = "desired_linear_speed";
+constexpr int kBatteryMqttReconnectMs = 5000;
+constexpr int kBatteryMqttStatusPollMs = 2000;
+constexpr double kBatteryLowPct = 25.0;
+constexpr double kBatteryCriticalPct = 12.0;
 
 bool setMpcDesiredLinearSpeedViaService(
     const rclcpp::Node::SharedPtr& ros_node,
@@ -1827,6 +1832,11 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     robot_host_ = settings.value("robot_ip", robot_host_).toString();
     robot_odom_topic_ = settings.value("robot_odom_topic", robot_odom_topic_).toString();
     robot_marker_size_m_ = settings.value("robot_marker_size_m", robot_marker_size_m_).toDouble();
+    battery_mqtt_topic_ = settings.value("battery_mqtt_topic", battery_mqtt_topic_).toString().trimmed();
+    if (battery_mqtt_topic_.isEmpty()) {
+        battery_mqtt_topic_ = "pilot/battery/state";
+    }
+    battery_mqtt_port_ = settings.value("battery_mqtt_port", battery_mqtt_port_).toInt();
 
     // Load robot registry and select active robot (robot_id -> hidden static IP)
     loadRobotRegistry();
@@ -1903,6 +1913,12 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     zenoh_check_timer_->setInterval(5000);  // Check every 5 seconds
     connect(zenoh_check_timer_, &QTimer::timeout, this, &CoverageGUI::checkZenohBridgeStatus);
 
+    // MQTT battery monitor runs independently of ROS2 and the Zenoh bridge.
+    battery_mqtt_stale_timer_ = new QTimer(this);
+    battery_mqtt_stale_timer_->setInterval(kBatteryMqttStatusPollMs);
+    connect(battery_mqtt_stale_timer_, &QTimer::timeout, this, &CoverageGUI::refreshBatteryMqttStatus);
+    battery_mqtt_stale_timer_->start();
+
     // Initialize ROS2 (with error handling so GUI works even if ROS2 fails)
     waypoints_published_ = false;
     ros_initialized_ = false;
@@ -1941,6 +1957,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
     // Start Zenoh bridge monitoring (runs regardless of ROS2 status)
     checkZenohBridgeStatus();  // Initial check
     zenoh_check_timer_->start();
+    restartBatteryMqttMonitor();
 }
 
 CoverageGUI::~CoverageGUI() {
@@ -1951,6 +1968,10 @@ CoverageGUI::~CoverageGUI() {
     if (zenoh_check_timer_) {
         zenoh_check_timer_->stop();
     }
+    if (battery_mqtt_stale_timer_) {
+        battery_mqtt_stale_timer_->stop();
+    }
+    stopBatteryMqttMonitor();
 
     progress_cancel_requested_.store(true);
 
@@ -2766,6 +2787,13 @@ QGroupBox* CoverageGUI::buildFileControls() {
     lbl_zenoh_status_->setToolTip("Zenoh bridge DDS is managed by laptop_teleop.launch.py\n"
                                    "It bridges ROS2 topics between laptop and robot over Microhard RF");
     v->addWidget(lbl_zenoh_status_);
+
+    lbl_battery_status_ = new QLabel("Battery MQTT: waiting...");
+    lbl_battery_status_->setStyleSheet("color: #666; font-size: 10px;");
+    lbl_battery_status_->setToolTip(
+        "Battery telemetry is read directly from MQTT on the robot.\n"
+        "This path is independent of ROS2 and the Zenoh DDS bridge.");
+    v->addWidget(lbl_battery_status_);
     
     // Robot identity (hide static IP when registry is present)
     const bool using_registry = robot_registry_.isLoaded() && !robot_registry_.isEmpty();
@@ -2824,6 +2852,7 @@ QGroupBox* CoverageGUI::buildFileControls() {
             QSettings settings("PilotControl", "BDRCoveragePlanner");
             settings.setValue("robot_ip", robot_host_);
             updateFetchTooltip();
+            restartBatteryMqttMonitor();
         });
     }
     v->addWidget(btn_fetch);
@@ -8448,6 +8477,217 @@ void CoverageGUI::checkZenohBridgeStatus() {
     }
 }
 
+void CoverageGUI::setBatteryStatusText(const QString& text, const QString& color) {
+    if (!lbl_battery_status_) {
+        return;
+    }
+    lbl_battery_status_->setText(text);
+    lbl_battery_status_->setStyleSheet(QString("color: %1; font-size: 10px;").arg(color));
+}
+
+void CoverageGUI::stopBatteryMqttMonitor() {
+    battery_mqtt_stdout_buffer_.clear();
+    if (!battery_mqtt_process_) {
+        return;
+    }
+
+    battery_mqtt_process_->blockSignals(true);
+    if (battery_mqtt_process_->state() != QProcess::NotRunning) {
+        battery_mqtt_process_->terminate();
+        if (!battery_mqtt_process_->waitForFinished(750)) {
+            battery_mqtt_process_->kill();
+            battery_mqtt_process_->waitForFinished(750);
+        }
+    }
+    delete battery_mqtt_process_;
+    battery_mqtt_process_ = nullptr;
+}
+
+void CoverageGUI::startBatteryMqttMonitor() {
+    battery_mqtt_last_start_attempt_ms_ = QDateTime::currentMSecsSinceEpoch();
+    stopBatteryMqttMonitor();
+
+    battery_has_payload_ = false;
+    battery_soc_pct_.reset();
+    battery_voltage_v_.reset();
+    battery_current_a_.reset();
+    battery_warn_ = false;
+    battery_critical_ = false;
+    battery_payload_updated_at_ms_ = 0;
+    battery_payload_stale_after_ms_ = 5000;
+
+    if (robot_host_.trimmed().isEmpty()) {
+        setBatteryStatusText("Battery MQTT: robot IP not set", "#a66f00");
+        return;
+    }
+
+    const QString mosquitto_sub = QStandardPaths::findExecutable("mosquitto_sub");
+    if (mosquitto_sub.isEmpty()) {
+        setBatteryStatusText("Battery MQTT: install mosquitto-clients", "#a66f00");
+        return;
+    }
+
+    if (battery_mqtt_topic_.trimmed().isEmpty()) {
+        setBatteryStatusText("Battery MQTT: topic not configured", "#a66f00");
+        return;
+    }
+
+    setBatteryStatusText(
+        QString("Battery MQTT: connecting to %1...").arg(robot_host_),
+        "#666");
+
+    battery_mqtt_process_ = new QProcess(this);
+    battery_mqtt_process_->setProcessChannelMode(QProcess::SeparateChannels);
+
+    connect(battery_mqtt_process_, &QProcess::readyReadStandardOutput, this, [this]() {
+        if (!battery_mqtt_process_) {
+            return;
+        }
+
+        battery_mqtt_stdout_buffer_.append(battery_mqtt_process_->readAllStandardOutput());
+        while (true) {
+            const int newline_idx = battery_mqtt_stdout_buffer_.indexOf('\n');
+            if (newline_idx < 0) {
+                break;
+            }
+
+            const QByteArray raw_line = battery_mqtt_stdout_buffer_.left(newline_idx);
+            battery_mqtt_stdout_buffer_.remove(0, newline_idx + 1);
+            const QString line = QString::fromUtf8(raw_line).trimmed();
+            if (!line.isEmpty()) {
+                handleBatteryMqttPayload(line);
+            }
+        }
+    });
+
+    connect(battery_mqtt_process_, &QProcess::readyReadStandardError, this, [this]() {
+        if (!battery_mqtt_process_) {
+            return;
+        }
+        const QString stderr_text = QString::fromUtf8(
+            battery_mqtt_process_->readAllStandardError()).trimmed();
+        if (!stderr_text.isEmpty()) {
+            qWarning() << "[CoverageGUI][Battery MQTT]" << stderr_text;
+        }
+    });
+
+    connect(
+        battery_mqtt_process_,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this,
+        [this](int exit_code, QProcess::ExitStatus exit_status) {
+            Q_UNUSED(exit_status);
+            setBatteryStatusText(
+                QString("Battery MQTT: subscriber stopped (%1), retrying...").arg(exit_code),
+                "#a66f00");
+        });
+
+    QStringList args;
+    args << "-h" << robot_host_
+         << "-p" << QString::number(battery_mqtt_port_)
+         << "-q" << "1"
+         << "-t" << battery_mqtt_topic_;
+
+    battery_mqtt_process_->start(mosquitto_sub, args);
+    if (!battery_mqtt_process_->waitForStarted(1500)) {
+        const QString error_text = battery_mqtt_process_->errorString();
+        stopBatteryMqttMonitor();
+        setBatteryStatusText(
+            QString("Battery MQTT: %1").arg(error_text.isEmpty() ? "failed to start" : error_text),
+            "#a66f00");
+    }
+}
+
+void CoverageGUI::restartBatteryMqttMonitor() {
+    startBatteryMqttMonitor();
+}
+
+void CoverageGUI::handleBatteryMqttPayload(const QString& payload) {
+    QJsonParseError parse_error;
+    const QJsonDocument doc = QJsonDocument::fromJson(payload.toUtf8(), &parse_error);
+    if (parse_error.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "[CoverageGUI][Battery MQTT] Invalid JSON payload:" << payload;
+        return;
+    }
+
+    const QJsonObject obj = doc.object();
+    const qint64 now_ms = QDateTime::currentMSecsSinceEpoch();
+    battery_payload_updated_at_ms_ = static_cast<qint64>(
+        obj.value("updated_at_ms").toDouble(static_cast<double>(now_ms)));
+    battery_payload_stale_after_ms_ = static_cast<qint64>(
+        obj.value("stale_after_ms").toDouble(static_cast<double>(battery_payload_stale_after_ms_)));
+
+    if (obj.contains("soc_percent")) {
+        battery_soc_pct_ = obj.value("soc_percent").toDouble();
+    }
+    if (obj.contains("voltage_v")) {
+        battery_voltage_v_ = obj.value("voltage_v").toDouble();
+    }
+    if (obj.contains("current_a")) {
+        battery_current_a_ = obj.value("current_a").toDouble();
+    }
+
+    battery_warn_ = obj.contains("warn")
+        ? obj.value("warn").toBool()
+        : (battery_soc_pct_.has_value() && battery_soc_pct_.value() <= kBatteryLowPct);
+    battery_critical_ = obj.contains("critical")
+        ? obj.value("critical").toBool()
+        : (battery_soc_pct_.has_value() && battery_soc_pct_.value() <= kBatteryCriticalPct);
+    battery_has_payload_ = true;
+    refreshBatteryMqttStatus();
+}
+
+void CoverageGUI::refreshBatteryMqttStatus() {
+    const qint64 now_ms = QDateTime::currentMSecsSinceEpoch();
+    if ((!battery_mqtt_process_ || battery_mqtt_process_->state() == QProcess::NotRunning) &&
+        !robot_host_.trimmed().isEmpty() &&
+        (now_ms - battery_mqtt_last_start_attempt_ms_) >= kBatteryMqttReconnectMs) {
+        startBatteryMqttMonitor();
+        return;
+    }
+
+    if (!battery_has_payload_) {
+        if (battery_mqtt_process_ && battery_mqtt_process_->state() != QProcess::NotRunning) {
+            setBatteryStatusText(
+                QString("Battery MQTT: waiting for %1...").arg(battery_mqtt_topic_),
+                "#666");
+        }
+        return;
+    }
+
+    const bool stale =
+        battery_payload_updated_at_ms_ <= 0 ||
+        (now_ms - battery_payload_updated_at_ms_) > battery_payload_stale_after_ms_;
+
+    QStringList parts;
+    if (battery_soc_pct_.has_value()) {
+        parts << QString("%1%").arg(QString::number(battery_soc_pct_.value(), 'f', 0));
+    }
+    if (battery_voltage_v_.has_value()) {
+        parts << QString("%1 V").arg(QString::number(battery_voltage_v_.value(), 'f', 1));
+    }
+    if (battery_current_a_.has_value()) {
+        parts << QString("%1 A").arg(QString::number(battery_current_a_.value(), 'f', 1));
+    }
+
+    QString text = parts.isEmpty()
+        ? "Battery: data received"
+        : QString("Battery: %1").arg(parts.join(" | "));
+    if (stale) {
+        text += " (stale)";
+    }
+
+    if (stale) {
+        setBatteryStatusText(text, "#a66f00");
+    } else if (battery_critical_) {
+        setBatteryStatusText(text, "red");
+    } else if (battery_warn_) {
+        setBatteryStatusText(text, "#a66f00");
+    } else {
+        setBatteryStatusText(text, "green");
+    }
+}
+
 // =============================================================================
 // Preset Management
 // =============================================================================
@@ -9504,6 +9744,10 @@ void CoverageGUI::applyActiveRobotProfile(bool updateUi) {
     }
     if (cloud_upload_dialog_) {
         cloud_upload_dialog_->setLocalDataPath(robotLocalDataRoot);
+    }
+
+    if (battery_mqtt_stale_timer_) {
+        restartBatteryMqttMonitor();
     }
 }
 

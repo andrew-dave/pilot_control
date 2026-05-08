@@ -27,6 +27,7 @@
 #include <QSplitter>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QByteArray>
 #include <QProcess>
 #include <QDir>
 #include <QDate>
@@ -471,6 +472,12 @@ private:
     void setupUI();
     void setupConnections();
     void setupRobotTrackingSubscription();
+    void startBatteryMqttMonitor();
+    void stopBatteryMqttMonitor();
+    void restartBatteryMqttMonitor();
+    void refreshBatteryMqttStatus();
+    void handleBatteryMqttPayload(const QString& payload);
+    void setBatteryStatusText(const QString& text, const QString& color);
 
     // Robot registry / active robot selection
     void loadRobotRegistry();
@@ -673,6 +680,7 @@ private:
     // DDS / Zenoh bridge status controls
     QLabel* lbl_dds_status_;
     QLabel* lbl_zenoh_status_;
+    QLabel* lbl_battery_status_ = nullptr;
     
     // Height controls (Z range filtering relative to robot origin Z=0)
     QDoubleSpinBox* spin_z_min_;   // Minimum Z value (can be negative)
@@ -803,6 +811,22 @@ private:
     // Zenoh bridge status tracking (bridge managed by laptop_teleop.launch.py)
     QTimer* zenoh_check_timer_;
     bool zenoh_bridge_detected_;
+
+    // MQTT battery telemetry monitor (independent of ROS2 / Zenoh bridge)
+    QTimer* battery_mqtt_stale_timer_ = nullptr;
+    QProcess* battery_mqtt_process_ = nullptr;
+    QString battery_mqtt_topic_ = "pilot/battery/state";
+    int battery_mqtt_port_ = 1883;
+    qint64 battery_mqtt_last_start_attempt_ms_ = 0;
+    qint64 battery_payload_updated_at_ms_ = 0;
+    qint64 battery_payload_stale_after_ms_ = 5000;
+    QByteArray battery_mqtt_stdout_buffer_;
+    std::optional<double> battery_soc_pct_;
+    std::optional<double> battery_voltage_v_;
+    std::optional<double> battery_current_a_;
+    bool battery_warn_ = false;
+    bool battery_critical_ = false;
+    bool battery_has_payload_ = false;
     
     // Helper to shutdown and reinitialize ROS2
     void reinitializeROS2();
