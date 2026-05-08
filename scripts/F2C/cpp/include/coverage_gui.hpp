@@ -487,6 +487,7 @@ private:
     bool loginToRobotOverSsh(const QString& robotId, const QString& pin, QString* errorOut);
 
     // Mission-control helpers (SSH + CSV upload)
+    bool setRobotMpcDesiredLinearSpeed(double speedMps, QString* errorOut);
     bool uploadMissionCsvToRobot(const PathStateList& exportPath, QString* remoteCsvPathOut, QString* errorOut);
     
     // UI building helpers

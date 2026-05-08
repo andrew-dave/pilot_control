@@ -64,7 +64,7 @@ namespace {
 constexpr char kMpcSetParametersService[] = "/mpc_accel_autonomous_controller/set_parameters";
 constexpr char kMpcDesiredSpeedParameter[] = "desired_linear_speed";
 
-bool setMpcDesiredLinearSpeed(
+bool setMpcDesiredLinearSpeedViaService(
     const rclcpp::Node::SharedPtr& ros_node,
     double speed_mps,
     QString* error_out = nullptr) {
@@ -6613,7 +6613,7 @@ void CoverageGUI::publishSelectedScanSegments() {
 
     const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
     QString speed_error;
-    if (!setMpcDesiredLinearSpeed(ros_node_, publish_speed_mps, &speed_error)) {
+    if (!setRobotMpcDesiredLinearSpeed(publish_speed_mps, &speed_error)) {
         QMessageBox::warning(
             this,
             "MPC Speed Update Failed",
@@ -6947,7 +6947,7 @@ void CoverageGUI::publishWaypoints() {
 
     const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
     QString speed_error;
-    if (!setMpcDesiredLinearSpeed(ros_node_, publish_speed_mps, &speed_error)) {
+    if (!setRobotMpcDesiredLinearSpeed(publish_speed_mps, &speed_error)) {
         QMessageBox::warning(
             this,
             "MPC Speed Update Failed",
@@ -9138,6 +9138,125 @@ bool CoverageGUI::uploadMissionCsvToRobot(const PathStateList& exportPath, QStri
     }
 
     if (remoteCsvPathOut) *remoteCsvPathOut = remoteCsv;
+    return true;
+}
+
+bool CoverageGUI::setRobotMpcDesiredLinearSpeed(double speedMps, QString* errorOut) {
+    auto set_error = [&](const QString& message) {
+        if (errorOut) *errorOut = message;
+        return false;
+    };
+
+    if (!std::isfinite(speedMps) || speedMps < 0.0) {
+        return set_error(QString("Robot speed %1 m/s is invalid.").arg(speedMps, 0, 'f', 2));
+    }
+
+    QString serviceError;
+    if (setMpcDesiredLinearSpeedViaService(ros_node_, speedMps, &serviceError)) {
+        return true;
+    }
+
+    // The deployed Zenoh path bridges topics for laptop <-> robot traffic, but
+    // parameter services are not always reachable across that link. Fall back to
+    // the authenticated SSH channel that the GUI already uses for robot access.
+    if (!hasValidLoginSession()) {
+        return set_error(serviceError.isEmpty()
+                             ? "MPC speed update failed and no valid robot login session is available."
+                             : serviceError);
+    }
+    if (robot_host_.isEmpty() || robot_user_.isEmpty()) {
+        return set_error(serviceError.isEmpty()
+                             ? "Robot connection profile is not set."
+                             : QString("%1\nSSH fallback unavailable: robot connection profile is not set.")
+                                   .arg(serviceError));
+    }
+
+    QStringList sshArgs;
+    sshArgs << "-o" << "ConnectTimeout=8"
+            << "-o" << "BatchMode=yes";
+    if (!pinned_known_hosts_file_.isEmpty()) {
+        sshArgs << "-o" << "StrictHostKeyChecking=yes"
+                << "-o" << QString("UserKnownHostsFile=%1").arg(pinned_known_hosts_file_)
+                << "-o" << "GlobalKnownHostsFile=/dev/null";
+    } else {
+        sshArgs << "-o" << "StrictHostKeyChecking=no";
+    }
+
+    const QString speedText = QString::number(speedMps, 'f', 3);
+    const QString sessionToken = session_token_.trimmed();
+    const QString remoteScript = QString(
+        "set -e\n"
+        "if [ -f \"$HOME/.bashrc\" ]; then\n"
+        "  source \"$HOME/.bashrc\" >/dev/null 2>&1 || true\n"
+        "fi\n"
+        "export RMW_IMPLEMENTATION=\"${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"\n"
+        "export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID:-0}\"\n"
+        "if [ -z \"${CYCLONEDDS_URI:-}\" ] && [ -f \"$HOME/cyclone_loopback.xml\" ]; then\n"
+        "  export CYCLONEDDS_URI=\"file://$HOME/cyclone_loopback.xml\"\n"
+        "fi\n"
+        "source /opt/ros/humble/setup.bash >/dev/null 2>&1\n"
+        "mission_cli=\"\"\n"
+        "if [ -f \"$HOME/pilot_ws/install/setup.bash\" ]; then\n"
+        "  source \"$HOME/pilot_ws/install/setup.bash\" >/dev/null 2>&1\n"
+        "  if [ -x \"$HOME/pilot_ws/install/pilot_control/lib/pilot_control/pilot_control_mission\" ]; then\n"
+        "    mission_cli=\"$HOME/pilot_ws/install/pilot_control/lib/pilot_control/pilot_control_mission\"\n"
+        "  fi\n"
+        "elif [ -f \"$HOME/BDR/pilot_ws/install/setup.bash\" ]; then\n"
+        "  source \"$HOME/BDR/pilot_ws/install/setup.bash\" >/dev/null 2>&1\n"
+        "  if [ -x \"$HOME/BDR/pilot_ws/install/pilot_control/lib/pilot_control/pilot_control_mission\" ]; then\n"
+        "    mission_cli=\"$HOME/BDR/pilot_ws/install/pilot_control/lib/pilot_control/pilot_control_mission\"\n"
+        "  fi\n"
+        "fi\n"
+        "if [ -z \"$mission_cli\" ] && [ -x \"/usr/local/bin/pilot_control_mission\" ]; then\n"
+        "  mission_cli=\"/usr/local/bin/pilot_control_mission\"\n"
+        "fi\n"
+        "if [ -z \"$mission_cli\" ]; then\n"
+        "  echo \"pilot_control_mission not found on robot\" >&2\n"
+        "  exit 42\n"
+        "fi\n"
+        "\"$mission_cli\" set-speed --token-stdin --speed %1 --json <<'__PILOT_TOKEN__'\n"
+        "%2\n"
+        "__PILOT_TOKEN__\n")
+        .arg(speedText, sessionToken);
+    const QString userHost = QString("%1@%2").arg(robot_user_, robot_host_);
+
+    std::cout << "[Coverage Planner] Local MPC parameter service unavailable, "
+                 "falling back to robot-side mission helper"
+              << std::endl;
+
+    QProcess proc;
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+    proc.start("ssh", sshArgs + QStringList() << userHost << "bash" << "-s");
+    if (!proc.waitForStarted(3000)) {
+        return set_error(serviceError.isEmpty()
+                             ? "Failed to start SSH process for MPC speed update."
+                             : QString("Local ROS service failed: %1\nSSH fallback could not start.")
+                                   .arg(serviceError));
+    }
+    proc.write(remoteScript.toUtf8());
+    proc.closeWriteChannel();
+    if (!proc.waitForFinished(15000)) {
+        proc.kill();
+        proc.waitForFinished(3000);
+        return set_error(serviceError.isEmpty()
+                             ? "Timed out while updating MPC speed over SSH."
+                             : QString("Local ROS service failed: %1\nSSH fallback timed out.")
+                                   .arg(serviceError));
+    }
+
+    const QString stdoutText = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+    const QString stderrText = QString::fromUtf8(proc.readAllStandardError()).trimmed();
+    if (proc.exitCode() != 0) {
+        QString sshError = stderrText.isEmpty() ? stdoutText : stderrText;
+        if (sshError.isEmpty()) {
+            sshError = QString("ssh exited with code %1").arg(proc.exitCode());
+        }
+        return set_error(serviceError.isEmpty()
+                             ? QString("SSH fallback failed: %1").arg(sshError)
+                             : QString("Local ROS service failed: %1\nSSH fallback failed: %2")
+                                   .arg(serviceError, sshError));
+    }
+
     return true;
 }
 

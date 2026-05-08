@@ -69,7 +69,19 @@
           "^/rosbag/start$",
           "^/rosbag/pause$",
           "^/rosbag/resume$",
-          "^/rosbag/stop$"
+          "^/rosbag/stop$",
+          "^/mpc_accel_autonomous_controller/describe_parameters$",
+          "^/mpc_accel_autonomous_controller/get_parameter_types$",
+          "^/mpc_accel_autonomous_controller/get_parameters$",
+          "^/mpc_accel_autonomous_controller/list_parameters$",
+          "^/mpc_accel_autonomous_controller/set_parameters$",
+          "^/mpc_accel_autonomous_controller/set_parameters_atomically$",
+          "^/mpc_autonomous_controller/describe_parameters$",
+          "^/mpc_autonomous_controller/get_parameter_types$",
+          "^/mpc_autonomous_controller/get_parameters$",
+          "^/mpc_autonomous_controller/list_parameters$",
+          "^/mpc_autonomous_controller/set_parameters$",
+          "^/mpc_autonomous_controller/set_parameters_atomically$"
         ],
 
         service_clients: [],
