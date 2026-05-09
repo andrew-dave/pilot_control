@@ -148,6 +148,7 @@
 #define __MMX_WITH_SSE__ 1
 #define __LDBL_HAS_DENORM__ 1
 #define QT_WIDGETS_LIB 1
+#define FASTCDR_DYN_LINK 1
 #define __cplusplus 201703L
 #define __cpp_ref_qualifiers 200710L
 #define __DEC32_MIN__ 1E-95DF

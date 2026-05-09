@@ -1,7 +1,7 @@
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: \
- /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/coverage_pipeline.cpp \
  /usr/include/stdc-predef.h \
- /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/coverage_pipeline.hpp \
  /usr/include/c++/11/string \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -2190,81 +2190,80 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: \
  /usr/include/pcl-1.12/pcl/filters/statistical_outlier_removal.h \
  /usr/include/pcl-1.12/pcl/filters/filter_indices.h \
  /usr/include/pcl-1.12/pcl/search/search.h \
- /usr/local/include/fields2cover.h \
- /usr/local/include/fields2cover/types.h /usr/include/gdal/ogr_geometry.h \
- /usr/include/gdal/cpl_conv.h /usr/include/gdal/cpl_port.h \
- /usr/include/gdal/cpl_config.h /usr/include/gdal/cpl_vsi.h \
- /usr/include/gdal/cpl_progress.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /usr/include/gdal/cpl_error.h /usr/include/gdal/cpl_json.h \
- /usr/include/gdal/cpl_string.h /usr/include/gdal/ogr_core.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h \
+ /usr/include/gdal/ogr_geometry.h /usr/include/gdal/cpl_conv.h \
+ /usr/include/gdal/cpl_port.h /usr/include/gdal/cpl_config.h \
+ /usr/include/gdal/cpl_config_extras.h /usr/include/gdal/cpl_vsi.h \
+ /usr/include/gdal/cpl_progress.h /usr/include/gdal/cpl_error.h \
+ /usr/include/gdal/cpl_json.h /usr/include/gdal/ogr_core.h \
  /usr/include/gdal/gdal_version.h /usr/include/gdal/ogr_spatialref.h \
- /usr/include/gdal/ogr_srs_api.h \
- /usr/local/include/fields2cover/types/Point.h \
- /usr/local/include/fields2cover/types/Geometry.h \
+ /usr/include/gdal/cpl_string.h /usr/include/gdal/ogr_srs_api.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h \
  /usr/include/gdal/ogr_core.h \
- /usr/local/include/fields2cover/types/Geometry_impl.hpp \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp \
  /usr/include/gdal/cpl_conv.h /usr/include/geos_c.h \
  /usr/include/geos/export.h \
- /usr/local/include/fields2cover/types/MultiPoint.h \
- /usr/local/include/fields2cover/types/Geometries.h \
- /usr/local/include/fields2cover/types/Geometries_impl.hpp \
- /usr/local/include/fields2cover/types/LinearRing.h \
- /usr/local/include/fields2cover/types/LineString.h \
- /usr/local/include/fields2cover/types/MultiLineString.h \
- /usr/local/include/fields2cover/types/Cell.h \
- /usr/local/include/fields2cover/types/Cells.h \
- /usr/local/include/fields2cover/types/Strip.h \
- /usr/local/include/fields2cover/types/Field.h \
- /usr/local/include/fields2cover/types/Swath.h \
- /usr/local/include/fields2cover/types/Swaths.h \
- /usr/local/include/fields2cover/types/SwathsByCells.h \
- /usr/local/include/fields2cover/types/Route.h \
- /usr/local/include/fields2cover/types/Graph2D.h \
- /usr/local/include/fields2cover/types/Graph.h \
- /usr/local/include/fields2cover/types/Path.h \
- /usr/local/include/fields2cover/types/PathState.h \
- /usr/local/include/fields2cover/types/Robot.h \
- /usr/local/include/fields2cover/utils/random.h \
- /usr/local/include/fields2cover/utils/spline.h \
- /usr/local/include/fields2cover/utils/transformation.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiPoint.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cell.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Strip.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swath.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swaths.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/SwathsByCells.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/random.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/transformation.h \
  /usr/include/gdal/ogr_spatialref.h \
- /usr/local/include/fields2cover/utils/parser.h \
- /usr/local/include/fields2cover/utils/visualizer.h \
- /usr/local/include/fields2cover/objectives/base_objective.h \
- /usr/local/include/fields2cover/objectives/hg_obj/hg_objective.h \
- /usr/local/include/fields2cover/objectives/hg_obj/rem_area.h \
- /usr/local/include/fields2cover/objectives/sg_obj/sg_objective.h \
- /usr/local/include/fields2cover/objectives/sg_obj/n_swath.h \
- /usr/local/include/fields2cover/objectives/sg_obj/n_swath_modified.h \
- /usr/local/include/fields2cover/objectives/sg_obj/field_coverage.h \
- /usr/local/include/fields2cover/objectives/sg_obj/overlaps.h \
- /usr/local/include/fields2cover/objectives/sg_obj/swath_length.h \
- /usr/local/include/fields2cover/objectives/rp_obj/rp_objective.h \
- /usr/local/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h \
- /usr/local/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h \
- /usr/local/include/fields2cover/objectives/pp_obj/pp_objective.h \
- /usr/local/include/fields2cover/path_planning/turning_base.h \
- /usr/local/include/fields2cover/objectives/pp_obj/path_length.h \
- /usr/local/include/fields2cover/objectives/decomp_obj/decomp_objective.h \
- /usr/local/include/fields2cover/decomposition/decomposition_base.h \
- /usr/local/include/fields2cover/decomposition/trapezoidal_decomp.h \
- /usr/local/include/fields2cover/decomposition/boustrophedon_decomp.h \
- /usr/local/include/fields2cover/headland_generator/headland_generator_base.h \
- /usr/local/include/fields2cover/headland_generator/constant_headland.h \
- /usr/local/include/fields2cover/swath_generator/swath_generator_base.h \
- /usr/local/include/fields2cover/swath_generator/brute_force.h \
- /usr/local/include/fields2cover/route_planning/single_cell_swaths_order_base.h \
- /usr/local/include/fields2cover/route_planning/boustrophedon_order.h \
- /usr/local/include/fields2cover/route_planning/snake_order.h \
- /usr/local/include/fields2cover/route_planning/spiral_order.h \
- /usr/local/include/fields2cover/route_planning/custom_order.h \
- /usr/local/include/fields2cover/route_planning/route_planner_base.h \
- /usr/local/include/fields2cover/path_planning/dubins_curves.h \
- /usr/local/include/fields2cover/path_planning/dubins_curves_cc.h \
- /usr/local/include/fields2cover/path_planning/reeds_shepp_curves.h \
- /usr/local/include/fields2cover/path_planning/reeds_shepp_curves_hc.h \
- /usr/local/include/fields2cover/path_planning/path_planning.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/parser.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/swath_length.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/rp_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/turning_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/swath_generator_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/brute_force.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/snake_order.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/spiral_order.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h \
+ /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h \
  /usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h \
  /usr/include/CGAL/Simple_cartesian.h \
  /usr/include/CGAL/Cartesian/Cartesian_base.h /usr/include/CGAL/basic.h \

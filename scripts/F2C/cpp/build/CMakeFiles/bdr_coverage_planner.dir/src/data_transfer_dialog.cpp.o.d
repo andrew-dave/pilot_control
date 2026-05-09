@@ -1,7 +1,7 @@
 CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o: \
- /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/data_transfer_dialog.cpp \
  /usr/include/stdc-predef.h \
- /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/data_transfer_dialog.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QDialog \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialog.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h \
@@ -345,7 +345,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/data_transfer_dialog.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qbasictimer.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qset.h \
- /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
+ /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/transfer_manager.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/qobject.h \
  /usr/include/x86_64-linux-gnu/qt5/QtCore/QString \

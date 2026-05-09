@@ -50,6 +50,7 @@
 #include <QAbstractItemView>
 
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -579,6 +580,15 @@ private:
     void publishSelectedScanSegments();
     void startSelectedScanSegments();
     void setActiveScanSegmentFromList(int idx);
+
+    void setupPlannerSegmentOrchestrationInterfaces();
+    void publishMpcAutonomyEnable(bool enabled);
+    void publishF2cNavigationStartSignal();
+    void resetSequentialSegmentRunState();
+    void handleScanSegmentStatusPayload(const QString& payload);
+    bool publishSingleScanSegmentWaypoints(int segment_index, QString* error_out);
+    void advanceSequentialScanAfterSegmentSaved();
+    bool sequentialSegmentDcModeEnabled() const;
     void startTransitPathPlanning(const Point2D& start, const Point2D& goal, bool is_home);
     
     // UI helpers for collapsible panes
@@ -675,7 +685,15 @@ private:
     QPushButton* btn_make_segments_ = nullptr;
     QPushButton* btn_publish_segments_ = nullptr;
     QPushButton* btn_start_segments_ = nullptr;
+    QCheckBox* chk_sequential_segment_dc_ = nullptr;
+    QComboBox* combo_segment_progression_ = nullptr;
     QLabel* lbl_scan_progress_ = nullptr;
+
+    bool scan_sequential_run_active_ = false;
+    bool scan_sequential_dc_save_in_flight_ = false;
+    bool scan_sequential_started_scan_session_ = false;
+    std::vector<int> scan_sequential_indices_;
+    size_t scan_sequential_cursor_ = 0;
     
     // DDS / Zenoh bridge status controls
     QLabel* lbl_dds_status_;
@@ -766,6 +784,8 @@ private:
     // ROS2 integration for waypoint publishing
     rclcpp::Node::SharedPtr ros_node_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr waypoint_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_pub_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr scan_segment_status_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_sub_;
     std::thread ros_thread_;
     bool waypoints_published_;

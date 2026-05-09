@@ -657,6 +657,7 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -1229,6 +1230,12 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -1238,7 +1245,6 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
@@ -1999,11 +2005,6 @@ CMakeFiles/bdr_coverage_planner.dir/bdr_coverage_planner_autogen/mocs_compilatio
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
@@ -3034,6 +3035,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/cloud_upload_dialog.cpp.o: ../src/cloud_
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -4673,6 +4675,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -4924,6 +4927,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/write_preferring_read_write_lock.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -4933,7 +4942,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
@@ -5715,11 +5723,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
@@ -6571,8 +6574,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_gui.cpp.o: ../src/coverage_gui.
   /opt/ros/humble/include/tf2/tf2/LinearMath/Transform.hpp \
   /opt/ros/humble/include/tf2/tf2/LinearMath/Matrix3x3.hpp \
   /opt/ros/humble/include/tf2/tf2/LinearMath/Vector3.hpp \
-  /opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.h \
-  /opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.h
+  /opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp \
+  /opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.hpp
 
 CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage_pipeline.cpp \
   /usr/include/stdc-predef.h \
@@ -8897,88 +8900,88 @@ CMakeFiles/bdr_coverage_planner.dir/src/coverage_pipeline.cpp.o: ../src/coverage
   /usr/include/pcl-1.12/pcl/filters/statistical_outlier_removal.h \
   /usr/include/pcl-1.12/pcl/filters/filter_indices.h \
   /usr/include/pcl-1.12/pcl/search/search.h \
-  /usr/local/include/fields2cover.h \
-  /usr/local/include/fields2cover/types.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h \
   /usr/include/gdal/ogr_geometry.h \
   /usr/include/gdal/cpl_conv.h \
   /usr/include/gdal/cpl_port.h \
   /usr/include/gdal/cpl_config.h \
+  /usr/include/gdal/cpl_config_extras.h \
   /usr/include/gdal/cpl_vsi.h \
   /usr/include/gdal/cpl_progress.h \
-  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   /usr/include/gdal/cpl_error.h \
   /usr/include/gdal/cpl_json.h \
-  /usr/include/gdal/cpl_string.h \
   /usr/include/gdal/ogr_core.h \
   /usr/include/gdal/gdal_version.h \
   /usr/include/gdal/ogr_spatialref.h \
+  /usr/include/gdal/cpl_string.h \
   /usr/include/gdal/ogr_srs_api.h \
-  /usr/local/include/fields2cover/types/Point.h \
-  /usr/local/include/fields2cover/types/Geometry.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h \
   /usr/include/gdal/ogr_core.h \
-  /usr/local/include/fields2cover/types/Geometry_impl.hpp \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp \
   /usr/include/gdal/cpl_conv.h \
   /usr/include/geos_c.h \
   /usr/include/geos/export.h \
-  /usr/local/include/fields2cover/types/MultiPoint.h \
-  /usr/local/include/fields2cover/types/Geometries.h \
-  /usr/local/include/fields2cover/types/Geometries_impl.hpp \
-  /usr/local/include/fields2cover/types/LinearRing.h \
-  /usr/local/include/fields2cover/types/LineString.h \
-  /usr/local/include/fields2cover/types/MultiLineString.h \
-  /usr/local/include/fields2cover/types/Cell.h \
-  /usr/local/include/fields2cover/types/Cells.h \
-  /usr/local/include/fields2cover/types/Strip.h \
-  /usr/local/include/fields2cover/types/Field.h \
-  /usr/local/include/fields2cover/types/Swath.h \
-  /usr/local/include/fields2cover/types/Swaths.h \
-  /usr/local/include/fields2cover/types/SwathsByCells.h \
-  /usr/local/include/fields2cover/types/Route.h \
-  /usr/local/include/fields2cover/types/Graph2D.h \
-  /usr/local/include/fields2cover/types/Graph.h \
-  /usr/local/include/fields2cover/types/Path.h \
-  /usr/local/include/fields2cover/types/PathState.h \
-  /usr/local/include/fields2cover/types/Robot.h \
-  /usr/local/include/fields2cover/utils/random.h \
-  /usr/local/include/fields2cover/utils/spline.h \
-  /usr/local/include/fields2cover/utils/transformation.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiPoint.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cell.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Strip.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swath.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swaths.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/SwathsByCells.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/random.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/transformation.h \
   /usr/include/gdal/ogr_spatialref.h \
-  /usr/local/include/fields2cover/utils/parser.h \
-  /usr/local/include/fields2cover/utils/visualizer.h \
-  /usr/local/include/fields2cover/objectives/base_objective.h \
-  /usr/local/include/fields2cover/objectives/hg_obj/hg_objective.h \
-  /usr/local/include/fields2cover/objectives/hg_obj/rem_area.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/sg_objective.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/n_swath.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/n_swath_modified.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/field_coverage.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/overlaps.h \
-  /usr/local/include/fields2cover/objectives/sg_obj/swath_length.h \
-  /usr/local/include/fields2cover/objectives/rp_obj/rp_objective.h \
-  /usr/local/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h \
-  /usr/local/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h \
-  /usr/local/include/fields2cover/objectives/pp_obj/pp_objective.h \
-  /usr/local/include/fields2cover/path_planning/turning_base.h \
-  /usr/local/include/fields2cover/objectives/pp_obj/path_length.h \
-  /usr/local/include/fields2cover/objectives/decomp_obj/decomp_objective.h \
-  /usr/local/include/fields2cover/decomposition/decomposition_base.h \
-  /usr/local/include/fields2cover/decomposition/trapezoidal_decomp.h \
-  /usr/local/include/fields2cover/decomposition/boustrophedon_decomp.h \
-  /usr/local/include/fields2cover/headland_generator/headland_generator_base.h \
-  /usr/local/include/fields2cover/headland_generator/constant_headland.h \
-  /usr/local/include/fields2cover/swath_generator/swath_generator_base.h \
-  /usr/local/include/fields2cover/swath_generator/brute_force.h \
-  /usr/local/include/fields2cover/route_planning/single_cell_swaths_order_base.h \
-  /usr/local/include/fields2cover/route_planning/boustrophedon_order.h \
-  /usr/local/include/fields2cover/route_planning/snake_order.h \
-  /usr/local/include/fields2cover/route_planning/spiral_order.h \
-  /usr/local/include/fields2cover/route_planning/custom_order.h \
-  /usr/local/include/fields2cover/route_planning/route_planner_base.h \
-  /usr/local/include/fields2cover/path_planning/dubins_curves.h \
-  /usr/local/include/fields2cover/path_planning/dubins_curves_cc.h \
-  /usr/local/include/fields2cover/path_planning/reeds_shepp_curves.h \
-  /usr/local/include/fields2cover/path_planning/reeds_shepp_curves_hc.h \
-  /usr/local/include/fields2cover/path_planning/path_planning.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/parser.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/swath_length.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/rp_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/turning_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/swath_generator_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/brute_force.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/snake_order.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/spiral_order.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h \
+  /home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h \
   /usr/include/CGAL/Exact_predicates_inexact_constructions_kernel.h \
   /usr/include/CGAL/Simple_cartesian.h \
   /usr/include/CGAL/Cartesian/Cartesian_base.h \
@@ -11174,6 +11177,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -11826,6 +11830,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -11835,7 +11845,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
@@ -12617,11 +12626,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/main.cpp.o: ../src/main.cpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
@@ -15443,6 +15447,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: ../src/scan_
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -16146,6 +16151,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: ../src/scan_
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QAbstractItemView \
   /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractitemview.h \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
+  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/float64_multi_array.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__struct.hpp \
@@ -16155,7 +16166,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: ../src/scan_
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__type_support.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
@@ -16926,11 +16936,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/scan_session_tracker.cpp.o: ../src/scan_
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp \
-  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__type_support.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__struct.hpp \
   /opt/ros/humble/include/std_srvs/std_srvs/srv/detail/trigger__builder.hpp \
@@ -18215,6 +18220,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/teleop_widget.cpp.o: ../src/teleop_widge
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h \
   /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h \
   /opt/ros/humble/include/rclcpp/rclcpp/event.hpp \
+  /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/qos.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/duration.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp \
@@ -18914,8 +18920,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/CGAL/convex_hull_2.h:
 
-/usr/include/CGAL/STL_Extension/internal/info_check.h:
-
 /usr/include/boost/fusion/sequence/comparison/enable_comparison.hpp:
 
 /usr/include/boost/fusion/support/as_const.hpp:
@@ -18975,6 +18979,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/CGAL/Triangulation_ds_circulators_2.h:
 
 /usr/include/CGAL/Has_member.h:
+
+/usr/include/CGAL/CC_safe_handle.h:
 
 /usr/include/CGAL/tuple.h:
 
@@ -19167,6 +19173,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/CGAL/Sqrt_extension/Eigen_NumTraits.h:
 
 /usr/include/CGAL/Sqrt_extension/convert_to_bfi.h:
+
+/usr/include/CGAL/Sqrt_extension/Get_arithmetic_kernel.h:
 
 /usr/include/CGAL/Sqrt_extension/io.h:
 
@@ -19430,6 +19438,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/algorithm/clamp.hpp:
 
+/usr/include/CGAL/Distance_3/Segment_3_Segment_3.h:
+
 /usr/include/CGAL/Distance_3/Point_3_Plane_3.h:
 
 /usr/include/CGAL/Distance_3/Point_3_Triangle_3.h:
@@ -19437,8 +19447,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/CGAL/Distance_3/internal/squared_distance_utils_3.h:
 
 /usr/include/CGAL/Distance_3/Point_3_Point_3.h:
-
-/usr/include/CGAL/squared_distance_3.h:
 
 /usr/include/CGAL/Distance_2/Line_2_Line_2.h:
 
@@ -19451,8 +19459,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/CGAL/Distance_2/Segment_2_Triangle_2.h:
 
 /usr/include/CGAL/Distance_2/Segment_2_Line_2.h:
-
-/usr/include/CGAL/Distance_2/Segment_2_Ray_2.h:
 
 /usr/include/CGAL/Intersection_traits_2.h:
 
@@ -19505,8 +19511,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/CGAL/Cartesian/Rotation_rep_2.h:
 
 /usr/include/CGAL/Cartesian/Translation_rep_2.h:
-
-/usr/include/CGAL/Handle_for_virtual.h:
 
 /usr/include/CGAL/Convex_hull_2/ch_assertions.h:
 
@@ -19673,6 +19677,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/mpl/aux_/preprocessor/repeat.hpp:
 
 /usr/include/boost/variant/detail/substitute.hpp:
+
+/usr/include/boost/variant/detail/enable_recursive.hpp:
 
 /usr/include/boost/variant.hpp:
 
@@ -19866,8 +19872,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/predef/architecture/rs6k.h:
 
-/usr/include/boost/predef/architecture/riscv.h:
-
 /usr/include/boost/predef/architecture/pyramid.h:
 
 /usr/include/boost/predef/architecture/ptx.h:
@@ -19902,79 +19906,67 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/CGAL/version_macros.h:
 
-/usr/include/CGAL/CC_safe_handle.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves_cc.h:
 
-/usr/local/include/fields2cover/path_planning/path_planning.h:
+/usr/include/CGAL/squared_distance_3.h:
 
-/usr/local/include/fields2cover/path_planning/reeds_shepp_curves_hc.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/custom_order.h:
 
-/usr/local/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/spiral_order.h:
 
-/usr/local/include/fields2cover/swath_generator/brute_force.h:
+/usr/include/boost/predef/architecture/riscv.h:
 
-/usr/local/include/fields2cover/headland_generator/headland_generator_base.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/brute_force.h:
 
-/usr/local/include/fields2cover/decomposition/boustrophedon_decomp.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/swath_generator/swath_generator_base.h:
 
-/usr/include/boost/variant/detail/enable_recursive.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/headland_generator_base.h:
 
-/usr/local/include/fields2cover/decomposition/decomposition_base.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/trapezoidal_decomp.h:
 
-/usr/local/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/decomposition_base.h:
 
-/usr/local/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
+/usr/include/CGAL/Handle_for_virtual.h:
 
-/usr/local/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/decomp_obj/decomp_objective.h:
 
-/usr/local/include/fields2cover/objectives/rp_obj/rp_objective.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/pp_objective.h:
 
-/usr/local/include/fields2cover/objectives/sg_obj/overlaps.h:
+/usr/include/CGAL/STL_Extension/internal/info_check.h:
 
-/usr/local/include/fields2cover/objectives/sg_obj/n_swath_modified.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/direct_dist_path_obj.h:
 
-/usr/local/include/fields2cover/objectives/sg_obj/sg_objective.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/rp_objective.h:
 
-/usr/include/CGAL/Distance_3/Segment_3_Segment_3.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/overlaps.h:
 
-/usr/local/include/fields2cover/objectives/base_objective.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath.h:
 
-/usr/local/include/fields2cover/utils/visualizer.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/rem_area.h:
 
-/usr/local/include/fields2cover/utils/parser.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/spline.h:
 
-/usr/local/include/fields2cover/utils/random.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Route.h:
 
-/usr/local/include/fields2cover/types/PathState.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swaths.h:
 
-/usr/local/include/fields2cover/types/Graph.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Field.h:
 
-/usr/local/include/fields2cover/utils/transformation.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Strip.h:
 
-/usr/local/include/fields2cover/types/Graph2D.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cell.h:
 
-/usr/local/include/fields2cover/types/Route.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiLineString.h:
 
-/usr/local/include/fields2cover/types/SwathsByCells.h:
+/usr/include/CGAL/Distance_2/Segment_2_Ray_2.h:
 
-/usr/local/include/fields2cover/types/Swath.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LinearRing.h:
 
-/usr/local/include/fields2cover/types/Strip.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries_impl.hpp:
 
-/usr/local/include/fields2cover/types/Cells.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometries.h:
 
-/usr/include/CGAL/Sqrt_extension/Get_arithmetic_kernel.h:
-
-/usr/local/include/fields2cover/types/Cell.h:
-
-/usr/local/include/fields2cover/types/LineString.h:
-
-/usr/local/include/fields2cover/types/Geometries_impl.hpp:
-
-/usr/local/include/fields2cover/types/Robot.h:
-
-/usr/local/include/fields2cover/types/Geometries.h:
-
-/usr/local/include/fields2cover/types/MultiPoint.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/MultiPoint.h:
 
 /usr/include/CGAL/Hilbert_sort_middle_d.h:
 
@@ -19984,7 +19976,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/geos_c.h:
 
-/usr/local/include/fields2cover/types/Point.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry_impl.hpp:
 
 /usr/include/gdal/ogr_srs_api.h:
 
@@ -19996,11 +19988,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/gdal/cpl_vsi.h:
 
+/usr/include/gdal/cpl_config_extras.h:
+
 /usr/include/gdal/cpl_port.h:
 
-/usr/local/include/fields2cover/types.h:
-
-/usr/local/include/fields2cover.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover.h:
 
 /usr/include/pcl-1.12/pcl/filters/statistical_outlier_removal.h:
 
@@ -20051,8 +20043,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp:
 
 /usr/include/boost/geometry/algorithms/detail/is_valid/polygon.hpp:
-
-/usr/local/include/fields2cover/utils/spline.h:
 
 /usr/include/boost/geometry/algorithms/detail/is_valid/pointlike.hpp:
 
@@ -20146,12 +20136,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/geometry/algorithms/detail/buffer/line_line_intersection.hpp:
 
-/usr/include/boost/multiprecision/cpp_int/checked.hpp:
-
-/usr/include/CGAL/Distance_2/Point_2_Line_2.h:
-
-/usr/include/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp:
-
 /usr/include/boost/geometry/algorithms/detail/overlay/traversal_switch_detector.hpp:
 
 /usr/include/boost/geometry/algorithms/detail/overlay/traversal.hpp:
@@ -20214,8 +20198,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/geometry/algorithms/detail/overlay/backtrack_check_si.hpp:
 
-/usr/local/include/fields2cover/objectives/pp_obj/pp_objective.h:
-
 /usr/include/boost/geometry/algorithms/detail/overlay/visit_info.hpp:
 
 /usr/include/boost/multiprecision/detail/default_ops.hpp:
@@ -20253,6 +20235,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_helpers.hpp:
 
 /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Geometry.h:
 
 /usr/include/boost/geometry/algorithms/detail/sections/section_box_policies.hpp:
 
@@ -20504,7 +20488,7 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/geometry/algorithms/detail/centroid/translating_transformer.hpp:
 
-/usr/local/include/fields2cover/types/LinearRing.h:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Path.h:
 
 /usr/include/boost/geometry/strategies/concepts/centroid_concept.hpp:
 
@@ -20548,8 +20532,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/type_traits/remove_extent.hpp:
 
-/usr/local/include/fields2cover/types/Swaths.h:
-
 /usr/include/boost/container/detail/config_end.hpp:
 
 /usr/include/boost/container/detail/workaround.hpp:
@@ -20567,6 +20549,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/geometry/algorithms/detail/direction_code.hpp:
 
 /usr/include/CGAL/Homogeneous/DirectionH2.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/route_planner_base.h:
 
 /usr/include/boost/geometry/algorithms/detail/buffer/buffer_inserter.hpp:
 
@@ -20706,8 +20690,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/math/tools/detail/polynomial_horner3_20.hpp:
 
-/usr/local/include/fields2cover/objectives/sg_obj/swath_length.h:
-
 /usr/include/boost/geometry/algorithms/detail/overlay/overlay.hpp:
 
 /usr/include/boost/qvm/gen/vec_mat_operations4.hpp:
@@ -20836,6 +20818,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/mpl/set/aux_/erase_impl.hpp:
 
+/usr/include/boost/mpl/base.hpp:
+
 /usr/include/boost/multiprecision/cpp_int/add.hpp:
 
 /usr/include/boost/mpl/set/aux_/item.hpp:
@@ -20939,6 +20923,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/algorithm/string/case_conv.hpp:
 
 /usr/include/boost/algorithm/string/std/slist_traits.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/base_objective.h:
 
 /usr/include/boost/algorithm/string/sequence_traits.hpp:
 
@@ -21144,6 +21130,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/CGAL/memory.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/decomposition/boustrophedon_decomp.h:
+
 /usr/include/boost/mpl/set/aux_/empty_impl.hpp:
 
 /usr/include/boost/geometry/algorithms/for_each.hpp:
@@ -21212,6 +21200,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/variant/detail/apply_visitor_binary.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/sg_objective.h:
+
 /usr/include/boost/type_traits/copy_reference.hpp:
 
 /usr/include/boost/type_traits/copy_cv.hpp:
@@ -21256,6 +21246,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/variant/variant_fwd.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types.h:
+
 /usr/include/boost/geometry/geometries/concepts/check.hpp:
 
 /usr/include/boost/geometry/algorithms/detail/assign_indexed_point.hpp:
@@ -21289,6 +21281,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qscrollbar.h:
 
 /usr/include/boost/geometry/strategies/tags.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/rp_obj/complete_turn_path_obj.h:
 
 /usr/include/c++/11/ext/slist:
 
@@ -21446,9 +21440,13 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/predef/architecture/superh.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph2D.h:
+
 /usr/include/boost/geometry/algorithms/detail/envelope/segment.hpp:
 
 /usr/include/boost/math/tools/config.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/dubins_curves.h:
 
 /usr/include/gdal/ogr_geometry.h:
 
@@ -21463,6 +21461,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/core/ignore_unused.hpp:
 
 /usr/include/boost/random/seed_seq.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/visualizer.h:
 
 /usr/include/boost/geometry/core/point_order.hpp:
 
@@ -21488,9 +21488,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 ../src/coverage_pipeline.cpp:
 
-/usr/include/boost/mpl/base.hpp:
+/opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.hpp:
 
-/opt/ros/humble/include/tf2_ros/tf2_ros/visibility_control.h:
+/usr/include/boost/multiprecision/cpp_int/checked.hpp:
+
+/usr/include/CGAL/Distance_2/Point_2_Line_2.h:
+
+/usr/include/boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp:
+
+/opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.hpp:
 
 /usr/include/CGAL/Sqrt_extension/Sqrt_extension_type.h:
 
@@ -21806,8 +21812,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/fusion/iterator/iterator_adapter.hpp:
 
-/usr/local/include/fields2cover/types/Geometry_impl.hpp:
-
 /usr/include/boost/mpl/aux_/pop_back_impl.hpp:
 
 /usr/include/boost/geometry/geometries/pointing_segment.hpp:
@@ -22024,6 +22028,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/CGAL/Homogeneous/VectorH3.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/swath_length.h:
+
 /usr/include/boost/fusion/view/iterator_range/detail/size_impl.hpp:
 
 /usr/include/boost/fusion/view/iterator_range/detail/at_impl.hpp:
@@ -22110,17 +22116,11 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/boost/fusion/support/is_segmented.hpp:
 
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__struct.hpp:
-
-/usr/include/CGAL/Intersections_3/internal/Bbox_3_Plane_3_do_intersect.h:
-
-/usr/include/boost/geometry/index/detail/bounded_view.hpp:
-
-/usr/include/boost/function_types/property_tags.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__struct.hpp:
-
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__struct.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QStackedWidget:
 
@@ -22146,10 +22146,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentthreadengine.h:
 
-/usr/include/glib-2.0/glib/ghostutils.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h:
-
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtransposeproxymodel.h:
@@ -22165,8 +22161,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/lexical_cast/detail/lcast_unsigned_converters.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qtextboundaryfinder.h:
-
-/usr/local/include/fields2cover/types/Geometry.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__traits.hpp:
 
@@ -22202,6 +22196,8 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/CGAL/Handle_hash_function.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Robot.h:
+
 /usr/include/boost/smart_ptr/detail/sp_disable_deprecated.hpp:
 
 /usr/include/CGAL/Interval_traits.h:
@@ -22213,6 +22209,12 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/iterator/counting_iterator.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose_with_covariance__traits.hpp:
+
+/usr/include/boost/geometry/strategies/spherical/envelope_segment.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp:
+
+/usr/include/gstreamer-1.0/gst/video/video-resampler.h:
 
 /usr/include/boost/geometry/algorithms/detail/overlay/get_intersection_points.hpp:
 
@@ -22270,8 +22272,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qlinkedlist.h:
 
-/usr/local/include/fields2cover/objectives/pp_obj/path_length.h:
-
 /usr/include/boost/geometry/algorithms/detail/partition.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qversionnumber.h:
@@ -22314,11 +22314,15 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/include/c++/11/functional:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Swath.h:
+
 /usr/include/boost/preprocessor/arithmetic/mod.hpp:
 
 /usr/include/CGAL/Homogeneous/RayH3.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QMessageBox:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineoption.h:
 
@@ -22440,14 +22444,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h:
-
-/usr/include/CGAL/Conic_2.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
-
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/header__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtguiglobal.h:
@@ -22459,14 +22455,6 @@ CMakeFiles/bdr_coverage_planner.dir/src/transfer_manager.cpp.o: ../src/transfer_
 /usr/include/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp:
-
-/usr/include/boost/function/detail/function_iterate.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
-
-/usr/local/include/fields2cover/decomposition/trapezoidal_decomp.h:
-
-/usr/include/gstreamer-1.0/gst/gsttocsetter.h:
 
 /usr/include/boost/type_index/stl_type_index.hpp:
 
@@ -22494,11 +22482,7 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_manager.cpp:
 
 /usr/include/c++/11/bits/hash_bytes.h:
 
-/usr/local/include/fields2cover/objectives/hg_obj/hg_objective.h:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__type_support.hpp:
-
-/usr/local/include/fields2cover/route_planning/custom_order.h:
 
 /usr/include/boost/fusion/iterator/detail/segment_sequence.hpp:
 
@@ -22551,6 +22535,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_manager.cpp:
 /usr/include/pcl-1.12/pcl/common/impl/io.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_timer.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__type_support.hpp:
 
@@ -22746,6 +22732,18 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_cloud_upload_manager.cpp:
 
 /usr/include/glib-2.0/glib/gregex.h:
 
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp:
+
+/usr/include/boost/mpl/aux_/config/gcc.hpp:
+
+/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
+
+/usr/include/boost/mpl/erase.hpp:
+
+/usr/include/boost/numeric/conversion/bounds.hpp:
+
 /usr/include/boost/fusion/algorithm/iteration/detail/segmented_fold.hpp:
 
 /usr/include/c++/11/bits/stl_stack.h:
@@ -22884,9 +22882,7 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__builder.hpp:
 
-/usr/include/boost/geometry/index/equal_to.hpp:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp:
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/single_cell_swaths_order_base.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp:
 
@@ -22897,6 +22893,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/timer.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/snake_order.h:
 
 /usr/include/boost/fusion/algorithm/iteration/for_each_fwd.hpp:
 
@@ -22962,6 +22960,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/sensor_msgs/sensor_msgs/msg/detail/nav_sat_fix__traits.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/parser.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_map.hpp:
 
 /usr/include/boost/type_traits/is_fundamental.hpp:
@@ -23003,12 +23003,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/geometry/strategies/distance.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/cxxabi_tweaks.h:
-
-/usr/include/CGAL/Cartesian/Circle_2.h:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__traits.hpp:
-
-/usr/include/boost/mpl/iterator_range.hpp:
 
 /usr/include/CGAL/Cartesian/Data_accessor_2.h:
 
@@ -23095,6 +23089,16 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/type_traits/has_minus_assign.hpp:
 
 /usr/include/boost/type_traits/is_complete.hpp:
+
+/usr/include/boost/function/detail/function_iterate.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/static_storage.hpp:
+
+/usr/include/gstreamer-1.0/gst/gsttocsetter.h:
+
+/usr/include/boost/math/special_functions/asinh.hpp:
+
+/usr/include/boost/preprocessor/control/if.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
@@ -23218,6 +23222,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/contexts/default_context.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Point.h:
+
 /opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__builder.hpp:
@@ -23253,8 +23259,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/rcl/rcl/publisher.h:
 
 /usr/include/boost/random/uniform_01.hpp:
-
-/usr/local/include/fields2cover/route_planning/spiral_order.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
@@ -23330,6 +23334,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/random/student_t_distribution.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/SwathsByCells.h:
+
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/set_parameters.hpp:
 
 /usr/include/gstreamer-1.0/gst/gstprotection.h:
@@ -23351,6 +23357,14 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/geometry/formulas/area_formulas.hpp:
 
 /opt/ros/humble/include/rmw/rmw/time.h:
+
+/usr/include/boost/fusion/iterator/mpl.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h:
+
+/usr/include/c++/11/condition_variable:
+
+/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
 
 /usr/include/CGAL/Residue.h:
 
@@ -23428,8 +23442,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /opt/ros/humble/include/rcl/rcl/types.h:
 
-/usr/local/include/fields2cover/route_planning/snake_order.h:
-
 /usr/include/gstreamer-1.0/gst/gstpreset.h:
 
 /usr/include/gdal/cpl_conv.h:
@@ -23454,8 +23466,6 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/boost/preprocessor/facilities/empty.hpp:
 
-/usr/local/include/fields2cover/types/Path.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qcoreapplication.h:
 
 /usr/include/CGAL/mpq_class.h:
@@ -23463,6 +23473,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /usr/include/boost/geometry/algorithms/buffer.hpp:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/field_coverage.h:
 
 /usr/include/c++/11/bits/basic_string.tcc:
 
@@ -23600,6 +23612,8 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 
 /usr/include/gstreamer-1.0/gst/gstobject.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves_hc.h:
+
 /usr/include/boost/geometry/strategies/geographic/distance_andoyer.hpp:
 
 /usr/include/boost/geometry/views/detail/points_view.hpp:
@@ -23665,6 +23679,14 @@ bdr_coverage_planner_autogen/mocs_compilation.cpp:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/wrench_stamped__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/timex.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qoperatingsystemversion.h:
+
+/usr/include/CGAL/Conic_2.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qdiriterator.h:
 
@@ -23996,8 +24018,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtoolbutton.h:
 
-/usr/local/include/fields2cover/path_planning/dubins_curves.h:
-
 /usr/include/boost/mpl/set/aux_/has_key_impl.hpp:
 
 /usr/include/boost/iterator/detail/config_def.hpp:
@@ -24105,6 +24125,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 /opt/ros/humble/include/rclcpp/rclcpp/subscription.hpp:
 
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Cells.h:
 
 /usr/include/linux/posix_types.h:
 
@@ -24344,6 +24366,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_coverage_gui.cpp:
 
 /usr/include/boost/geometry/strategies/spherical/disjoint_box_box.hpp:
 
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/detail/node_interfaces_helpers.hpp:
+
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qabstractslider.h:
@@ -24508,6 +24532,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/c++/11/pstl/glue_memory_defs.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/route_planning/boustrophedon_order.h:
+
 /usr/include/boost/geometry/core/coordinate_type.hpp:
 
 /usr/include/boost/fusion/mpl/begin.hpp:
@@ -24561,16 +24587,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__traits.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/allocator.h:
-
-/usr/include/boost/fusion/iterator/mpl.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qshareddata.h:
-
-/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
-
-/usr/include/c++/11/condition_variable:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__struct.hpp:
 
 /usr/include/c++/11/bits/postypes.h:
 
@@ -24684,6 +24700,8 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/Block.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/headland_generator/constant_headland.h:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/transform_stamped__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtGui/qtgui-config.h:
@@ -24695,8 +24713,6 @@ bdr_coverage_planner_autogen/EWIEGA46WW/qrc_resources.cpp:
 /usr/include/glib-2.0/glib/gtypes.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/quote.hpp:
-
-/usr/local/include/fields2cover/path_planning/turning_base.h:
 
 /usr/include/boost/fusion/support/is_iterator.hpp:
 
@@ -25100,6 +25116,10 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qbytearraylist.h:
 
+/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
+
+/usr/include/c++/11/bits/deque.tcc:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qstringlist.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
@@ -25223,8 +25243,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qfileinfo.h:
 
 /usr/include/c++/11/bits/parse_numbers.h:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__builder.hpp:
 
 /usr/include/boost/type_traits/is_final.hpp:
 
@@ -25420,8 +25438,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/endian.h:
 
-/usr/local/include/fields2cover/objectives/sg_obj/n_swath.h:
-
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qmap.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h:
@@ -25479,6 +25495,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 /usr/include/boost/preprocessor/punctuation/comma.hpp:
 
 /usr/include/boost/integer/integer_mask.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/hg_obj/hg_objective.h:
 
 /usr/include/boost/geometry/strategies/cartesian/distance_pythagoras.hpp:
 
@@ -25690,6 +25708,20 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /opt/ros/humble/include/rmw/rmw/init_options.h:
 
+/usr/include/CGAL/Intersections_3/internal/Bbox_3_Plane_3_do_intersect.h:
+
+/usr/include/boost/geometry/index/detail/bounded_view.hpp:
+
+/usr/include/boost/function_types/property_tags.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/get_parameter_types__struct.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilterkernel.h:
+
+/usr/include/glib-2.0/glib/ghostutils.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtCore/QVector:
 
 /usr/include/CGAL/Intersections_2/Ray_2_Ray_2.h:
@@ -25733,10 +25765,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 /usr/include/boost/type_traits/is_nothrow_move_constructible.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
-
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialogbuttonbox.h:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtNetwork/qnetworkinterface.h:
 
@@ -25828,8 +25856,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
 
-/usr/local/include/fields2cover/headland_generator/constant_headland.h:
-
 /usr/include/c++/11/bits/functexcept.h:
 
 /usr/include/boost/geometry/geometries/point.hpp:
@@ -25852,6 +25878,10 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
 
+/usr/include/boost/geometry/index/equal_to.hpp:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_dimension__traits.hpp:
+
 /usr/include/c++/11/ostream:
 
 /usr/include/CGAL/Fraction_traits.h:
@@ -25868,6 +25898,10 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
 
+/usr/include/boost/fusion/sequence/intrinsic/end.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h:
+
 /usr/include/x86_64-linux-gnu/qt5/QtConcurrent/qtconcurrentfilter.h:
 
 /usr/include/glib-2.0/glib/gtrashstack.h:
@@ -25882,9 +25916,17 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/c++/11/type_traits:
 
-/opt/ros/humble/include/std_msgs/std_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__builder.hpp:
 
-/usr/include/x86_64-linux-gnu/qt5/QtWidgets/QSlider:
+/usr/include/CGAL/Cartesian/Circle_2.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/float64_multi_array__traits.hpp:
+
+/usr/include/boost/mpl/iterator_range.hpp:
+
+/usr/include/x86_64-linux-gnu/qt5/QtWidgets/qdialogbuttonbox.h:
+
+/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/multi_array_layout__traits.hpp:
 
 /usr/include/boost/range/detail/range_return.hpp:
 
@@ -25966,9 +26008,9 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/boost/smart_ptr/detail/lwm_std_mutex.hpp:
 
-/usr/include/c++/11/bits/stl_set.h:
-
 /usr/include/eigen3/Eigen/src/Householder/Householder.h:
+
+/usr/include/c++/11/bits/stl_set.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
 
@@ -26062,6 +26104,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/path_planning.h:
+
 /usr/include/eigen3/Eigen/src/Core/MatrixBase.h:
 
 /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h:
@@ -26122,6 +26166,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/sg_obj/n_swath_modified.h:
+
 /usr/include/eigen3/Eigen/src/Core/CwiseUnaryView.h:
 
 /usr/include/c++/11/pstl/glue_numeric_defs.h:
@@ -26129,8 +26175,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_app_shell.cpp:
 /usr/include/eigen3/Eigen/src/Core/Dot.h:
 
 /usr/include/boost/predef/os/bsd/net.h:
-
-/opt/ros/humble/include/tf2_ros/tf2_ros/buffer_interface.h:
 
 /usr/include/eigen3/Eigen/src/Core/StableNorm.h:
 
@@ -26362,8 +26406,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 
 /usr/include/glib-2.0/glib/gbase64.h:
 
-/usr/local/include/fields2cover/path_planning/dubins_curves_cc.h:
-
 /usr/include/boost/mpl/bool.hpp:
 
 /usr/include/boost/multiprecision/cpp_int/value_pack.hpp:
@@ -26430,6 +26472,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 
 /usr/include/glib-2.0/glib/gkeyfile.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/random.h:
+
 /usr/include/glib-2.0/glib/gmappedfile.h:
 
 /usr/include/boost/mpl/int.hpp:
@@ -26437,6 +26481,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 ../include/startup_screen.hpp:
 
 /usr/include/boost/predef/compiler/intel.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/LineString.h:
 
 /usr/include/glib-2.0/glib/gmarkup.h:
 
@@ -26838,6 +26884,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 
 /usr/include/gstreamer-1.0/gst/video/video-prelude.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/utils/transformation.h:
+
 /usr/include/boost/mpl/vector/aux_/preprocessed/typeof_based/vector10.hpp:
 
 /usr/include/boost/mpl/aux_/config/lambda.hpp:
@@ -26853,12 +26901,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 /usr/include/gstreamer-1.0/gst/video/video-frame.h:
 
 /usr/include/boost/mpl/deref.hpp:
-
-/usr/include/gstreamer-1.0/gst/video/video-resampler.h:
-
-/usr/include/boost/geometry/strategies/spherical/envelope_segment.hpp:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/bool.hpp:
 
 /usr/include/boost/type_traits/remove_cv_ref.hpp:
 
@@ -26879,6 +26921,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_network_monitor.cpp:
 /usr/include/gstreamer-1.0/gst/video/gstvideoaggregator.h:
 
 /usr/include/gstreamer-1.0/gst/base/gstaggregator.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/PathState.h:
 
 /usr/include/gstreamer-1.0/gst/video/gstvideocodecalphameta.h:
 
@@ -27000,8 +27044,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp:
 
 /usr/include/eigen3/Eigen/src/QR/FullPivHouseholderQR.h:
 
-/usr/local/include/fields2cover/types/Field.h:
-
 /usr/include/boost/mpl/aux_/integral_wrapper.hpp:
 
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QGroupBox:
@@ -27039,22 +27081,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp:
 /usr/include/boost/mpl/aux_/preprocessor/def_params_tail.hpp:
 
 /usr/include/eigen3/Eigen/src/Geometry/AngleAxis.h:
-
-/usr/include/c++/11/bits/deque.tcc:
-
-/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
-
-/usr/include/boost/mpl/aux_/config/gcc.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qsystemsemaphore.h:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__builder.hpp:
-
-/usr/include/boost/random/non_central_chi_squared_distribution.hpp:
-
-/usr/include/boost/mpl/erase.hpp:
-
-/usr/include/boost/numeric/conversion/bounds.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
 
@@ -27107,8 +27133,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp:
 /usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h:
-
-/usr/local/include/fields2cover/swath_generator/swath_generator_base.h:
 
 /usr/include/boost/type_traits/composite_traits.hpp:
 
@@ -27270,10 +27294,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp:
 
 /usr/include/boost/preprocessor/punctuation/comma_if.hpp:
 
-/usr/include/boost/math/special_functions/asinh.hpp:
-
-/usr/include/boost/preprocessor/control/if.hpp:
-
 /usr/include/boost/preprocessor/control/iif.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface.hpp:
@@ -27386,8 +27406,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_teleop_widget.cpp:
 
 /usr/include/boost/mpl/aux_/yes_no.hpp:
 
-/usr/local/include/fields2cover/objectives/hg_obj/rem_area.h:
-
 /usr/include/boost/preprocessor/comparison/less.hpp:
 
 /usr/include/boost/mpl/aux_/config/arrays.hpp:
@@ -27425,8 +27443,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qversiontagging.h:
 
 /usr/include/boost/mpl/vector/aux_/front.hpp:
-
-/usr/local/include/fields2cover/types/MultiLineString.h:
 
 /usr/include/boost/mpl/pop_front_fwd.hpp:
 
@@ -27481,8 +27497,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp:
 /usr/include/boost/mpl/apply_wrap.hpp:
 
 /usr/include/boost/mpl/has_xxx.hpp:
-
-/usr/local/include/fields2cover/route_planning/route_planner_base.h:
 
 /usr/include/c++/11/bits/shared_ptr.h:
 
@@ -27780,13 +27794,9 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_transfer_manager.cpp:
 
 /usr/include/boost/predef/library/std/vacpp.h:
 
-/usr/local/include/fields2cover/objectives/sg_obj/field_coverage.h:
-
 /usr/include/boost/type_traits/add_volatile.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
-
-/opt/ros/humble/include/std_msgs/std_msgs/msg/detail/bool__traits.hpp:
 
 /opt/ros/humble/include/std_srvs/std_srvs/srv/trigger.hpp:
 
@@ -27853,8 +27863,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp:
 /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qheaderview.h:
 
 /usr/include/boost/interprocess/detail/os_file_functions.hpp:
-
-/usr/local/include/fields2cover/path_planning/reeds_shepp_curves.h:
 
 /usr/include/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp:
 
@@ -27966,8 +27974,6 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp:
 
 /usr/include/boost/predef/library/std/modena.h:
 
-/usr/local/include/fields2cover/route_planning/boustrophedon_order.h:
-
 /usr/include/boost/predef/platform/android.h:
 
 /opt/ros/humble/include/rmw/rmw/event.h:
@@ -27983,6 +27989,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_scan_session_tracker.cpp:
 /usr/include/boost/mpl/aux_/preprocessed/gcc/vector_c.hpp:
 
 /usr/include/boost/mpl/filter_view.hpp:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/objectives/pp_obj/path_length.h:
 
 /usr/include/x86_64-linux-gnu/qt5/QtCore/qconcatenatetablesproxymodel.h:
 
@@ -28522,6 +28530,8 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_setup_screen.cpp:
 
 /usr/include/boost/interprocess/sync/detail/locks.hpp:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/turning_base.h:
+
 /usr/include/c++/11/bits/enable_special_members.h:
 
 /usr/include/boost/move/core.hpp:
@@ -28626,6 +28636,10 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_setup_screen.cpp:
 
 /usr/include/boost/predef/architecture/sys390.h:
 
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/path_planning/reeds_shepp_curves.h:
+
+/home/avenblake/pilot_ws/install/fields2cover/include/fields2cover/types/Graph.h:
+
 /usr/include/boost/mpl/iter_fold.hpp:
 
 /usr/include/boost/preprocessor/seq/transform.hpp:
@@ -28691,7 +28705,3 @@ bdr_coverage_planner_autogen/6YEA5652QU/moc_setup_screen.cpp:
 /usr/include/boost/geometry/algorithms/detail/overlay/get_turn_info_la.hpp:
 
 /usr/include/boost/type_traits/is_empty.hpp:
-
-/usr/include/x86_64-linux-gnu/qt5/QtCore/qcommandlineparser.h:
-
-/usr/include/boost/fusion/sequence/intrinsic/end.hpp:

@@ -1926,6 +1926,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
         // Start ROS2 spinning in background thread
@@ -1995,6 +1996,8 @@ CoverageGUI::~CoverageGUI() {
     
     // Clean up ROS2 resources
     fastlio_sub_.reset();
+    scan_segment_status_sub_.reset();
+    mpc_autonomy_pub_.reset();
     waypoint_pub_.reset();
     
     if (ros_node_) {
@@ -4044,7 +4047,43 @@ QGroupBox* CoverageGUI::buildScanPlannerPanel() {
     btn_start_segments_->setObjectName("btn_navigation");
     btn_start_segments_->setMinimumHeight(34);
 
+    chk_sequential_segment_dc_ = new QCheckBox(
+        QStringLiteral("OCU-style sequential DC (one segment per /f2c_waypoints)"));
+    chk_sequential_segment_dc_->setToolTip(
+        QStringLiteral("When checked: publish/run scan segments one at a time and wait for "
+                       "/scan_segment_status segment_saved between segments (matches BDR OCU). "
+                       "When unchecked: legacy batch publish of all selected segments."));
+    QHBoxLayout* progression_row = new QHBoxLayout();
+    progression_row->addWidget(new QLabel(QStringLiteral("Between segments:")));
+    combo_segment_progression_ = new QComboBox();
+    combo_segment_progression_->addItem(QStringLiteral("Automatic"));
+    combo_segment_progression_->addItem(QStringLiteral("Manual confirm"));
+    combo_segment_progression_->setToolTip(
+        QStringLiteral("Automatic: start next segment immediately after segment_saved. "
+                       "Manual: prompt before each next segment."));
+    progression_row->addWidget(combo_segment_progression_, 1);
+
+    {
+        QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
+        chk_sequential_segment_dc_->setChecked(
+            settings.value(QStringLiteral("scan_planner/sequential_ocu_style"), false).toBool());
+        const int prog = settings.value(QStringLiteral("scan_planner/segment_progression"), 0).toInt();
+        combo_segment_progression_->setCurrentIndex(prog == 1 ? 1 : 0);
+    }
+    connect(chk_sequential_segment_dc_, &QCheckBox::toggled, this, [this](bool) {
+        QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
+        settings.setValue(QStringLiteral("scan_planner/sequential_ocu_style"),
+                          chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked());
+    });
+    connect(combo_segment_progression_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+            [this](int index) {
+                QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
+                settings.setValue(QStringLiteral("scan_planner/segment_progression"), index);
+            });
+
     v->addWidget(btn_make_segments_);
+    v->addWidget(chk_sequential_segment_dc_);
+    v->addLayout(progression_row);
     v->addWidget(btn_publish_segments_);
     v->addWidget(btn_start_segments_);
 
@@ -6531,6 +6570,7 @@ void CoverageGUI::refreshScanSegmentList() {
 }
 
 void CoverageGUI::generateScanSegments() {
+    resetSequentialSegmentRunState();
     PathStateList base;
     if (isCustomModeActive()) {
         if (custom_waypoints_.size() < 2) {
@@ -6633,6 +6673,41 @@ void CoverageGUI::publishSelectedScanSegments() {
         QMessageBox::information(this, "No selection", "Select one or more scan segments.");
         return;
     }
+    std::sort(idxs.begin(), idxs.end());
+
+    if (sequentialSegmentDcModeEnabled()) {
+        const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
+        QString speed_error;
+        if (!setRobotMpcDesiredLinearSpeed(publish_speed_mps, &speed_error)) {
+            QMessageBox::warning(
+                this,
+                "MPC Speed Update Failed",
+                QString("Could not set desired_linear_speed to %1 m/s before publishing scan segments.\n\n%2")
+                    .arg(publish_speed_mps, 0, 'f', 2)
+                    .arg(speed_error));
+            return;
+        }
+        QString publish_error;
+        if (!publishSingleScanSegmentWaypoints(idxs.front(), &publish_error)) {
+            QMessageBox::warning(this, "Publish failed", publish_error);
+            return;
+        }
+        waypoints_published_ = true;
+        if (btn_start_navigation_) {
+            btn_start_navigation_->setEnabled(true);
+        }
+        if (btn_quick_start_) {
+            btn_quick_start_->setEnabled(true);
+        }
+        setStatus(
+            QStringLiteral("Sequential mode: published first segment #%1 only (%2 points @ %3 m/s) — press Start")
+                .arg(idxs.front() + 1)
+                .arg(scan_segments_[static_cast<size_t>(idxs.front())].path.size())
+                .arg(publish_speed_mps, 0, 'f', 2),
+            5000);
+        return;
+    }
+
     std::vector<int> publish_flags;
     PathStateList publish_path = buildPublishPathFromSegments(idxs, &publish_flags);
     if (publish_path.size() < 2) {
@@ -6675,7 +6750,71 @@ void CoverageGUI::publishSelectedScanSegments() {
 }
 
 void CoverageGUI::startSelectedScanSegments() {
-    // Always re-publish the selected scan(s) before starting.
+    if (!hasValidLoginSession()) {
+        QMessageBox::warning(this, "Not Logged In",
+                             "Please log into the robot before starting scan segments.");
+        return;
+    }
+    if (!ros_initialized_ || !waypoint_pub_) {
+        QMessageBox::warning(this, "ROS2 Not Available",
+                             "ROS2 is not available; cannot start scan segments.");
+        return;
+    }
+
+    auto idxs = selectedScanSegmentIndices();
+    if (idxs.empty()) {
+        QMessageBox::information(this, "No selection", "Select one or more scan segments.");
+        return;
+    }
+    std::sort(idxs.begin(), idxs.end());
+
+    if (sequentialSegmentDcModeEnabled()) {
+        const double publish_speed_mps = spin_robot_speed_ ? spin_robot_speed_->value() : 0.5;
+        QString speed_error;
+        if (!setRobotMpcDesiredLinearSpeed(publish_speed_mps, &speed_error)) {
+            QMessageBox::warning(
+                this,
+                "MPC Speed Update Failed",
+                QString("Could not set desired_linear_speed to %1 m/s before starting scan segments.\n\n%2")
+                    .arg(publish_speed_mps, 0, 'f', 2)
+                    .arg(speed_error));
+            return;
+        }
+
+        resetSequentialSegmentRunState();
+        scan_sequential_run_active_ = true;
+        scan_sequential_indices_ = idxs;
+        scan_sequential_cursor_ = 0;
+        scan_sequential_started_scan_session_ = false;
+
+        QString publish_error;
+        if (!publishSingleScanSegmentWaypoints(scan_sequential_indices_[scan_sequential_cursor_],
+                                                &publish_error)) {
+            resetSequentialSegmentRunState();
+            QMessageBox::warning(this, "Start failed", publish_error);
+            return;
+        }
+        waypoints_published_ = true;
+
+        publishF2cNavigationStartSignal();
+        publishMpcAutonomyEnable(true);
+
+        if (!scan_sequential_started_scan_session_) {
+            const QString section_name =
+                QStringLiteral("Section_%1").arg(QDateTime::currentDateTime().toString(QStringLiteral("HHmmss")));
+            startScanSession(section_name);
+            scan_sequential_started_scan_session_ = true;
+        }
+
+        setStatus(
+            QStringLiteral("Sequential scan started: segment %1 of %2")
+                .arg(scan_sequential_cursor_ + 1)
+                .arg(scan_sequential_indices_.size()),
+            5000);
+        return;
+    }
+
+    // Legacy batch: always re-publish the selected scan(s) before starting.
     waypoints_published_ = false;
     publishSelectedScanSegments();
     if (!waypoints_published_) {
@@ -6690,6 +6829,7 @@ void CoverageGUI::setActiveScanSegmentFromList(int idx) {
 }
 
 void CoverageGUI::clearCoverage() {
+    resetSequentialSegmentRunState();
     swaths_.clear();
     route_.clear();
     path_.clear();
@@ -6761,6 +6901,178 @@ void CoverageGUI::exportPathCSV() {
     } else {
         QMessageBox::critical(this, "Error", "Failed to save file");
     }
+}
+
+bool CoverageGUI::sequentialSegmentDcModeEnabled() const {
+    return chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked();
+}
+
+void CoverageGUI::setupPlannerSegmentOrchestrationInterfaces() {
+    if (!ros_node_) {
+        return;
+    }
+    if (!mpc_autonomy_pub_) {
+        mpc_autonomy_pub_ =
+            ros_node_->create_publisher<std_msgs::msg::Bool>("/mpc_autonomy_enable", 10);
+    }
+    if (!scan_segment_status_sub_) {
+        scan_segment_status_sub_ = ros_node_->create_subscription<std_msgs::msg::String>(
+            "/scan_segment_status",
+            rclcpp::QoS(rclcpp::KeepLast(20)).reliable(),
+            [this](const std_msgs::msg::String::SharedPtr msg) {
+                if (!msg) {
+                    return;
+                }
+                const QString payload = QString::fromStdString(msg->data).trimmed();
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, payload]() { handleScanSegmentStatusPayload(payload); },
+                    Qt::QueuedConnection);
+            });
+    }
+}
+
+void CoverageGUI::publishMpcAutonomyEnable(bool enabled) {
+    if (!ros_initialized_ || !ros_node_) {
+        return;
+    }
+    setupPlannerSegmentOrchestrationInterfaces();
+    if (!mpc_autonomy_pub_) {
+        return;
+    }
+    std_msgs::msg::Bool msg;
+    msg.data = enabled;
+    mpc_autonomy_pub_->publish(msg);
+}
+
+void CoverageGUI::publishF2cNavigationStartSignal() {
+    if (!ros_initialized_ || !waypoint_pub_) {
+        return;
+    }
+    std_msgs::msg::Float64MultiArray start_msg;
+    start_msg.data = {0.0};
+    waypoint_pub_->publish(start_msg);
+    std::cout << "[Coverage Planner] Start signal published to /f2c_waypoints" << std::endl;
+}
+
+void CoverageGUI::resetSequentialSegmentRunState() {
+    if (scan_sequential_run_active_) {
+        publishMpcAutonomyEnable(false);
+    }
+    scan_sequential_run_active_ = false;
+    scan_sequential_dc_save_in_flight_ = false;
+    scan_sequential_started_scan_session_ = false;
+    scan_sequential_indices_.clear();
+    scan_sequential_cursor_ = 0;
+}
+
+void CoverageGUI::handleScanSegmentStatusPayload(const QString& payload) {
+    if (!scan_sequential_run_active_) {
+        return;
+    }
+    if (payload.startsWith(QStringLiteral("segment_complete"))) {
+        scan_sequential_dc_save_in_flight_ = true;
+        setStatus(QStringLiteral("Sequential: saving segment data…"), 3000);
+        return;
+    }
+    if (payload.startsWith(QStringLiteral("segment_saved"))) {
+        scan_sequential_dc_save_in_flight_ = false;
+        advanceSequentialScanAfterSegmentSaved();
+    }
+}
+
+bool CoverageGUI::publishSingleScanSegmentWaypoints(int segment_index, QString* error_out) {
+    auto set_err = [&](const QString& s) {
+        if (error_out) {
+            *error_out = s;
+        }
+        return false;
+    };
+
+    if (!ros_initialized_ || !waypoint_pub_) {
+        return set_err(QStringLiteral("ROS2 is not available; cannot publish."));
+    }
+    if (segment_index < 0 || segment_index >= static_cast<int>(scan_segments_.size())) {
+        return set_err(QStringLiteral("Invalid scan segment index."));
+    }
+
+    PathStateList seg_path = dedupePathStates(scan_segments_[static_cast<size_t>(segment_index)].path);
+    if (seg_path.size() < 2) {
+        return set_err(QStringLiteral("Segment path is empty or too short."));
+    }
+
+    const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+    const int dc_flag = collect_data ? 1 : 0;
+
+    std_msgs::msg::Float64MultiArray msg;
+    msg.data.reserve(seg_path.size() * 3);
+    for (const auto& state : seg_path) {
+        msg.data.push_back(state.point.x);
+        msg.data.push_back(state.point.y);
+        msg.data.push_back(static_cast<double>(dc_flag));
+    }
+    waypoint_pub_->publish(msg);
+    return true;
+}
+
+void CoverageGUI::advanceSequentialScanAfterSegmentSaved() {
+    if (!scan_sequential_run_active_) {
+        return;
+    }
+    if (scan_sequential_cursor_ >= scan_sequential_indices_.size()) {
+        return;
+    }
+
+    const int finished_seg = scan_sequential_indices_[scan_sequential_cursor_];
+    if (finished_seg >= 0 && finished_seg < static_cast<int>(scan_segments_.size())) {
+        scan_segments_[static_cast<size_t>(finished_seg)].completed = true;
+    }
+    refreshScanSegmentList();
+
+    scan_sequential_cursor_++;
+    if (scan_sequential_cursor_ >= scan_sequential_indices_.size()) {
+        publishMpcAutonomyEnable(false);
+        scan_sequential_run_active_ = false;
+        scan_sequential_dc_save_in_flight_ = false;
+        setStatus(QStringLiteral("Sequential scan complete — all segments saved."), 6000);
+        return;
+    }
+
+    const bool manual_confirm =
+        combo_segment_progression_ && combo_segment_progression_->currentIndex() == 1;
+    if (manual_confirm) {
+        const auto answer =
+            QMessageBox::question(this,
+                                  QStringLiteral("Segment complete"),
+                                  QStringLiteral("Segment finished and saved. Proceed to the next segment now?"),
+                                  QMessageBox::Yes | QMessageBox::No,
+                                  QMessageBox::Yes);
+        if (answer != QMessageBox::Yes) {
+            publishMpcAutonomyEnable(false);
+            scan_sequential_run_active_ = false;
+            scan_sequential_dc_save_in_flight_ = false;
+            setStatus(QStringLiteral("Sequential scan paused between segments."), 5000);
+            return;
+        }
+    }
+
+    QString publish_error;
+    const int next_seg = scan_sequential_indices_[scan_sequential_cursor_];
+    if (!publishSingleScanSegmentWaypoints(next_seg, &publish_error)) {
+        publishMpcAutonomyEnable(false);
+        scan_sequential_run_active_ = false;
+        scan_sequential_dc_save_in_flight_ = false;
+        QMessageBox::warning(this, QStringLiteral("Sequential scan failed"), publish_error);
+        return;
+    }
+
+    publishF2cNavigationStartSignal();
+    publishMpcAutonomyEnable(true);
+
+    setStatus(QStringLiteral("Sequential scan: segment %1 of %2")
+                  .arg(scan_sequential_cursor_ + 1)
+                  .arg(scan_sequential_indices_.size()),
+              5000);
 }
 
 void CoverageGUI::setupRobotTrackingSubscription() {
@@ -7296,12 +7608,9 @@ void CoverageGUI::startNavigation() {
         return;
     }
 
-    std_msgs::msg::Float64MultiArray start_msg;
-    start_msg.data = {0.0};  // Start signal for controllers listening on /f2c_waypoints
-    waypoint_pub_->publish(start_msg);
+    publishF2cNavigationStartSignal();
 
     setStatus("🚀 Navigation started!", 3000);
-    std::cout << "[Coverage Planner] Start signal published to /f2c_waypoints" << std::endl;
     
     // Start scan session tracking (GPS accumulation + stats recording)
     QString sectionName = QString("Section_%1")
@@ -8361,6 +8670,7 @@ void CoverageGUI::tryReconnectROS2() {
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
         // Start ROS2 spinning in background thread
@@ -8393,6 +8703,8 @@ void CoverageGUI::reinitializeROS2() {
     if (ros_initialized_) {
         std::cout << "[Coverage Planner] Shutting down ROS2 for reinit..." << std::endl;
         fastlio_sub_.reset();
+        scan_segment_status_sub_.reset();
+        mpc_autonomy_pub_.reset();
         
         // Stop the spin thread by shutting down the node's context
         if (ros_node_) {
@@ -8427,6 +8739,7 @@ void CoverageGUI::reinitializeROS2() {
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
         ros_thread_ = std::thread([this]() {
