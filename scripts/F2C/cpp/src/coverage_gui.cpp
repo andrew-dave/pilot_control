@@ -8,6 +8,11 @@
 #include "data_transfer_dialog.hpp"
 
 #include <QApplication>
+#include <QAction>
+#include <QMenu>
+#include <QMenuBar>
+#include <QKeySequence>
+#include <QMessageBox>
 #include <QGridLayout>
 #include <QStyle>
 #include <QFont>
@@ -232,12 +237,15 @@ void VideoStreamWidget::pollBus() {
                 if (debug) std::cerr << "[VideoStream] Debug: " << debug << std::endl;
                 if (err) g_error_free(err);
                 if (debug) g_free(debug);
+                playing_ = false;
+                update();
                 emit streamError(errMsg);
                 break;
             }
             case GST_MESSAGE_EOS:
                 std::cout << "[VideoStream] End of stream" << std::endl;
                 playing_ = false;
+                update();
                 emit streamStopped();
                 break;
             case GST_MESSAGE_STATE_CHANGED:
@@ -289,8 +297,9 @@ void VideoStreamWidget::stopStream() {
     // Fully destroy the pipeline to release all resources (including UDP socket)
     // This ensures clean restart when switching cameras
     destroyPipeline();
-        emit streamStopped();
-        std::cout << "[VideoStream] Stream stopped" << std::endl;
+    update();
+    emit streamStopped();
+    std::cout << "[VideoStream] Stream stopped" << std::endl;
 }
 
 void VideoStreamWidget::destroyPipeline() {
@@ -310,6 +319,15 @@ void VideoStreamWidget::destroyPipeline() {
         gst_object_unref(pipeline_);
         pipeline_ = nullptr;
         playing_ = false;
+    }
+    update();
+}
+
+void VideoStreamWidget::paintEvent(QPaintEvent* event) {
+    QWidget::paintEvent(event);
+    if (!playing_) {
+        QPainter painter(this);
+        painter.fillRect(rect(), Qt::black);
     }
 }
 
@@ -403,9 +421,10 @@ static int countLeadingConnectorFlags(const std::vector<int>& flags) {
 }
 
 // Build dc flags for planned paths using a boundary-inclusive split:
-// - connector-only prefix stays dc=0
-// - collection starts at the connector->coverage boundary point
-//   (last connector point / first coverage point in shared-boundary cases)
+// - Strict connector interior (indices 0 .. prefix-2) stays dc=0 when prefix>=2
+// - Collection arms from the connector->coverage boundary vertex (index prefix-1)
+// - prefix==1: single approach vertex stays dc=0 (avoids former bug where dc_start_idx==0
+//   skipped the fill and left the entire path at dc=1).
 static std::vector<int> buildPlannedDataCollectionFlags(
     size_t path_size,
     bool collect_data,
@@ -428,11 +447,40 @@ static std::vector<int> buildPlannedDataCollectionFlags(
         return flags;
     }
 
-    const size_t dc_start_idx = prefix - 1;  // include boundary point in collection
-    if (dc_start_idx > 0) {
-        std::fill(flags.begin(), flags.begin() + static_cast<std::ptrdiff_t>(dc_start_idx), 0);
+    if (prefix >= 2) {
+        std::fill(flags.begin(), flags.begin() + static_cast<std::ptrdiff_t>(prefix - 1), 0);
+    } else {
+        flags[0] = 0;
     }
     return flags;
+}
+
+// When scan segment geometry does not slice-match the planned path, map each vertex
+// to the nearest planned waypoint and copy its dc flag (safer than all-1 fallback).
+static int nearestPlannedDcFlag(
+    const Point2D& p,
+    const PathStateList& planned_path,
+    const std::vector<int>& planned_flags,
+    int default_flag) {
+    if (planned_path.empty() || planned_flags.size() != planned_path.size()) {
+        return default_flag;
+    }
+    size_t best_i = 0;
+    double best_d2 = (std::numeric_limits<double>::max)();
+    for (size_t j = 0; j < planned_path.size(); ++j) {
+        const double dx = p.x - planned_path[j].point.x;
+        const double dy = p.y - planned_path[j].point.y;
+        const double d2 = dx * dx + dy * dy;
+        if (d2 < best_d2) {
+            best_d2 = d2;
+            best_i = j;
+        }
+    }
+    constexpr double kMatchRadM = 0.35;
+    if (best_d2 <= kMatchRadM * kMatchRadM) {
+        return planned_flags[best_i];
+    }
+    return default_flag;
 }
 
 static void dedupePathWithFlags(PathStateList& path, std::vector<int>& flags) {
@@ -1819,6 +1867,10 @@ CoverageGUI::CoverageGUI(QWidget* parent)
 {
     setWindowTitle("BDR Coverage Planner");
     resize(1500, 900);
+    setMinimumSize(1000, 650);
+    // Ensure title-bar maximize/restore (some style changes had dropped the hint).
+    setWindowFlag(Qt::WindowMaximizeButtonHint, true);
+    setWindowFlag(Qt::WindowMinimizeButtonHint, true);
     
     // Initialize robot map fetch base (robot-specific suffix applied after registry load)
     local_map_base_ = QDir::homePath() + "/Roofus_maps";
@@ -1926,6 +1978,7 @@ CoverageGUI::CoverageGUI(QWidget* parent)
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupDcServiceClients();
         setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
@@ -1998,6 +2051,9 @@ CoverageGUI::~CoverageGUI() {
     fastlio_sub_.reset();
     scan_segment_status_sub_.reset();
     mpc_autonomy_pub_.reset();
+    dc_pause_client_.reset();
+    dc_resume_client_.reset();
+    dc_cancel_scan_client_.reset();
     waypoint_pub_.reset();
     
     if (ros_node_) {
@@ -2013,6 +2069,8 @@ CoverageGUI::~CoverageGUI() {
 }
 
 void CoverageGUI::setupUI() {
+    setupMenuBar();
+
     QWidget* central = new QWidget();
     QVBoxLayout* root_layout = new QVBoxLayout(central);
     root_layout->setContentsMargins(0, 0, 0, 0);
@@ -2301,7 +2359,7 @@ void CoverageGUI::toggleRightPane() {
     QList<int> sizes = main_splitter_->sizes();
     if (!right_collapsed_) {
         right_saved_width_ = sizes.value(2, right_saved_width_);
-        right_saved_width_ = std::max(right_saved_width_, 220);
+        right_saved_width_ = std::max(right_saved_width_, 340);
         right_collapsed_ = true;
         right_stack_->setCurrentWidget(right_mini_);
         if (sizes.size() >= 3) {
@@ -2311,7 +2369,7 @@ void CoverageGUI::toggleRightPane() {
     } else {
         right_collapsed_ = false;
         right_stack_->setCurrentWidget(right_full_);
-        int restore = std::max(right_saved_width_, 240);
+        int restore = std::max(right_saved_width_, 340);
         if (sizes.size() >= 3) {
             int center = sizes[1];
             int delta = restore - sizes[2];
@@ -2335,14 +2393,14 @@ void CoverageGUI::updateCollapseButtons() {
 }
 
 QWidget* CoverageGUI::buildVideoPanelWidget() {
-    QWidget* dock_content = new QWidget();
-    QVBoxLayout* dock_layout = new QVBoxLayout(dock_content);
-    dock_layout->setContentsMargins(6, 6, 6, 6);
-    dock_layout->setSpacing(6);
+    QGroupBox* box = new QGroupBox(QStringLiteral("Video stream"));
+    QVBoxLayout* dock_layout = new QVBoxLayout(box);
+    dock_layout->setContentsMargins(8, 8, 8, 8);
+    dock_layout->setSpacing(8);
     
     // Camera selector
     QHBoxLayout* cam_selector = new QHBoxLayout();
-    cam_selector->addWidget(new QLabel("Camera:"));
+    cam_selector->addWidget(new QLabel(QStringLiteral("Camera:")));
     radio_cam_left_ = new QRadioButton("Left");
     radio_cam_right_ = new QRadioButton("Right");
     radio_cam_left_->setChecked(true);
@@ -2372,17 +2430,31 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
     dock_layout->addLayout(port_layout);
     
     connect(btn_configure, &QPushButton::clicked, this, &CoverageGUI::publishStreamTarget);
+
+    QFrame* info_box = new QFrame();
+    info_box->setFrameShape(QFrame::StyledPanel);
+    info_box->setStyleSheet(
+        QStringLiteral("QFrame { background: #fafafa; border-radius: 6px; }"));
+    QVBoxLayout* info_layout = new QVBoxLayout(info_box);
+    info_layout->setContentsMargins(8, 6, 8, 6);
+    info_layout->setSpacing(4);
+
+    lbl_video_status_ = new QLabel();
+    lbl_video_status_->setWordWrap(true);
+    lbl_video_target_ = new QLabel();
+    lbl_video_target_->setWordWrap(true);
+    info_layout->addWidget(lbl_video_status_);
+    info_layout->addWidget(lbl_video_target_);
+    dock_layout->addWidget(info_box);
+    setVideoStateText(QStringLiteral("State: stopped"), QStringLiteral("#888"));
+    setVideoTargetText(QStringLiteral("Target: not configured"), QStringLiteral("#666"));
     
     // Video widget
     video_widget_ = new VideoStreamWidget();
-    video_widget_->setMinimumSize(320, 240);
-    video_widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    video_widget_->setMinimumHeight(180);
+    video_widget_->setMaximumHeight(240);
+    video_widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     dock_layout->addWidget(video_widget_, 1);
-    
-    // Status label
-    lbl_video_status_ = new QLabel("Stream: Stopped");
-    lbl_video_status_->setStyleSheet("color: #888; font-size: 10px;");
-    dock_layout->addWidget(lbl_video_status_);
     
     // Control buttons
     QHBoxLayout* controls = new QHBoxLayout();
@@ -2396,8 +2468,8 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
     controls->addStretch();
     dock_layout->addLayout(controls);
     
-    dock_content->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    dock_content->setMinimumWidth(280);
+    box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    box->setMinimumWidth(300);
 
     // Connections for video panel (btn_view_fov_ created in setupUI)
     connect(btn_view_fov_, &QPushButton::toggled, this, &CoverageGUI::toggleVideoPanel);
@@ -2409,22 +2481,19 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
     connect(radio_cam_right_, &QRadioButton::toggled, this, &CoverageGUI::onCameraToggled);
     
     connect(video_widget_, &VideoStreamWidget::streamStarted, this, [this]() {
-        lbl_video_status_->setText("Stream: Playing");
-        lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
+        setVideoStateText(QStringLiteral("State: playing"), QStringLiteral("green"));
         btn_video_play_->setEnabled(false);
         btn_video_stop_->setEnabled(true);
     });
     
     connect(video_widget_, &VideoStreamWidget::streamStopped, this, [this]() {
-        lbl_video_status_->setText("Stream: Stopped");
-        lbl_video_status_->setStyleSheet("color: #888; font-size: 10px;");
+        setVideoStateText(QStringLiteral("State: stopped"), QStringLiteral("#888"));
         btn_video_play_->setEnabled(true);
         btn_video_stop_->setEnabled(false);
     });
     
     connect(video_widget_, &VideoStreamWidget::streamError, this, [this](const QString& err) {
-        lbl_video_status_->setText("Error: " + err);
-        lbl_video_status_->setStyleSheet("color: red; font-size: 10px;");
+        setVideoStateText(QStringLiteral("State: error — %1").arg(err), QStringLiteral("red"));
         btn_video_play_->setEnabled(true);
         btn_video_stop_->setEnabled(false);
     });
@@ -2438,7 +2507,25 @@ QWidget* CoverageGUI::buildVideoPanelWidget() {
             std::bind(&CoverageGUI::onCameraStatusReceived, this, std::placeholders::_1));
     }
 
-    return dock_content;
+    return box;
+}
+
+void CoverageGUI::setVideoStateText(const QString& text, const QString& color) {
+    if (!lbl_video_status_) {
+        return;
+    }
+    lbl_video_status_->setText(text);
+    lbl_video_status_->setStyleSheet(
+        QStringLiteral("color: %1; font-size: 10px;").arg(color));
+}
+
+void CoverageGUI::setVideoTargetText(const QString& text, const QString& color) {
+    if (!lbl_video_target_) {
+        return;
+    }
+    lbl_video_target_->setText(text);
+    lbl_video_target_->setStyleSheet(
+        QStringLiteral("color: %1; font-size: 10px;").arg(color));
 }
 
 void CoverageGUI::toggleVideoPanel() {
@@ -2457,8 +2544,7 @@ void CoverageGUI::playVideoStream() {
     if (video_widget_) {
         int port = spin_video_port_->value();
         video_widget_->startStream(port);
-        lbl_video_status_->setText("Stream: Connecting...");
-        lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
+        setVideoStateText(QStringLiteral("State: connecting..."), QStringLiteral("orange"));
     }
 }
 
@@ -2495,17 +2581,19 @@ void CoverageGUI::onCameraToggled(bool checked) {
         
         setStatus(QString("Switching to %1 camera...").arg(camera));
 
-        if (lbl_video_status_) {
-            QString target_display = current_stream_target_;
-            if (!target_display.contains(':') && spin_video_port_) {
-                target_display += QString(":%1").arg(spin_video_port_->value());
-            }
-            if (!target_display.isEmpty()) {
-                lbl_video_status_->setText(QString("Target: %1 (%2)").arg(target_display, camera));
-            } else {
-                lbl_video_status_->setText(QString("Switching to %1 camera...").arg(camera));
-            }
-            lbl_video_status_->setStyleSheet("color: orange; font-size: 10px;");
+        QString target_display = current_stream_target_;
+        if (!target_display.contains(':') && spin_video_port_ && !target_display.isEmpty()) {
+            target_display += QString(":%1").arg(spin_video_port_->value());
+        }
+        if (!target_display.isEmpty()) {
+            setVideoTargetText(QString("Target: %1 (%2)").arg(target_display, camera),
+                               QStringLiteral("#0f766e"));
+        }
+        setVideoStateText(QString("State: switching to %1 camera...").arg(camera),
+                          QStringLiteral("orange"));
+        if (video_widget_ && !video_widget_->isPlaying()) {
+            setVideoStateText(QString("State: %1 camera selected").arg(camera),
+                              QStringLiteral("#888"));
         }
         
         // If currently playing, restart stream after a delay
@@ -2537,15 +2625,21 @@ void CoverageGUI::onCameraStatusReceived(const std_msgs::msg::String::SharedPtr 
         if (radio_cam_left_) radio_cam_left_->setChecked(!is_right);
         if (radio_cam_right_) radio_cam_right_->setChecked(is_right);
 
-        if (lbl_video_status_ && !current_stream_target_.isEmpty()) {
+        if (!current_stream_target_.isEmpty()) {
             QString target_display = current_stream_target_;
             if (!target_display.contains(':') && spin_video_port_) {
                 target_display += QString(":%1").arg(spin_video_port_->value());
             }
-            lbl_video_status_->setText(QString("Target: %1 (%2)")
-                                           .arg(target_display, effective_camera));
-            lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
+            setVideoTargetText(QString("Target: %1 (%2)")
+                                   .arg(target_display, effective_camera),
+                               QStringLiteral("#0f766e"));
         }
+        setVideoStateText(
+            video_widget_ && video_widget_->isPlaying()
+                ? QString("State: playing (%1 camera)").arg(effective_camera)
+                : QString("State: %1 camera selected").arg(effective_camera),
+            video_widget_ && video_widget_->isPlaying() ? QStringLiteral("green")
+                                                        : QStringLiteral("#888"));
         
         setStatus(QString("Streaming: %1 camera").arg(effective_camera));
     }, Qt::QueuedConnection);
@@ -2622,6 +2716,9 @@ void CoverageGUI::publishStreamTarget() {
         current_stream_target_ = local_ip;
         stream_target_confirmed_ = false;
         setStatus(QString("Requesting stream to: %1").arg(local_ip));
+        setVideoTargetText(
+            QString("Target: requesting %1:%2").arg(local_ip).arg(spin_video_port_->value()),
+            QStringLiteral("orange"));
         
         std::cout << "[Stream] Published stream target: " << local_ip.toStdString() << std::endl;
     } else {
@@ -2643,10 +2740,8 @@ void CoverageGUI::onStreamStatusReceived(const std_msgs::msg::String::SharedPtr 
             current_stream_target_ = ip + ":" + port;
             stream_target_confirmed_ = true;
             
-            if (lbl_video_status_) {
-                lbl_video_status_->setText(QString("Target: %1:%2 (%3)").arg(ip, port, camera));
-                lbl_video_status_->setStyleSheet("color: green; font-size: 10px;");
-            }
+            setVideoTargetText(QString("Target: %1:%2 (%3)").arg(ip, port, camera),
+                               QStringLiteral("#0f766e"));
             
             setStatus(QString("Stream configured: %1:%2 (%3 camera)").arg(ip, port, camera));
         }
@@ -3516,7 +3611,8 @@ QWidget* CoverageGUI::buildCustomPathControls() {
     
     QLabel* instructions = new QLabel(
         "Click 'Enable drawing' then click on the map to drop waypoints.\n"
-        "Use 'Publish Waypoints' below to send to robot.");
+        "Use 'Publish Waypoints' below to send to robot.\n"
+        "Custom paths are transit-only: no DC tags are sent.");
     instructions->setWordWrap(true);
     instructions->setStyleSheet("color: #666; font-size: 10px;");
     layout->addWidget(instructions);
@@ -3624,56 +3720,81 @@ QGroupBox* CoverageGUI::buildCoverageStatsControls() {
 }
 
 QGroupBox* CoverageGUI::buildExportControls() {
-    QGroupBox* box = new QGroupBox("Export & Navigation");
+    QGroupBox* box = new QGroupBox(QStringLiteral("Export & navigation"));
     QVBoxLayout* v = new QVBoxLayout(box);
+    v->setSpacing(10);
+    v->setContentsMargins(10, 12, 10, 10);
 
-    QPushButton* btn_export_path = new QPushButton("Export Path CSV");
+    auto section = [v](const QString& title) {
+        auto* lab = new QLabel(title);
+        lab->setStyleSheet(QStringLiteral(
+            "QLabel { font-weight: 700; font-size: 11px; color: #374151; "
+            "padding-top: 4px; padding-bottom: 2px; border-bottom: 1px solid #e5e7eb; }"));
+        v->addWidget(lab);
+    };
+
+    section(QStringLiteral("File"));
+    QPushButton* btn_export_path = new QPushButton(QStringLiteral("Export path CSV"));
     btn_export_path->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
+    btn_export_path->setMinimumHeight(30);
     connect(btn_export_path, &QPushButton::clicked, this, &CoverageGUI::exportPathCSV);
     v->addWidget(btn_export_path);
 
-    // Add waypoint publishing buttons (work for both F2C and Custom modes)
-    btn_publish_waypoints_ = new QPushButton("⬆ Publish Waypoints to Robot");
-    btn_publish_waypoints_->setObjectName("btn_publish");  // For theme-aware styling
+    section(QStringLiteral("Robot"));
+    btn_publish_waypoints_ = new QPushButton(QStringLiteral("Publish waypoints"));
+    btn_publish_waypoints_->setObjectName(QStringLiteral("btn_publish"));
+    btn_publish_waypoints_->setMinimumHeight(32);
     connect(btn_publish_waypoints_, &QPushButton::clicked, this, &CoverageGUI::publishWaypoints);
-    v->addWidget(btn_publish_waypoints_);
 
-    btn_start_navigation_ = new QPushButton("▶️ Start Navigation");
-    btn_start_navigation_->setObjectName("btn_navigation");  // For theme-aware styling
-    btn_start_navigation_->setEnabled(false);  // Initially disabled
+    btn_start_navigation_ = new QPushButton(QStringLiteral("Start navigation"));
+    btn_start_navigation_->setObjectName(QStringLiteral("btn_navigation"));
+    btn_start_navigation_->setEnabled(false);
+    btn_start_navigation_->setMinimumHeight(32);
     connect(btn_start_navigation_, &QPushButton::clicked, this, &CoverageGUI::startNavigation);
-    v->addWidget(btn_start_navigation_);
 
-    btn_go_to_ = new QPushButton("🎯 GO TO (Pick on Map)");
+    {
+        auto* row = new QHBoxLayout();
+        row->setSpacing(8);
+        row->addWidget(btn_publish_waypoints_, 1);
+        row->addWidget(btn_start_navigation_, 1);
+        v->addLayout(row);
+    }
+
+    btn_go_to_ = new QPushButton(QStringLiteral("GO TO — pick on map"));
     btn_go_to_->setCheckable(true);
+    btn_go_to_->setMinimumHeight(30);
     btn_go_to_->setToolTip(
-        "Click to arm GO TO mode, then click a destination point on the map.\n"
-        "Planner will build an obstacle-avoiding path from current robot pose.");
+        QStringLiteral("Arm GO TO, then click destination on the map.\n"
+                       "Builds an obstacle-avoiding path from current robot pose."));
     connect(btn_go_to_, &QPushButton::clicked, this, &CoverageGUI::onGoToClicked);
     v->addWidget(btn_go_to_);
 
-    // Reprojection error analysis section
     QFrame* sep = new QFrame();
     sep->setFrameShape(QFrame::HLine);
     sep->setFrameShadow(QFrame::Sunken);
     v->addWidget(sep);
-    
-    QLabel* reproj_title = new QLabel("Path Accuracy Analysis");
-    reproj_title->setStyleSheet("font-weight: bold; margin-top: 5px;");
-    v->addWidget(reproj_title);
-    
-    btn_compute_reproj_ = new QPushButton("📊 Compute Reprojection Error");
-    btn_compute_reproj_->setToolTip("Compare robot trail to planned path (within 1m)");
-    connect(btn_compute_reproj_, &QPushButton::clicked, this, &CoverageGUI::computeReprojectionError);
-    v->addWidget(btn_compute_reproj_);
-    
-    btn_clear_reproj_ = new QPushButton("Clear Reprojection");
-    btn_clear_reproj_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
-    connect(btn_clear_reproj_, &QPushButton::clicked, this, &CoverageGUI::clearReprojectionError);
-    v->addWidget(btn_clear_reproj_);
-    
-    lbl_reproj_status_ = new QLabel("No reprojection computed");
-    lbl_reproj_status_->setStyleSheet("color: #666; font-size: 10px;");
+
+    section(QStringLiteral("Path accuracy"));
+    {
+        auto* reprow = new QHBoxLayout();
+        reprow->setSpacing(8);
+        btn_compute_reproj_ = new QPushButton(QStringLiteral("Compute error"));
+        btn_compute_reproj_->setToolTip(
+            QStringLiteral("Compare robot trail to planned path (within 1 m)"));
+        btn_compute_reproj_->setMinimumHeight(28);
+        connect(btn_compute_reproj_, &QPushButton::clicked, this,
+                &CoverageGUI::computeReprojectionError);
+        btn_clear_reproj_ = new QPushButton(QStringLiteral("Clear"));
+        btn_clear_reproj_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+        btn_clear_reproj_->setMinimumHeight(28);
+        connect(btn_clear_reproj_, &QPushButton::clicked, this, &CoverageGUI::clearReprojectionError);
+        reprow->addWidget(btn_compute_reproj_, 1);
+        reprow->addWidget(btn_clear_reproj_);
+        v->addLayout(reprow);
+    }
+
+    lbl_reproj_status_ = new QLabel(QStringLiteral("No reprojection computed"));
+    lbl_reproj_status_->setStyleSheet(QStringLiteral("color: #6b7280; font-size: 10px;"));
     v->addWidget(lbl_reproj_status_);
 
     return box;
@@ -3746,8 +3867,16 @@ QWidget* CoverageGUI::buildRightMiniPalette() {
 }
 
 QWidget* CoverageGUI::buildRightFullPane() {
+    QScrollArea* scroll = new QScrollArea();
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setMinimumWidth(340);
+
     QWidget* pane = new QWidget();
+    pane->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     QVBoxLayout* v = new QVBoxLayout(pane);
+    v->setSizeConstraint(QLayout::SetMinAndMaxSize);
     v->setContentsMargins(6, 6, 6, 6);
     v->setSpacing(6);
     
@@ -3768,7 +3897,8 @@ QWidget* CoverageGUI::buildRightFullPane() {
     v->addWidget(data_transfer_panel_);
     
     v->addStretch();
-    return pane;
+    scroll->setWidget(pane);
+    return scroll;
 }
 
 QWidget* CoverageGUI::buildDataTransferPanel() {
@@ -4023,78 +4153,167 @@ QWidget* CoverageGUI::buildLayerPanel() {
 }
 
 QGroupBox* CoverageGUI::buildScanPlannerPanel() {
-    QGroupBox* box = new QGroupBox("Scan planner");
+    QGroupBox* box = new QGroupBox(QStringLiteral("Scan planner"));
     QVBoxLayout* v = new QVBoxLayout(box);
+    v->setSpacing(10);
+    v->setContentsMargins(10, 12, 10, 10);
 
-    QHBoxLayout* row = new QHBoxLayout();
-    row->addWidget(new QLabel("Distance per scan (m):"));
-    spin_scan_len_ = new QDoubleSpinBox();
-    spin_scan_len_->setRange(10.0, 10000.0);
-    spin_scan_len_->setSingleStep(10.0);
-    spin_scan_len_->setValue(500.0);
-    row->addWidget(spin_scan_len_);
-    v->addLayout(row);
+    auto addSectionTitle = [v](const QString& title) {
+        auto* lab = new QLabel(title);
+        lab->setStyleSheet(QStringLiteral(
+            "QLabel { font-weight: 700; font-size: 11px; color: #374151; "
+            "padding-top: 6px; padding-bottom: 2px; border-bottom: 1px solid #e5e7eb; }"));
+        v->addWidget(lab);
+    };
 
-    btn_make_segments_ = new QPushButton("⚙️ Split path");
-    btn_make_segments_->setObjectName("btn_quick_generate");
-    btn_make_segments_->setMinimumHeight(34);
+    // --- 1. Split path ---------------------------------------------------------
+    addSectionTitle(QStringLiteral("1. Split path"));
+    {
+        auto* split_box = new QFrame();
+        split_box->setFrameShape(QFrame::StyledPanel);
+        split_box->setStyleSheet(QStringLiteral("QFrame { background: #fafafa; border-radius: 6px; }"));
+        auto* sv = new QVBoxLayout(split_box);
+        sv->setContentsMargins(8, 8, 8, 8);
+        sv->setSpacing(8);
+        auto* dist_row = new QHBoxLayout();
+        dist_row->addWidget(new QLabel(QStringLiteral("Distance per segment (m)")));
+        spin_scan_len_ = new QDoubleSpinBox();
+        spin_scan_len_->setRange(10.0, 10000.0);
+        spin_scan_len_->setSingleStep(10.0);
+        spin_scan_len_->setValue(500.0);
+        spin_scan_len_->setMinimumWidth(90);
+        dist_row->addWidget(spin_scan_len_);
+        dist_row->addStretch(1);
+        sv->addLayout(dist_row);
+        btn_make_segments_ = new QPushButton(QStringLiteral("Split path into segments"));
+        btn_make_segments_->setObjectName(QStringLiteral("btn_quick_generate"));
+        btn_make_segments_->setMinimumHeight(32);
+        sv->addWidget(btn_make_segments_);
+        v->addWidget(split_box);
+    }
 
-    btn_publish_segments_ = new QPushButton("⬆ Publish selected");
-    btn_publish_segments_->setObjectName("btn_publish");
-    btn_publish_segments_->setMinimumHeight(34);
+    // --- 2. Run mode -----------------------------------------------------------
+    addSectionTitle(QStringLiteral("2. Run mode"));
+    {
+        auto* mode_box = new QFrame();
+        mode_box->setFrameShape(QFrame::StyledPanel);
+        mode_box->setStyleSheet(QStringLiteral("QFrame { background: #fafafa; border-radius: 6px; }"));
+        auto* mv = new QVBoxLayout(mode_box);
+        mv->setContentsMargins(8, 8, 8, 8);
+        mv->setSpacing(8);
+        chk_sequential_segment_dc_ = new QCheckBox(
+            QStringLiteral("OCU-style sequential DC (recommended)"));
+        chk_sequential_segment_dc_->setToolTip(
+            QStringLiteral("ON: first checked segment is sent as (x,y,dc); later segments after "
+                           "segment_saved — like BDR OCU.\n"
+                           "OFF: merged publish is (x,y) preview only (no waypoint DC tags)."));
+        QHBoxLayout* progression_row = new QHBoxLayout();
+        progression_row->addWidget(new QLabel(QStringLiteral("Between segments")));
+        combo_segment_progression_ = new QComboBox();
+        combo_segment_progression_->addItem(QStringLiteral("Automatic"));
+        combo_segment_progression_->addItem(QStringLiteral("Manual confirm"));
+        combo_segment_progression_->setMinimumWidth(120);
+        combo_segment_progression_->setToolTip(
+            QStringLiteral("Automatic: next segment after segment_saved. "
+                           "Manual: confirm before each next segment."));
+        progression_row->addWidget(combo_segment_progression_, 1);
+        mv->addWidget(chk_sequential_segment_dc_);
+        mv->addLayout(progression_row);
+        v->addWidget(mode_box);
+    }
 
-    btn_start_segments_ = new QPushButton("▶️ Start selected");
-    btn_start_segments_->setObjectName("btn_navigation");
-    btn_start_segments_->setMinimumHeight(34);
+    btn_publish_segments_ = new QPushButton(QStringLiteral("⬆ Publish to robot"));
+    btn_publish_segments_->setObjectName(QStringLiteral("btn_publish"));
+    btn_publish_segments_->setMinimumHeight(32);
 
-    chk_sequential_segment_dc_ = new QCheckBox(
-        QStringLiteral("OCU-style sequential DC (one segment per /f2c_waypoints)"));
-    chk_sequential_segment_dc_->setToolTip(
-        QStringLiteral("When checked: publish/run scan segments one at a time and wait for "
-                       "/scan_segment_status segment_saved between segments (matches BDR OCU). "
-                       "When unchecked: legacy batch publish of all selected segments."));
-    QHBoxLayout* progression_row = new QHBoxLayout();
-    progression_row->addWidget(new QLabel(QStringLiteral("Between segments:")));
-    combo_segment_progression_ = new QComboBox();
-    combo_segment_progression_->addItem(QStringLiteral("Automatic"));
-    combo_segment_progression_->addItem(QStringLiteral("Manual confirm"));
-    combo_segment_progression_->setToolTip(
-        QStringLiteral("Automatic: start next segment immediately after segment_saved. "
-                       "Manual: prompt before each next segment."));
-    progression_row->addWidget(combo_segment_progression_, 1);
+    btn_start_segments_ = new QPushButton(QStringLiteral("▶️ Start selected"));
+    btn_start_segments_->setObjectName(QStringLiteral("btn_navigation"));
+    btn_start_segments_->setMinimumHeight(32);
 
     {
         QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
         chk_sequential_segment_dc_->setChecked(
-            settings.value(QStringLiteral("scan_planner/sequential_ocu_style"), false).toBool());
+            settings.value(QStringLiteral("scan_planner/sequential_ocu_style"), true).toBool());
         const int prog = settings.value(QStringLiteral("scan_planner/segment_progression"), 0).toInt();
         combo_segment_progression_->setCurrentIndex(prog == 1 ? 1 : 0);
     }
-    connect(chk_sequential_segment_dc_, &QCheckBox::toggled, this, [this](bool) {
-        QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
-        settings.setValue(QStringLiteral("scan_planner/sequential_ocu_style"),
-                          chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked());
-    });
     connect(combo_segment_progression_, qOverload<int>(&QComboBox::currentIndexChanged), this,
             [this](int index) {
                 QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
                 settings.setValue(QStringLiteral("scan_planner/segment_progression"), index);
             });
 
-    v->addWidget(btn_make_segments_);
-    v->addWidget(chk_sequential_segment_dc_);
-    v->addLayout(progression_row);
-    v->addWidget(btn_publish_segments_);
-    v->addWidget(btn_start_segments_);
+    connect(chk_sequential_segment_dc_, &QCheckBox::toggled, this, [this](bool) {
+        QSettings settings(QStringLiteral("PilotControl"), QStringLiteral("BDRCoveragePlanner"));
+        settings.setValue(QStringLiteral("scan_planner/sequential_ocu_style"),
+                          chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked());
+        updateScanPlannerUiState();
+    });
 
+    // --- 3. Send to robot ------------------------------------------------------
+    addSectionTitle(QStringLiteral("3. Send to robot"));
+    {
+        auto* row = new QHBoxLayout();
+        row->setSpacing(8);
+        row->addWidget(btn_publish_segments_, 1);
+        row->addWidget(btn_start_segments_, 1);
+        v->addLayout(row);
+        lbl_scan_mode_note_ = new QLabel();
+        lbl_scan_mode_note_->setWordWrap(true);
+        lbl_scan_mode_note_->setStyleSheet(
+            QStringLiteral("color: #6b7280; font-size: 10px; padding: 2px 0 4px 0;"));
+        v->addWidget(lbl_scan_mode_note_);
+    }
+
+    // --- 4. Coordinator ------------------------------------------------------
+    addSectionTitle(QStringLiteral("4. On-robot coordinator"));
+    {
+        auto* coord = new QFrame();
+        coord->setFrameShape(QFrame::StyledPanel);
+        coord->setStyleSheet(QStringLiteral("QFrame { background: #fafafa; border-radius: 6px; }"));
+        auto* ch = new QHBoxLayout(coord);
+        ch->setContentsMargins(8, 8, 8, 8);
+        ch->setSpacing(6);
+        btn_dc_pause_scan_ = new QPushButton(QStringLiteral("Pause"));
+        btn_dc_resume_scan_ = new QPushButton(QStringLiteral("Resume"));
+        btn_dc_cancel_scan_ = new QPushButton(QStringLiteral("Cancel scan"));
+        btn_dc_pause_scan_->setMinimumHeight(28);
+        btn_dc_resume_scan_->setMinimumHeight(28);
+        btn_dc_cancel_scan_->setMinimumHeight(28);
+        btn_dc_pause_scan_->setToolTip(QStringLiteral("/dc/pause"));
+        btn_dc_resume_scan_->setToolTip(QStringLiteral("/dc/resume"));
+        btn_dc_cancel_scan_->setToolTip(QStringLiteral("/dc/cancel_scan — destructive; confirms."));
+        btn_dc_cancel_scan_->setStyleSheet(
+            QStringLiteral("QPushButton { background-color: #b45309; color: white; font-weight: 600; "
+                           "padding: 4px 8px; border-radius: 4px; }"
+                           "QPushButton:hover { background-color: #c2410c; }"));
+        ch->addWidget(btn_dc_pause_scan_, 1);
+        ch->addWidget(btn_dc_resume_scan_, 1);
+        ch->addWidget(btn_dc_cancel_scan_, 1);
+        v->addWidget(coord);
+        auto* coord_note = new QLabel(
+            QStringLiteral("Pause keeps the current section intact. Cancel deletes the active mission "
+                           "data and resets DC state for the next request."));
+        coord_note->setWordWrap(true);
+        coord_note->setStyleSheet(
+            QStringLiteral("color: #6b7280; font-size: 10px; padding: 2px 0 4px 0;"));
+        v->addWidget(coord_note);
+        connect(btn_dc_pause_scan_, &QPushButton::clicked, this, &CoverageGUI::onDcPauseRequested);
+        connect(btn_dc_resume_scan_, &QPushButton::clicked, this, &CoverageGUI::onDcResumeRequested);
+        connect(btn_dc_cancel_scan_, &QPushButton::clicked, this, &CoverageGUI::onDcCancelScanRequested);
+    }
+
+    // --- 5. Segments -----------------------------------------------------------
+    addSectionTitle(QStringLiteral("5. Segments"));
     list_scan_segments_ = new QListWidget();
     list_scan_segments_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    list_scan_segments_->setMinimumHeight(100);
     v->addWidget(list_scan_segments_, 1);
-
-    lbl_scan_progress_ = new QLabel("Segments: none");
-    lbl_scan_progress_->setStyleSheet("color: #666; font-size: 10px;");
+    lbl_scan_progress_ = new QLabel(QStringLiteral("Segments: none"));
+    lbl_scan_progress_->setStyleSheet(QStringLiteral("color: #6b7280; font-size: 10px;"));
     v->addWidget(lbl_scan_progress_);
 
+    updateScanPlannerUiState();
     return box;
 }
 
@@ -6485,13 +6704,28 @@ PathStateList CoverageGUI::buildPublishPathFromSegments(
     PathStateList combined;
     std::vector<int> combined_flags;
     const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
+    const bool allow_segment_dc = collect_data && !isCustomModeActive();
     PathStateList planned_path;
     std::vector<int> planned_flags;
     const bool build_segment_flags = flags != nullptr;
-    if (build_segment_flags && !path_.empty()) {
-        planned_path = dedupePathStates(path_);
-        planned_flags = buildPlannedDataCollectionFlags(
-            planned_path.size(), collect_data, planned_path_is_home_, path_connector_prefix_count_);
+    if (build_segment_flags) {
+        if (isCustomModeActive()) {
+            planned_path.reserve(custom_waypoints_.size());
+            for (const auto& pt : custom_waypoints_) {
+                PathState ps;
+                ps.point = pt;
+                ps.heading = 0.0;
+                ps.vx = 0.0;
+                ps.vy = 0.0;
+                planned_path.push_back(std::move(ps));
+            }
+            planned_path = dedupePathStates(planned_path);
+            planned_flags = buildPlannedDataCollectionFlags(planned_path.size(), false, false, 0);
+        } else if (!path_.empty()) {
+            planned_path = dedupePathStates(path_);
+            planned_flags = buildPlannedDataCollectionFlags(
+                planned_path.size(), allow_segment_dc, planned_path_is_home_, path_connector_prefix_count_);
+        }
     }
 
     for (int idx : indices) {
@@ -6530,10 +6764,11 @@ PathStateList CoverageGUI::buildPublishPathFromSegments(
                 planned_flags.begin() + static_cast<std::ptrdiff_t>(flag_begin),
                 planned_flags.begin() + static_cast<std::ptrdiff_t>(flag_end));
         } else {
-            combined_flags.insert(
-                combined_flags.end(),
-                seg.size() - start,
-                collect_data ? 1 : 0);
+            for (size_t ii = start; ii < seg.size(); ++ii) {
+                const int mapped = nearestPlannedDcFlag(
+                    seg[ii].point, planned_path, planned_flags, 0);
+                combined_flags.push_back(mapped);
+            }
         }
     }
 
@@ -6708,8 +6943,11 @@ void CoverageGUI::publishSelectedScanSegments() {
         return;
     }
 
-    std::vector<int> publish_flags;
-    PathStateList publish_path = buildPublishPathFromSegments(idxs, &publish_flags);
+    // BDR_OCU strategy (planner_screen::onPublishSelectedClicked): merged segment preview is
+    // published as (x, y) pairs only — no per-point dc tags. That avoids MPC auto-DC arming on
+    // connector / approach geometry. Per-segment (x, y, dc) execution is handled when sequential
+    // DC mode publishes a single segment (see publishSingleScanSegmentWaypoints).
+    PathStateList publish_path = buildPublishPathFromSegments(idxs, nullptr);
     if (publish_path.size() < 2) {
         QMessageBox::warning(this, "No path", "Selected segments are empty.");
         return;
@@ -6728,13 +6966,10 @@ void CoverageGUI::publishSelectedScanSegments() {
     }
 
     std_msgs::msg::Float64MultiArray msg;
-    msg.data.reserve(publish_path.size() * 3);
-    for (size_t i = 0; i < publish_path.size(); ++i) {
-        const auto& state = publish_path[i];
-        const int dc_flag = (i < publish_flags.size()) ? publish_flags[i] : 0;
+    msg.data.reserve(publish_path.size() * 2);
+    for (const auto& state : publish_path) {
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
-        msg.data.push_back(static_cast<double>(dc_flag));
     }
     waypoint_pub_->publish(msg);
 
@@ -6742,11 +6977,11 @@ void CoverageGUI::publishSelectedScanSegments() {
     if (btn_start_navigation_) btn_start_navigation_->setEnabled(true);
     if (btn_quick_start_) btn_quick_start_->setEnabled(true);
     setStatus(
-        QString("Published %1 scan(s), %2 points @ %3 m/s")
+        QString("Published %1 scan(s), %2 (x,y) waypoints @ %3 m/s — geometry only (BDR OCU style)")
             .arg(idxs.size())
             .arg(publish_path.size())
             .arg(publish_speed_mps, 0, 'f', 2),
-        4000);
+        5000);
 }
 
 void CoverageGUI::startSelectedScanSegments() {
@@ -6872,8 +7107,8 @@ void CoverageGUI::exportPathCSV() {
             ps.vy = 0;
             export_path.push_back(ps);
         }
-        export_flags.assign(export_path.size(), collect_data ? 1 : 0);
-        mode_label = "custom";
+        export_flags.assign(export_path.size(), 0);
+        mode_label = "custom transit";
     } else {
     if (path_.empty()) {
             QMessageBox::warning(this, "Warning", "Generate a coverage path first.");
@@ -6904,7 +7139,9 @@ void CoverageGUI::exportPathCSV() {
 }
 
 bool CoverageGUI::sequentialSegmentDcModeEnabled() const {
-    return chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked();
+    return !isCustomModeActive() &&
+           chk_sequential_segment_dc_ &&
+           chk_sequential_segment_dc_->isChecked();
 }
 
 void CoverageGUI::setupPlannerSegmentOrchestrationInterfaces() {
@@ -7002,14 +7239,45 @@ bool CoverageGUI::publishSingleScanSegmentWaypoints(int segment_index, QString* 
     }
 
     const bool collect_data = chk_collect_data_ ? chk_collect_data_->isChecked() : true;
-    const int dc_flag = collect_data ? 1 : 0;
+    const bool allow_segment_dc = collect_data && !isCustomModeActive();
+    // Per-point dc must match full-path semantics. The first scan segment is a sub-polyline of
+    // the planned path and often includes the A* connector (path_connector_prefix_count_);
+    // a single segment-wide flag would arm DC on that approach. Map each vertex to the same
+    // flags as publishWaypoints (connector / home / collect toggles). Custom paths are
+    // transit-only, so their per-point dc stays 0 even when the global checkbox is on.
+    PathStateList reference_path;
+    if (isCustomModeActive()) {
+        PathStateList tmp;
+        tmp.reserve(custom_waypoints_.size());
+        for (const auto& pt : custom_waypoints_) {
+            PathState ps;
+            ps.point = pt;
+            ps.heading = 0.0;
+            ps.vx = 0.0;
+            ps.vy = 0.0;
+            tmp.push_back(std::move(ps));
+        }
+        reference_path = dedupePathStates(tmp);
+    } else {
+        reference_path = dedupePathStates(path_);
+    }
+    const bool ref_is_home = !isCustomModeActive() && planned_path_is_home_;
+    const int ref_connector = isCustomModeActive() ? 0 : path_connector_prefix_count_;
+    std::vector<int> reference_flags = buildPlannedDataCollectionFlags(
+        reference_path.size(), allow_segment_dc, ref_is_home, ref_connector);
 
     std_msgs::msg::Float64MultiArray msg;
     msg.data.reserve(seg_path.size() * 3);
     for (const auto& state : seg_path) {
+        int dc = 0;
+        if (!reference_path.empty() && reference_flags.size() == reference_path.size()) {
+            dc = nearestPlannedDcFlag(state.point, reference_path, reference_flags, 0);
+        } else {
+            dc = allow_segment_dc ? 1 : 0;
+        }
         msg.data.push_back(state.point.x);
         msg.data.push_back(state.point.y);
-        msg.data.push_back(static_cast<double>(dc_flag));
+        msg.data.push_back(static_cast<double>(dc));
     }
     waypoint_pub_->publish(msg);
     return true;
@@ -7216,8 +7484,8 @@ void CoverageGUI::publishWaypoints() {
             ps.vy = 0;
             export_path.push_back(ps);
         }
-        mode_label = "custom";
-        export_flags.assign(export_path.size(), collect_data ? 1 : 0);
+        mode_label = "custom transit";
+        export_flags.assign(export_path.size(), 0);
 
         // Reset visited status for tracking
         custom_waypoints_visited_.assign(custom_waypoints_.size(), false);
@@ -7357,6 +7625,7 @@ void CoverageGUI::onPathModeChanged() {
     
     // Disable drawing if switching away from custom mode
     setCustomModeActive(custom_mode);
+    updateScanPlannerUiState();
     refreshCustomPathUI();
     syncPlannedPathCache();
     updateCoverageStats();
@@ -7373,6 +7642,90 @@ void CoverageGUI::onPathModeChanged() {
 
 bool CoverageGUI::isCustomModeActive() const {
     return radio_mode_custom_ && radio_mode_custom_->isChecked();
+}
+
+void CoverageGUI::updateScanPlannerUiState() {
+    const bool custom_mode = isCustomModeActive();
+    const bool sequential_checked =
+        chk_sequential_segment_dc_ && chk_sequential_segment_dc_->isChecked();
+
+    if (btn_make_segments_) {
+        btn_make_segments_->setText(
+            custom_mode ? QStringLiteral("Split custom path")
+                        : QStringLiteral("Split path into segments"));
+        btn_make_segments_->setToolTip(
+            custom_mode
+                ? QStringLiteral("Break the custom path into navigation sections. "
+                                 "Custom-path segments never send DC tags.")
+                : QStringLiteral("Break the planned coverage path into fixed-distance scan sections."));
+    }
+
+    if (chk_sequential_segment_dc_) {
+        chk_sequential_segment_dc_->setEnabled(!custom_mode);
+        chk_sequential_segment_dc_->setToolTip(
+            custom_mode
+                ? QStringLiteral("Custom paths are transit-only. Sequential DC is available only "
+                                 "for planned coverage segments.")
+                : QStringLiteral("ON: first checked segment is sent as (x,y,dc); later segments "
+                                 "after segment_saved — like BDR OCU.\n"
+                                 "OFF: merged publish is (x,y) preview only (no waypoint DC tags)."));
+    }
+
+    if (combo_segment_progression_) {
+        combo_segment_progression_->setEnabled(!custom_mode && sequential_checked);
+    }
+
+    if (btn_publish_segments_) {
+        if (custom_mode) {
+            btn_publish_segments_->setText(QStringLiteral("Publish selected path (x,y)"));
+            btn_publish_segments_->setToolTip(
+                QStringLiteral("Custom-path segments are navigation only. Publishes geometry with "
+                               "no DC tags."));
+        } else if (sequential_checked) {
+            btn_publish_segments_->setText(QStringLiteral("Publish first segment (x,y,dc)"));
+            btn_publish_segments_->setToolTip(
+                QStringLiteral("First checked segment as (x,y,dc) triples. Connector / transit "
+                               "waypoints keep dc=0; scan points keep dc=1."));
+        } else {
+            btn_publish_segments_->setText(QStringLiteral("Publish merged preview (x,y)"));
+            btn_publish_segments_->setToolTip(
+                QStringLiteral("Merged polyline as (x,y) pairs only, like the BDR OCU preview."));
+        }
+    }
+
+    if (btn_start_segments_) {
+        btn_start_segments_->setText(
+            custom_mode ? QStringLiteral("Start selected path")
+                        : QStringLiteral("Start selected segments"));
+        if (custom_mode) {
+            btn_start_segments_->setToolTip(
+                QStringLiteral("Start the selected custom-path segments as navigation only. No DC "
+                               "tags are sent."));
+        } else if (sequential_checked) {
+            btn_start_segments_->setToolTip(
+                QStringLiteral("Start segmented scan execution. Each planned segment is published "
+                               "separately and data collection follows only the scan section."));
+        } else {
+            btn_start_segments_->setToolTip(
+                QStringLiteral("Re-publish the merged selection as geometry only, then start navigation."));
+        }
+    }
+
+    if (lbl_scan_mode_note_) {
+        if (custom_mode) {
+            lbl_scan_mode_note_->setText(
+                QStringLiteral("Custom mode: segmenting is navigation-only. Homing, GO TO, "
+                               "path-to-first, and custom paths all keep DC off."));
+        } else if (sequential_checked) {
+            lbl_scan_mode_note_->setText(
+                QStringLiteral("Sequential ON: each planned scan segment is published with per-point "
+                               "dc flags, so only the desired scan section collects data."));
+        } else {
+            lbl_scan_mode_note_->setText(
+                QStringLiteral("Sequential OFF: Publish sends only geometry preview. Use sequential "
+                               "mode when you want segmented auto-DC."));
+        }
+    }
 }
 
 void CoverageGUI::setCustomModeActive(bool active) {
@@ -8656,6 +9009,131 @@ void CoverageGUI::onRectangleCompleted(const Polygon2D& rect) {
     refreshPlot();
 }
 
+void CoverageGUI::setupMenuBar() {
+    QMenuBar* mb = menuBar();
+    QMenu* view_menu = mb->addMenu(tr("&View"));
+    QAction* act_max = view_menu->addAction(tr("&Maximize"));
+    act_max->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
+    connect(act_max, &QAction::triggered, this, &CoverageGUI::showMaximized);
+    QAction* act_restore = view_menu->addAction(tr("&Restore / normal size"));
+    act_restore->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    connect(act_restore, &QAction::triggered, this, &CoverageGUI::showNormal);
+
+    QMenu* dc_menu = mb->addMenu(tr("&Scan / data"));
+    QAction* act_pause = dc_menu->addAction(tr("&Pause data collection"));
+    act_pause->setToolTip(tr("Calls /dc/pause on the robot (coordinator)."));
+    connect(act_pause, &QAction::triggered, this, &CoverageGUI::onDcPauseRequested);
+    QAction* act_resume = dc_menu->addAction(tr("&Resume data collection"));
+    act_resume->setToolTip(tr("Calls /dc/resume on the robot (coordinator)."));
+    connect(act_resume, &QAction::triggered, this, &CoverageGUI::onDcResumeRequested);
+    QAction* act_cancel = dc_menu->addAction(tr("&Cancel scan (delete mission data)…"));
+    act_cancel->setToolTip(
+        tr("Calls /dc/cancel_scan — same family as BDR OCU discard. Destructive; confirms first."));
+    connect(act_cancel, &QAction::triggered, this, &CoverageGUI::onDcCancelScanRequested);
+}
+
+void CoverageGUI::setupDcServiceClients() {
+    dc_pause_client_.reset();
+    dc_resume_client_.reset();
+    dc_cancel_scan_client_.reset();
+    if (!ros_node_) {
+        return;
+    }
+    dc_pause_client_ = ros_node_->create_client<std_srvs::srv::Trigger>("/dc/pause");
+    dc_resume_client_ = ros_node_->create_client<std_srvs::srv::Trigger>("/dc/resume");
+    dc_cancel_scan_client_ = ros_node_->create_client<std_srvs::srv::Trigger>("/dc/cancel_scan");
+}
+
+bool CoverageGUI::invokeDcTriggerService(
+    const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr& client,
+    const QString& success_prefix,
+    const QString& failure_prefix) {
+    if (!ros_initialized_ || !client) {
+        setStatus(tr("ROS not connected — cannot call coordinator."), 5000);
+        return false;
+    }
+    using namespace std::chrono_literals;
+    if (!client->wait_for_service(2s)) {
+        setStatus(failure_prefix + tr(" (service unavailable)"), 6000);
+        return false;
+    }
+    auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+    auto fut = client->async_send_request(req);
+    for (int i = 0; i < 200; ++i) {
+        if (fut.wait_for(50ms) == std::future_status::ready) {
+            break;
+        }
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    if (fut.wait_for(0s) != std::future_status::ready) {
+        setStatus(failure_prefix + tr(" (timeout)"), 6000);
+        return false;
+    }
+    std::shared_ptr<std_srvs::srv::Trigger::Response> resp;
+    try {
+        resp = fut.get();
+    } catch (const std::exception& e) {
+        setStatus(failure_prefix + QString(" (%1)").arg(e.what()), 6000);
+        return false;
+    }
+    if (!resp) {
+        setStatus(failure_prefix + tr(" (empty response)"), 6000);
+        return false;
+    }
+    const QString msg = QString::fromStdString(resp->message).trimmed();
+    if (resp->success) {
+        setStatus(success_prefix + (msg.isEmpty() ? QString() : QString(" — ") + msg), 6000);
+    } else {
+        setStatus(failure_prefix + (msg.isEmpty() ? QString() : QString(" — ") + msg), 8000);
+    }
+    return resp->success;
+}
+
+void CoverageGUI::onDcPauseRequested() {
+    invokeDcTriggerService(dc_pause_client_, tr("DC pause OK"), tr("DC pause failed"));
+}
+
+void CoverageGUI::onDcResumeRequested() {
+    invokeDcTriggerService(dc_resume_client_, tr("DC resume OK"), tr("DC resume failed"));
+}
+
+void CoverageGUI::onDcCancelScanRequested() {
+    const auto answer = QMessageBox::question(
+        this,
+        tr("Cancel scan"),
+        tr("Call /dc/cancel_scan on the robot? This deletes in-progress mission data (same class "
+           "of action as BDR OCU discard)."),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    const bool cancelled = invokeDcTriggerService(
+        dc_cancel_scan_client_, tr("DC cancel_scan OK"), tr("DC cancel_scan failed"));
+    if (!cancelled) {
+        return;
+    }
+
+    resetSequentialSegmentRunState();
+    waypoints_published_ = false;
+    active_scan_segment_idx_ = -1;
+    for (auto& seg : scan_segments_) {
+        seg.completed = false;
+    }
+    refreshScanSegmentList();
+    if (plot_) {
+        plot_->setActiveScanSegment(-1);
+    }
+    if (btn_start_navigation_) {
+        btn_start_navigation_->setEnabled(false);
+    }
+    if (btn_quick_start_) {
+        btn_quick_start_->setEnabled(false);
+    }
+    refreshPlot();
+    setStatus(tr("Scan cancelled — planner state reset for the next request."), 6000);
+}
+
 void CoverageGUI::tryReconnectROS2() {
     // Already connected - stop the timer
     if (ros_initialized_) {
@@ -8670,6 +9148,7 @@ void CoverageGUI::tryReconnectROS2() {
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupDcServiceClients();
         setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
@@ -8705,6 +9184,9 @@ void CoverageGUI::reinitializeROS2() {
         fastlio_sub_.reset();
         scan_segment_status_sub_.reset();
         mpc_autonomy_pub_.reset();
+        dc_pause_client_.reset();
+        dc_resume_client_.reset();
+        dc_cancel_scan_client_.reset();
         
         // Stop the spin thread by shutting down the node's context
         if (ros_node_) {
@@ -8739,6 +9221,7 @@ void CoverageGUI::reinitializeROS2() {
         ros_node_ = rclcpp::Node::make_shared("bdr_coverage_gui");
         waypoint_pub_ = ros_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/f2c_waypoints", 10);
+        setupDcServiceClients();
         setupPlannerSegmentOrchestrationInterfaces();
         setupRobotTrackingSubscription();
 
@@ -9435,6 +9918,9 @@ void CoverageGUI::updatePrivilegedUiState() {
     if (btn_quick_publish_) btn_quick_publish_->setEnabled(authed);
     if (btn_publish_segments_) btn_publish_segments_->setEnabled(authed);
     if (btn_start_segments_) btn_start_segments_->setEnabled(authed);
+    if (btn_dc_pause_scan_) btn_dc_pause_scan_->setEnabled(authed);
+    if (btn_dc_resume_scan_) btn_dc_resume_scan_->setEnabled(authed);
+    if (btn_dc_cancel_scan_) btn_dc_cancel_scan_->setEnabled(authed);
 
     if (!authed) {
         if (btn_start_navigation_) btn_start_navigation_->setEnabled(false);

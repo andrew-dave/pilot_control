@@ -54,6 +54,7 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <thread>
 #include <atomic>
 #include <optional>
@@ -129,6 +130,7 @@ signals:
     void streamStopped();
 
 protected:
+    void paintEvent(QPaintEvent* event) override;
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;
 
@@ -467,8 +469,23 @@ private slots:
     void startScanSession(const QString& sectionName);
     void endScanSession();
 
+    // Data collection (robot coordinator services — same as BDR OCU / mpc_accel)
+    void onDcPauseRequested();
+    void onDcResumeRequested();
+    void onDcCancelScanRequested();
+
 private:
     struct LiveStatsSnapshot;
+
+    void setupMenuBar();
+    void setupDcServiceClients();
+    bool invokeDcTriggerService(
+        const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr& client,
+        const QString& successPrefix,
+        const QString& failurePrefix);
+    void updateScanPlannerUiState();
+    void setVideoStateText(const QString& text, const QString& color);
+    void setVideoTargetText(const QString& text, const QString& color);
 
     void setupUI();
     void setupConnections();
@@ -685,8 +702,12 @@ private:
     QPushButton* btn_make_segments_ = nullptr;
     QPushButton* btn_publish_segments_ = nullptr;
     QPushButton* btn_start_segments_ = nullptr;
+    QPushButton* btn_dc_pause_scan_ = nullptr;
+    QPushButton* btn_dc_resume_scan_ = nullptr;
+    QPushButton* btn_dc_cancel_scan_ = nullptr;
     QCheckBox* chk_sequential_segment_dc_ = nullptr;
     QComboBox* combo_segment_progression_ = nullptr;
+    QLabel* lbl_scan_mode_note_ = nullptr;
     QLabel* lbl_scan_progress_ = nullptr;
 
     bool scan_sequential_run_active_ = false;
@@ -785,6 +806,9 @@ private:
     rclcpp::Node::SharedPtr ros_node_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr waypoint_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_pub_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr dc_pause_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr dc_resume_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr dc_cancel_scan_client_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr scan_segment_status_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr fastlio_sub_;
     std::thread ros_thread_;
@@ -893,7 +917,7 @@ private:
     QToolButton* btn_collapse_left_ = nullptr;
     QToolButton* btn_collapse_right_ = nullptr;
     int left_saved_width_ = 390;
-    int right_saved_width_ = 260;
+    int right_saved_width_ = 360;
     bool left_collapsed_ = false;
     bool right_collapsed_ = false;
     
@@ -972,6 +996,7 @@ private:
     QPushButton* btn_video_play_ = nullptr;
     QPushButton* btn_video_stop_ = nullptr;
     QLabel* lbl_video_status_ = nullptr;
+    QLabel* lbl_video_target_ = nullptr;
     
     // Data transfer panel
     QWidget* data_transfer_panel_ = nullptr;

@@ -1175,11 +1175,24 @@ class MPCAccelController(Node):
         # Parameters for shaping reference behavior near the start of a line
         self.declare_parameter("error_ref_ahead_min_scale", 0.02)
         self.declare_parameter("error_ref_gate_distance", 0.20)
+        self.declare_parameter("end_ref_ramp_decel", 0.35)
+        self.declare_parameter("end_ref_ramp_min_distance", 0.20)
+        self.declare_parameter("end_ref_min_scale", 0.25)
         self.error_ref_ahead_min_scale = float(
             self.get_parameter("error_ref_ahead_min_scale").value
         )
         self.error_ref_gate_distance = float(
             self.get_parameter("error_ref_gate_distance").value
+        )
+        self.end_ref_ramp_decel = max(
+            1e-3, float(self.get_parameter("end_ref_ramp_decel").value)
+        )
+        self.end_ref_ramp_min_distance = max(
+            0.0, float(self.get_parameter("end_ref_ramp_min_distance").value)
+        )
+        self.end_ref_min_scale = max(
+            0.0,
+            min(1.0, float(self.get_parameter("end_ref_min_scale").value)),
         )
 
         # MPC optimizer
@@ -1423,6 +1436,45 @@ class MPCAccelController(Node):
         self.v_cmd = float(np.clip(self.v_cmd, -active_limit, active_limit))
         return active_limit
 
+    @staticmethod
+    def _smoothstep01(value: float) -> float:
+        """Smoothly interpolate from 0 to 1 over the unit interval."""
+        x = max(0.0, min(1.0, float(value)))
+        return x * x * (3.0 - 2.0 * x)
+
+    def _reference_start_scale(self, s_along_path: float) -> float:
+        """Reference speed scale used near the beginning of a straight segment."""
+        d_gate_v = float(self.error_ref_gate_distance)
+        if d_gate_v > 1e-6 and s_along_path <= d_gate_v:
+            start_scale = max(0.0, min(1.0, float(self.error_ref_ahead_min_scale)))
+            ratio_s = s_along_path / d_gate_v
+            return start_scale + (1.0 - start_scale) * ratio_s
+        return 1.0
+
+    def _reference_end_ramp_distance(self, cruising_speed: float) -> float:
+        """
+        Distance over which the end-of-line reference should taper.
+
+        The ramp grows with cruise speed using a comfortable reference deceleration
+        so higher desired speeds do not hit an abrupt spacing transition.
+        """
+        speed = max(0.0, float(cruising_speed))
+        stop_distance = (speed * speed) / (2.0 * self.end_ref_ramp_decel)
+        return max(float(self.end_ref_ramp_min_distance), stop_distance)
+
+    def _reference_end_scale(
+        self,
+        remaining_distance: float,
+        cruising_speed: float,
+    ) -> float:
+        """Reference scale used to taper both speed and spacing near segment end."""
+        ramp_distance = self._reference_end_ramp_distance(cruising_speed)
+        min_scale = max(0.0, min(1.0, float(self.end_ref_min_scale)))
+        if ramp_distance <= 1e-6:
+            return 1.0
+        smooth_scale = self._smoothstep01(remaining_distance / ramp_distance)
+        return min_scale + (1.0 - min_scale) * smooth_scale
+
     def _on_parameter_change(self, params):
         """Handle live speed changes while keeping the straight-path geometry."""
         updated_fields: List[str] = []
@@ -1443,6 +1495,51 @@ class MPCAccelController(Node):
                     )
                 applied_speed = self._set_navigation_speed(new_speed)
                 updated_fields.append(f"{param.name}={applied_speed:.3f}")
+            elif param.name == "end_ref_ramp_decel":
+                try:
+                    new_decel = float(param.value)
+                except (TypeError, ValueError):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be a finite float",
+                    )
+                if not math.isfinite(new_decel) or new_decel <= 0.0:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be > 0",
+                    )
+                self.end_ref_ramp_decel = new_decel
+                updated_fields.append(f"{param.name}={new_decel:.3f}")
+            elif param.name == "end_ref_ramp_min_distance":
+                try:
+                    new_distance = float(param.value)
+                except (TypeError, ValueError):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be a finite float",
+                    )
+                if not math.isfinite(new_distance) or new_distance < 0.0:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be >= 0",
+                    )
+                self.end_ref_ramp_min_distance = new_distance
+                updated_fields.append(f"{param.name}={new_distance:.3f}")
+            elif param.name == "end_ref_min_scale":
+                try:
+                    new_scale = float(param.value)
+                except (TypeError, ValueError):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be a finite float",
+                    )
+                if not math.isfinite(new_scale) or not (0.0 <= new_scale <= 1.0):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be between 0 and 1",
+                    )
+                self.end_ref_min_scale = new_scale
+                updated_fields.append(f"{param.name}={new_scale:.3f}")
 
         if updated_fields:
             active_limit = self._apply_active_linear_speed_limit()
@@ -1550,69 +1647,34 @@ class MPCAccelController(Node):
         t_closest = (to_current_x * path_dir_x + to_current_y * path_dir_y) / path_length
         t_closest = np.clip(t_closest, 0.0, 1.0)
 
-        distance_to_target_along_path = (1.0 - t_closest) * path_length
-
-        # Advance the reference in time with desired_speed * dt while keeping the
-        # same straight-line spatial path from start to target.
+        # Advance the reference along the same straight-line path while smoothly
+        # tapering spacing and speed near the end of the segment.
         cruising_speed = self._active_linear_speed_limit()
-        waypoint_spacing = cruising_speed * self.mpc_dt
+        path_heading = math.atan2(path_dy, path_dx)
+        s_closest = float(t_closest * path_length)
+        nominal_spacing = cruising_speed * self.mpc_dt
+        cos_heading = math.cos(path_heading)
+        sin_heading = math.sin(path_heading)
+        start_scale = self._reference_start_scale(s_closest)
 
         waypoints: List[np.ndarray] = []
-        waypoint_positions: List[Tuple[float, float, float]] = []
+        s_waypoint = s_closest
+        for _ in range(self.mpc_horizon):
+            remaining_distance = max(0.0, path_length - s_waypoint)
+            end_scale = self._reference_end_scale(remaining_distance, cruising_speed)
+            s_waypoint = min(path_length, s_waypoint + nominal_spacing * end_scale)
 
-        proximity_threshold = 0.5  # [m]
-        min_spacing = 0.04  # [m]
+            t_waypoint = float(np.clip(s_waypoint / path_length, 0.0, 1.0))
+            wx = self.path_start_x + t_waypoint * path_dx
+            wy = self.path_start_y + t_waypoint * path_dy
+            wyaw = self.normalize_angle(path_heading)
 
-        if distance_to_target_along_path > proximity_threshold:
-            # FAR region: fixed waypoint spacing along the path
-            adjusted_spacing = waypoint_spacing
-            for k in range(self.mpc_horizon):
-                distance_along = adjusted_spacing * (k + 1)
-                t_waypoint = t_closest + distance_along / path_length
-                t_waypoint = float(np.clip(t_waypoint, 0.0, 1.0))
-
-                wx = self.path_start_x + t_waypoint * path_dx
-                wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
-                waypoint_positions.append((wx, wy, wyaw))
-        else:
-            # NEAR region: compress horizon within remaining distance, enforcing min spacing
-            for k in range(self.mpc_horizon):
-                desired_distance = min_spacing * (k + 1)
-                if desired_distance < distance_to_target_along_path:
-                    dist_from_start = t_closest * path_length + desired_distance
-                    t_waypoint = dist_from_start / path_length
-                else:
-                    t_waypoint = 1.0
-                t_waypoint = float(np.clip(t_waypoint, 0.0, 1.0))
-
-                wx = self.path_start_x + t_waypoint * path_dx
-                wy = self.path_start_y + t_waypoint * path_dy
-                heading_to_target = math.atan2(path_dy, path_dx)
-                wyaw = self.normalize_angle(heading_to_target)
-                waypoint_positions.append((wx, wy, wyaw))
-
-        # v_ref shaping near the start of the line (same gating idea as original MPC)
-        path_heading = math.atan2(path_dy, path_dx)
-        d_gate_v = float(self.error_ref_gate_distance)
-        s_closest = float(t_closest * path_length)
-
-        if d_gate_v > 1e-6 and s_closest <= d_gate_v:
-            start_scale = max(0.0, min(1.0, float(self.error_ref_ahead_min_scale)))
-            ratio_s = s_closest / d_gate_v
-            v_scale_ref = start_scale + (1.0 - start_scale) * ratio_s
-        else:
-            v_scale_ref = 1.0
-
-        v_ref = cruising_speed * v_scale_ref
-        for k in range(self.mpc_horizon):
-            wx, wy, wyaw = waypoint_positions[k]
-            vx_ref = v_ref * math.cos(path_heading)
-            vy_ref = v_ref * math.sin(path_heading)
-            vyaw_ref = 0.0
+            v_scale_ref = min(start_scale, end_scale)
+            v_ref = cruising_speed * v_scale_ref
+            vx_ref = v_ref * cos_heading
+            vy_ref = v_ref * sin_heading
             waypoints.append(
-                np.array([wx, wy, wyaw, vx_ref, vy_ref, vyaw_ref], dtype=float)
+                np.array([wx, wy, wyaw, vx_ref, vy_ref, 0.0], dtype=float)
             )
 
         return waypoints
