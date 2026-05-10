@@ -24,6 +24,7 @@ class GPRSerialBridge(Node):
         
         # State
         self.scan_active = False
+        self.line_start_inter_command_delay_sec = 1.8
         
 
         # Create services
@@ -47,7 +48,10 @@ class GPRSerialBridge(Node):
         
         self.get_logger().info(f'GPR Serial Bridge started on {self.serial_port}')
         self.get_logger().info('Services available:')
-        self.get_logger().info('  /gpr_line_start - Send "K" twice to Arduino')
+        self.get_logger().info(
+            '  /gpr_line_start - Send "K" twice with no serial queueing '
+            f'({self.line_start_inter_command_delay_sec:.1f}s gap)'
+        )
         self.get_logger().info('  /gpr_line_stop  - Send "L" to Arduino')
         self.get_logger().info('  /gpr_power_off  - Send "O" to Arduino')
     
@@ -80,14 +84,26 @@ class GPRSerialBridge(Node):
             return False
     
     def line_start_callback(self, request, response):
-        """Service callback for line start (send 'K' twice with 1 second delay)"""
+        """
+        Service callback for line start.
+
+        Sends 'K' twice with a long enough gap to avoid queueing the second
+        command while the Arduino is still executing the first one.
+        """
         first_success = self.send_command('K')
         if first_success:
-            time.sleep(1)
+            self.get_logger().info(
+                f'Waiting {self.line_start_inter_command_delay_sec:.1f}s before '
+                'sending the second "K" to avoid serial command queueing'
+            )
+            time.sleep(self.line_start_inter_command_delay_sec)
             second_success = self.send_command('K')
             if second_success:
                 response.success = True
-                response.message = 'Line start commands (K, K) sent to Arduino'
+                response.message = (
+                    'Line start commands sent: '
+                    f'K, wait {self.line_start_inter_command_delay_sec:.1f}s, K'
+                )
                 self.scan_active = True
             else:
                 response.success = False

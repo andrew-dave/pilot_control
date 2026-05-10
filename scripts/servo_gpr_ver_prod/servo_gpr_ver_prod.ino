@@ -3,7 +3,7 @@
 #define LIN_ACT_2 12
 #define LIN_ACT_PWM 10
 
-int ft = 1021,ss= 250;
+int ft = 900,ss= 250;
 
 void gprPower() {
   analogWrite(LIN_ACT_PWM, 255);
@@ -85,7 +85,7 @@ void loop() {
     }      
 
     if (inputChar == 'L') {
-      linestart();
+      linestop();
       // servo speed will be updated via subsequent S commands
 
     } else if (inputChar == 'K') {

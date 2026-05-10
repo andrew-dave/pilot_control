@@ -60,7 +60,7 @@ If the LattePanda firewall is enabled, allow the MQTT port from the Microhard si
 Keep the script in the workspace so pathing is consistent across machines:
 
 ```bash
-~/pilot_ws/src/pilot_control/scripts/SOC_est.py
+~/pilot_ws/src/pilot_control/scripts/battery_soc_monitor_kf.py
 ```
 
 If your workspace root differs, adjust the `ExecStart` path in the unit file below.
@@ -74,7 +74,7 @@ SOC_MQTT_HOST=127.0.0.1 \
 SOC_MQTT_PORT=1883 \
 SOC_MQTT_TOPIC_STATE=pilot/battery/state \
 SOC_MQTT_TOPIC_AVAILABILITY=pilot/battery/availability \
-python3 ~/pilot_ws/src/pilot_control/scripts/SOC_est.py
+python3 ~/pilot_ws/src/pilot_control/scripts/battery_soc_monitor_kf.py
 ```
 
 In another terminal on the robot:
@@ -96,26 +96,34 @@ You should see JSON payloads with fields like:
 
 ### 5. Install the battery service
 
-Create `/etc/systemd/system/pilot-battery.service`:
+Create `/etc/systemd/system/battery-soc.service`:
 
 ```ini
 [Unit]
-Description=Pilot battery estimator and MQTT publisher
-After=network-online.target mosquitto.service
-Wants=network-online.target mosquitto.service
+Description=BDR Battery SOC Monitor
+After=multi-user.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
-User=<robot_user>
-WorkingDirectory=/home/<robot_user>/pilot_ws
+User=roofus
+WorkingDirectory=/home/roofus/pilot_ws/src/pilot_control/scripts
+
+Environment=BLINKA_MCP2221=1
+Environment=SOC_MQTT_ENABLED=1
 Environment=SOC_MQTT_HOST=127.0.0.1
 Environment=SOC_MQTT_PORT=1883
 Environment=SOC_MQTT_TOPIC_STATE=pilot/battery/state
 Environment=SOC_MQTT_TOPIC_AVAILABILITY=pilot/battery/availability
-ExecStart=/usr/bin/python3 /home/<robot_user>/pilot_ws/src/pilot_control/scripts/SOC_est.py
+
+ExecStart=/usr/bin/python3 /home/roofus/pilot_ws/src/pilot_control/scripts/battery_soc_monitor_kf.py
+
 Restart=always
-RestartSec=2
-SupplementaryGroups=i2c
+RestartSec=3
+
+# Gives the service a clean shutdown window so it can save state.
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target
@@ -125,14 +133,14 @@ Then enable it:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now pilot-battery.service
+sudo systemctl enable --now battery-soc.service
 ```
 
 Check status:
 
 ```bash
-systemctl status pilot-battery.service
-journalctl -u pilot-battery.service -f
+systemctl status battery-soc.service
+journalctl -u battery-soc.service -f
 ```
 
 ## Laptop Setup
