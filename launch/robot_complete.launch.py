@@ -231,14 +231,27 @@ def generate_launch_description():
     print(f"Base data dir:  {base_data_dir}")
     print("Section folders will be created dynamically by /dc/start service")
     print("="*70 + "\n")
-    # Unified Data Collector (Thermal + Dual Cameras + Odometry sync)
+    # Unified Data Collector (Thermal + Dual Cameras + Odometry sync).
+    #
+    # We launch the small Python supervisor `udc_supervisor.py` instead of the
+    # `unified_data_collector` binary directly.  The supervisor:
+    #   * Forwards SIGTERM/SIGINT to the child so OCU teardown still works.
+    #   * Restarts the child on CRASH (non-zero exit, not SIGTERM/SIGINT)
+    #     up to 3 times in 60 s.
+    #   * If max-restart hit, publishes /udc/health DEAD_MAX_RESTARTS so the
+    #     OCU's Start-Scan gate refuses to arm a scan and asks the operator
+    #     to restart the launch.
+    #   * NEVER counts a clean shutdown (rc=0 / SIGTERM / SIGINT) as a crash
+    #     — operator: "no false positives, very expensive".
+    # The supervisor reuses these `parameters=[{...}]` and rewrites the YAML
+    # so the child sees them under the `unified_data_collector` node-name key.
+    # respawn=False here because the supervisor manages its own respawn loop.
     unified_data_collector_node = Node(
         package='pilot_control',
-        executable='unified_data_collector',
-        name='unified_data_collector',
+        executable='udc_supervisor.py',
+        name='udc_supervisor',
         output='screen',
-        respawn=True,
-        respawn_delay=2.0,
+        respawn=False,
         parameters=[{
             # Odometry and thermal camera settings (using tilt-corrected odometry)
             'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',

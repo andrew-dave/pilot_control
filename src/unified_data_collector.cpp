@@ -531,6 +531,7 @@ public:
         std::chrono::seconds(5),
         [this]() {
           if (!thermal_connect_seen_.load()) {
+            thermal_connect_watchdog_fired_.store(true);
             RCLCPP_ERROR(this->get_logger(),
                 "[Thermal] WEDGED: SEEKCAMERA_MANAGER_EVENT_CONNECT not received "
                 "within 5s. The Seek SDK is likely stuck from a prior UDC "
@@ -544,6 +545,18 @@ public:
             thermal_connect_watchdog_->cancel();
           }
         });
+
+    // /udc/health: 1Hz heartbeat for the OCU (Stage 4/5 "REC" pill +
+    // Start-Scan gate). std_msgs/String JSON payload — keeps the
+    // robot-side pilot_control msg surface unchanged. The OCU JSON
+    // parser handles all listed states; if you add a new state, also
+    // teach AppShellWindow::onUdcHealthMessage about it.
+    health_pub_ = this->create_publisher<std_msgs::msg::String>(
+        "/udc/health", rclcpp::QoS(1).transient_local());
+    health_timer_ = this->create_wall_timer(
+        std::chrono::seconds(1),
+        [this]() { publishHealth(); });
+    publishHealth();  // Latched first message so the OCU sees STARTING immediately on connect.
 
     RCLCPP_INFO(get_logger(), "UnifiedDataCollector ready. Odom: %s", cfg_.odom_topic.c_str());
     RCLCPP_INFO(get_logger(), "Call /video_record_set service to start/stop recording");
@@ -568,6 +581,51 @@ public:
   }
 
 private:
+  // ---------- Health publisher ----------
+  // Emits a single JSON line on /udc/health (std_msgs/String). State
+  // machine, in priority order:
+  //   ERROR_THERMAL_WEDGED  -> watchdog fired and CONNECT never seen
+  //   STARTING              -> CONNECT not yet observed (first 5s)
+  //   STOPPED               -> recording_active_=false (idle/ready)
+  //   PAUSED                -> recording_active_=true && paused_=true
+  //   RECORDING             -> recording_active_=true && paused_=false
+  // DEAD_MAX_RESTARTS is intentionally NOT producible from inside UDC
+  // — the launch supervisor (udc_supervisor.py wrapper in
+  // robot_complete.launch.py) publishes that one before giving up.
+  void publishHealth() {
+    if (!health_pub_) return;
+    const char* state = "STARTING";
+    if (thermal_connect_watchdog_fired_.load() && !thermal_connect_seen_.load()) {
+      state = "ERROR_THERMAL_WEDGED";
+    } else if (!thermal_connect_seen_.load()) {
+      state = "STARTING";
+    } else if (!recording_active_.load()) {
+      state = "STOPPED";
+    } else if (paused_.load()) {
+      state = "PAUSED";
+    } else {
+      state = "RECORDING";
+    }
+    const auto uptime_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - startup_at_).count();
+    std::ostringstream oss;
+    oss << "{"
+        << "\"state\":\"" << state << "\","
+        << "\"thermal_connect_seen\":" << (thermal_connect_seen_.load() ? "true" : "false") << ","
+        << "\"recording_active\":" << (recording_active_.load() ? "true" : "false") << ","
+        << "\"paused\":" << (paused_.load() ? "true" : "false") << ","
+        << "\"total_rows_enqueued\":" << total_rows_enqueued_.load() << ","
+        << "\"last_row_enqueued_ns\":" << last_row_enqueued_ns_.load() << ","
+        << "\"dropped_thermal_empty_total\":" << dropped_thermal_empty_total_.load() << ","
+        << "\"dropped_left_empty_total\":" << dropped_left_empty_total_.load() << ","
+        << "\"dropped_right_empty_total\":" << dropped_right_empty_total_.load() << ","
+        << "\"uptime_ms\":" << uptime_ms
+        << "}";
+    auto msg = std_msgs::msg::String();
+    msg.data = oss.str();
+    health_pub_->publish(msg);
+  }
+
   void waitForWriterDrain(const char* reason, std::chrono::milliseconds timeout = std::chrono::milliseconds(3000)) {
     if (!writer_.waitUntilIdle(timeout)) {
       RCLCPP_WARN(this->get_logger(),
@@ -800,16 +858,19 @@ private:
     };
     if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) {
       ++skip_thermal_empty_;
+      ++dropped_thermal_empty_total_;
       report_skips_if_due();
       return;
     }
     if (!ring_.nearest_camera(odom_ns, "left", left_f, dt_left)) {
       ++skip_left_empty_;
+      ++dropped_left_empty_total_;
       report_skips_if_due();
       return;
     }
     if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) {
       ++skip_right_empty_;
+      ++dropped_right_empty_total_;
       report_skips_if_due();
       return;
     }
@@ -875,6 +936,13 @@ private:
     job.streaming_camera = (mode == 1) ? "right" : "left";
 
     writer_.enqueue(std::move(job));
+    // Drives /udc/health: the OCU watches total_rows_enqueued_ for
+    // forward progress and last_row_enqueued_ns_ for staleness. Both
+    // are updated AFTER successful enqueue so a row that died at one
+    // of the early-return gates never bumps these — the OCU's "REC
+    // STALE" detection stays accurate.
+    ++total_rows_enqueued_;
+    last_row_enqueued_ns_.store(static_cast<int64_t>(odom_ns));
   }
 
   // ---------- Camera selection ----------
@@ -1053,10 +1121,46 @@ private:
         return;
       }
       
-      // Create new session directory with timestamp
+      // Create new session directory with timestamp.
       session_dir_ = fs::path(cfg_.log_directory) / ("dataset_" + timestampStr());
-      fs::create_directories(session_dir_ / "frames");
-      
+      const fs::path frames_dir = session_dir_ / "frames";
+      // HARD-FAIL gate (item 2 of hardening list). Pre-fix the only
+      // check was csv_stream_->is_open(); if that succeeded we
+      // flipped recording_active_=true and the operator's scan looked
+      // healthy until they checked /R_DATA after Complete Mission and
+      // found an empty `frames/` dir (e.g. permissions wrong on a
+      // freshly-mounted drive, disk full, fs read-only, parent dir
+      // owned by root). Now we PROBE both the frames/ dir and the
+      // session dir with an actual write before agreeing to record.
+      // If anything fails we leave recording_active_=false so the
+      // coordinator's call_service_sync sees success=false and the
+      // OCU's scan-arming gate aborts the scan.
+      std::error_code ec;
+      fs::create_directories(frames_dir, ec);
+      if (ec) {
+        resp->success = false;
+        resp->message = "Failed to create session dir " + session_dir_.string() + ": " + ec.message();
+        RCLCPP_ERROR(get_logger(), "%s", resp->message.c_str());
+        return;
+      }
+      // Real write probe: create + remove a sentinel file under frames/.
+      // OS-level errno surfacing is more reliable than fs::status perms
+      // for fuse mounts, NFS, full disks, and ACL'd dirs.
+      const fs::path probe = frames_dir / ".udc_writable_probe";
+      {
+        std::ofstream probe_stream(probe);
+        if (!probe_stream.is_open() || !(probe_stream << "ok").flush()) {
+          resp->success = false;
+          resp->message = "Session dir is NOT writable: " + frames_dir.string();
+          RCLCPP_ERROR(get_logger(), "%s — refusing to start recording. "
+                       "Check disk space, mount status, and directory permissions on the robot.",
+                       resp->message.c_str());
+          fs::remove(probe, ec);
+          return;
+        }
+      }
+      fs::remove(probe, ec);
+
       // Create and open CSV file
       csv_stream_ = std::make_shared<std::ofstream>((session_dir_ / "unified_log.csv").string(),
                                                     std::ios::out | std::ios::trunc);
@@ -1720,6 +1824,9 @@ private:
   // CONNECT never came — the SDK can wedge across a non-graceful UDC
   // restart and the only symptom is silently empty visual frames.
   std::atomic<bool> thermal_connect_seen_{false};
+  // Set true by the connect watchdog if the 5s timeout elapses without
+  // a CONNECT event. Drives /udc/health state ERROR_THERMAL_WEDGED.
+  std::atomic<bool> thermal_connect_watchdog_fired_{false};
   rclcpp::TimerBase::SharedPtr thermal_connect_watchdog_;
   // Per-stream skip counters for the once-per-second silent-failure
   // diagnostic in onOdom. Resets each time the throttle window flushes.
@@ -1727,6 +1834,21 @@ private:
   std::atomic<uint64_t> skip_left_empty_{0};
   std::atomic<uint64_t> skip_right_empty_{0};
   std::chrono::steady_clock::time_point last_skip_log_at_{};
+  // Cumulative counters that NEVER reset. Drive the /udc/health
+  // payload so the OCU can detect "rows aren't growing -> recording
+  // is silently broken" without having to subtract sliding windows.
+  std::atomic<uint64_t> total_rows_enqueued_{0};
+  std::atomic<int64_t> last_row_enqueued_ns_{0};
+  std::atomic<uint64_t> dropped_thermal_empty_total_{0};
+  std::atomic<uint64_t> dropped_left_empty_total_{0};
+  std::atomic<uint64_t> dropped_right_empty_total_{0};
+  // /udc/health publisher + 1Hz timer. The OCU subscribes to drive
+  // the new "REC" pill (Stage 4/5 top bar) and to gate Start Scan
+  // when state == "DEAD_MAX_RESTARTS" (set by the launch supervisor
+  // wrapper, NOT by UDC itself).
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr health_pub_;
+  rclcpp::TimerBase::SharedPtr health_timer_;
+  std::chrono::steady_clock::time_point startup_at_{std::chrono::steady_clock::now()};
 
   // GStreamer
   struct GstElementDeleter { void operator()(GstElement* p) const { if (p) gst_object_unref(p); } };

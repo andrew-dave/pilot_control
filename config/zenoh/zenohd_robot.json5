@@ -33,7 +33,8 @@
           "^/mpc_accel/error_state$",
           "^/mpc_accel/reference_trajectory$",
           "^/mpc_accel/delta_cmd$",
-          "^/scan_segment_status$"
+          "^/scan_segment_status$",
+          "^/udc/health$"
         ],
 
         // Laptop -> Robot topics
