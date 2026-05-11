@@ -81,7 +81,9 @@
           "^/mpc_autonomous_controller/get_parameters$",
           "^/mpc_autonomous_controller/list_parameters$",
           "^/mpc_autonomous_controller/set_parameters$",
-          "^/mpc_autonomous_controller/set_parameters_atomically$"
+          "^/mpc_autonomous_controller/set_parameters_atomically$",
+          "^/data_collection_coordinator/set_parameters$",
+          "^/data_collection_coordinator/set_parameters_atomically$"
         ],
 
         service_clients: [],
