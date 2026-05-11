@@ -35,6 +35,7 @@ from std_srvs.srv import Trigger, SetBool
 from rcl_interfaces.srv import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
 import os
+import re
 import shutil
 import json
 import time
@@ -58,6 +59,21 @@ class DataCollectionCoordinator(Node):
         self.declare_parameter('gnss_post_stop_delay_sec', 30.0)
         self.declare_parameter('gnss_validation_min_file_size_bytes', 524288)
         self.declare_parameter('gnss_validation_min_duration_sec', 60.0)
+        # ----------------------------------------------------------------
+        # Per-mission session metadata. Pushed by the OCU's New Scan
+        # Information modal via SetParameters before the OCU calls
+        # /dc/start. Read fresh inside ensure_mission_session() and
+        # create_new_section() so a mid-mission re-prompt (operator backs
+        # out to Dashboard, picks a different building, comes back) takes
+        # effect on the next /dc/start without a coordinator restart.
+        #
+        # Empty strings are valid: they trigger the fallback path
+        # ('BDR_test' / 'unknown_operator' / 'metric'). That keeps the
+        # coordinator usable from `ros2 service call` without the OCU.
+        # ----------------------------------------------------------------
+        self.declare_parameter('building_name', '')
+        self.declare_parameter('operator_name', '')
+        self.declare_parameter('units_preference', '')
         
         # Get parameters
         self.base_data_dir = self.get_parameter('base_data_directory').value
@@ -79,6 +95,7 @@ class DataCollectionCoordinator(Node):
         
         # Dynamic state — set on each /dc/start
         self.day_folder = ''
+        self.building_folder = ''   # /R_DATA/<day>/<building_slug>
         self.section_folder = ''
         self.section_timestamp = ''
 
@@ -241,11 +258,81 @@ class DataCollectionCoordinator(Node):
         self.get_logger().info('  /dc/cancel_scan      - Abort whole scan: stop DC + delete all section data + mission folder')
         self.get_logger().info('')
         self.get_logger().info('Section folders are created dynamically on /dc/start')
+        self.get_logger().info(
+            '  Layout: <base>/<day>/<building_slug>/Section_<n>_<HHMMSS>/')
+        self.get_logger().info(
+            '  Set ROS params building_name / operator_name / units_preference')
+        self.get_logger().info(
+            '  before /dc/start to override fallbacks (BDR_test / unknown_operator / metric)')
         self.get_logger().info('='*60)
 
     # ================================================================
     #  Helpers
     # ================================================================
+
+    # ---- Session metadata (building / operator / units) -------------
+    #
+    # Pulled from ROS parameters every time a section or mission folder is
+    # created so a re-prompt from the OCU mid-session is reflected on the
+    # next /dc/start without a node restart. See `__init__` for context on
+    # the empty-string fallbacks.
+
+    _SLUG_DISALLOWED = re.compile(r'[^A-Za-z0-9._-]+')
+
+    @staticmethod
+    def slugify_building_name(raw: str) -> str:
+        """Convert an arbitrary string into a path-safe slug.
+
+        Mirrors `MissionMetadataDialog::slugify` in the OCU (C++).
+        Replaces runs of disallowed characters with `_`, strips leading/
+        trailing `_` and `.`, truncates to 64 chars. Empty input returns
+        '' so the caller can fall back to 'BDR_test'.
+        """
+        if not raw:
+            return ''
+        trimmed = raw.strip()
+        if not trimmed:
+            return ''
+        slug = DataCollectionCoordinator._SLUG_DISALLOWED.sub('_', trimmed)
+        slug = slug.strip('_.')
+        if len(slug) > 64:
+            slug = slug[:64].rstrip('_.')
+        return slug
+
+    def current_building_name(self) -> str:
+        """Operator-typed raw building name (post-strip). Fallback string
+        when the OCU never pushed a value."""
+        raw = str(self.get_parameter('building_name').value or '').strip()
+        return raw if raw else 'BDR_test'
+
+    def current_building_slug(self) -> str:
+        """Path-safe building slug used as the directory name under <day>/.
+
+        Returns 'BDR_test' when the param is empty or slugifies to nothing,
+        which keeps the on-disk tree well-formed for `ros2 service call`-
+        only workflows (no OCU in the loop).
+        """
+        slug = self.slugify_building_name(
+            str(self.get_parameter('building_name').value or ''))
+        return slug if slug else 'BDR_test'
+
+    def current_operator_name(self) -> str:
+        raw = str(self.get_parameter('operator_name').value or '').strip()
+        return raw if raw else 'unknown_operator'
+
+    def current_units_preference(self) -> str:
+        raw = str(self.get_parameter('units_preference').value or '').strip().lower()
+        return raw if raw in ('metric', 'ansi') else 'metric'
+
+    def current_session_metadata(self) -> dict:
+        """Bundle for embedding into session_config.json / gnss_session.json
+        / mission_config.json. Always read fresh — never cached."""
+        return {
+            'building_name': self.current_building_name(),
+            'building_slug': self.current_building_slug(),
+            'operator_name': self.current_operator_name(),
+            'units_preference': self.current_units_preference(),
+        }
 
     def call_service_sync(self, client, request, service_name, timeout=5.0):
         """
@@ -510,6 +597,7 @@ class DataCollectionCoordinator(Node):
             except Exception as e:
                 self.get_logger().warn(f'Failed to remove failed start section folder: {e}')
         self.day_folder = ''
+        self.building_folder = ''
         self.section_folder = ''
         self.section_timestamp = ''
         self.gnss_data_folder = ''
@@ -722,11 +810,17 @@ class DataCollectionCoordinator(Node):
             now = datetime.now()
             day_path = base / now.strftime('%B_%d_%Y')
             day_path.mkdir(parents=True, exist_ok=True)
+            # Per-client tree: insert the building slug between day and
+            # mission/section. AWS sync keys off this directly so each
+            # client's data sits in a self-contained subtree.
+            building_slug = self.current_building_slug()
+            building_path = day_path / building_slug
+            building_path.mkdir(parents=True, exist_ok=True)
             timestamp = now.strftime('%H%M%S')
-            mission_path = day_path / f'Mission_{timestamp}'
+            mission_path = building_path / f'Mission_{timestamp}'
             # Highly unlikely collision; if it happens, append seconds-ms.
             if mission_path.exists():
-                mission_path = day_path / f'Mission_{timestamp}_{now.strftime("%f")[:3]}'
+                mission_path = building_path / f'Mission_{timestamp}_{now.strftime("%f")[:3]}'
             mission_path.mkdir(parents=True, exist_ok=True)
 
             self.mission_folder = str(mission_path)
@@ -736,13 +830,15 @@ class DataCollectionCoordinator(Node):
             self.get_logger().error(f'Failed to create mission folder: {e}')
             return False
 
+        session_metadata = self.current_session_metadata()
+
         if not self.gnss_enabled:
             # Indoor mode: no UBX log, but we still create the mission folder
             # so the per-section session_config can reference it for grouping.
             self.mission_gnss_active = False
             self.mission_gnss_path = ''
             self.mission_gnss_started_at = None
-            self.update_mission_config({
+            mission_config = {
                 'mission_folder': self.mission_folder,
                 'mission_timestamp': self.mission_timestamp,
                 'gnss_enabled': False,
@@ -750,7 +846,9 @@ class DataCollectionCoordinator(Node):
                 'mission_finalized_at': None,
                 'mission_gnss_path': '',
                 'sections': [],
-            })
+            }
+            mission_config.update(session_metadata)
+            self.update_mission_config(mission_config)
             self.get_logger().info(
                 f'Mission folder created (indoor mode, no GNSS): {self.mission_folder}')
             return True
@@ -795,7 +893,7 @@ class DataCollectionCoordinator(Node):
 
         self.reset_gnss_precapture_state()
         self.mission_gnss_started_at = datetime.now().isoformat()
-        self.update_mission_config({
+        mission_config = {
             'mission_folder': self.mission_folder,
             'mission_timestamp': self.mission_timestamp,
             'gnss_enabled': True,
@@ -803,7 +901,9 @@ class DataCollectionCoordinator(Node):
             'mission_finalized_at': None,
             'mission_gnss_path': self.mission_gnss_path,
             'sections': [],
-        })
+        }
+        mission_config.update(session_metadata)
+        self.update_mission_config(mission_config)
         self.get_logger().info(f'Mission folder created: {self.mission_folder}')
         return True
 
@@ -939,12 +1039,17 @@ class DataCollectionCoordinator(Node):
     #  Section folder management
     # ================================================================
 
-    def find_next_section_number(self, day_path):
-        """Find the next available section number in the given day folder."""
-        if not day_path.exists():
+    def find_next_section_number(self, parent_path):
+        """Find the next available section number under the given folder.
+
+        With the per-building tree this is called with the building dir
+        (`/R_DATA/<day>/<building_slug>/`) so two buildings on the same
+        day each start at Section_1.
+        """
+        if not parent_path.exists():
             return 1
-        
-        section_folders = [d for d in day_path.iterdir()
+
+        section_folders = [d for d in parent_path.iterdir()
                            if d.is_dir() and d.name.startswith("Section_")]
         if not section_folders:
             return 1
@@ -980,11 +1085,23 @@ class DataCollectionCoordinator(Node):
             day_path.mkdir(parents=True, exist_ok=True)
             self.day_folder = str(day_path)
 
-            # Section folder:  e.g.  /R_DATA/February_10_2026/Section_7_143022
-            section_num = self.find_next_section_number(day_path)
+            # Building folder:  e.g.  /R_DATA/February_10_2026/Acme_HQ
+            # Same building scanned twice on the same day shares a single
+            # folder — sections accumulate underneath it. find_next_section_number
+            # therefore scans the building dir, not the day dir, so two
+            # different buildings on the same day each start at Section_1.
+            session_metadata = self.current_session_metadata()
+            building_slug = session_metadata['building_slug']
+            building_path = day_path / building_slug
+            building_path.mkdir(parents=True, exist_ok=True)
+            self.building_folder = str(building_path)
+
+            # Section folder:
+            # e.g.  /R_DATA/February_10_2026/Acme_HQ/Section_7_143022
+            section_num = self.find_next_section_number(building_path)
             timestamp = now.strftime("%H%M%S")
             section_name = f"Section_{section_num}_{timestamp}"
-            section_path = day_path / section_name
+            section_path = building_path / section_name
             section_path.mkdir(parents=True, exist_ok=True)
 
             # Sub-folders
@@ -1016,10 +1133,14 @@ class DataCollectionCoordinator(Node):
             else:
                 self.get_logger().info('  GNSS data:   disabled for indoor mode')
 
-            # Persist a session_config.json for offline tooling
+            # Persist a session_config.json for offline tooling.
+            # building_name (raw) + building_slug (path-safe) + operator
+            # + units_preference are embedded so AWS-side tooling can
+            # present the pretty name while keying off the slug.
             config = {
                 'base_directory': str(base),
                 'day_folder': str(day_path),
+                'building_folder': str(building_path),
                 'section_folder': str(section_path),
                 'visual_data_folder': str(visual_data_folder),
                 'gpr_scan_folder': str(gpr_scan_folder),
@@ -1030,6 +1151,7 @@ class DataCollectionCoordinator(Node):
                 'scan_mode': self.scan_mode,
                 'gnss_enabled': self.gnss_enabled,
             }
+            config.update(session_metadata)
             if self.gnss_enabled:
                 config.update({
                     'gnss_data_folder': '',
@@ -1071,6 +1193,7 @@ class DataCollectionCoordinator(Node):
                     'last_raw_obs_time': None,
                     'logging_failures': 0,
                 }
+                gnss_metadata.update(session_metadata)
                 with open(self.gnss_session_file, 'w') as f:
                     json.dump(gnss_metadata, f, indent=2)
 
@@ -1210,7 +1333,17 @@ class DataCollectionCoordinator(Node):
             return response
 
         self.reset_component_state()
-        
+
+        # Echo the session metadata at the start of every /dc/start so the
+        # coordinator log makes it obvious which building/operator a section
+        # belongs to without having to grep session_config.json.
+        meta = self.current_session_metadata()
+        self.get_logger().info('')
+        self.get_logger().info(
+            f"Session metadata: building='{meta['building_name']}' "
+            f"slug='{meta['building_slug']}' operator='{meta['operator_name']}' "
+            f"units={meta['units_preference']}")
+
         # --- Step 0: fresh section folder ---
         self.get_logger().info('')
         self.get_logger().info('Step 0: Creating new section folder...')
@@ -1983,6 +2116,7 @@ class DataCollectionCoordinator(Node):
         self.is_paused = False
         self.section_folder = ''
         self.day_folder = ''
+        self.building_folder = ''
         self.section_number = 0
         self.reset_component_state()
         self.reset_gnss_session_state()
