@@ -29,6 +29,7 @@
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -517,16 +518,53 @@ public:
     createCameraManager();
     writer_.start();
 
+    // Seek thermal CONNECT watchdog: if the SDK doesn't deliver
+    // SEEKCAMERA_MANAGER_EVENT_CONNECT within 5s, the SDK is almost
+    // certainly wedged from a previous UDC process that was killed
+    // mid-stream without running seekcamera_manager_destroy(). The
+    // failure mode is silent: visual frames stop flowing, but UDC
+    // happily accepts /video_record_set(true) and writes a CSV with
+    // only the header. Surface this loudly so the operator knows to
+    // replug the Seek USB cable. Watchdog auto-disarms once CONNECT
+    // is seen (or after the first fire) — we don't bombard the log.
+    thermal_connect_watchdog_ = this->create_wall_timer(
+        std::chrono::seconds(5),
+        [this]() {
+          if (!thermal_connect_seen_.load()) {
+            RCLCPP_ERROR(this->get_logger(),
+                "[Thermal] WEDGED: SEEKCAMERA_MANAGER_EVENT_CONNECT not received "
+                "within 5s. The Seek SDK is likely stuck from a prior UDC "
+                "process that was killed mid-stream. Visual frames will be "
+                "EMPTY this session. RECOVERY: physically unplug+replug the "
+                "Seek thermal USB cable now; CONNECT should fire and "
+                "/thermal/thumb resume publishing.");
+          }
+          // One-shot — disarm regardless of outcome.
+          if (thermal_connect_watchdog_) {
+            thermal_connect_watchdog_->cancel();
+          }
+        });
+
     RCLCPP_INFO(get_logger(), "UnifiedDataCollector ready. Odom: %s", cfg_.odom_topic.c_str());
     RCLCPP_INFO(get_logger(), "Call /video_record_set service to start/stop recording");
   }
 
   ~UnifiedDataCollector() override {
     shutting_down_.store(true);
-    writer_.stop();
-    if (csv_stream_ && csv_stream_->is_open()) { csv_stream_->flush(); csv_stream_->close(); }
+    // Seek SDK FIRST. If we get SIGKILL'd partway through shutdown (ros2
+    // launch escalates to SIGKILL after shutdown_timeout, and the OCU's
+    // teardown pkill can race), losing writer drain just truncates the
+    // current CSV — but failing to call seekcamera_manager_destroy
+    // wedges the Seek thermal SDK across UDC restarts: the next UDC
+    // process opens the USB device, never receives a CONNECT event,
+    // and silently records empty visual frames until the operator
+    // physically replugs the USB. See robot_complete.launch.py
+    // (UDC has respawn=True) and AppShellWindow teardown for the
+    // surrounding lifecycle.
     destroyCameraManager();
     stopGStreamer();
+    writer_.stop();
+    if (csv_stream_ && csv_stream_->is_open()) { csv_stream_->flush(); csv_stream_->close(); }
   }
 
 private:
@@ -733,9 +771,48 @@ private:
     CameraFrame right_f; uint64_t dt_right=0;
     GpsFrame gps_f; uint64_t dt_gps=0;
     
-    if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) return;
-    if (!ring_.nearest_camera(odom_ns, "left", left_f, dt_left)) return;
-    if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) return;
+    // Three early-exit gates for missing producer frames. Pre-fix, all
+    // three skipped silently — a single missing producer (e.g. Seek
+    // thermal SDK wedged across UDC restart) caused 100% of rows to
+    // drop with zero log signal. We now bump per-stream counters and
+    // dump them once per second whenever ANY producer is missing, so
+    // the failure mode is visible without flooding the log.
+    auto report_skips_if_due = [this]() {
+      const auto now = std::chrono::steady_clock::now();
+      if (last_skip_log_at_.time_since_epoch().count() == 0) {
+        last_skip_log_at_ = now;
+        return;
+      }
+      const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          now - last_skip_log_at_).count();
+      if (elapsed_ms < 1000) return;
+      const auto t = skip_thermal_empty_.exchange(0);
+      const auto l = skip_left_empty_.exchange(0);
+      const auto r = skip_right_empty_.exchange(0);
+      last_skip_log_at_ = now;
+      if (t || l || r) {
+        RCLCPP_WARN(this->get_logger(),
+            "onOdom dropped rows in last 1s: thermal_empty=%lu left_empty=%lu right_empty=%lu "
+            "(thermal_connect_seen=%d) — visual CSV will be sparse/empty this session",
+            (unsigned long)t, (unsigned long)l, (unsigned long)r,
+            thermal_connect_seen_.load() ? 1 : 0);
+      }
+    };
+    if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) {
+      ++skip_thermal_empty_;
+      report_skips_if_due();
+      return;
+    }
+    if (!ring_.nearest_camera(odom_ns, "left", left_f, dt_left)) {
+      ++skip_left_empty_;
+      report_skips_if_due();
+      return;
+    }
+    if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) {
+      ++skip_right_empty_;
+      report_skips_if_due();
+      return;
+    }
     
     // GPS is optional - don't fail if no GPS data available
     bool has_gps = ring_.nearest_gps(odom_ns, gps_f, dt_gps);
@@ -1047,6 +1124,7 @@ private:
   void onThermalEvent(seekcamera_t* cam, seekcamera_manager_event_t ev, seekcamera_error_t status){
     (void)status;
     if (ev == SEEKCAMERA_MANAGER_EVENT_CONNECT) {
+      thermal_connect_seen_.store(true);
       thermal_cam_ = cam;
       seekcamera_set_pipeline_mode(thermal_cam_, cfg_.use_seekvision_mode
                                         ? SEEKCAMERA_IMAGE_SEEKVISION
@@ -1462,7 +1540,19 @@ private:
       }
       auto ret = gst_element_set_state(pipeline_.get(), GST_STATE_PLAYING);
       if (ret == GST_STATE_CHANGE_FAILURE) {
-        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING - check camera devices and network");
+        // Pre-fix this just RCLCPP_FATAL'd and the process kept
+        // running with a half-built pipeline — appsinks never fired,
+        // visual data was empty, and there was no crash for
+        // respawn=True (in robot_complete.launch.py) to react to.
+        // Force a non-zero exit so the launch supervisor can either
+        // respawn us cleanly or surface the failure to the operator.
+        // Using std::_Exit to skip destructors (we're on a worker
+        // thread; running ~UnifiedDataCollector here would race the
+        // main thread's spin loop). The process supervisor will then
+        // restart UDC with a fresh device claim.
+        RCLCPP_FATAL(this->get_logger(), "Failed to set pipeline to PLAYING - check camera devices and network. "
+                     "Forcing process exit so the launch supervisor can respawn UDC with a fresh device claim.");
+        std::_Exit(2);
       } else if (ret == GST_STATE_CHANGE_ASYNC) {
         RCLCPP_INFO(this->get_logger(), "Pipeline state change pending (async)");
       } else {
@@ -1624,6 +1714,19 @@ private:
   // Thermal Camera
   seekcamera_manager_t* mgr_ = nullptr;
   seekcamera_t* thermal_cam_ = nullptr;
+  // Set true the first time SEEKCAMERA_MANAGER_EVENT_CONNECT fires.
+  // Watchdog timer (`thermal_connect_watchdog_`) reads it after 5s and
+  // logs a loud WARN explaining how to recover (replug Seek USB) if
+  // CONNECT never came — the SDK can wedge across a non-graceful UDC
+  // restart and the only symptom is silently empty visual frames.
+  std::atomic<bool> thermal_connect_seen_{false};
+  rclcpp::TimerBase::SharedPtr thermal_connect_watchdog_;
+  // Per-stream skip counters for the once-per-second silent-failure
+  // diagnostic in onOdom. Resets each time the throttle window flushes.
+  std::atomic<uint64_t> skip_thermal_empty_{0};
+  std::atomic<uint64_t> skip_left_empty_{0};
+  std::atomic<uint64_t> skip_right_empty_{0};
+  std::chrono::steady_clock::time_point last_skip_log_at_{};
 
   // GStreamer
   struct GstElementDeleter { void operator()(GstElement* p) const { if (p) gst_object_unref(p); } };
