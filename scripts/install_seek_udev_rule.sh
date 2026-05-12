@@ -48,7 +48,29 @@ echo "Reloading udev rules..."
 sudo udevadm control --reload-rules
 
 echo "Triggering re-evaluation for any already-plugged Seek devices..."
-sudo udevadm trigger --action=add --subsystem-match=usb --attr-match=idVendor=289d || true
+# We trigger BY DEVICE PATH for every plugged Seek (matched by VID
+# 289d) instead of using `--attr-match=idVendor=289d`.  Field-tested
+# May 2026 on Ubuntu 22.04 / udev 249: the `--attr-match` filter
+# silently matches nothing on this udevadm version even though the
+# attribute is clearly present in sysfs (`udevadm test` confirms the
+# rule WOULD fire).  Path-targeted triggers always work because they
+# bypass the filter engine entirely.
+triggered=0
+for f in /sys/bus/usb/devices/*/idVendor; do
+    [ -f "$f" ] || continue
+    vid=$(cat "$f" 2>/dev/null)
+    if [ "${vid,,}" = "289d" ]; then
+        dev_dir=$(dirname "$f")
+        echo "  -> triggering ${dev_dir}"
+        sudo udevadm trigger --action=add "$dev_dir" || true
+        triggered=$((triggered + 1))
+    fi
+done
+if [ "$triggered" -eq 0 ]; then
+    echo "  (no Seek device currently plugged in; rule will apply automatically on next plug)"
+fi
+# Brief settle so the verify block below sees the post-RUN state.
+sleep 0.5
 
 echo
 echo "Done.  Verify the per-device authorized file is now group-writable:"
