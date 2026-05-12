@@ -114,9 +114,19 @@ def _write_authorized(device_path: str, value: str) -> None:
         check=False,
     )
     if proc.returncode != 0:
+        # Don't surface sudo's raw stderr verbatim — it always contains
+        # the substring "password" (e.g. "sudo: a password is required"),
+        # which can trip crude downstream regex checks that flag the
+        # entire robot launch as failed.  The OCU's
+        # AppShellWindow::onRobotLaunchOutput pattern-match used to do
+        # exactly this and froze the launch diagnostics on a benign
+        # warning.  The actionable hint (run install_seek_udev_rule.sh)
+        # is already printed by the caller in scripts/seek_usb_reset.py
+        # `_run_reset_cycle` right after this exception is caught, so
+        # dropping the raw stderr here loses nothing the operator needs.
         raise PermissionError(
-            f"sudo -n tee {target} failed (rc={proc.returncode}): "
-            f"{proc.stderr.decode('utf-8', errors='replace').strip()}"
+            f"sudo -n tee {target} denied (rc={proc.returncode}); "
+            f"NOPASSWD rule for /sys path is missing"
         )
 
 
