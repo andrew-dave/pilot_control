@@ -234,6 +234,34 @@ class DataCollectionCoordinator(Node):
 
         self.precapture_watchdog_timer = self.create_timer(
             30.0, self.precapture_watchdog_callback, callback_group=self.callback_group)
+
+        # Stage 5 disconnect-resilience safety net.
+        #
+        # Heartbeat: every 30 s while a mission is open, write
+        # `last_heartbeat_at` into mission_config.json. Lets post-flight
+        # tooling detect "this mission was never properly finalized"
+        # without ambiguity, and lets the OCU on reconnect see "we were
+        # here, mission still open" instead of starting a fresh one.
+        #
+        # Auto-finalize watchdog: if a mission has been open for >
+        # mission_idle_timeout_sec without any /dc service activity,
+        # auto-finalize it. Operator-abandoned, OCU-crashed, OCU-
+        # closed-without-Complete-Mission — all the same recovery path:
+        # data on disk gets the proper `mission_finalized_at` +
+        # `finalized_via: watchdog` so the section folders are usable
+        # downstream without manual cleanup.
+        self.declare_parameter('mission_heartbeat_interval_sec', 30.0)
+        self.declare_parameter('mission_idle_timeout_sec', 600.0)  # 10 min
+        self.mission_heartbeat_interval_sec = float(
+            self.get_parameter('mission_heartbeat_interval_sec').value)
+        self.mission_idle_timeout_sec = float(
+            self.get_parameter('mission_idle_timeout_sec').value)
+        self.mission_last_activity_at = time.monotonic()
+        self.mission_heartbeat_timer = self.create_timer(
+            self.mission_heartbeat_interval_sec,
+            self.mission_heartbeat_callback,
+            callback_group=self.callback_group)
+
         if self.gnss_enabled:
             self.cleanup_stale_gnss_precaptures()
         
@@ -424,16 +452,42 @@ class DataCollectionCoordinator(Node):
         return True, f'{node_label}: {param_name} updated'
 
     def update_json_file(self, path: Path, updates: dict):
-        """Merge updates into a JSON file, creating it if needed."""
+        """Merge updates into a JSON file atomically (Stage 5 reliability).
+
+        Uses tmp + os.replace() so a power-loss / SIGKILL between the
+        write() and the rename leaves the previous valid JSON on disk
+        instead of a half-written file. The rename itself is atomic at
+        the POSIX layer for files within the same filesystem (which
+        mission_config.json + section_metadata.json always are — they
+        live next to their tmp under the same mission folder).
+        """
         try:
             data = {}
             if path.exists():
-                with open(path, 'r') as f:
-                    data = json.load(f)
+                try:
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                except (OSError, json.JSONDecodeError) as read_err:
+                    # Corruption in the existing file is non-fatal — we
+                    # rewrite it from scratch with the new merge. Log
+                    # so post-flight tooling can flag the gap.
+                    self.get_logger().warn(
+                        f'JSON re-read failed for {path}: {read_err} — rewriting from updates only')
+                    data = {}
             data.update(updates)
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, 'w') as f:
+            tmp_path = path.with_suffix(path.suffix + '.tmp')
+            with open(tmp_path, 'w') as f:
                 json.dump(data, f, indent=2)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except OSError:
+                    # Some filesystems (tmpfs in dev) don't support
+                    # fsync — non-fatal, the rename still gives us
+                    # ordering vs the previous state.
+                    pass
+            os.replace(tmp_path, path)
         except Exception as e:
             self.get_logger().warn(f'Failed to update JSON file {path}: {e}')
 
@@ -904,6 +958,11 @@ class DataCollectionCoordinator(Node):
         }
         mission_config.update(session_metadata)
         self.update_mission_config(mission_config)
+        # Reset auto-finalize watchdog baseline now that a fresh
+        # mission is open. Without this the watchdog could fire if the
+        # operator left the OCU sitting on Stage 5 for >10 min between
+        # /dc/start_gnss_precapture and /dc/start.
+        self.mission_touch()
         self.get_logger().info(f'Mission folder created: {self.mission_folder}')
         return True
 
@@ -914,6 +973,62 @@ class DataCollectionCoordinator(Node):
             except OSError:
                 return 0
         return 0
+
+    def mission_touch(self):
+        """Stamp 'now' as the last activity time for the auto-finalize watchdog.
+
+        Called from every operator-driven /dc/* service handler so the
+        watchdog stays parked while the OCU is actively driving the
+        mission. Cheap; just bumps a monotonic float.
+        """
+        self.mission_last_activity_at = time.monotonic()
+
+    def mission_heartbeat_callback(self):
+        """Periodic heartbeat + auto-finalize watchdog (Stage 5).
+
+        While a mission is open:
+          - Stamp `last_heartbeat_at` (ISO-8601 wall clock) into
+            mission_config.json so post-flight tooling and the OCU's
+            reconnect path can detect open-but-stale missions.
+          - If no /dc/* activity for >= mission_idle_timeout_sec,
+            auto-finalize the mission with `finalized_via: watchdog`.
+            Operator-abandoned, OCU-crashed, OCU-closed-without-
+            Complete-Mission — all the same recovery path so the data
+            on disk is properly tagged.
+        """
+        if not self.mission_folder:
+            return
+
+        now = datetime.now().isoformat()
+        try:
+            self.update_mission_config({'last_heartbeat_at': now})
+        except Exception as e:
+            self.get_logger().warn(f'Mission heartbeat write failed: {e}')
+
+        idle_sec = time.monotonic() - self.mission_last_activity_at
+        if idle_sec >= self.mission_idle_timeout_sec:
+            self.get_logger().warn(
+                'Mission idle for {:.0f}s (>= {:.0f}s) — auto-finalizing '
+                '(operator likely abandoned or OCU disconnected)'.format(
+                    idle_sec, self.mission_idle_timeout_sec))
+            try:
+                # Synthesize a Trigger request/response pair so we can
+                # call the existing finalize handler without rewriting it.
+                req = Trigger.Request()
+                resp = Trigger.Response()
+                self.finalize_mission_callback(req, resp)
+                if self.mission_folder:
+                    # finalize_mission_callback may have already cleared
+                    # mission_folder — guard the post-stamp write.
+                    self.update_mission_config({
+                        'finalized_via': 'watchdog',
+                        'watchdog_idle_sec': round(idle_sec, 1),
+                    })
+                # Reset the activity stamp so we don't re-fire every
+                # heartbeat tick after finalization completes.
+                self.mission_touch()
+            except Exception as e:
+                self.get_logger().error(f'Watchdog auto-finalize failed: {e}')
 
     def record_section_start_in_mission(self, section_name: str):
         self.mission_active_section_start = {
@@ -947,6 +1062,7 @@ class DataCollectionCoordinator(Node):
         is active.
         """
         del request
+        self.mission_touch()
         self.get_logger().info('')
         self.get_logger().info('=' * 60)
         self.get_logger().info('FINALIZING MISSION')
@@ -1321,6 +1437,7 @@ class DataCollectionCoordinator(Node):
         3. G - Start GPR scan (includes linear actuator UP + GPR motor + logging)
         4. R - Start video recording (RGB + thermal)
         """
+        self.mission_touch()
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('STARTING DATA COLLECTION SEQUENCE')
@@ -1516,6 +1633,7 @@ class DataCollectionCoordinator(Node):
     def pause_callback(self, request, response):
         """Pause all data collection"""
         del request
+        self.mission_touch()
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('PAUSING DATA COLLECTION')
@@ -1595,6 +1713,7 @@ class DataCollectionCoordinator(Node):
     def resume_callback(self, request, response):
         """Resume all data collection"""
         del request
+        self.mission_touch()
         self.get_logger().info('')
         self.get_logger().info('='*60)
         self.get_logger().info('RESUMING DATA COLLECTION')
@@ -1679,6 +1798,7 @@ class DataCollectionCoordinator(Node):
 
         request.data: False (0) = partial, True (1) = complete
         """
+        self.mission_touch()
         tag = 'complete' if request.data else 'partial'
         
         self.get_logger().info('')
@@ -1981,6 +2101,7 @@ class DataCollectionCoordinator(Node):
         operator back to Map Processing after this call returns.
         """
         del request
+        self.mission_touch()
         self.get_logger().info('')
         self.get_logger().info('=' * 60)
         self.get_logger().info('CANCELLING SCAN — deleting ALL collected mission data')
