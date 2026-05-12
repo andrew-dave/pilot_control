@@ -402,6 +402,65 @@ class UdcSupervisor(Node):
         return 0
 
 
+def _locate_udc_binary():
+    """Find the unified_data_collector binary across dev and install layouts.
+
+    Search order, first hit wins:
+
+    1. ``$UDC_BINARY`` env var.  This is what robot_complete.launch.py sets
+       (via ``additional_env``) so the supervisor never has to guess.
+
+    2. Adjacent to ``__file__`` *without* ``realpath``.  Under
+       ``colcon build --symlink-install`` (the default dev workflow),
+       ``install/pilot_control/lib/pilot_control/udc_supervisor.py`` is a
+       symlink back to ``src/pilot_control/scripts/udc_supervisor.py``.
+       The C++ binary lives next to the symlink in the install tree, NOT
+       next to the source file — so we MUST avoid resolving the symlink
+       here.  ``os.path.abspath(__file__)`` gives the install-tree path
+       (the path Python was invoked with); ``realpath`` would jump to the
+       source tree and miss the binary.
+
+    3. Adjacent to ``__file__`` *with* ``realpath``.  Covers the
+       --merge-install (no symlinks) layout where install is a copy.
+
+    4. ``ament_index_python.packages.get_package_prefix('pilot_control')
+       /lib/pilot_control/unified_data_collector``.  Last-ditch fallback
+       when the supervisor was launched from somewhere truly unusual
+       (e.g. invoked by absolute path from a test harness).
+
+    Returns the absolute binary path or ``None`` if every probe missed.
+    """
+    env = os.environ.get('UDC_BINARY')
+    if env:
+        return env
+
+    candidates = []
+    # (2) Install-tree adjacent — the common dev workflow.
+    here_install = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.join(here_install, 'unified_data_collector'))
+    # (3) Source-tree adjacent (only useful in --merge-install builds).
+    here_real = os.path.dirname(os.path.realpath(__file__))
+    if here_real != here_install:
+        candidates.append(os.path.join(here_real, 'unified_data_collector'))
+    # (4) ament_index lookup — defensive fallback.
+    try:
+        from ament_index_python.packages import get_package_prefix
+        prefix = get_package_prefix('pilot_control')
+        candidates.append(
+            os.path.join(prefix, 'lib', 'pilot_control', 'unified_data_collector')
+        )
+    except Exception:
+        # ament_index missing or pilot_control not installed — let the
+        # other probes handle it; we don't want a crash here to mask a
+        # successful (1)/(2)/(3) hit above.
+        pass
+
+    for path in candidates:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return None
+
+
 def _rewrite_params_for_child(params_file: str, supervisor_name: str = 'udc_supervisor',
                               child_name: str = 'unified_data_collector') -> str:
     """Rewrite a ROS 2 params YAML so its top-level key matches the child node name.
@@ -449,13 +508,7 @@ def _build_child_argv_from_supervisor_argv(argv):
         3. Build a child command line that points at the rewritten YAML and
            remaps ``__node:=unified_data_collector``.
     """
-    udc_binary = os.environ.get('UDC_BINARY')
-    if not udc_binary:
-        # Same install layout as the supervisor itself.
-        here = os.path.dirname(os.path.realpath(__file__))
-        candidate = os.path.join(here, 'unified_data_collector')
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            udc_binary = candidate
+    udc_binary = _locate_udc_binary()
     if not udc_binary:
         print('udc_supervisor: cannot locate unified_data_collector binary; '
               'set $UDC_BINARY or place it next to udc_supervisor.py',

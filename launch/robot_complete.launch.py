@@ -9,11 +9,30 @@ import re
 import glob
 import yaml
 from pathlib import Path
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import (
+    get_package_prefix,
+    get_package_share_directory,
+)
 
 
 # Tilt calibration directory (same as in tilt_calibration.py)
 TILT_CALIBRATION_DIR = '/R_DATA/tilt_calibration'
+
+# Absolute path to the unified_data_collector C++ binary in the install tree.
+# Passed to udc_supervisor.py via $UDC_BINARY so the supervisor doesn't have
+# to auto-locate it.  The auto-locate fallback in udc_supervisor.py uses
+# os.path.realpath(__file__), which under `colcon build --symlink-install`
+# resolves through the symlink to src/pilot_control/scripts/ — where the
+# binary does NOT live — and the launch dies with
+#   "udc_supervisor: cannot locate unified_data_collector binary".
+# Setting the env var explicitly here bypasses that trap on every robot
+# regardless of build mode.  get_package_prefix() returns the install
+# tree root (e.g. /home/roofus/pilot_ws/install/pilot_control) so this is
+# portable across users and machines.
+UDC_BINARY_PATH = os.path.join(
+    get_package_prefix('pilot_control'),
+    'lib', 'pilot_control', 'unified_data_collector',
+)
 DEFAULT_ROBOT_CONFIG_FILE = os.environ.get(
     'PILOT_ROBOT_CONFIG',
     os.path.expanduser('~/pilot_config/robot.yaml')
@@ -252,6 +271,15 @@ def generate_launch_description():
         name='udc_supervisor',
         output='screen',
         respawn=False,
+        # Tell the supervisor exactly where the C++ child lives.  Without
+        # this, the supervisor falls back to os.path.realpath(__file__)
+        # which under colcon `--symlink-install` resolves to the source
+        # tree (no binary there) and the launch hard-fails with the
+        # OCU stuck on "Waiting for video services...".  See UDC_BINARY_PATH
+        # at the top of this file.
+        additional_env={
+            'UDC_BINARY': UDC_BINARY_PATH,
+        },
         parameters=[{
             # Odometry and thermal camera settings (using tilt-corrected odometry)
             'fastlio_odom_topic': '/Odometry_tilt_corrected_diff',
