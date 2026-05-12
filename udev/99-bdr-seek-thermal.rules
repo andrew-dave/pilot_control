@@ -1,0 +1,36 @@
+# /etc/udev/rules.d/99-bdr-seek-thermal.rules
+#
+# Grant the `roofus` group write access to the per-device sysfs
+# `authorized` file for any Seek Thermal USB camera.  This lets the
+# OCU's `udc_supervisor` (running as `roofus`) deauthorize +
+# reauthorize the device — equivalent to a physical USB replug —
+# without sudo or a password prompt.
+#
+# Why we need this:
+#   The Seek SDK's USB driver wedges if a previous UDC process was
+#   killed mid-stream without running `seekcamera_manager_destroy()`.
+#   The next UDC process opens the device, never receives the
+#   SEEKCAMERA_MANAGER_EVENT_CONNECT event, and silently records
+#   empty visual frames.  Recovery requires unplugging and replugging
+#   the cable — which an operator cannot do once Roofus is buttoned
+#   up for a scan.  Programmatically toggling `authorized` is the
+#   software equivalent.
+#
+# Vendor ID 289d covers all Seek Thermal devices (Compact, CompactPro,
+# Mosaic Core / S304SP, Roadware, etc.).
+#
+# Install:
+#   sudo cp 99-bdr-seek-thermal.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger --subsystem-match=usb --attr-match=idVendor=289d
+#
+# Verify:
+#   ls -l /sys/bus/usb/devices/*/authorized | grep -i 289d  # group should be `roofus`
+#   stat -c '%G %a' /sys/bus/usb/devices/<port>/authorized   # `roofus 664`
+#
+# The `change` action covers the case where the rule is loaded after
+# the Seek device was already plugged in (e.g. first install on a
+# running system); `udevadm trigger` then re-fires `add` events.
+
+ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="289d", \
+    RUN+="/bin/sh -c '/bin/chgrp roofus /sys$devpath/authorized 2>/dev/null; /bin/chmod g+w /sys$devpath/authorized 2>/dev/null'"

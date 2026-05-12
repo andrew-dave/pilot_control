@@ -299,6 +299,15 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install udev rules so the operator can run install_seek_udev_rule.sh
+# to grant `roofus` write access to per-device sysfs `authorized` (used
+# by seek_usb_reset.py to programmatically replug the Seek thermal
+# camera when the SDK wedges).  See udev/99-bdr-seek-thermal.rules.
+install(
+  DIRECTORY udev
+  DESTINATION share/${PROJECT_NAME}
+)
+
 # Install coverage planner robot registry for packaged/runtime lookup.
 install(
   FILES scripts/F2C/cpp/config/robots.json
@@ -322,6 +331,8 @@ install(
   scripts/setup_data_folders.py
   scripts/data_collection_coordinator.py
   scripts/udc_supervisor.py
+  scripts/seek_usb_reset.py
+  scripts/install_seek_udev_rule.sh
   scripts/finalize_mission_local.py
   scripts/F2C/f2c_check.py
   scripts/F2C/pointcloud_to_f2c_field.py

@@ -45,6 +45,28 @@
 
 namespace fs = std::filesystem;
 
+// =================== Supervisor exit-code contract ===================
+// Distinct exit code that tells `udc_supervisor.py` to run
+// `seek_usb_reset.py` before respawning UDC, instead of doing a plain
+// restart that would just re-wedge the SDK on the same dead USB
+// device.  Picked from the POSIX EX_TEMPFAIL convention (75) so it
+// doesn't collide with shell signal-encoded codes (>= 128).
+//
+// NOTE: keep this in sync with `_EXIT_NEEDS_USB_RESET` in
+// `scripts/udc_supervisor.py` — both constants describe the same
+// wire.
+static constexpr int kExitThermalNeedsReset = 75;
+
+// Set by the in-process wedge detectors before they call
+// rclcpp::shutdown().  main() reads this after spin returns and
+// passes it to `return` so the supervisor sees the right rc.
+//
+// Atomic for callback safety; std::exit() would skip ~UnifiedDataCollector
+// (the destructor that calls seekcamera_manager_destroy + drains the
+// CSV writer), so we route through rclcpp::shutdown() instead and let
+// the destructor run cleanly.
+static std::atomic<int> g_requested_exit_code_{0};
+
 // ==== SDK compat shims (handle older enum names) ====
 #ifndef SEEKCAMERA_PIPELINE_MODE_IMAGE_LITE
   #ifdef SEEKCAMERA_IMAGE_LITE
@@ -535,14 +557,86 @@ public:
             RCLCPP_ERROR(this->get_logger(),
                 "[Thermal] WEDGED: SEEKCAMERA_MANAGER_EVENT_CONNECT not received "
                 "within 5s. The Seek SDK is likely stuck from a prior UDC "
-                "process that was killed mid-stream. Visual frames will be "
-                "EMPTY this session. RECOVERY: physically unplug+replug the "
-                "Seek thermal USB cable now; CONNECT should fire and "
-                "/thermal/thumb resume publishing.");
+                "process that was killed mid-stream. Requesting USB reset "
+                "via udc_supervisor (will programmatically replug the Seek "
+                "device, no operator action required).");
+            // Publish ERROR_THERMAL_WEDGED first so the supervisor's
+            // latched view + the OCU's REC pill both have a chance to
+            // observe the cause before we exit.  500 ms is more than
+            // enough for the latched health publisher to deliver one
+            // message under TRANSIENT_LOCAL.
+            publishHealth();
+            requestExitForUsbReset(
+                "thermal connect watchdog: no CONNECT event in 5s");
           }
           // One-shot — disarm regardless of outcome.
           if (thermal_connect_watchdog_) {
             thermal_connect_watchdog_->cancel();
+          }
+        });
+
+    // ----- Runtime drop-rate detector (post-CONNECT wedge) -----
+    //
+    // The CONNECT watchdog above only catches the *startup* wedge
+    // (SDK never delivers a single frame).  The other wedge mode
+    // operator hit was a *runtime* wedge: first scan succeeds, then
+    // on the second scan in the same session UDC is alive, accepts
+    // /video_record_set(true), but `dropped_thermal_empty_total`
+    // climbs steadily while no rows enqueue — visual_data ends up as
+    // a CSV header with zero rows.
+    //
+    // Heuristic (intentionally conservative to avoid false positives
+    // during the brief window after a thermal frame skips):
+    //   Window:   5 s.
+    //   Stuck:    recording_active && !paused
+    //             && (delta drops_thermal >= 10)
+    //             && (delta rows == 0)
+    //   Trigger:  2 consecutive stuck windows -> exit 75.
+    //
+    // 2 stuck windows = ~10 s of wall time before the supervisor
+    // intervenes; the operator sees the REC pill flip to STALE
+    // briefly, then UDC re-spawns clean and the scan continues.
+    runtime_wedge_watchdog_ = this->create_wall_timer(
+        std::chrono::seconds(5),
+        [this]() {
+          if (!recording_active_.load() || paused_.load()) {
+            // Reset the streak counter — only count consecutive stuck
+            // windows that occur during active recording.
+            runtime_wedge_consecutive_stuck_windows_ = 0;
+            runtime_wedge_prev_drops_ = dropped_thermal_empty_total_.load();
+            runtime_wedge_prev_rows_ = total_rows_enqueued_.load();
+            return;
+          }
+          const uint64_t cur_drops = dropped_thermal_empty_total_.load();
+          const uint64_t cur_rows = total_rows_enqueued_.load();
+          const uint64_t drops_delta = cur_drops - runtime_wedge_prev_drops_;
+          const uint64_t rows_delta = cur_rows - runtime_wedge_prev_rows_;
+          runtime_wedge_prev_drops_ = cur_drops;
+          runtime_wedge_prev_rows_ = cur_rows;
+          const bool stuck = (drops_delta >= 10) && (rows_delta == 0);
+          if (stuck) {
+            ++runtime_wedge_consecutive_stuck_windows_;
+            RCLCPP_WARN(this->get_logger(),
+                "[Thermal] runtime wedge suspect window %d/2 "
+                "(drops_delta=%lu, rows_delta=%lu)",
+                runtime_wedge_consecutive_stuck_windows_,
+                static_cast<unsigned long>(drops_delta),
+                static_cast<unsigned long>(rows_delta));
+            if (runtime_wedge_consecutive_stuck_windows_ >= 2) {
+              RCLCPP_ERROR(this->get_logger(),
+                  "[Thermal] WEDGED at runtime: drops climbing "
+                  "(%lu in last 5s) but no rows enqueued for two "
+                  "consecutive windows. Requesting USB reset via "
+                  "udc_supervisor.",
+                  static_cast<unsigned long>(drops_delta));
+              // Mark the health state so the OCU sees the cause, then
+              // route to the same exit path as the startup watchdog.
+              thermal_connect_watchdog_fired_.store(true);
+              publishHealth();
+              requestExitForUsbReset("runtime drop-rate detector");
+            }
+          } else {
+            runtime_wedge_consecutive_stuck_windows_ = 0;
           }
         });
 
@@ -581,6 +675,26 @@ public:
   }
 
 private:
+  // ---------- USB-reset exit request ----------
+  // Idempotent: subsequent calls are no-ops.  Called from either
+  // the connect watchdog (startup wedge) or the runtime drop-rate
+  // detector.  Publishes the latched ERROR_THERMAL_WEDGED message
+  // one more time then asks rclcpp::spin to return so main() can
+  // do clean teardown (~UnifiedDataCollector runs Seek SDK destroy +
+  // CSV drain) before exit(75) is returned.
+  void requestExitForUsbReset(const std::string& reason) {
+    int expected = 0;
+    if (!g_requested_exit_code_.compare_exchange_strong(
+            expected, kExitThermalNeedsReset)) {
+      return;  // Already requested.
+    }
+    RCLCPP_FATAL(this->get_logger(),
+        "[UDC] requesting USB-reset-and-respawn (rc=%d): %s",
+        kExitThermalNeedsReset, reason.c_str());
+    // shutdown() asynchronously breaks rclcpp::spin in main().
+    rclcpp::shutdown();
+  }
+
   // ---------- Health publisher ----------
   // Emits a single JSON line on /udc/health (std_msgs/String). State
   // machine, in priority order:
@@ -1828,6 +1942,14 @@ private:
   // a CONNECT event. Drives /udc/health state ERROR_THERMAL_WEDGED.
   std::atomic<bool> thermal_connect_watchdog_fired_{false};
   rclcpp::TimerBase::SharedPtr thermal_connect_watchdog_;
+  // Runtime wedge detector — see the create_wall_timer block in
+  // the constructor for the full state machine + thresholds.  These
+  // members are touched only from the timer callback (single thread)
+  // so they don't need to be atomic.
+  rclcpp::TimerBase::SharedPtr runtime_wedge_watchdog_;
+  uint64_t runtime_wedge_prev_drops_{0};
+  uint64_t runtime_wedge_prev_rows_{0};
+  int runtime_wedge_consecutive_stuck_windows_{0};
   // Per-stream skip counters for the once-per-second silent-failure
   // diagnostic in onOdom. Resets each time the throttle window flushes.
   std::atomic<uint64_t> skip_thermal_empty_{0};
@@ -1865,13 +1987,24 @@ private:
 
 int main(int argc, char** argv){
   rclcpp::init(argc, argv);
-  try { 
+  try {
     auto node = std::make_shared<UnifiedDataCollector>();
     rclcpp::spin(node);
+    // Releasing `node` HERE (before shutdown) runs ~UnifiedDataCollector
+    // synchronously: seekcamera_manager_destroy + GStreamer teardown +
+    // CSV writer drain.  Critical when we're exiting via the USB-reset
+    // path — if the SDK isn't destroyed, the next UDC process will
+    // re-wedge on the same dead handle even after the supervisor
+    // resets the USB device.
+    node.reset();
   }
-  catch(const std::exception& e){ 
-    std::cerr<<"Fatal: "<<e.what()<<"\n"; 
+  catch(const std::exception& e){
+    std::cerr<<"Fatal: "<<e.what()<<"\n";
   }
-  rclcpp::shutdown(); 
-  return 0;
+  rclcpp::shutdown();
+  // Honor the in-process wedge detectors' exit-code request.  Plain
+  // crashes / clean-exit branches still return 0 here and the
+  // supervisor's normal restart logic kicks in.
+  const int rc = g_requested_exit_code_.load();
+  return rc;
 }

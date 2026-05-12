@@ -37,6 +37,7 @@ import collections
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -59,6 +60,34 @@ DEAD_REPUBLISH_PERIOD_SECONDS = 5.0
 # 128 + signal_number is the convention for shell-style exit codes when a
 # process is terminated by a signal.
 CLEAN_EXIT_CODES = {0, 128 + signal.SIGTERM, 128 + signal.SIGINT}
+
+# ----- Programmatic Seek thermal USB reset (operator answer #5) -----
+#
+# UDC exits with this rc when its in-process wedge detectors decide
+# the Seek SDK is stuck on a dead USB handle (either no CONNECT
+# event in 5 s, or sustained drops + zero rows during recording).
+# Keep in sync with `kExitThermalNeedsReset` in
+# `src/unified_data_collector.cpp` — both constants describe the
+# same wire.
+EXIT_THERMAL_NEEDS_USB_RESET = 75
+# Per-launch budget.  Two attempts is enough to recover from the
+# common "previous UDC killed mid-stream" case; a third would mean
+# the hardware is genuinely faulted and the operator needs to
+# physically inspect the cable.
+MAX_USB_RESETS_PER_LAUNCH = 2
+# Pause between deauth/reauth completing and the next UDC spawn.
+# Gives the kernel time to fully re-enumerate the device before the
+# Seek SDK opens it (without this, ~30% of resets would race the
+# enumeration and re-wedge immediately).
+USB_RESET_COOLDOWN_SECONDS = 3.0
+# Where the reset script lives once installed by the package.  Path
+# resolved at runtime via `ros2 pkg prefix pilot_control` so it works
+# both in symlink-install and binary-install environments.
+USB_RESET_SCRIPT_NAME = "seek_usb_reset.py"
+# Hard cap on how long a single reset script invocation can take
+# before the supervisor gives up on it.  Shouldn't exceed ~5 s in
+# practice (deauth + 0.5 s hold + reauth + 3 s re-enumerate poll).
+USB_RESET_TIMEOUT_SECONDS = 10.0
 
 
 def _is_clean_exit(returncode: int) -> bool:
@@ -91,6 +120,14 @@ class UdcSupervisor(Node):
         self._child = None
         self._stop_requested = False
         self._dead_state_active = False
+        # Per-launch USB-reset accounting.  Reset attempts are
+        # bounded so a genuinely-faulted Seek doesn't put the
+        # supervisor in an infinite reset/respawn loop.
+        self._usb_resets_used = 0
+        self._dead_reason = None
+        # Resolved once at startup so we don't pay the ros2 pkg
+        # prefix subprocess per reset call.
+        self._usb_reset_script = self._resolve_usb_reset_script()
         # Republish DEAD_MAX_RESTARTS every 5 s once we give up.  Idle while
         # UDC is alive (UDC publishes its own RECORDING/STARTING/etc. heartbeat
         # at 1 Hz from inside the process).
@@ -109,8 +146,99 @@ class UdcSupervisor(Node):
             except ProcessLookupError:
                 pass
 
+    # ---- USB reset helpers --------------------------------------------------
+
+    def _resolve_usb_reset_script(self):
+        """Locate `seek_usb_reset.py` for invocation.  Returns absolute
+        path or None if the script can't be found (in which case USB
+        reset becomes a logged no-op — rc=75 still surfaces a non-fatal
+        warning rather than crashing the supervisor).
+        """
+        candidates = [
+            shutil.which('seek_usb_reset.py') or '',
+        ]
+        # `ros2 pkg prefix` returns e.g.
+        # /home/roofus/pilot_ws/install/pilot_control; the python script
+        # lands under lib/<pkg>.
+        try:
+            prefix = subprocess.check_output(
+                ['ros2', 'pkg', 'prefix', 'pilot_control'],
+                stderr=subprocess.DEVNULL, timeout=5.0,
+            ).decode('utf-8').strip()
+            candidates.append(os.path.join(prefix, 'lib', 'pilot_control',
+                                           USB_RESET_SCRIPT_NAME))
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+                FileNotFoundError):
+            pass
+        # Fallback: alongside this script (running from src/).
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       USB_RESET_SCRIPT_NAME))
+        for c in candidates:
+            if c and os.path.isfile(c) and os.access(c, os.X_OK):
+                return c
+        self.get_logger().warning(
+            f'{USB_RESET_SCRIPT_NAME} not found in '
+            f'{candidates}; reactive USB reset will be a no-op'
+        )
+        return None
+
+    def _run_usb_reset(self, reason: str) -> bool:
+        """Invoke the Seek USB reset script.  Returns True on rc=0.
+
+        Best-effort: any failure is logged but does NOT stop the
+        supervisor — we still try to respawn UDC after, and if the
+        device is genuinely dead UDC's connect watchdog will fire
+        again and we'll either reset-attempt-2 or DEAD_USB_RESET_FAILED.
+        """
+        if self._usb_reset_script is None:
+            self.get_logger().error(
+                f'cannot run USB reset (script missing); reason={reason}'
+            )
+            return False
+        self.get_logger().warning(
+            f'Running Seek USB reset (reason={reason}, attempt='
+            f'{self._usb_resets_used + 1}/{MAX_USB_RESETS_PER_LAUNCH})'
+        )
+        try:
+            proc = subprocess.run(
+                [self._usb_reset_script, '--reason', reason],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=USB_RESET_TIMEOUT_SECONDS, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            self.get_logger().error(
+                f'USB reset script timed out after '
+                f'{USB_RESET_TIMEOUT_SECONDS}s'
+            )
+            return False
+        out = proc.stdout.decode('utf-8', errors='replace').strip()
+        err = proc.stderr.decode('utf-8', errors='replace').strip()
+        if proc.returncode == 0:
+            self.get_logger().info(f'USB reset OK: {err or out}')
+            return True
+        self.get_logger().error(
+            f'USB reset FAILED (rc={proc.returncode}): {err or out}'
+        )
+        return False
+
+    # ---- main supervise loop -----------------------------------------------
+
     def supervise(self) -> int:
         """Run the spawn/monitor loop. Returns wrapper exit code."""
+        # Proactive reset on launch: the most common cause of a wedged
+        # Seek SDK is a *previous* UDC process that was killed
+        # mid-stream (OCU pkill, OOM, ros2 launch SIGKILL escalation).
+        # The next process re-opens the device, never sees CONNECT,
+        # and silently records empty frames.  Doing one cheap reset
+        # before the first spawn pre-empts that race entirely.
+        # Best-effort: failure here is non-fatal; UDC's connect
+        # watchdog still catches a wedge and triggers reactive reset.
+        if self._usb_reset_script is not None:
+            self.get_logger().info('Proactive Seek USB reset before first UDC spawn')
+            self._run_usb_reset(reason='proactive_on_launch')
+            # No counter increment — the proactive reset doesn't burn
+            # the per-launch budget reserved for the reactive path.
+
         while not self._stop_requested:
             self.get_logger().info(
                 f'Spawning unified_data_collector: {shlex.join(self._child_argv)}'
@@ -139,6 +267,52 @@ class UdcSupervisor(Node):
                     'NOT restarting.'
                 )
                 return 0
+
+            # Reactive USB-reset path.  UDC asks for this when its
+            # in-process wedge detectors decide the Seek SDK is stuck
+            # on a dead handle.  We do NOT count this as a crash for
+            # the MAX_CRASHES_IN_WINDOW budget — a successful reset
+            # restores the bot to a fully working state, and the
+            # operator shouldn't lose their crash budget for what is
+            # effectively a hardware-driver hiccup.
+            if returncode == EXIT_THERMAL_NEEDS_USB_RESET:
+                if self._usb_resets_used >= MAX_USB_RESETS_PER_LAUNCH:
+                    reason = (
+                        f'Seek SDK requested USB reset {self._usb_resets_used} '
+                        f'times this launch (cap = {MAX_USB_RESETS_PER_LAUNCH}); '
+                        'thermal hardware likely faulted. Operator must check '
+                        'the Seek USB cable and restart the launch.'
+                    )
+                    self.get_logger().fatal(reason)
+                    self._publish_dead(reason=reason,
+                                       state='DEAD_USB_RESET_FAILED')
+                    self._dead_state_active = True
+                    return self._wait_until_stopped()
+
+                ok = self._run_usb_reset(reason='udc_exit_75_thermal_wedge')
+                self._usb_resets_used += 1
+                if ok:
+                    self.get_logger().warn(
+                        f'USB reset succeeded; cooling down '
+                        f'{USB_RESET_COOLDOWN_SECONDS:.1f}s before respawn '
+                        '(let kernel finish re-enumeration before Seek SDK '
+                        'opens the device).'
+                    )
+                    self._sleep_interruptible(USB_RESET_COOLDOWN_SECONDS)
+                else:
+                    # Reset failed but we haven't burned the budget yet
+                    # — give the kernel a moment and try respawning
+                    # anyway.  If the SDK happens to recover on its
+                    # own (rare but observed), great; otherwise UDC
+                    # will exit 75 again and we'll loop until we hit
+                    # MAX_USB_RESETS_PER_LAUNCH and surface DEAD.
+                    self.get_logger().warn(
+                        f'USB reset reported failure; respawning UDC '
+                        f'anyway after {RESTART_DELAY_SECONDS:.1f}s in case '
+                        'the SDK recovered'
+                    )
+                    self._sleep_interruptible(RESTART_DELAY_SECONDS)
+                continue
 
             now = time.monotonic()
             self._crash_times.append(now)
@@ -174,9 +348,18 @@ class UdcSupervisor(Node):
 
     # ---- internals ---------------------------------------------------------
 
-    def _publish_dead(self, reason: str):
+    def _publish_dead(self, reason: str, state: str = 'DEAD_MAX_RESTARTS'):
+        # `state` distinguishes the two terminal failure modes for the
+        # OCU's REC pill:
+        #   DEAD_MAX_RESTARTS    -> UDC kept crashing (any reason).
+        #   DEAD_USB_RESET_FAILED -> Seek hardware wouldn't recover
+        #                            after MAX_USB_RESETS_PER_LAUNCH
+        #                            programmatic resets.  Operator
+        #                            cable inspection required.
+        self._dead_reason = reason
+        self._dead_state = state
         payload = json.dumps({
-            'state': 'DEAD_MAX_RESTARTS',
+            'state': state,
             'thermal_connect_seen': False,
             'recording_active': False,
             'paused': False,
@@ -198,7 +381,10 @@ class UdcSupervisor(Node):
         # Re-publish the latched DEAD message so any newly-subscribed OCU
         # gets it via TRANSIENT_LOCAL, and so any reader that was briefly
         # disconnected re-syncs on reconnect.
-        self._publish_dead(reason='republish (operator: restart OCU/launch)')
+        self._publish_dead(
+            reason=self._dead_reason or 'republish (operator: restart OCU/launch)',
+            state=getattr(self, '_dead_state', 'DEAD_MAX_RESTARTS'),
+        )
 
     def _sleep_interruptible(self, seconds: float):
         deadline = time.monotonic() + seconds
