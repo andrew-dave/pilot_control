@@ -3,12 +3,62 @@
   // NOTE: This file is treated as a template by `launch/laptop_teleop.launch.py`.
   // The placeholder `__ROBOT_IP__` is replaced at launch-time with the selected robot IP.
   mode: "client",
-  connect: { endpoints: ["tcp/__ROBOT_IP__:7447"] },
+
+  connect: {
+    endpoints: ["tcp/__ROBOT_IP__:7447"],
+
+    // ----- Layered-connectivity tuning (Microhard-aware) -----
+    //
+    // Without these, a brief radio fade leaves Zenoh's TCP socket in
+    // a kernel-zombie state for 30-60 s before reconnect is even
+    // attempted.  The OCU's LinkHealthMonitor would correctly notice
+    // ROS topics are stale, but the bot would already be back on the
+    // network — producing the "BOT LIVE - SYNCING 30s" UI flap the
+    // operator reported (terminal log 2026-05-12T05:41 — OFFLINE 10s,
+    // briefly HEALTHY 1.5s, then RECONNECTING 10s+ while the bot was
+    // verifiably scanning).
+    //
+    // `timeout_ms: -1` + `exit_on_failure: false` mean the Zenoh
+    // daemon never gives up on the configured endpoint.  Without
+    // this, a startup fade could kill zenohd entirely and the OCU
+    // would lose ALL ROS comm with no way to recover until the
+    // operator restarts the launch tree.
+    timeout_ms: -1,
+    exit_on_failure: false,
+
+    // Reconnect retry: 1 s init, double on each failure, cap at 4 s.
+    // Combined with the transport-layer keepalive below, total
+    // recovery from a radio drop is ~5-8 s vs the default ~30-60 s.
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+
   scouting: { multicast: { enabled: false }, gossip: { enabled: false } },
   listen: { endpoints: { router: [] } },
+
+  transport: {
+    link: {
+      tx: {
+        // Aggressive TCP-level liveness probing tuned for Microhard
+        // RF.  Default lease is 10000 ms — too long for a link that
+        // can drop and recover within seconds.  4 s lease + 4 keep-
+        // alives per lease = one keepalive every 1 s, dead-socket
+        // detection in ~4 s.
+        //
+        // Field-test note: do NOT drop below ~3 s lease.  Microhard
+        // jitter on a busy 4-channel link can momentarily swallow a
+        // single keepalive, and we'd thrash through reconnects on a
+        // perfectly healthy link.
+        lease: 4000,
+        keep_alive: 4,
+      },
+    },
+  },
 
   plugins: {
     ros2dds: {}
   }
 }
-

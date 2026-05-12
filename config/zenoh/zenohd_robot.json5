@@ -8,6 +8,23 @@
   // Listen for laptop clients on the Microhard network.
   listen: { endpoints: { router: ["tcp/0.0.0.0:7447"] } },
 
+  // Symmetric TCP keepalive with the laptop side (zenohd_laptop.json5).
+  // If only one side runs aggressive keepalive, the other side's stale
+  // socket can sit in CLOSE_WAIT for 30-60 s and reject the laptop's
+  // reconnect attempt because it thinks the existing session is still
+  // alive.  Matching lease + keep_alive on both ends ensures both
+  // sides notice the dead socket within ~4 s and the laptop's
+  // reconnect lands cleanly.  See zenohd_laptop.json5 for the field-
+  // test rationale.
+  transport: {
+    link: {
+      tx: {
+        lease: 4000,
+        keep_alive: 4,
+      },
+    },
+  },
+
   plugins: {
     ros2dds: {
       // Only bridge the interfaces required for BDR_CP field operations.
