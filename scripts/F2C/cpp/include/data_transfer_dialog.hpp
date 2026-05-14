@@ -48,6 +48,8 @@ public:
     
     ItemType itemType() const { return itemType_; }
     QString sectionPath() const { return sectionPath_; }
+    QString sectionName() const { return sectionName_; }
+    QString buildingFolder() const { return buildingFolder_; }
     QString subFolderName() const { return subFolderName_; }
     qint64 sizeBytes() const { return sizeBytes_; }
     
@@ -63,6 +65,8 @@ public:
 private:
     ItemType itemType_;
     QString sectionPath_;
+    QString sectionName_;
+    QString buildingFolder_;
     QString subFolderName_;
     qint64 sizeBytes_ = 0;
     bool downloaded_ = false;
@@ -146,6 +150,7 @@ private:
     struct DownloadSelection {
         QString sectionPath;
         QString sectionName;
+        QString buildingFolder;
         QStringList subFolders;
         qint64 totalSize;
     };

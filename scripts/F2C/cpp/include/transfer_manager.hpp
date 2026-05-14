@@ -50,6 +50,7 @@ struct SectionInfo {
     QString name;               // e.g., "Section_1_093045"
     QString fullPath;           // e.g., "/R_DATA/January_27_2026/Section_1_093045"
     QString dayFolder;          // e.g., "January_27_2026"
+    QString buildingFolder;     // e.g., "Acme_HQ" (empty for legacy flat layout)
     qint64 totalSizeBytes = 0;
     int fileCount = 0;
     QDateTime timestamp;

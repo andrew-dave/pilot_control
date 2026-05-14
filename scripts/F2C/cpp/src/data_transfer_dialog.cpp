@@ -26,6 +26,8 @@ SectionTreeItem::SectionTreeItem(QTreeWidget* parent, const SectionInfo& section
     : QTreeWidgetItem(parent)
     , itemType_(SectionItem)
     , sectionPath_(section.fullPath)
+    , sectionName_(section.name)
+    , buildingFolder_(section.buildingFolder)
     , sizeBytes_(section.totalSizeBytes)
     , downloaded_(section.previouslyDownloaded)
     , inProgress_(section.isRecordingInProgress)
@@ -34,7 +36,10 @@ SectionTreeItem::SectionTreeItem(QTreeWidget* parent, const SectionInfo& section
     setFlags(flags() | Qt::ItemIsUserCheckable);
     setCheckState(0, Qt::Unchecked);
     
-    QString name = section.name;
+    QString name = sectionName_;
+    if (!buildingFolder_.isEmpty()) {
+        name = QString("%1 / %2").arg(buildingFolder_, sectionName_);
+    }
     if (inProgress_) {
         name += " ⚠️";
     }
@@ -645,10 +650,14 @@ void DataTransferDialog::startDownload(bool cancelCurrent) {
     for (const DownloadSelection& sel : selections) {
         TransferJob job;
         job.sectionPath = sel.sectionPath;
-        job.sectionName = sel.sectionName;
+        job.sectionName = sel.buildingFolder.isEmpty()
+            ? sel.sectionName
+            : QString("%1/%2").arg(sel.buildingFolder, sel.sectionName);
         job.subFolders = sel.subFolders;
         job.totalBytes = sel.totalSize;
-        job.localDestination = QString("%1/%2").arg(baseDestination, sel.sectionName);
+        job.localDestination = sel.buildingFolder.isEmpty()
+            ? QString("%1/%2").arg(baseDestination, sel.sectionName)
+            : QString("%1/%2/%3").arg(baseDestination, sel.buildingFolder, sel.sectionName);
         
         qDebug() << "[DataTransfer] Enqueuing job:" << job.sectionPath << "->" << job.localDestination;
         
@@ -849,9 +858,13 @@ void DataTransferDialog::onQueueChanged() {
 }
 
 void DataTransferDialog::onRefreshTimer() {
-    if (isVisible() && connected_) {
-        // Soft refresh - just update connection status
-        TransferManager::instance().checkConnection();
+    if (!isVisible()) {
+        return;
+    }
+    if (!currentDate_.isEmpty() && currentDate_ != "Loading..." && currentDate_ != "No data found") {
+        TransferManager::instance().fetchSectionsForDate(dataPath_, currentDate_);
+    } else {
+        refreshData();
     }
 }
 
@@ -893,6 +906,7 @@ void DataTransferDialog::updateSelectionSummary() {
 }
 
 void DataTransferDialog::populateDateCombo(const QStringList& dates) {
+    const QString previousDate = currentDate_.trimmed();
     comboDate_->blockSignals(true);
     comboDate_->clear();
     
@@ -903,11 +917,17 @@ void DataTransferDialog::populateDateCombo(const QStringList& dates) {
             comboDate_->addItem(date);
         }
         
-        // Select today's date if available
-        QString today = QDate::currentDate().toString("MMMM_d_yyyy");
-        int todayIndex = comboDate_->findText(today);
-        if (todayIndex >= 0) {
-            comboDate_->setCurrentIndex(todayIndex);
+        const int previousIndex =
+            previousDate.isEmpty() ? -1 : comboDate_->findText(previousDate, Qt::MatchFixedString);
+        if (previousIndex >= 0) {
+            comboDate_->setCurrentIndex(previousIndex);
+        } else {
+            // Coordinator uses "%B_%d_%Y" (zero-padded day).
+            const QString today = QDate::currentDate().toString("MMMM_dd_yyyy");
+            const int todayIndex = comboDate_->findText(today, Qt::MatchFixedString);
+            if (todayIndex >= 0) {
+                comboDate_->setCurrentIndex(todayIndex);
+            }
         }
     }
     
@@ -919,6 +939,7 @@ void DataTransferDialog::populateDateCombo(const QStringList& dates) {
 
 void DataTransferDialog::populateSectionTree(const QList<SectionInfo>& sections) {
     treeWidget_->clear();
+    expandedSections_.clear();
     
     updatingItems_ = true;
     
@@ -956,7 +977,8 @@ QList<DataTransferDialog::DownloadSelection> DataTransferDialog::getSelectedDown
         
         DownloadSelection sel;
         sel.sectionPath = item->sectionPath();
-        sel.sectionName = item->text(0).remove(" ⚠️");
+        sel.sectionName = item->sectionName();
+        sel.buildingFolder = item->buildingFolder();
         
         if (item->checkState(0) == Qt::Checked || item->childCount() == 0) {
             // Full section selected or no sub-folders loaded yet
