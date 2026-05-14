@@ -334,6 +334,7 @@ install(
   scripts/seek_usb_reset.py
   scripts/install_seek_udev_rule.sh
   scripts/finalize_mission_local.py
+  scripts/uploader.py
   scripts/F2C/f2c_check.py
   scripts/F2C/pointcloud_to_f2c_field.py
   scripts/measure_actuation_delay.py
