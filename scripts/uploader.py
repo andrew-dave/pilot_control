@@ -195,10 +195,24 @@ def complete(robot_id: str, run_id: str,
 # Upload
 # =========================
 
-def upload_put(upload_url: str, file_path: str) -> None:
+def upload_put(upload_url: str, file_path: str,
+               robot_id: str, run_id: str) -> None:
+    # The /presign Lambda mints SigV4 URLs that fold five headers into the
+    # canonical request:
+    #   host, x-amz-server-side-encryption,
+    #   x-amz-meta-client_id, x-amz-meta-robot_id, x-amz-meta-run_id.
+    # Every signed header MUST be echoed back on the PUT with the exact
+    # value the Lambda used or S3 returns 403 SignatureDoesNotMatch.
+    # `host` is set automatically by urllib3 from the URL; the other four
+    # are set explicitly here. Keep the values in lock-step with the
+    # Lambda — if the server-side signing list changes, this dict has to
+    # change too.
     file_size = os.path.getsize(file_path)
     headers = {
         "x-amz-server-side-encryption": "AES256",
+        "x-amz-meta-client_id": CLIENT_ID,
+        "x-amz-meta-robot_id": robot_id,
+        "x-amz-meta-run_id": run_id,
         "Content-Length": str(file_size),
     }
     with open(file_path, "rb") as f:
@@ -255,7 +269,7 @@ def _upload_one_file(
         sha256_file(full)
 
         presign_resp = presign(robot_id, run_id, rel_norm, size)
-        upload_put(presign_resp["upload_url"], full)
+        upload_put(presign_resp["upload_url"], full, robot_id, run_id)
 
         with state_lock:
             state["completed"].append(rel_norm)
@@ -385,7 +399,7 @@ def upload_run(data_root: str, robot_id: str, run_id: str) -> int:
             try:
                 sha256_file(full)
                 presign_resp = presign(robot_id, run_id, rel_norm, size)
-                upload_put(presign_resp["upload_url"], full)
+                upload_put(presign_resp["upload_url"], full, robot_id, run_id)
                 state["completed"].append(rel_norm)
                 save_state(data_root, state)
                 print(f"\u2713 Uploaded: {rel_norm}", flush=True)
@@ -440,7 +454,7 @@ def upload_run(data_root: str, robot_id: str, run_id: str) -> int:
     try:
         m_size = os.path.getsize(mpath)
         presign_resp = presign(robot_id, run_id, MANIFEST_FILENAME, m_size)
-        upload_put(presign_resp["upload_url"], mpath)
+        upload_put(presign_resp["upload_url"], mpath, robot_id, run_id)
     except requests.exceptions.RequestException as e:
         print(f"Connection error: {e}", flush=True)
         print("Auto-pausing. You can resume later.", flush=True)
