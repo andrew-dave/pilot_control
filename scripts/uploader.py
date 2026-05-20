@@ -215,9 +215,21 @@ def upload_put(upload_url: str, file_path: str,
         "x-amz-meta-run_id": run_id,
         "Content-Length": str(file_size),
     }
-    with open(file_path, "rb") as f:
-        r = requests.put(upload_url, data=f, headers=headers, timeout=3600)
-        r.raise_for_status()
+    if file_size == 0:
+        # urllib3's body-framing logic falls back to
+        # `Transfer-Encoding: chunked` when handed an empty file stream,
+        # and S3 rejects chunked PUTs with 501 NotImplemented. Pass the
+        # body as an explicit empty bytes object so urllib3 takes the
+        # known-length code path and emits Content-Length: 0 instead.
+        # 0-byte uploads are almost always salvage cases (recorder
+        # crashed before the first chunk flushed) but the script must
+        # tolerate them so a single dud file doesn't halt the whole
+        # section's upload.
+        r = requests.put(upload_url, data=b"", headers=headers, timeout=3600)
+    else:
+        with open(file_path, "rb") as f:
+            r = requests.put(upload_url, data=f, headers=headers, timeout=3600)
+    r.raise_for_status()
 
 
 # =========================
