@@ -1,7 +1,7 @@
 CMakeFiles/bdr_coverage_planner.dir/src/startup_screen.cpp.o: \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/src/startup_screen.cpp \
  /usr/include/stdc-predef.h \
- /home/avenblake/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/startup_screen.hpp \
+ /home/raj/BDR/pilot_ws/src/pilot_control/scripts/F2C/cpp/include/startup_screen.hpp \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/QWidget \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qwidget.h \
  /usr/include/x86_64-linux-gnu/qt5/QtWidgets/qtwidgetsglobal.h \

@@ -5,6 +5,10 @@
 
 #include "obstacle_detector.hpp"
 
+#include "CSF.h"
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
 #include <algorithm>
@@ -12,10 +16,13 @@
 #include <cmath>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <queue>
 #include <random>
 #include <unordered_map>
 #include <utility>
@@ -32,6 +39,8 @@ namespace {
 
 static constexpr double kEps = 1e-12;
 static constexpr double kLocalGroundSeedQuantile = 0.20;
+
+static double pointSegmentDistance(const Point2D& p, const Point2D& a, const Point2D& b);
 
 static double signedArea2D(const Polygon2D& ring) {
     if (ring.size() < 3) return 0.0;
@@ -99,6 +108,26 @@ static bool pointInPolyRayCast(const Point2D& p, const Polygon2D& poly) {
     return inside;
 }
 
+static bool pointInPolyOrWithinMargin(const Point2D& p, const Polygon2D& poly, double margin) {
+    if (poly.size() < 3) {
+        return false;
+    }
+    if (pointInPolyRayCast(p, poly)) {
+        return true;
+    }
+    if (margin <= 1e-9) {
+        return false;
+    }
+    for (size_t i = 0; i < poly.size(); ++i) {
+        const Point2D& a = poly[i];
+        const Point2D& b = poly[(i + 1) % poly.size()];
+        if (pointSegmentDistance(p, a, b) <= margin) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static Polygon2D effectiveScopePolygon(const Polygon2D* roi_or_boundary) {
     if (roi_or_boundary && roi_or_boundary->size() >= 3) {
         return *roi_or_boundary;
@@ -106,7 +135,10 @@ static Polygon2D effectiveScopePolygon(const Polygon2D* roi_or_boundary) {
     return {};
 }
 
-static PointCloudPtr filterCloudToPolygon(const PointCloudPtr& cloud, const Polygon2D& scope) {
+static PointCloudPtr filterCloudToPolygon(
+    const PointCloudPtr& cloud,
+    const Polygon2D& scope,
+    double margin_m = 0.0) {
     if (!cloud) return PointCloudPtr(new PointCloud);
     if (scope.size() < 3) {
         return cloud;
@@ -114,25 +146,116 @@ static PointCloudPtr filterCloudToPolygon(const PointCloudPtr& cloud, const Poly
     PointCloudPtr out(new PointCloud);
     out->reserve(cloud->size());
     for (const auto& pt : cloud->points) {
-        if (pointInPolyRayCast(Point2D(pt.x, pt.y), scope)) {
+        if (pointInPolyOrWithinMargin(Point2D(pt.x, pt.y), scope, margin_m)) {
             out->push_back(pt);
         }
     }
     return out;
 }
 
-static std::vector<PathState> filterPathToPolygon(const std::vector<PathState>& path, const Polygon2D& scope) {
+static std::vector<PathState> filterPathToPolygon(
+    const std::vector<PathState>& path,
+    const Polygon2D& scope,
+    double margin_m = 0.0) {
     if (scope.size() < 3) return path;
     std::vector<PathState> out;
     out.reserve(path.size());
     for (const auto& st : path) {
-        if (pointInPolyRayCast(st.point, scope)) {
+        if (pointInPolyOrWithinMargin(st.point, scope, margin_m)) {
             out.push_back(st);
         }
     }
     // If the ROI removes everything, fall back to full path.
     if (out.empty()) return path;
     return out;
+}
+
+static bool fileExists(const std::string& path) {
+    return !path.empty() && std::filesystem::exists(path);
+}
+
+static std::string replaceLastOccurrence(std::string value,
+                                         const std::string& needle,
+                                         const std::string& replacement) {
+    const size_t pos = value.rfind(needle);
+    if (pos == std::string::npos) {
+        return value;
+    }
+    value.replace(pos, needle.size(), replacement);
+    return value;
+}
+
+struct PatchworkBundlePaths {
+    std::string source_path;
+    std::string scores_path;
+    std::string ground_path;
+    std::string nonground_path;
+};
+
+static PatchworkBundlePaths derivePatchworkBundlePaths(const std::string& source_path) {
+    PatchworkBundlePaths bundle;
+    bundle.source_path = source_path;
+    bundle.scores_path = source_path;
+    bundle.ground_path = source_path;
+    bundle.nonground_path = source_path;
+
+    if (source_path.find("corrected_patchwork_scores_") != std::string::npos) {
+        bundle.ground_path = replaceLastOccurrence(source_path, "corrected_patchwork_scores_", "corrected_patchwork_ground_");
+        bundle.nonground_path = replaceLastOccurrence(source_path, "corrected_patchwork_scores_", "corrected_patchwork_nonground_");
+        return bundle;
+    }
+    if (source_path.find("corrected_patchwork_ground_") != std::string::npos) {
+        bundle.scores_path = replaceLastOccurrence(source_path, "corrected_patchwork_ground_", "corrected_patchwork_scores_");
+        bundle.nonground_path = replaceLastOccurrence(source_path, "corrected_patchwork_ground_", "corrected_patchwork_nonground_");
+        return bundle;
+    }
+    if (source_path.find("corrected_patchwork_nonground_") != std::string::npos) {
+        bundle.scores_path = replaceLastOccurrence(source_path, "corrected_patchwork_nonground_", "corrected_patchwork_scores_");
+        bundle.ground_path = replaceLastOccurrence(source_path, "corrected_patchwork_nonground_", "corrected_patchwork_ground_");
+        return bundle;
+    }
+
+    if (source_path.find("patchwork_scores_") != std::string::npos) {
+        bundle.ground_path = replaceLastOccurrence(source_path, "patchwork_scores_", "patchwork_ground_");
+        bundle.nonground_path = replaceLastOccurrence(source_path, "patchwork_scores_", "patchwork_nonground_");
+        return bundle;
+    }
+    if (source_path.find("patchwork_ground_") != std::string::npos) {
+        bundle.scores_path = replaceLastOccurrence(source_path, "patchwork_ground_", "patchwork_scores_");
+        bundle.nonground_path = replaceLastOccurrence(source_path, "patchwork_ground_", "patchwork_nonground_");
+        return bundle;
+    }
+    if (source_path.find("patchwork_nonground_") != std::string::npos) {
+        bundle.scores_path = replaceLastOccurrence(source_path, "patchwork_nonground_", "patchwork_scores_");
+        bundle.ground_path = replaceLastOccurrence(source_path, "patchwork_nonground_", "patchwork_ground_");
+        return bundle;
+    }
+
+    return bundle;
+}
+
+static pcl::PointCloud<pcl::PointXYZI>::Ptr loadPointCloudFileXYZI(const std::string& path) {
+    if (!fileExists(path)) {
+        throw std::runtime_error("Patchwork score cloud not found: " + path);
+    }
+
+    auto cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+    std::string ext = path.substr(path.find_last_of('.') + 1);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    int result = -1;
+    if (ext == "pcd") {
+        result = pcl::io::loadPCDFile<pcl::PointXYZI>(path, *cloud);
+    } else if (ext == "ply") {
+        result = pcl::io::loadPLYFile<pcl::PointXYZI>(path, *cloud);
+    } else {
+        throw std::runtime_error("Unsupported Patchwork score file format: " + ext);
+    }
+
+    if (result < 0 || cloud->empty()) {
+        throw std::runtime_error("Failed to load Patchwork score cloud: " + path);
+    }
+    return cloud;
 }
 
 struct PlaneModel {
@@ -144,6 +267,10 @@ struct PlaneModel {
 
 static const char* groundModelName(GroundModelMode mode) {
     switch (mode) {
+        case GroundModelMode::GroundZGradientGrid:
+            return "ground_z_gradient_grid";
+        case GroundModelMode::PropagatedGrid:
+            return "propagated_grid";
         case GroundModelMode::LocalHeightField:
             return "local_height_field";
         case GroundModelMode::SinglePlane:
@@ -568,6 +695,1431 @@ static PointCloudPtr extractFootprintGround(
     }
 
     return ground;
+}
+
+enum class PropagatedCellState {
+    Outside,
+    Unknown,
+    AnchorGround,
+    PropagatedGround,
+    MeasuredObstacle,
+    BlockedUnknown,
+};
+
+struct ZClusterSummary {
+    size_t begin = 0;
+    size_t end = 0;
+    size_t count = 0;
+    double low = 0.0;
+    double median = 0.0;
+    double high = 0.0;
+};
+
+struct PropagatedGridCell {
+    bool inside_scope = false;
+    bool trail_covered = false;
+    bool ground_z_valid = false;
+    bool gradient_reachable = false;
+    PropagatedCellState state = PropagatedCellState::Outside;
+    std::vector<float> z_values;
+    std::vector<float> anchor_z_values;
+    int point_count = 0;
+    double low_z = 0.0;
+    double median_z = 0.0;
+    double high_z = 0.0;
+    double vertical_span = 0.0;
+    double ground_z = 0.0;
+    double confidence = 0.0;
+    int interpolation_contributors = 0;
+    double incoming_gradient = 0.0;
+    bool incoming_gradient_valid = false;
+    int incoming_from_x = -1;
+    int incoming_from_y = -1;
+    int support_point_count = 0;
+    double support_base_z = 0.0;
+    double support_top_z = 0.0;
+    double support_span_z = 0.0;
+    double first_non_ground_z = 0.0;
+    double clearance_above_ground = 0.0;
+    std::string reason;
+};
+
+struct PropagatedGrid {
+    int w = 0;
+    int h = 0;
+    double xmin = 0.0;
+    double ymin = 0.0;
+    double cell = 0.10;
+    double scope_margin_m = 0.0;
+    Polygon2D scope;
+    std::vector<PropagatedGridCell> cells;
+};
+
+struct PropagationEstimate {
+    bool valid = false;
+    double predicted_z = 0.0;
+    double confidence = 0.0;
+    int contributors = 0;
+};
+
+struct GridClassification {
+    PropagatedCellState state = PropagatedCellState::Unknown;
+    double ground_z = 0.0;
+    double confidence = 0.0;
+    bool traversable_overhang = false;
+    int support_point_count = 0;
+    double support_base_z = 0.0;
+    double support_top_z = 0.0;
+    double support_span_z = 0.0;
+    double first_non_ground_z = 0.0;
+    double clearance_above_ground = 0.0;
+    std::string reason;
+};
+
+struct GroundSupportAnalysis {
+    bool found_support = false;
+    int support_point_count = 0;
+    double support_base_z = 0.0;
+    double support_top_z = 0.0;
+    double support_span_z = 0.0;
+    bool has_upper_cluster = false;
+    double first_non_ground_z = 0.0;
+    double clearance_above_ground = std::numeric_limits<double>::infinity();
+};
+
+struct PropagationCandidate {
+    double priority = 0.0;
+    int x = 0;
+    int y = 0;
+};
+
+struct PropagationCandidateCompare {
+    bool operator()(const PropagationCandidate& a, const PropagationCandidate& b) const {
+        return a.priority < b.priority;
+    }
+};
+
+static bool isGroundCellState(PropagatedCellState state) {
+    return state == PropagatedCellState::AnchorGround ||
+           state == PropagatedCellState::PropagatedGround;
+}
+
+static size_t propagatedGridIndex(const PropagatedGrid& grid, int x, int y) {
+    return static_cast<size_t>(y) * static_cast<size_t>(grid.w) + static_cast<size_t>(x);
+}
+
+static bool propagatedGridInBounds(const PropagatedGrid& grid, int x, int y) {
+    return x >= 0 && y >= 0 && x < grid.w && y < grid.h;
+}
+
+static Point2D propagatedGridCellCenter(const PropagatedGrid& grid, int x, int y) {
+    return Point2D(
+        grid.xmin + (static_cast<double>(x) + 0.5) * grid.cell,
+        grid.ymin + (static_cast<double>(y) + 0.5) * grid.cell);
+}
+
+static bool pointInsideFootprintAtPose(
+    const Point2D& point,
+    const PathState& pose,
+    double half_l,
+    double half_w) {
+    const double dx = point.x - pose.point.x;
+    const double dy = point.y - pose.point.y;
+    const double c = std::cos(pose.heading);
+    const double s = std::sin(pose.heading);
+    const double lx = c * dx + s * dy;
+    const double ly = -s * dx + c * dy;
+    return std::abs(lx) <= half_l && std::abs(ly) <= half_w;
+}
+
+static double quantileValueSorted(const std::vector<float>& sorted_values, double q) {
+    if (sorted_values.empty()) {
+        return 0.0;
+    }
+    return static_cast<double>(sorted_values[quantileIndex(sorted_values.size(), q)]);
+}
+
+static double quantileValueCopy(std::vector<float> values, double q) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    const size_t idx = quantileIndex(values.size(), q);
+    std::nth_element(
+        values.begin(),
+        values.begin() + static_cast<std::ptrdiff_t>(idx),
+        values.end());
+    return static_cast<double>(values[idx]);
+}
+
+static double lowestValueSorted(const std::vector<float>& sorted_values) {
+    if (sorted_values.empty()) {
+        return 0.0;
+    }
+    return static_cast<double>(sorted_values.front());
+}
+
+static double derivedTraversableStepHeight(const ObstacleDetectionParams& params) {
+    if (params.traversable_step_height_m > 0.0) {
+        return params.traversable_step_height_m;
+    }
+    return std::max(
+        0.01,
+        std::max(0.0, params.traversable_step_height_ratio) * std::max(0.0, params.wheel_radius_m));
+}
+
+struct CsfSegmentationResult {
+    PointCloudPtr ground;
+    PointCloudPtr nonground;
+    size_t grid_cells = 0;
+};
+
+static CsfSegmentationResult segmentGroundClothSimulation(
+    const PointCloudPtr& cloud,
+    const ObstacleDetectionParams& params,
+    const std::function<bool()>& abortIfCancelled) {
+    CsfSegmentationResult result;
+    result.ground.reset(new PointCloud);
+    result.nonground.reset(new PointCloud);
+    if (!cloud || cloud->empty()) {
+        return result;
+    }
+
+    if (abortIfCancelled && abortIfCancelled()) {
+        return result;
+    }
+
+    std::vector<csf::Point> csf_points;
+    csf_points.reserve(cloud->size());
+    for (const auto& pt : cloud->points) {
+        csf_points.push_back(csf::Point{
+            static_cast<double>(pt.x),
+            static_cast<double>(pt.y),
+            static_cast<double>(pt.z)});
+    }
+
+    CSF csf;
+    csf.params.bSloopSmooth = params.csf_slope_processing;
+    csf.params.time_step = 0.65;
+    csf.params.cloth_resolution = std::max(0.005, params.csf_cloth_resolution_m);
+    csf.params.class_threshold = std::max(0.0, params.csf_classification_threshold_m);
+    csf.params.interations = std::max(1, params.csf_max_iterations);
+    csf.params.rigidness = std::clamp(params.csf_rigidness, 1, 10);
+    csf.setPointCloud(std::move(csf_points));
+
+    std::vector<int> ground_indices;
+    std::vector<int> nonground_indices;
+    csf.do_filtering(ground_indices, nonground_indices, /*exportCloth=*/false);
+    result.grid_cells = csf.size();
+
+    result.ground->reserve(cloud->size());
+    result.nonground->reserve(cloud->size() / 4);
+
+    for (int idx : ground_indices) {
+        if (idx >= 0 && static_cast<size_t>(idx) < cloud->size()) {
+            result.ground->push_back(cloud->points[static_cast<size_t>(idx)]);
+        }
+    }
+
+    for (int idx : nonground_indices) {
+        if (idx < 0 || static_cast<size_t>(idx) >= cloud->size()) {
+            continue;
+        }
+        result.nonground->push_back(cloud->points[static_cast<size_t>(idx)]);
+    }
+
+    return result;
+}
+
+static PointCloudPtr filterCsfNonGroundByClearance(
+    const PointCloudPtr& nonground,
+    const PointCloudPtr& ground,
+    const ObstacleDetectionParams& params,
+    const std::function<bool()>& abortIfCancelled) {
+    PointCloudPtr out(new PointCloud);
+    if (!nonground || nonground->empty() || !ground || ground->empty()) {
+        return out;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr ground_xy(new pcl::PointCloud<pcl::PointXYZ>);
+    ground_xy->reserve(ground->size());
+    std::vector<float> ground_z;
+    ground_z.reserve(ground->size());
+    for (const auto& pt : ground->points) {
+        ground_xy->push_back(pcl::PointXYZ(pt.x, pt.y, 0.0f));
+        ground_z.push_back(pt.z);
+    }
+
+    pcl::KdTreeFLANN<pcl::PointXYZ> ground_tree;
+    ground_tree.setInputCloud(ground_xy);
+
+    const double min_clearance = derivedTraversableStepHeight(params);
+    const double max_clearance = std::max(min_clearance, params.csf_max_obstacle_clearance_m);
+    out->reserve(nonground->size());
+
+    std::vector<int> nn_idx(1);
+    std::vector<float> nn_dist2(1);
+    size_t idx = 0;
+    for (const auto& pt : nonground->points) {
+        if ((idx++ & 0x1FFFu) == 0u && abortIfCancelled && abortIfCancelled()) {
+            return out;
+        }
+        const pcl::PointXYZ query(pt.x, pt.y, 0.0f);
+        if (ground_tree.nearestKSearch(query, 1, nn_idx, nn_dist2) <= 0) {
+            continue;
+        }
+        const double clearance = static_cast<double>(pt.z - ground_z[static_cast<size_t>(nn_idx[0])]);
+        if (clearance >= min_clearance && clearance <= max_clearance) {
+            out->push_back(pt);
+        }
+    }
+    return out;
+}
+
+static std::vector<PathState> densifyPathForFootprintCleanup(
+    const std::vector<PathState>& path,
+    double spacing_m) {
+    if (path.size() < 2 || spacing_m <= 1e-6) {
+        return path;
+    }
+    std::vector<PathState> out;
+    out.reserve(path.size() * 2);
+    out.push_back(path.front());
+    for (size_t i = 1; i < path.size(); ++i) {
+        const auto& a = path[i - 1];
+        const auto& b = path[i];
+        const double dx = b.point.x - a.point.x;
+        const double dy = b.point.y - a.point.y;
+        const double dist = std::hypot(dx, dy);
+        const int steps = std::max(1, static_cast<int>(std::ceil(dist / spacing_m)));
+        const double heading = (dist > 1e-6) ? std::atan2(dy, dx) : a.heading;
+        for (int s = 1; s <= steps; ++s) {
+            const double t = static_cast<double>(s) / static_cast<double>(steps);
+            PathState st;
+            st.point.x = a.point.x + dx * t;
+            st.point.y = a.point.y + dy * t;
+            st.heading = heading;
+            st.vx = std::cos(heading);
+            st.vy = std::sin(heading);
+            out.push_back(st);
+        }
+    }
+    return out;
+}
+
+static PointCloudPtr removeTrailFootprintObstacleCandidates(
+    const PointCloudPtr& candidates,
+    const std::vector<PathState>& path,
+    const ObstacleDetectionParams& params,
+    size_t* removed_count,
+    const std::function<bool()>& abortIfCancelled) {
+    if (removed_count) {
+        *removed_count = 0;
+    }
+    if (!candidates || candidates->empty()) {
+        return PointCloudPtr(new PointCloud);
+    }
+    if (path.empty() || !params.csf_trail_footprint_cleanup) {
+        return candidates;
+    }
+
+    const double margin = std::max(0.0, params.csf_trail_cleanup_margin_m);
+    const double half_l = std::max(0.0, params.robot_length_m) / 2.0 + margin;
+    const double half_w = std::max(0.0, params.robot_width_m) / 2.0 + margin;
+    const double spacing = std::max(0.03, 0.5 * std::min(half_l, half_w));
+    const std::vector<PathState> dense_path = densifyPathForFootprintCleanup(path, spacing);
+    if (dense_path.empty()) {
+        return candidates;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr path_xy(new pcl::PointCloud<pcl::PointXYZ>);
+    path_xy->reserve(dense_path.size());
+    for (const auto& st : dense_path) {
+        path_xy->push_back(pcl::PointXYZ(
+            static_cast<float>(st.point.x),
+            static_cast<float>(st.point.y),
+            0.0f));
+    }
+    pcl::KdTreeFLANN<pcl::PointXYZ> path_tree;
+    path_tree.setInputCloud(path_xy);
+
+    const double search_radius = std::hypot(half_l, half_w);
+    const int max_nn = std::min<int>(12, static_cast<int>(dense_path.size()));
+    std::vector<int> nn_idx(std::max(1, max_nn));
+    std::vector<float> nn_dist2(std::max(1, max_nn));
+
+    PointCloudPtr out(new PointCloud);
+    out->reserve(candidates->size());
+    size_t removed = 0;
+    size_t idx = 0;
+    for (const auto& pt : candidates->points) {
+        if ((idx++ & 0x1FFFu) == 0u && abortIfCancelled && abortIfCancelled()) {
+            if (removed_count) {
+                *removed_count = removed;
+            }
+            return out;
+        }
+        const pcl::PointXYZ query(pt.x, pt.y, 0.0f);
+        const int found = path_tree.radiusSearch(query, static_cast<float>(search_radius), nn_idx, nn_dist2, max_nn);
+        bool in_trail = false;
+        for (int i = 0; i < found; ++i) {
+            const int pi = nn_idx[static_cast<size_t>(i)];
+            if (pi < 0 || pi >= static_cast<int>(dense_path.size())) {
+                continue;
+            }
+            if (pointInsideFootprintAtPose(Point2D(pt.x, pt.y), dense_path[static_cast<size_t>(pi)], half_l, half_w)) {
+                in_trail = true;
+                break;
+            }
+        }
+        if (in_trail) {
+            removed++;
+            continue;
+        }
+        out->push_back(pt);
+    }
+    if (removed_count) {
+        *removed_count = removed;
+    }
+    return out;
+}
+
+static bool propagatedGridCellInsideScope(const PropagatedGrid& grid, int x, int y) {
+    if (grid.scope.size() < 3) {
+        return true;
+    }
+    const Point2D center = propagatedGridCellCenter(grid, x, y);
+    if (pointInPolyOrWithinMargin(center, grid.scope, grid.scope_margin_m)) {
+        return true;
+    }
+    const double half = 0.5 * grid.cell;
+    const std::array<Point2D, 4> corners = {
+        Point2D(center.x - half, center.y - half),
+        Point2D(center.x + half, center.y - half),
+        Point2D(center.x + half, center.y + half),
+        Point2D(center.x - half, center.y + half),
+    };
+    for (const auto& corner : corners) {
+        if (pointInPolyOrWithinMargin(corner, grid.scope, grid.scope_margin_m)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void finalizePropagatedGridCellStats(
+    PropagatedGridCell* cell,
+    const ObstacleDetectionParams& params) {
+    if (!cell) {
+        return;
+    }
+    cell->point_count = static_cast<int>(cell->z_values.size());
+    cell->support_point_count = 0;
+    cell->support_base_z = 0.0;
+    cell->support_top_z = 0.0;
+    cell->support_span_z = 0.0;
+    cell->first_non_ground_z = 0.0;
+    cell->clearance_above_ground = 0.0;
+    cell->reason.clear();
+    if (cell->z_values.empty()) {
+        cell->low_z = 0.0;
+        cell->median_z = 0.0;
+        cell->high_z = 0.0;
+        cell->vertical_span = 0.0;
+        return;
+    }
+    std::sort(cell->z_values.begin(), cell->z_values.end());
+    const double low_q = std::clamp(params.raw_cell_low_quantile, 0.0, 0.50);
+    const double high_q = std::clamp(params.raw_cell_high_quantile, 0.50, 1.0);
+    cell->low_z = quantileValueSorted(cell->z_values, low_q);
+    cell->median_z = quantileValueSorted(cell->z_values, 0.50);
+    cell->high_z = quantileValueSorted(cell->z_values, high_q);
+    cell->vertical_span = std::max(0.0, cell->high_z - cell->low_z);
+}
+
+static PropagatedGrid buildPropagatedGrid(
+    const PointCloudPtr& cloud,
+    const Polygon2D& scope,
+    double cell_m,
+    double scope_margin_m,
+    const ObstacleDetectionParams& params) {
+    PropagatedGrid grid;
+    grid.cell = std::max(0.05, cell_m);
+    grid.scope_margin_m = std::max(0.0, scope_margin_m);
+    grid.scope = scope;
+    if ((!cloud || cloud->empty()) && scope.size() < 3) {
+        return grid;
+    }
+
+    double minx = 0.0;
+    double miny = 0.0;
+    double maxx = 0.0;
+    double maxy = 0.0;
+    bool have_bounds = false;
+    auto expandBounds = [&](double x, double y) {
+        if (!have_bounds) {
+            minx = maxx = x;
+            miny = maxy = y;
+            have_bounds = true;
+            return;
+        }
+        minx = std::min(minx, x);
+        maxx = std::max(maxx, x);
+        miny = std::min(miny, y);
+        maxy = std::max(maxy, y);
+    };
+
+    if (scope.size() >= 3) {
+        for (const auto& p : scope) {
+            expandBounds(p.x, p.y);
+        }
+        minx -= grid.scope_margin_m;
+        miny -= grid.scope_margin_m;
+        maxx += grid.scope_margin_m;
+        maxy += grid.scope_margin_m;
+    } else if (cloud) {
+        for (const auto& pt : cloud->points) {
+            expandBounds(pt.x, pt.y);
+        }
+    }
+
+    if (!have_bounds) {
+        return grid;
+    }
+
+    grid.xmin = minx;
+    grid.ymin = miny;
+    grid.w = std::max(1, static_cast<int>(std::ceil((maxx - minx) / grid.cell)) + 1);
+    grid.h = std::max(1, static_cast<int>(std::ceil((maxy - miny) / grid.cell)) + 1);
+    grid.cells.resize(static_cast<size_t>(grid.w) * static_cast<size_t>(grid.h));
+
+    for (int y = 0; y < grid.h; ++y) {
+        for (int x = 0; x < grid.w; ++x) {
+            PropagatedGridCell& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+            cell.inside_scope = propagatedGridCellInsideScope(grid, x, y);
+            cell.state = cell.inside_scope ? PropagatedCellState::Unknown : PropagatedCellState::Outside;
+        }
+    }
+
+    if (cloud) {
+        for (const auto& pt : cloud->points) {
+            const int x = static_cast<int>(std::floor((pt.x - grid.xmin) / grid.cell));
+            const int y = static_cast<int>(std::floor((pt.y - grid.ymin) / grid.cell));
+            if (!propagatedGridInBounds(grid, x, y)) {
+                continue;
+            }
+            PropagatedGridCell& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+            if (!cell.inside_scope) {
+                continue;
+            }
+            cell.z_values.push_back(pt.z);
+        }
+    }
+
+    for (auto& cell : grid.cells) {
+        finalizePropagatedGridCellStats(&cell, params);
+    }
+    return grid;
+}
+
+static void markTrailCoveredCells(
+    PropagatedGrid* grid,
+    const std::vector<PathState>& path,
+    double robot_length_m,
+    double robot_width_m,
+    double footprint_margin_m) {
+    if (!grid || grid->w <= 0 || grid->h <= 0 || path.empty()) {
+        return;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr path_xy(new pcl::PointCloud<pcl::PointXYZ>);
+    path_xy->reserve(path.size());
+    for (const auto& st : path) {
+        path_xy->push_back(
+            pcl::PointXYZ(static_cast<float>(st.point.x), static_cast<float>(st.point.y), 0.0f));
+    }
+
+    pcl::KdTreeFLANN<pcl::PointXYZ> path_tree;
+    path_tree.setInputCloud(path_xy);
+
+    const double half_l = robot_length_m / 2.0 + footprint_margin_m;
+    const double half_w = robot_width_m / 2.0 + footprint_margin_m;
+    const double search_radius = std::hypot(half_l, half_w);
+    const double dist_limit = search_radius * 1.5;
+    const int K = std::min<int>(5, static_cast<int>(path.size()));
+    std::vector<int> nn_idx(std::max(1, K));
+    std::vector<float> nn_dist2(std::max(1, K));
+
+    for (int y = 0; y < grid->h; ++y) {
+        for (int x = 0; x < grid->w; ++x) {
+            auto& cell = grid->cells[propagatedGridIndex(*grid, x, y)];
+            if (!cell.inside_scope) {
+                continue;
+            }
+            const Point2D center = propagatedGridCellCenter(*grid, x, y);
+            const double half_cell = 0.5 * grid->cell;
+            const std::array<Point2D, 5> samples = {
+                center,
+                Point2D(center.x - half_cell, center.y - half_cell),
+                Point2D(center.x + half_cell, center.y - half_cell),
+                Point2D(center.x + half_cell, center.y + half_cell),
+                Point2D(center.x - half_cell, center.y + half_cell),
+            };
+            const pcl::PointXYZ query(
+                static_cast<float>(center.x),
+                static_cast<float>(center.y),
+                0.0f);
+            const int found = path_tree.nearestKSearch(query, K, nn_idx, nn_dist2);
+            for (int i = 0; i < found; ++i) {
+                const double d = std::sqrt(static_cast<double>(nn_dist2[static_cast<size_t>(i)]));
+                if (d > dist_limit) {
+                    continue;
+                }
+                const auto& pose = path[static_cast<size_t>(nn_idx[static_cast<size_t>(i)])];
+                bool covered = false;
+                for (const auto& sample : samples) {
+                    if (pointInsideFootprintAtPose(sample, pose, half_l, half_w)) {
+                        covered = true;
+                        break;
+                    }
+                }
+                if (covered) {
+                    cell.trail_covered = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static std::vector<ZClusterSummary> buildZClusters(
+    const std::vector<float>& sorted_values,
+    double max_gap_m) {
+    std::vector<ZClusterSummary> clusters;
+    if (sorted_values.empty()) {
+        return clusters;
+    }
+    max_gap_m = std::max(0.01, max_gap_m);
+    size_t begin = 0;
+    for (size_t i = 1; i <= sorted_values.size(); ++i) {
+        const bool split =
+            (i == sorted_values.size()) ||
+            (static_cast<double>(sorted_values[i]) - static_cast<double>(sorted_values[i - 1]) > max_gap_m);
+        if (!split) {
+            continue;
+        }
+        ZClusterSummary cluster;
+        cluster.begin = begin;
+        cluster.end = i;
+        cluster.count = i - begin;
+        cluster.low = static_cast<double>(sorted_values[begin]);
+        cluster.high = static_cast<double>(sorted_values[i - 1]);
+        const size_t mid = begin + ((i - begin) / 2);
+        cluster.median = static_cast<double>(sorted_values[mid]);
+        clusters.push_back(cluster);
+        begin = i;
+    }
+    return clusters;
+}
+
+static bool selectGroundSupportCluster(
+    const PropagatedGridCell& cell,
+    double predicted_z,
+    const ObstacleDetectionParams& params,
+    ZClusterSummary* cluster_out) {
+    if (cell.z_values.empty() || !cluster_out) {
+        return false;
+    }
+    const double support_low = predicted_z - std::max(0.0, params.ground_support_band_down);
+    const double support_high = predicted_z + std::max(0.0, params.ground_support_band_up);
+    const double cluster_gap_m = std::max(
+        0.02, 0.5 * std::max(params.ground_support_band_down, params.ground_support_band_up));
+    const auto clusters = buildZClusters(cell.z_values, cluster_gap_m);
+
+    bool found = false;
+    size_t best_count = 0;
+    double best_distance = std::numeric_limits<double>::infinity();
+    for (const auto& cluster : clusters) {
+        if (cluster.high < support_low || cluster.low > support_high) {
+            continue;
+        }
+        const double distance = std::abs(cluster.median - predicted_z);
+        if (!found || cluster.count > best_count ||
+            (cluster.count == best_count && distance < best_distance)) {
+            *cluster_out = cluster;
+            best_count = cluster.count;
+            best_distance = distance;
+            found = true;
+        }
+    }
+    return found;
+}
+
+static bool estimateObservedAnchorGroundZ(
+    const PropagatedGridCell& cell,
+    double* ground_z_out,
+    double* confidence_out) {
+    if (!ground_z_out || !confidence_out) {
+        return false;
+    }
+    if (!cell.anchor_z_values.empty()) {
+        *ground_z_out = static_cast<double>(
+            *std::min_element(cell.anchor_z_values.begin(), cell.anchor_z_values.end()));
+        *confidence_out = 10.0 + static_cast<double>(cell.anchor_z_values.size());
+        return true;
+    }
+    if (!cell.z_values.empty()) {
+        *ground_z_out = lowestValueSorted(cell.z_values);
+        *confidence_out = 4.0 + std::min(6.0, 0.25 * static_cast<double>(cell.point_count));
+        return true;
+    }
+    return false;
+}
+
+static GroundSupportAnalysis analyzeGroundSupport(
+    const PropagatedGridCell& cell,
+    double predicted_z,
+    const ObstacleDetectionParams& params) {
+    GroundSupportAnalysis analysis;
+    if (cell.z_values.empty()) {
+        return analysis;
+    }
+
+    ZClusterSummary support_cluster;
+    if (!selectGroundSupportCluster(cell, predicted_z, params, &support_cluster)) {
+        return analysis;
+    }
+
+    const int min_support = std::max(1, params.min_support_points);
+    if (static_cast<int>(support_cluster.count) < min_support) {
+        return analysis;
+    }
+
+    const std::vector<float> support_values(
+        cell.z_values.begin() + static_cast<std::ptrdiff_t>(support_cluster.begin),
+        cell.z_values.begin() + static_cast<std::ptrdiff_t>(support_cluster.end));
+    if (support_values.empty()) {
+        return analysis;
+    }
+
+    analysis.found_support = true;
+    analysis.support_point_count = static_cast<int>(support_values.size());
+    analysis.support_base_z = lowestValueSorted(support_values);
+    analysis.support_top_z = quantileValueSorted(
+        support_values,
+        std::clamp(params.support_cluster_top_quantile, 0.50, 1.0));
+    analysis.support_span_z = std::max(0.0, analysis.support_top_z - analysis.support_base_z);
+
+    const double cluster_gap_m = std::max(
+        0.02, 0.5 * std::max(params.ground_support_band_down, params.ground_support_band_up));
+    const auto clusters = buildZClusters(cell.z_values, cluster_gap_m);
+    for (const auto& cluster : clusters) {
+        if (cluster.begin <= support_cluster.begin) {
+            continue;
+        }
+        analysis.has_upper_cluster = true;
+        analysis.first_non_ground_z = cluster.low;
+        analysis.clearance_above_ground =
+            std::max(0.0, analysis.first_non_ground_z - analysis.support_base_z);
+        break;
+    }
+    return analysis;
+}
+
+static double planeZAt(const PlaneModel& plane, double x, double y) {
+    if (std::abs(plane.nz) <= 1e-9) {
+        return 0.0;
+    }
+    return -(plane.nx * x + plane.ny * y + plane.d) / plane.nz;
+}
+
+static PropagationEstimate estimateGroundFromNeighbours(
+    const PropagatedGrid& grid,
+    int x,
+    int y,
+    const ObstacleDetectionParams& params) {
+    PropagationEstimate estimate;
+    if (!propagatedGridInBounds(grid, x, y)) {
+        return estimate;
+    }
+
+    struct WeightedNeighbour {
+        double z = 0.0;
+        double weight = 0.0;
+        double distance = 0.0;
+    };
+    std::vector<WeightedNeighbour> support;
+    support.reserve(8);
+
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            if (dx == 0 && dy == 0) {
+                continue;
+            }
+            const int nx = x + dx;
+            const int ny = y + dy;
+            if (!propagatedGridInBounds(grid, nx, ny)) {
+                continue;
+            }
+            const auto& neighbour = grid.cells[propagatedGridIndex(grid, nx, ny)];
+            if (!isGroundCellState(neighbour.state)) {
+                continue;
+            }
+            const double base_weight = (dx == 0 || dy == 0) ? 1.0 : 0.5;
+            double confidence = std::max(0.25, neighbour.confidence);
+            if (neighbour.state == PropagatedCellState::AnchorGround) {
+                confidence *= 10.0;
+            }
+            support.push_back(WeightedNeighbour{
+                neighbour.ground_z,
+                base_weight * confidence,
+                std::hypot(
+                    static_cast<double>(dx) * grid.cell,
+                    static_cast<double>(dy) * grid.cell),
+            });
+        }
+    }
+
+    if (support.empty()) {
+        return estimate;
+    }
+
+    auto weightedAverage = [](const std::vector<WeightedNeighbour>& values) {
+        double sum_w = 0.0;
+        double sum_z = 0.0;
+        for (const auto& value : values) {
+            sum_w += value.weight;
+            sum_z += value.weight * value.z;
+        }
+        return std::make_pair(sum_w > 0.0 ? (sum_z / sum_w) : 0.0, sum_w);
+    };
+
+    const auto [provisional_z, provisional_w] = weightedAverage(support);
+    (void)provisional_w;
+
+    std::vector<WeightedNeighbour> consistent;
+    consistent.reserve(support.size());
+    const double allowed_extra =
+        std::max(params.ground_support_band_down, params.ground_support_band_up);
+    for (const auto& value : support) {
+        const double allowed =
+            std::max(0.02, params.propagation_max_slope * value.distance + allowed_extra);
+        if (std::abs(value.z - provisional_z) <= allowed) {
+            consistent.push_back(value);
+        }
+    }
+    if (consistent.empty()) {
+        consistent = support;
+    }
+
+    const auto [predicted_z, sum_w] = weightedAverage(consistent);
+    estimate.valid = true;
+    estimate.predicted_z = predicted_z;
+    estimate.confidence = sum_w;
+    estimate.contributors = static_cast<int>(consistent.size());
+    return estimate;
+}
+
+static GridClassification classifyPropagatedGridCell(
+    const PropagatedGridCell& cell,
+    double predicted_z,
+    double predicted_confidence,
+    const ObstacleDetectionParams& params) {
+    GridClassification out;
+    out.ground_z = predicted_z;
+    const double traversable_step_height = derivedTraversableStepHeight(params);
+    const double overhang_clearance =
+        (params.overhang_clearance_m > 0.0) ? params.overhang_clearance_m : params.obstacle_z_max;
+    if (cell.point_count <= 0) {
+        if (params.empty_cell_policy == GridEmptyCellPolicy::PropagateAcrossUnknown) {
+            out.state = PropagatedCellState::PropagatedGround;
+            out.confidence = std::max(0.10, predicted_confidence * 0.20);
+            out.reason = "empty_cell_propagated";
+        } else {
+            out.state = PropagatedCellState::BlockedUnknown;
+            out.confidence = 0.0;
+            out.reason = "empty_cell_blocked";
+        }
+        return out;
+    }
+
+    const GroundSupportAnalysis support = analyzeGroundSupport(cell, predicted_z, params);
+    out.support_point_count = support.support_point_count;
+    out.support_base_z = support.support_base_z;
+    out.support_top_z = support.support_top_z;
+    out.support_span_z = support.support_span_z;
+    out.first_non_ground_z = support.first_non_ground_z;
+    out.clearance_above_ground = std::isfinite(support.clearance_above_ground)
+        ? support.clearance_above_ground
+        : 0.0;
+
+    if (support.found_support) {
+        if (support.support_span_z > traversable_step_height) {
+            out.state = PropagatedCellState::MeasuredObstacle;
+            out.confidence = 0.0;
+            out.reason = "grounded_cluster_span";
+            return out;
+        }
+        if (support.has_upper_cluster && support.clearance_above_ground <= overhang_clearance) {
+            out.state = PropagatedCellState::MeasuredObstacle;
+            out.confidence = 0.0;
+            out.reason = "low_overhang";
+            return out;
+        }
+
+        out.state = PropagatedCellState::PropagatedGround;
+        out.ground_z = support.support_base_z;
+        const double support_strength = static_cast<double>(support.support_point_count) /
+                                        static_cast<double>(std::max(1, params.min_support_points));
+        out.confidence =
+            std::max(0.15, 0.50 * predicted_confidence + std::min(2.0, support_strength));
+        out.reason = support.has_upper_cluster ? "ground_with_clear_overhang" : "ground_support";
+        return out;
+    }
+
+    const double first_point_z = lowestValueSorted(cell.z_values);
+    const double clearance_above_ground = std::max(0.0, first_point_z - predicted_z);
+    out.first_non_ground_z = first_point_z;
+    out.clearance_above_ground = clearance_above_ground;
+    if (clearance_above_ground >= overhang_clearance) {
+        out.state = PropagatedCellState::PropagatedGround;
+        out.confidence = std::max(0.10, predicted_confidence * 0.35);
+        out.traversable_overhang = true;
+        out.reason = "overhang_only";
+    } else if (cell.point_count < std::max(1, params.min_support_points)) {
+        out.state = PropagatedCellState::BlockedUnknown;
+        out.confidence = 0.0;
+        out.reason = "insufficient_support_points";
+    } else {
+        out.state = PropagatedCellState::MeasuredObstacle;
+        out.confidence = 0.0;
+        out.reason = "no_ground_support";
+    }
+    return out;
+}
+
+struct GroundZGradientStats {
+    double threshold = 0.0;
+    double median_gradient = 0.0;
+    double mad_gradient = 0.0;
+    size_t edge_count = 0;
+    size_t high_gradient_edges = 0;
+};
+
+static double quantileValueCopyDouble(std::vector<double> values, double q) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    q = std::clamp(q, 0.0, 1.0);
+    const size_t idx = quantileIndex(values.size(), q);
+    std::nth_element(
+        values.begin(),
+        values.begin() + static_cast<std::ptrdiff_t>(idx),
+        values.end());
+    return values[idx];
+}
+
+static double groundZLowQuantile(const ObstacleDetectionParams& params) {
+    // Very-low quantile keeps the "minimum z" behaviour while reducing isolated low outliers.
+    return std::clamp(std::min(params.raw_cell_low_quantile, 0.02), 0.0, 0.10);
+}
+
+static size_t initializeGroundZMap(
+    PropagatedGrid* grid,
+    const ObstacleDetectionParams& params) {
+    if (!grid) {
+        return 0;
+    }
+    const double q = groundZLowQuantile(params);
+    size_t observed_cells = 0;
+    for (auto& cell : grid->cells) {
+        cell.ground_z_valid = false;
+        cell.gradient_reachable = false;
+        if (!cell.inside_scope || cell.z_values.empty()) {
+            continue;
+        }
+        cell.ground_z = quantileValueSorted(cell.z_values, q);
+        cell.ground_z_valid = true;
+        cell.confidence = std::max(1.0, std::sqrt(static_cast<double>(cell.point_count)));
+        cell.interpolation_contributors = 0;
+        cell.support_point_count = cell.point_count;
+        cell.support_base_z = cell.ground_z;
+        cell.support_top_z = cell.high_z;
+        cell.support_span_z = std::max(0.0, cell.support_top_z - cell.support_base_z);
+        cell.reason = "ground_z_observed";
+        observed_cells++;
+    }
+    return observed_cells;
+}
+
+static size_t fillEmptyGroundZCellsFromNeighbours(
+    PropagatedGrid* grid,
+    const ObstacleDetectionParams& params) {
+    (void)params;
+    if (!grid || grid->w <= 0 || grid->h <= 0) {
+        return 0;
+    }
+    size_t filled_total = 0;
+    const int max_passes = std::max(1, grid->w + grid->h);
+    const std::array<std::pair<int, int>, 8> dirs = {{
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+    }};
+
+    for (int pass = 0; pass < max_passes; ++pass) {
+        struct Update {
+            size_t idx = 0;
+            double z = 0.0;
+            double confidence = 0.0;
+            int contributors = 0;
+        };
+        std::vector<Update> updates;
+        updates.reserve(grid->cells.size() / 8 + 1);
+
+        for (int y = 0; y < grid->h; ++y) {
+            for (int x = 0; x < grid->w; ++x) {
+                auto& cell = grid->cells[propagatedGridIndex(*grid, x, y)];
+                if (!cell.inside_scope || cell.ground_z_valid) {
+                    continue;
+                }
+
+                double sum_z = 0.0;
+                double sum_w = 0.0;
+                int contributors = 0;
+                for (const auto& [dx, dy] : dirs) {
+                    const int nx = x + dx;
+                    const int ny = y + dy;
+                    if (!propagatedGridInBounds(*grid, nx, ny)) {
+                        continue;
+                    }
+                    const auto& neighbour = grid->cells[propagatedGridIndex(*grid, nx, ny)];
+                    if (!neighbour.inside_scope || !neighbour.ground_z_valid) {
+                        continue;
+                    }
+                    const bool diagonal = (dx != 0 && dy != 0);
+                    const double distance_weight = diagonal ? (1.0 / std::sqrt(2.0)) : 1.0;
+                    const double w = distance_weight * std::max(0.10, neighbour.confidence);
+                    sum_z += w * neighbour.ground_z;
+                    sum_w += w;
+                    contributors++;
+                }
+                if (contributors > 0 && sum_w > 0.0) {
+                    updates.push_back(Update{
+                        propagatedGridIndex(*grid, x, y),
+                        sum_z / sum_w,
+                        0.15 * sum_w,
+                        contributors,
+                    });
+                }
+            }
+        }
+
+        if (updates.empty()) {
+            break;
+        }
+        for (const auto& update : updates) {
+            auto& cell = grid->cells[update.idx];
+            if (cell.ground_z_valid) {
+                continue;
+            }
+            cell.ground_z = update.z;
+            cell.ground_z_valid = true;
+            cell.confidence = std::max(0.10, update.confidence);
+            cell.interpolation_contributors = update.contributors;
+            cell.support_base_z = cell.ground_z;
+            cell.support_top_z = cell.high_z;
+            cell.support_span_z = std::max(0.0, cell.support_top_z - cell.support_base_z);
+            cell.reason = "ground_z_interpolated";
+            filled_total++;
+        }
+    }
+    return filled_total;
+}
+
+static GroundZGradientStats computeGroundZGradientStats(
+    const PropagatedGrid& grid,
+    const ObstacleDetectionParams& params) {
+    GroundZGradientStats stats;
+    std::vector<double> gradients;
+    gradients.reserve(grid.cells.size() * 2);
+    const std::array<std::pair<int, int>, 2> dirs = {{
+        {1, 0}, {0, 1},
+    }};
+
+    for (int y = 0; y < grid.h; ++y) {
+        for (int x = 0; x < grid.w; ++x) {
+            const auto& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+            if (!cell.inside_scope || !cell.ground_z_valid) {
+                continue;
+            }
+            for (const auto& [dx, dy] : dirs) {
+                const int nx = x + dx;
+                const int ny = y + dy;
+                if (!propagatedGridInBounds(grid, nx, ny)) {
+                    continue;
+                }
+                const auto& neighbour = grid.cells[propagatedGridIndex(grid, nx, ny)];
+                if (!neighbour.inside_scope || !neighbour.ground_z_valid) {
+                    continue;
+                }
+                const double gradient =
+                    std::abs(neighbour.ground_z - cell.ground_z) / std::max(1e-6, grid.cell);
+                gradients.push_back(gradient);
+            }
+        }
+    }
+
+    const double base_threshold = std::max(0.05, params.propagation_max_slope);
+    stats.threshold = base_threshold;
+    stats.edge_count = gradients.size();
+    if (!gradients.empty()) {
+        stats.median_gradient = quantileValueCopyDouble(gradients, 0.50);
+        std::vector<double> abs_deviation;
+        abs_deviation.reserve(gradients.size());
+        for (double gradient : gradients) {
+            abs_deviation.push_back(std::abs(gradient - stats.median_gradient));
+        }
+        stats.mad_gradient = quantileValueCopyDouble(abs_deviation, 0.50);
+        const double robust_sigma = 1.4826 * stats.mad_gradient;
+        const double adaptive_threshold = stats.median_gradient + 3.0 * robust_sigma;
+        const double safety_cap = std::max(base_threshold, 1.5 * base_threshold);
+        if (std::isfinite(adaptive_threshold) && adaptive_threshold > 0.0) {
+            stats.threshold = std::clamp(adaptive_threshold, base_threshold, safety_cap);
+        }
+    }
+
+    for (double gradient : gradients) {
+        if (gradient > stats.threshold) {
+            stats.high_gradient_edges++;
+        }
+    }
+    return stats;
+}
+
+static bool groundZGradientEdgePassable(
+    const PropagatedGrid& grid,
+    int x0,
+    int y0,
+    int x1,
+    int y1,
+    double threshold) {
+    if (!propagatedGridInBounds(grid, x0, y0) ||
+        !propagatedGridInBounds(grid, x1, y1)) {
+        return false;
+    }
+    const auto& a = grid.cells[propagatedGridIndex(grid, x0, y0)];
+    const auto& b = grid.cells[propagatedGridIndex(grid, x1, y1)];
+    if (!a.inside_scope || !b.inside_scope || !a.ground_z_valid || !b.ground_z_valid) {
+        return false;
+    }
+    const double gradient = std::abs(a.ground_z - b.ground_z) / std::max(1e-6, grid.cell);
+    return gradient <= threshold;
+}
+
+static double groundZGradientToNeighbour(
+    const PropagatedGrid& grid,
+    int x,
+    int y,
+    int dx,
+    int dy,
+    bool* valid_out = nullptr) {
+    if (valid_out) {
+        *valid_out = false;
+    }
+    const int nx = x + dx;
+    const int ny = y + dy;
+    if (!propagatedGridInBounds(grid, x, y) ||
+        !propagatedGridInBounds(grid, nx, ny)) {
+        return 0.0;
+    }
+    const auto& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+    const auto& neighbour = grid.cells[propagatedGridIndex(grid, nx, ny)];
+    if (!cell.inside_scope || !neighbour.inside_scope ||
+        !cell.ground_z_valid || !neighbour.ground_z_valid) {
+        return 0.0;
+    }
+    if (valid_out) {
+        *valid_out = true;
+    }
+    return std::abs(neighbour.ground_z - cell.ground_z) / std::max(1e-6, grid.cell);
+}
+
+static size_t seedGroundZGradientReachability(PropagatedGrid* grid) {
+    if (!grid) {
+        return 0;
+    }
+    size_t seeds = 0;
+    for (auto& cell : grid->cells) {
+        if (!cell.inside_scope || !cell.ground_z_valid || !cell.trail_covered) {
+            continue;
+        }
+        cell.gradient_reachable = true;
+        cell.state = PropagatedCellState::AnchorGround;
+        cell.confidence = std::max(cell.confidence, 10.0);
+        cell.incoming_gradient = 0.0;
+        cell.incoming_gradient_valid = false;
+        cell.incoming_from_x = -1;
+        cell.incoming_from_y = -1;
+        cell.reason = "ground_z_path_seed";
+        seeds++;
+    }
+
+    if (seeds > 0) {
+        return seeds;
+    }
+
+    size_t best_idx = 0;
+    double best_z = std::numeric_limits<double>::infinity();
+    bool found = false;
+    for (size_t idx = 0; idx < grid->cells.size(); ++idx) {
+        const auto& cell = grid->cells[idx];
+        if (!cell.inside_scope || !cell.ground_z_valid) {
+            continue;
+        }
+        if (!found || cell.ground_z < best_z) {
+            best_idx = idx;
+            best_z = cell.ground_z;
+            found = true;
+        }
+    }
+    if (found) {
+        auto& cell = grid->cells[best_idx];
+        cell.gradient_reachable = true;
+        cell.state = PropagatedCellState::AnchorGround;
+        cell.confidence = std::max(cell.confidence, 5.0);
+        cell.incoming_gradient = 0.0;
+        cell.incoming_gradient_valid = false;
+        cell.incoming_from_x = -1;
+        cell.incoming_from_y = -1;
+        cell.reason = "ground_z_lowest_seed";
+        return 1;
+    }
+    return 0;
+}
+
+static ObstacleDebugInfo makeGridCellDebugInfo(
+    const PropagatedGrid& grid,
+    int x,
+    int y,
+    double gradient_threshold,
+    bool ground_cell) {
+    const auto& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+    const Point2D center = propagatedGridCellCenter(grid, x, y);
+    ObstacleDebugInfo debug;
+    debug.enabled = true;
+    debug.ground_cell = ground_cell;
+    debug.cell_x = x;
+    debug.cell_y = y;
+    debug.center_x = center.x;
+    debug.center_y = center.y;
+    debug.ground_z_valid = cell.ground_z_valid;
+    debug.z_est = cell.ground_z;
+    debug.confidence = cell.confidence;
+    debug.trail_covered = cell.trail_covered;
+    debug.gradient_reachable = cell.gradient_reachable;
+    debug.interpolation_contributors = cell.interpolation_contributors;
+    debug.point_count = cell.point_count;
+    debug.low_z = cell.low_z;
+    debug.median_z = cell.median_z;
+    debug.high_z = cell.high_z;
+    debug.vertical_span = cell.vertical_span;
+    debug.gradient_east = groundZGradientToNeighbour(
+        grid, x, y, 1, 0, &debug.gradient_east_valid);
+    debug.gradient_north = groundZGradientToNeighbour(
+        grid, x, y, 0, 1, &debug.gradient_north_valid);
+    if (debug.gradient_east_valid && debug.gradient_north_valid) {
+        debug.gradient_max = std::max(debug.gradient_east, debug.gradient_north);
+    } else if (debug.gradient_east_valid) {
+        debug.gradient_max = debug.gradient_east;
+    } else if (debug.gradient_north_valid) {
+        debug.gradient_max = debug.gradient_north;
+    } else {
+        debug.gradient_max = 0.0;
+    }
+    debug.gradient_threshold = gradient_threshold;
+    debug.high_gradient_east = debug.gradient_east_valid && debug.gradient_east > gradient_threshold;
+    debug.high_gradient_north = debug.gradient_north_valid && debug.gradient_north > gradient_threshold;
+    const std::array<std::pair<int, int>, 4> cardinal_dirs = {{
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+    }};
+    for (const auto& [dx, dy] : cardinal_dirs) {
+        bool valid = false;
+        const double gradient = groundZGradientToNeighbour(grid, x, y, dx, dy, &valid);
+        if (!valid) {
+            continue;
+        }
+        debug.valid_cardinal_edges++;
+        if (!debug.gradient_cardinal_max_valid || gradient > debug.gradient_cardinal_max) {
+            debug.gradient_cardinal_max = gradient;
+            debug.gradient_cardinal_max_valid = true;
+        }
+        if (gradient <= gradient_threshold) {
+            debug.passable_cardinal_edges++;
+        } else {
+            debug.blocked_cardinal_edges++;
+        }
+    }
+    debug.incoming_gradient = cell.incoming_gradient;
+    debug.incoming_gradient_valid = cell.incoming_gradient_valid;
+    debug.incoming_from_cell_x = cell.incoming_from_x;
+    debug.incoming_from_cell_y = cell.incoming_from_y;
+    debug.support_point_count = cell.support_point_count;
+    debug.support_base_z = cell.support_base_z;
+    debug.support_top_z = cell.support_top_z;
+    debug.support_span_z = cell.support_span_z;
+    debug.first_non_ground_z = cell.first_non_ground_z;
+    debug.clearance_above_ground = cell.clearance_above_ground;
+    debug.reason = cell.reason;
+    return debug;
+}
+
+static Obstacle2D gridCellRectObstacle(
+    const PropagatedGrid& grid,
+    int x,
+    int y,
+    ObstacleVisualType visual_type,
+    double gradient_threshold,
+    bool ground_cell) {
+    const Point2D center = propagatedGridCellCenter(grid, x, y);
+    const double half = 0.5 * grid.cell;
+    Obstacle2D obstacle;
+    obstacle.outer = {
+        {center.x - half, center.y - half},
+        {center.x + half, center.y - half},
+        {center.x + half, center.y + half},
+        {center.x - half, center.y + half},
+    };
+    obstacle.visual_type = visual_type;
+    obstacle.debug_info = makeGridCellDebugInfo(grid, x, y, gradient_threshold, ground_cell);
+    return obstacle;
+}
+
+static std::vector<Obstacle2D> buildGroundDebugCells(
+    const PropagatedGrid& grid,
+    double gradient_threshold,
+    double min_contour_area_m2) {
+    std::vector<Obstacle2D> cells;
+    cells.reserve(grid.cells.size());
+    const double cell_min_area = std::max(0.0, min_contour_area_m2);
+    for (int y = 0; y < grid.h; ++y) {
+        for (int x = 0; x < grid.w; ++x) {
+            const auto& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+            if (!cell.inside_scope || !isGroundCellState(cell.state)) {
+                continue;
+            }
+            Obstacle2D debug_cell = gridCellRectObstacle(
+                grid, x, y, ObstacleVisualType::Ground, gradient_threshold, true);
+            if (polygonArea(debug_cell.outer) >= cell_min_area) {
+                cells.push_back(std::move(debug_cell));
+            }
+        }
+    }
+    return cells;
+}
+
+static void classifyGroundZGradientGrid(
+    PropagatedGrid* grid,
+    const GroundZGradientStats& gradient_stats,
+    const ObstacleDetectionParams& params,
+    ObstacleDetectionStats* stats_out) {
+    (void)params;
+    if (!grid || grid->w <= 0 || grid->h <= 0) {
+        return;
+    }
+
+    std::deque<std::pair<int, int>> queue;
+    size_t anchor_cells = 0;
+    for (int y = 0; y < grid->h; ++y) {
+        for (int x = 0; x < grid->w; ++x) {
+            auto& cell = grid->cells[propagatedGridIndex(*grid, x, y)];
+            if (!cell.gradient_reachable) {
+                continue;
+            }
+            queue.emplace_back(x, y);
+            anchor_cells++;
+        }
+    }
+
+    const std::array<std::pair<int, int>, 4> dirs = {{
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+    }};
+    size_t reachable_ground_cells = 0;
+    while (!queue.empty()) {
+        const auto [x, y] = queue.front();
+        queue.pop_front();
+        auto& cell = grid->cells[propagatedGridIndex(*grid, x, y)];
+        if (cell.state != PropagatedCellState::AnchorGround) {
+            cell.state = PropagatedCellState::PropagatedGround;
+            cell.reason = cell.point_count > 0 ? "ground_z_reachable" : "ground_z_reachable_filled";
+        }
+        reachable_ground_cells++;
+
+        for (const auto& [dx, dy] : dirs) {
+            const int nx = x + dx;
+            const int ny = y + dy;
+            bool edge_valid = false;
+            const double edge_gradient =
+                groundZGradientToNeighbour(*grid, x, y, dx, dy, &edge_valid);
+            if (!edge_valid || edge_gradient > gradient_stats.threshold) {
+                continue;
+            }
+            auto& neighbour = grid->cells[propagatedGridIndex(*grid, nx, ny)];
+            if (neighbour.gradient_reachable) {
+                continue;
+            }
+            neighbour.gradient_reachable = true;
+            neighbour.state = PropagatedCellState::PropagatedGround;
+            neighbour.confidence = std::max(0.25, 0.75 * cell.confidence);
+            neighbour.incoming_gradient = edge_gradient;
+            neighbour.incoming_gradient_valid = true;
+            neighbour.incoming_from_x = x;
+            neighbour.incoming_from_y = y;
+            queue.emplace_back(nx, ny);
+        }
+    }
+
+    size_t blocked_unknown_cells = 0;
+    size_t measured_obstacle_cells = 0;
+    size_t ground_points_band = 0;
+    for (auto& cell : grid->cells) {
+        if (!cell.inside_scope) {
+            cell.state = PropagatedCellState::Outside;
+            continue;
+        }
+        if (isGroundCellState(cell.state)) {
+            ground_points_band += static_cast<size_t>(std::max(0, cell.point_count));
+            continue;
+        }
+        if (!cell.ground_z_valid || cell.point_count <= 0) {
+            cell.state = PropagatedCellState::BlockedUnknown;
+            cell.confidence = 0.0;
+            cell.reason = cell.ground_z_valid ? "ground_z_empty_unreachable" : "ground_z_missing";
+            blocked_unknown_cells++;
+            continue;
+        }
+
+        cell.state = PropagatedCellState::MeasuredObstacle;
+        cell.confidence = 0.0;
+        cell.support_point_count = cell.point_count;
+        cell.support_base_z = cell.ground_z;
+        cell.support_top_z = cell.high_z;
+        cell.support_span_z = std::max(0.0, cell.support_top_z - cell.support_base_z);
+        cell.first_non_ground_z = cell.low_z;
+        cell.clearance_above_ground = std::max(0.0, cell.low_z - cell.ground_z);
+        cell.reason = "ground_z_unreachable_island";
+        measured_obstacle_cells++;
+    }
+
+    if (stats_out) {
+        stats_out->anchor_cells = anchor_cells;
+        stats_out->propagated_ground_cells = reachable_ground_cells;
+        stats_out->blocked_unknown_cells = blocked_unknown_cells;
+        stats_out->measured_obstacle_cells = measured_obstacle_cells;
+        stats_out->ground_points_band = ground_points_band;
+        stats_out->high_gradient_edges = gradient_stats.high_gradient_edges;
+        stats_out->gradient_threshold = gradient_stats.threshold;
+        stats_out->raw_obstacle_candidates = measured_obstacle_cells + blocked_unknown_cells;
+        stats_out->obstacle_points_after_outlier = stats_out->raw_obstacle_candidates;
+    }
 }
 
 // --------------------- Statistical outlier removal (Python-like) ------------
@@ -1937,6 +3489,526 @@ static ShapeContours polygonizeClusterGridLikePython(
     return extractShapesFromOcc(occ, min_contour_area_m2);
 }
 
+static std::vector<Obstacle2D> polygonizeBlockedCells(
+    const PropagatedGrid& grid,
+    double contour_cell_m,
+    double inflate_radius_m,
+    double smooth_radius_m,
+    double geom_smooth_radius_m,
+    double min_contour_area_m2,
+    bool preserve_holes,
+    double preserve_holes_min_area_m2,
+    int* total_holes_out,
+    double gradient_threshold = 0.0) {
+    if (total_holes_out) {
+        *total_holes_out = 0;
+    }
+    if (grid.w <= 0 || grid.h <= 0 || grid.cells.empty()) {
+        return {};
+    }
+
+    std::vector<Obstacle2D> obstacles;
+    obstacles.reserve(grid.cells.size());
+    const double cell_min_area = std::max(0.0, min_contour_area_m2);
+    for (int y = 0; y < grid.h; ++y) {
+        for (int x = 0; x < grid.w; ++x) {
+            const auto& cell = grid.cells[propagatedGridIndex(grid, x, y)];
+            if (!cell.inside_scope) {
+                continue;
+            }
+            if (cell.state != PropagatedCellState::MeasuredObstacle &&
+                cell.state != PropagatedCellState::BlockedUnknown) {
+                continue;
+            }
+
+            const ObstacleVisualType visual_type =
+                (cell.state == PropagatedCellState::BlockedUnknown)
+                    ? ObstacleVisualType::Unknown
+                    : ObstacleVisualType::Known;
+            Obstacle2D obstacle = gridCellRectObstacle(
+                grid, x, y, visual_type, gradient_threshold, false);
+            if (polygonArea(obstacle.outer) >= cell_min_area) {
+                obstacles.push_back(std::move(obstacle));
+            }
+        }
+    }
+
+    (void)contour_cell_m;
+    (void)inflate_radius_m;
+    (void)smooth_radius_m;
+    (void)geom_smooth_radius_m;
+    (void)preserve_holes;
+    (void)preserve_holes_min_area_m2;
+    return obstacles;
+}
+
+static ObstacleDetectionResult detectObstaclesPatchworkBundleImpl(
+    const PointCloudPtr& loaded_cloud,
+    const Polygon2D* roi_or_boundary,
+    const ObstacleDetectionParams& params) {
+    ObstacleDetectionResult res;
+    auto abortIfCancelled = [&res]() -> bool {
+        if (!g_obstacleCancelCallback || !g_obstacleCancelCallback()) {
+            return false;
+        }
+        res.error_message = "Operation cancelled";
+        return true;
+    };
+
+    if (!loaded_cloud || loaded_cloud->empty()) {
+        res.error_message = "No point cloud loaded.";
+        return res;
+    }
+    if (params.source_path.empty()) {
+        res.error_message = "Patchwork method requires params.source_path to be set.";
+        return res;
+    }
+
+    const PatchworkBundlePaths bundle = derivePatchworkBundlePaths(params.source_path);
+    PointCloudPtr nonground_cloud;
+    try {
+        if (fileExists(bundle.nonground_path) && bundle.nonground_path != params.source_path) {
+            nonground_cloud = loadPointCloudFile(bundle.nonground_path);
+        } else if (params.source_path.find("nonground") != std::string::npos) {
+            nonground_cloud = loaded_cloud;
+        } else if (fileExists(bundle.nonground_path)) {
+            nonground_cloud = loadPointCloudFile(bundle.nonground_path);
+        }
+    } catch (const std::exception& ex) {
+        res.error_message = ex.what();
+        return res;
+    }
+
+    if (!nonground_cloud || nonground_cloud->empty()) {
+        res.error_message =
+            "Patchwork detector could not find a non-ground companion cloud. "
+            "Load a corrected_patchwork_scores_* or corrected_patchwork_nonground_* file.";
+        return res;
+    }
+
+    size_t score_point_count = 0;
+    double mean_ground_probability = 0.0;
+    try {
+        if (fileExists(bundle.scores_path)) {
+            auto score_cloud = loadPointCloudFileXYZI(bundle.scores_path);
+            score_point_count = score_cloud->size();
+            double intensity_sum = 0.0;
+            size_t valid_scores = 0;
+            for (const auto& pt : score_cloud->points) {
+                if (!std::isfinite(pt.intensity)) {
+                    continue;
+                }
+                intensity_sum += static_cast<double>(pt.intensity);
+                ++valid_scores;
+            }
+            if (valid_scores > 0) {
+                mean_ground_probability = intensity_sum / static_cast<double>(valid_scores);
+            }
+        }
+    } catch (const std::exception& ex) {
+        std::cout << "[PatchworkDetect] Score-cloud load skipped: " << ex.what() << std::endl;
+    }
+
+    const Polygon2D scope = effectiveScopePolygon(roi_or_boundary);
+    const double scope_margin_m =
+        (scope.size() >= 3) ? std::max(0.0, params.scope_margin_m) : 0.0;
+    PointCloudPtr scoped_display_cloud = filterCloudToPolygon(loaded_cloud, scope, scope_margin_m);
+    PointCloudPtr scoped_nonground_cloud = filterCloudToPolygon(nonground_cloud, scope, scope_margin_m);
+    res.stats.input_points = loaded_cloud->size();
+    res.stats.roi_points = scoped_display_cloud ? scoped_display_cloud->size() : 0;
+    res.stats.path_poses = 0;
+    res.stats.raw_obstacle_candidates = scoped_nonground_cloud ? scoped_nonground_cloud->size() : 0;
+    res.stats.obstacle_points_after_outlier = res.stats.raw_obstacle_candidates;
+    if (abortIfCancelled()) {
+        return res;
+    }
+
+    std::cout << "[PatchworkDetect] source=" << params.source_path
+              << " score_points=" << score_point_count
+              << " display_points=" << res.stats.roi_points
+              << " nonground_points=" << res.stats.raw_obstacle_candidates
+              << " mean_ground_probability=" << mean_ground_probability
+              << std::endl;
+
+    if (!scoped_nonground_cloud || scoped_nonground_cloud->empty()) {
+        res.success = true;
+        return res;
+    }
+
+    double grid_cell_m = params.grid_cell_m;
+    if (grid_cell_m <= 0.0) {
+        grid_cell_m = 0.09;
+    }
+    double contour_cell_m = params.contour_cell_m;
+    if (contour_cell_m < 0.0) {
+        contour_cell_m = 2.0 * grid_cell_m;
+    }
+    if (contour_cell_m < grid_cell_m) {
+        contour_cell_m = grid_cell_m;
+    }
+    double smooth_radius_m = params.smooth_radius_m;
+    if (smooth_radius_m < 0.0) {
+        smooth_radius_m = 2.0 * grid_cell_m;
+    }
+    if (smooth_radius_m < 0.0) {
+        smooth_radius_m = 0.0;
+    }
+    const double inflate_radius_m = std::max(0.0, params.inflate_radius_m);
+    const double geom_smooth_radius_m = std::max(0.0, params.geom_smooth_radius_m);
+    const bool preserve_holes = params.preserve_holes;
+    const double preserve_holes_min_area_m2 = std::max(0.0, params.preserve_holes_min_area_m2);
+
+    // Keep the Patchwork path raw for inspection: no extra denoising before clustering.
+    PointCloudPtr obstacle_clean = scoped_nonground_cloud;
+
+    std::vector<Point2D> obs_xy;
+    obs_xy.reserve(obstacle_clean->size());
+    size_t obs_xy_idx = 0;
+    for (const auto& pt : obstacle_clean->points) {
+        if ((obs_xy_idx++ & 0x1FFFu) == 0u && abortIfCancelled()) {
+            return res;
+        }
+        obs_xy.emplace_back(pt.x, pt.y);
+    }
+    std::vector<int> labels = dbscan2D(obs_xy, params.cluster_eps_m, params.cluster_min_pts);
+    if (abortIfCancelled()) {
+        return res;
+    }
+    int max_label = -1;
+    for (int l : labels) max_label = std::max(max_label, l);
+    const int n_clusters = max_label + 1;
+    res.stats.clusters_found = n_clusters;
+
+    std::vector<std::vector<Point2D>> clusters;
+    clusters.resize(static_cast<size_t>(n_clusters));
+    std::vector<Point2D> noise_pts;
+    noise_pts.reserve(obs_xy.size());
+    for (size_t i = 0; i < obs_xy.size(); ++i) {
+        if ((i & 0x1FFFu) == 0u && abortIfCancelled()) {
+            return res;
+        }
+        int l = labels[i];
+        if (l < 0) {
+            noise_pts.push_back(obs_xy[i]);
+            continue;
+        }
+        clusters[static_cast<size_t>(l)].push_back(obs_xy[i]);
+    }
+
+    std::vector<std::vector<Point2D>> cluster_list;
+    cluster_list.reserve(clusters.size());
+    for (auto& c : clusters) {
+        if (!c.empty()) cluster_list.push_back(std::move(c));
+    }
+    clusters.clear();
+
+    std::vector<Obstacle2D> micro_obstacles;
+    if (params.micro_enable && !obs_xy.empty()) {
+        std::vector<std::vector<Point2D>> normal_clusters;
+        normal_clusters.reserve(cluster_list.size());
+        size_t cluster_idx = 0;
+        for (auto& cl : cluster_list) {
+            if ((cluster_idx++ & 0x3Fu) == 0u && abortIfCancelled()) {
+                return res;
+            }
+            if (isMicroCluster(cl, params)) {
+                Obstacle2D obs;
+                obs.outer = rectFromBbox(cl, params.micro_min_size_m, params.micro_margin_m);
+                micro_obstacles.push_back(std::move(obs));
+            } else {
+                normal_clusters.push_back(std::move(cl));
+            }
+        }
+        cluster_list = std::move(normal_clusters);
+
+        std::vector<Point2D> micro_noise_pts;
+        micro_noise_pts.reserve(obs_xy.size());
+        for (size_t i = 0; i < obs_xy.size(); ++i) {
+            if (labels[i] == -1) {
+                micro_noise_pts.push_back(obs_xy[i]);
+            }
+        }
+        if (static_cast<int>(micro_noise_pts.size()) >= params.micro_min_pts &&
+            params.micro_noise_eps_m > 0.0) {
+            std::vector<int> micro_labels = dbscan2D(
+                micro_noise_pts, params.micro_noise_eps_m, params.micro_min_pts);
+            if (abortIfCancelled()) {
+                return res;
+            }
+            int micro_max_label = -1;
+            for (int l : micro_labels) micro_max_label = std::max(micro_max_label, l);
+            const int micro_n_clusters = micro_max_label + 1;
+            if (micro_n_clusters > 0) {
+                std::vector<std::vector<Point2D>> micro_clusters(static_cast<size_t>(micro_n_clusters));
+                for (size_t i = 0; i < micro_noise_pts.size(); ++i) {
+                    int l = micro_labels[i];
+                    if (l < 0) continue;
+                    micro_clusters[static_cast<size_t>(l)].push_back(micro_noise_pts[i]);
+                }
+                for (auto& mc : micro_clusters) {
+                    if (mc.empty()) continue;
+                    if (!isMicroCluster(mc, params)) continue;
+                    Obstacle2D obs;
+                    obs.outer = rectFromBbox(mc, params.micro_min_size_m, params.micro_margin_m);
+                    micro_obstacles.push_back(std::move(obs));
+                }
+            }
+        }
+    }
+
+    if (cluster_list.empty()) {
+        res.stats.total_holes = 0;
+        res.stats.obstacle_shapes = static_cast<int>(micro_obstacles.size());
+        res.obstacles = std::move(micro_obstacles);
+        res.success = true;
+        return res;
+    }
+
+    const double merge_d2 = params.merge_distance_m * params.merge_distance_m;
+
+    struct ClusterKD {
+        std::vector<Point2D> pts;
+        Point2D minp{0, 0};
+        Point2D maxp{0, 0};
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud;
+        std::unique_ptr<pcl::KdTreeFLANN<pcl::PointXYZ>> tree;
+    };
+
+    std::vector<ClusterKD> ck;
+    ck.reserve(cluster_list.size());
+    for (auto& c : cluster_list) {
+        ClusterKD entry;
+        entry.pts = std::move(c);
+        entry.minp = entry.maxp = entry.pts.front();
+        for (const auto& p : entry.pts) {
+            entry.minp.x = std::min(entry.minp.x, p.x);
+            entry.minp.y = std::min(entry.minp.y, p.y);
+            entry.maxp.x = std::max(entry.maxp.x, p.x);
+            entry.maxp.y = std::max(entry.maxp.y, p.y);
+        }
+        entry.pcl_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+        entry.pcl_cloud->reserve(entry.pts.size());
+        for (const auto& p : entry.pts) {
+            entry.pcl_cloud->push_back(pcl::PointXYZ(static_cast<float>(p.x), static_cast<float>(p.y), 0.0f));
+        }
+        entry.tree = std::make_unique<pcl::KdTreeFLANN<pcl::PointXYZ>>();
+        entry.tree->setInputCloud(entry.pcl_cloud);
+        ck.push_back(std::move(entry));
+    }
+
+    struct UnionFind {
+        std::vector<int> parent;
+        explicit UnionFind(int n) : parent(static_cast<size_t>(n)) {
+            for (int i = 0; i < n; ++i) parent[static_cast<size_t>(i)] = i;
+        }
+        int find(int x) {
+            int r = x;
+            while (parent[static_cast<size_t>(r)] != r) {
+                r = parent[static_cast<size_t>(r)];
+            }
+            while (parent[static_cast<size_t>(x)] != x) {
+                int px = parent[static_cast<size_t>(x)];
+                parent[static_cast<size_t>(x)] = r;
+                x = px;
+            }
+            return r;
+        }
+        void unite(int a, int b) {
+            int ra = find(a);
+            int rb = find(b);
+            if (ra != rb) parent[static_cast<size_t>(ra)] = rb;
+        }
+    };
+
+    UnionFind uf(static_cast<int>(ck.size()));
+
+    auto aabbMinDist2 = [](const ClusterKD& a, const ClusterKD& b) -> double {
+        double dx = 0.0;
+        if (a.maxp.x < b.minp.x) dx = b.minp.x - a.maxp.x;
+        else if (b.maxp.x < a.minp.x) dx = a.minp.x - b.maxp.x;
+        double dy = 0.0;
+        if (a.maxp.y < b.minp.y) dy = b.minp.y - a.maxp.y;
+        else if (b.maxp.y < a.minp.y) dy = a.minp.y - b.maxp.y;
+        return dx * dx + dy * dy;
+    };
+
+    std::vector<int> nn_idx(1);
+    std::vector<float> nn_dist2(1);
+
+    for (int i = 0; i < static_cast<int>(ck.size()); ++i) {
+        if ((i & 0x0Fu) == 0 && abortIfCancelled()) {
+            return res;
+        }
+        for (int j = i + 1; j < static_cast<int>(ck.size()); ++j) {
+            if (aabbMinDist2(ck[static_cast<size_t>(i)], ck[static_cast<size_t>(j)]) > merge_d2) {
+                continue;
+            }
+            double best_d2 = std::numeric_limits<double>::infinity();
+            for (const auto& p : ck[static_cast<size_t>(i)].pcl_cloud->points) {
+                int found = ck[static_cast<size_t>(j)].tree->nearestKSearch(p, 1, nn_idx, nn_dist2);
+                if (found > 0) {
+                    best_d2 = std::min(best_d2, static_cast<double>(nn_dist2[0]));
+                    if (best_d2 <= merge_d2) break;
+                }
+            }
+            if (best_d2 <= merge_d2) {
+                uf.unite(i, j);
+            }
+        }
+    }
+
+    std::unordered_map<int, std::vector<int>> groups;
+    groups.reserve(ck.size());
+    for (int i = 0; i < static_cast<int>(ck.size()); ++i) {
+        groups[uf.find(i)].push_back(i);
+    }
+    res.stats.groups_merged = static_cast<int>(groups.size());
+
+    std::vector<Obstacle2D> obstacles_out;
+    for (const auto& kv : groups) {
+        if (abortIfCancelled()) {
+            return res;
+        }
+        const auto& idxs = kv.second;
+        std::vector<Point2D> merged_pts;
+        size_t total_pts = 0;
+        for (int ci : idxs) total_pts += ck[static_cast<size_t>(ci)].pts.size();
+        merged_pts.reserve(total_pts);
+        for (int ci : idxs) {
+            const auto& pts = ck[static_cast<size_t>(ci)].pts;
+            merged_pts.insert(merged_pts.end(), pts.begin(), pts.end());
+        }
+        if (merged_pts.empty()) continue;
+
+        Polygon2D merged_hull;
+        try {
+            if (merged_pts.size() >= 3) {
+                merged_hull = computeConvexHull(merged_pts);
+            } else {
+                merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
+            }
+        } catch (...) {
+            merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
+        }
+        double hull_area = polygonArea(merged_hull);
+        if (hull_area <= 1e-12) {
+            merged_hull = rectFromBbox(merged_pts, 0.05, 0.0);
+            hull_area = polygonArea(merged_hull);
+        }
+
+        bool use_grid = false;
+        bool allow_grid = (params.polygon_mode == ObstaclePolygonMode::Auto ||
+                           params.polygon_mode == ObstaclePolygonMode::Grid);
+
+        if (allow_grid) {
+            const bool prefer_grid = (params.polygon_mode == ObstaclePolygonMode::Auto) &&
+                (geom_smooth_radius_m > 0.0 || contour_cell_m > grid_cell_m + 1e-12);
+
+            bool hollow_trigger = false;
+            if (grid_cell_m > 0.0 && hull_area > params.min_contour_area_m2) {
+                OccGrid occ0 = occupancyFromPoints(merged_pts, grid_cell_m, 0.20);
+                size_t occ_sum = 0;
+                for (uint8_t v : occ0.occ) occ_sum += (v != 0);
+                const double occ_area = static_cast<double>(occ_sum) * (grid_cell_m * grid_cell_m);
+                const double hollow_ratio = occ_area / std::max(hull_area, 1e-9);
+                hollow_trigger = (hollow_ratio < params.hollow_ratio_thresh);
+            }
+
+            use_grid = (params.polygon_mode == ObstaclePolygonMode::Grid) || prefer_grid || hollow_trigger;
+        }
+
+        if (use_grid) {
+            auto shapes = polygonizeClusterGrid(
+                merged_pts,
+                grid_cell_m,
+                contour_cell_m,
+                inflate_radius_m,
+                /*smooth_radius_m=*/0.0,
+                params.min_contour_area_m2);
+
+            if (!shapes.empty()) {
+                auto pointInAnyShape = [&](const Point2D& p) -> bool {
+                    for (const auto& sh : shapes) {
+                        if (!pointInPolyRayCast(p, sh.first)) continue;
+                        bool in_hole = false;
+                        for (const auto& h : sh.second) {
+                            if (pointInPolyRayCast(p, h)) {
+                                in_hole = true;
+                                break;
+                            }
+                        }
+                        if (!in_hole) return true;
+                    }
+                    return false;
+                };
+
+                for (int ci : idxs) {
+                    const auto& cpts = ck[static_cast<size_t>(ci)].pts;
+                    if (cpts.empty()) continue;
+                    bool covered = false;
+                    const size_t stride = std::max<size_t>(1, cpts.size() / 12);
+                    for (size_t k = 0; k < cpts.size(); k += stride) {
+                        if (pointInAnyShape(cpts[k])) {
+                            covered = true;
+                            break;
+                        }
+                    }
+                    if (!covered && pointInAnyShape(cpts.back())) {
+                        covered = true;
+                    }
+                    if (covered) continue;
+
+                    Polygon2D tiny = rectFromBbox(cpts, std::max(0.02, 0.75 * grid_cell_m), 0.0);
+                    shapes.emplace_back(std::move(tiny), std::vector<Polygon2D>{});
+                }
+
+                for (auto& sh : shapes) {
+                    Obstacle2D obs;
+                    obs.outer = std::move(sh.first);
+                    obs.holes = std::move(sh.second);
+                    obstacles_out.push_back(std::move(obs));
+                }
+                continue;
+            }
+        }
+
+        Obstacle2D obs;
+        obs.outer = std::move(merged_hull);
+        obstacles_out.push_back(std::move(obs));
+    }
+
+    if (geom_smooth_radius_m > 0.0 && !obstacles_out.empty()) {
+        obstacles_out = smoothShapesRollingDiskGrid(
+            obstacles_out,
+            geom_smooth_radius_m,
+            grid_cell_m,
+            contour_cell_m,
+            params.min_contour_area_m2,
+            preserve_holes,
+            preserve_holes_min_area_m2);
+    }
+    if (abortIfCancelled()) {
+        return res;
+    }
+
+    if (!micro_obstacles.empty()) {
+        obstacles_out.reserve(obstacles_out.size() + micro_obstacles.size());
+        for (auto& m : micro_obstacles) {
+            obstacles_out.push_back(std::move(m));
+        }
+    }
+
+    int final_holes = 0;
+    for (const auto& o : obstacles_out) {
+        final_holes += static_cast<int>(o.holes.size());
+    }
+    res.stats.total_holes = final_holes;
+    res.stats.obstacle_shapes = static_cast<int>(obstacles_out.size());
+    res.obstacles = std::move(obstacles_out);
+    res.success = true;
+    return res;
+}
+
 }  // namespace
 
 ObstacleDetectionResult detectObstaclesAuto(
@@ -1958,14 +4030,16 @@ ObstacleDetectionResult detectObstaclesAuto(
     }
 
     const Polygon2D scope = effectiveScopePolygon(roi_or_boundary);
-    PointCloudPtr scoped_cloud = filterCloudToPolygon(cloud, scope);
+    const double scope_margin_m =
+        (scope.size() >= 3) ? std::max(0.0, params.scope_margin_m) : 0.0;
+    PointCloudPtr scoped_cloud = filterCloudToPolygon(cloud, scope, scope_margin_m);
     res.stats.input_points = cloud->size();
     res.stats.roi_points = scoped_cloud ? scoped_cloud->size() : 0;
 
     // Filter path to ROI (if provided)
     std::vector<PathState> path = driven_path;
     if (!scope.empty()) {
-        path = filterPathToPolygon(driven_path, scope);
+        path = filterPathToPolygon(driven_path, scope, scope_margin_m);
     }
     res.stats.path_poses = path.size();
     if (abortIfCancelled()) {
@@ -1995,13 +4069,71 @@ ObstacleDetectionResult detectObstaclesAuto(
     const double geom_smooth_radius_m = std::max(0.0, params.geom_smooth_radius_m);
     const bool preserve_holes = params.preserve_holes;
     const double preserve_holes_min_area_m2 = std::max(0.0, params.preserve_holes_min_area_m2);
+    PointCloudPtr obstacle_raw(new PointCloud);
+    bool have_preclassified_obstacles = false;
+
+    if (params.detection_method == ObstacleDetectionMethod::ClothSimulationFilter) {
+        PointCloudPtr csf_input_cloud = scoped_cloud;
+        if (params.csf_pre_sor_enabled) {
+            const size_t before_pre_sor = csf_input_cloud ? csf_input_cloud->size() : 0;
+            csf_input_cloud = removeStatisticalOutliersMeanDist(
+                csf_input_cloud,
+                params.csf_pre_sor_k,
+                params.csf_pre_sor_std);
+            if (abortIfCancelled()) {
+                return res;
+            }
+            std::cout << "[ObstacleDetect] CSF: pre-SOR input_points=" << before_pre_sor
+                      << ", output_points=" << (csf_input_cloud ? csf_input_cloud->size() : 0)
+                      << ", k=" << params.csf_pre_sor_k
+                      << ", std=" << params.csf_pre_sor_std
+                      << "\n";
+        }
+        std::cout << "[ObstacleDetect] CSF: segmenting ground/non-ground"
+                  << " (cloth_resolution=" << params.csf_cloth_resolution_m
+                  << ", max_iterations=" << params.csf_max_iterations
+                  << ", classification_threshold=" << params.csf_classification_threshold_m
+                  << ", rigidness=" << params.csf_rigidness
+                  << ", slope_processing=" << (params.csf_slope_processing ? "on" : "off")
+                  << ", pre_sor=" << (params.csf_pre_sor_enabled ? "on" : "off")
+                  << ", trail_cleanup=" << (params.csf_trail_footprint_cleanup ? "on" : "off")
+                  << ", trail_margin=" << params.csf_trail_cleanup_margin_m
+                  << ")\n";
+        const CsfSegmentationResult csf = segmentGroundClothSimulation(
+            csf_input_cloud,
+            params,
+            abortIfCancelled);
+        if (abortIfCancelled()) {
+            return res;
+        }
+        if (!csf.ground || csf.ground->empty()) {
+            res.error_message = "CSF could not classify any ground points.";
+            return res;
+        }
+        obstacle_raw = csf.nonground ? csf.nonground : PointCloudPtr(new PointCloud);
+        res.csf_ground_cloud = csf.ground;
+        res.csf_nonground_cloud = csf.nonground;
+        res.stats.footprint_ground_points = csf.ground->size();
+        res.stats.ground_points_band = csf.ground->size();
+        res.stats.raw_obstacle_candidates = obstacle_raw->size();
+        res.stats.anchor_cells = csf.grid_cells;
+        have_preclassified_obstacles = true;
+        std::cout << "[ObstacleDetect] CSF: ground=" << csf.ground->size()
+                  << ", nonground=" << (csf.nonground ? csf.nonground->size() : 0)
+                  << ", cloth_cells=" << csf.grid_cells << "\n";
+    }
 
     // ------------------------------------------------------------------
     // 3. Ground detection
     // ------------------------------------------------------------------
+    if (!have_preclassified_obstacles) {
     PointCloudPtr fp_ground(new PointCloud);
+    const bool use_relaxed_ground_support =
+        params.ground_model_mode == GroundModelMode::LocalHeightField ||
+        params.ground_model_mode == GroundModelMode::PropagatedGrid ||
+        params.ground_model_mode == GroundModelMode::GroundZGradientGrid;
     if (!path.empty()) {
-        if (params.ground_model_mode == GroundModelMode::LocalHeightField) {
+        if (use_relaxed_ground_support) {
             PointCloudPtr fp_ground_strict = extractFootprintGround(
                 scoped_cloud, path,
                 params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
@@ -2011,10 +4143,21 @@ ObstacleDetectionResult detectObstaclesAuto(
                 params.robot_length_m, params.robot_width_m, params.footprint_margin_m,
                 params.ground_z_max, false);
 
+            const bool use_grid_cell =
+                params.ground_model_mode == GroundModelMode::PropagatedGrid ||
+                params.ground_model_mode == GroundModelMode::GroundZGradientGrid;
+            const double grid_seed_quantile =
+                params.ground_model_mode == GroundModelMode::GroundZGradientGrid
+                    ? groundZLowQuantile(params)
+                    : std::clamp(params.raw_cell_low_quantile, 0.0, 0.50);
             PointCloudPtr strict_seed_preview = aggregateGroundSeedsQuantileXY(
-                fp_ground_strict, params.local_ground_cell_m, kLocalGroundSeedQuantile);
+                fp_ground_strict,
+                use_grid_cell ? grid_cell_m : params.local_ground_cell_m,
+                use_grid_cell ? grid_seed_quantile : kLocalGroundSeedQuantile);
             PointCloudPtr relaxed_seed_preview = aggregateGroundSeedsQuantileXY(
-                fp_ground_relaxed, params.local_ground_cell_m, kLocalGroundSeedQuantile);
+                fp_ground_relaxed,
+                use_grid_cell ? grid_cell_m : params.local_ground_cell_m,
+                use_grid_cell ? grid_seed_quantile : kLocalGroundSeedQuantile);
             const size_t strict_cells = strict_seed_preview ? strict_seed_preview->size() : 0;
             const size_t relaxed_cells = relaxed_seed_preview ? relaxed_seed_preview->size() : 0;
             const size_t min_seed_cells = static_cast<size_t>(std::max(3, params.local_ground_min_pts));
@@ -2049,7 +4192,7 @@ ObstacleDetectionResult detectObstaclesAuto(
                 }
                 if (pt.z <= params.ground_z_max) fp_ground->push_back(pt);
             }
-        } else if (params.ground_model_mode != GroundModelMode::LocalHeightField) {
+        } else if (!use_relaxed_ground_support) {
             std::cout << "[ObstacleDetect] Ground: using footprint path (poses="
                       << path.size() << ", points=" << fp_ground->size()
                       << ", z_max=" << params.ground_z_max << ")\n";
@@ -2084,6 +4227,23 @@ ObstacleDetectionResult detectObstaclesAuto(
                   << " (support="
                   << (local_ground.xy_support ? local_ground.xy_support->size() : 0)
                   << ", mode=" << groundModelName(params.ground_model_mode) << ")\n";
+    } else if (params.ground_model_mode == GroundModelMode::PropagatedGrid ||
+               params.ground_model_mode == GroundModelMode::GroundZGradientGrid) {
+        const double plane_seed_quantile =
+            params.ground_model_mode == GroundModelMode::GroundZGradientGrid
+                ? groundZLowQuantile(params)
+                : kLocalGroundSeedQuantile;
+        PointCloudPtr plane_support = aggregateGroundSeedsQuantileXY(
+            fp_ground, grid_cell_m, plane_seed_quantile);
+        plane = fallbackPlaneFromGround(
+            (plane_support && !plane_support->empty()) ? plane_support : fp_ground,
+            params.ransac_iters,
+            params.ransac_thresh_m);
+        std::cout << "[ObstacleDetect] Ground: building " << groundModelName(params.ground_model_mode)
+                  << " (n="
+                  << scoped_cloud->size() << ", cell=" << grid_cell_m
+                  << ", scope_margin=" << scope_margin_m
+                  << ", mode=" << groundModelName(params.ground_model_mode) << ")\n";
     } else if (fp_ground->size() < 20) {
         std::cout << "[ObstacleDetect] Ground: using median-Z flat plane (n="
                   << fp_ground->size() << ")\n";
@@ -2099,10 +4259,344 @@ ObstacleDetectionResult detectObstaclesAuto(
     res.stats.plane_nz = plane.nz;
     res.stats.plane_d = plane.d;
 
+    if (params.ground_model_mode == GroundModelMode::GroundZGradientGrid) {
+        PropagatedGrid grid =
+            buildPropagatedGrid(scoped_cloud, scope, grid_cell_m, scope_margin_m, params);
+        if (grid.cells.empty()) {
+            res.error_message = "Unable to build ground-Z gradient detector grid.";
+            return res;
+        }
+
+        initializeGroundZMap(&grid, params);
+        const size_t filled_empty_cells = fillEmptyGroundZCellsFromNeighbours(&grid, params);
+        res.stats.filled_empty_cells = filled_empty_cells;
+
+        markTrailCoveredCells(
+            &grid,
+            path,
+            params.robot_length_m,
+            params.robot_width_m,
+            params.footprint_margin_m);
+        seedGroundZGradientReachability(&grid);
+
+        const GroundZGradientStats gradient_stats =
+            computeGroundZGradientStats(grid, params);
+        classifyGroundZGradientGrid(&grid, gradient_stats, params, &res.stats);
+        res.stats.filled_empty_cells = filled_empty_cells;
+        res.debug_grid_cells = buildGroundDebugCells(
+            grid,
+            gradient_stats.threshold,
+            params.min_contour_area_m2);
+
+        int total_holes = 0;
+        res.obstacles = polygonizeBlockedCells(
+            grid,
+            contour_cell_m,
+            inflate_radius_m,
+            smooth_radius_m,
+            geom_smooth_radius_m,
+            params.min_contour_area_m2,
+            preserve_holes,
+            preserve_holes_min_area_m2,
+            &total_holes,
+            gradient_stats.threshold);
+        res.stats.total_holes = total_holes;
+        res.stats.obstacle_shapes = static_cast<int>(res.obstacles.size());
+        std::cout << "[ObstacleDetect] Ground-Z gradient grid: anchors="
+                  << res.stats.anchor_cells
+                  << ", reachable_ground=" << res.stats.propagated_ground_cells
+                  << ", measured_obstacle=" << res.stats.measured_obstacle_cells
+                  << ", blocked_unknown=" << res.stats.blocked_unknown_cells
+                  << ", filled_empty=" << res.stats.filled_empty_cells
+                  << ", gradient_threshold=" << gradient_stats.threshold
+                  << ", high_gradient_edges=" << gradient_stats.high_gradient_edges
+                  << "/" << gradient_stats.edge_count
+                  << ", gradient_median=" << gradient_stats.median_gradient
+                  << ", gradient_mad=" << gradient_stats.mad_gradient
+                  << ", shapes=" << res.obstacles.size()
+                  << "\n";
+        res.success = true;
+        return res;
+    }
+
+    if (params.ground_model_mode == GroundModelMode::PropagatedGrid) {
+        PropagatedGrid grid =
+            buildPropagatedGrid(scoped_cloud, scope, grid_cell_m, scope_margin_m, params);
+        if (grid.cells.empty()) {
+            res.error_message = "Unable to build propagated detector grid.";
+            return res;
+        }
+
+        PointCloudPtr anchor_seeds = aggregateGroundSeedsQuantileXY(
+            fp_ground,
+            grid_cell_m,
+            std::clamp(params.raw_cell_low_quantile, 0.0, 0.50));
+        if (anchor_seeds) {
+            for (const auto& pt : anchor_seeds->points) {
+                const int gx = static_cast<int>(std::floor((pt.x - grid.xmin) / grid.cell));
+                const int gy = static_cast<int>(std::floor((pt.y - grid.ymin) / grid.cell));
+                if (!propagatedGridInBounds(grid, gx, gy)) {
+                    continue;
+                }
+                auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+                if (!cell.inside_scope) {
+                    continue;
+                }
+                cell.anchor_z_values.push_back(pt.z);
+            }
+        }
+
+        markTrailCoveredCells(
+            &grid,
+            path,
+            params.robot_length_m,
+            params.robot_width_m,
+            params.footprint_margin_m);
+
+        size_t anchor_cells = 0;
+        for (auto& cell : grid.cells) {
+            if (!cell.anchor_z_values.empty()) {
+                cell.trail_covered = true;
+            }
+            if (!cell.inside_scope || !cell.trail_covered) {
+                continue;
+            }
+            double anchor_z = 0.0;
+            double anchor_confidence = 0.0;
+            if (!estimateObservedAnchorGroundZ(cell, &anchor_z, &anchor_confidence)) {
+                continue;
+            }
+            const bool had_anchor_seed = !cell.anchor_z_values.empty();
+            cell.state = PropagatedCellState::AnchorGround;
+            cell.ground_z = anchor_z;
+            cell.confidence = anchor_confidence;
+            if (cell.anchor_z_values.empty()) {
+                cell.anchor_z_values.push_back(static_cast<float>(anchor_z));
+            }
+            cell.reason = had_anchor_seed ? "trail_anchor_seed" : "trail_anchor_observed";
+            anchor_cells++;
+        }
+
+        bool trail_changed = true;
+        for (int pass = 0; pass < 4 && trail_changed; ++pass) {
+            trail_changed = false;
+            for (int gy = 0; gy < grid.h; ++gy) {
+                for (int gx = 0; gx < grid.w; ++gx) {
+                    auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+                    if (!cell.inside_scope || !cell.trail_covered ||
+                        cell.state != PropagatedCellState::Unknown) {
+                        continue;
+                    }
+                    const PropagationEstimate estimate =
+                        estimateGroundFromNeighbours(grid, gx, gy, params);
+                    if (!estimate.valid) {
+                        continue;
+                    }
+                    cell.state = PropagatedCellState::AnchorGround;
+                    cell.ground_z = estimate.predicted_z;
+                    cell.confidence = std::max(2.5, estimate.confidence);
+                    cell.anchor_z_values.push_back(static_cast<float>(cell.ground_z));
+                    cell.reason = "trail_anchor_interpolated";
+                    anchor_cells++;
+                    trail_changed = true;
+                }
+            }
+        }
+
+        for (int gy = 0; gy < grid.h; ++gy) {
+            for (int gx = 0; gx < grid.w; ++gx) {
+                auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+                if (!cell.inside_scope || !cell.trail_covered ||
+                    cell.state != PropagatedCellState::Unknown) {
+                    continue;
+                }
+                const Point2D center = propagatedGridCellCenter(grid, gx, gy);
+                cell.state = PropagatedCellState::AnchorGround;
+                cell.ground_z = planeZAt(plane, center.x, center.y);
+                cell.confidence = 2.0;
+                cell.anchor_z_values.push_back(static_cast<float>(cell.ground_z));
+                cell.reason = "trail_anchor_plane";
+                anchor_cells++;
+            }
+        }
+        res.stats.anchor_cells = anchor_cells;
+
+        std::priority_queue<
+            PropagationCandidate,
+            std::vector<PropagationCandidate>,
+            PropagationCandidateCompare> frontier;
+        auto enqueueCandidate = [&](int gx, int gy) {
+            if (!propagatedGridInBounds(grid, gx, gy)) {
+                return;
+            }
+            auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+            if (!cell.inside_scope || cell.state != PropagatedCellState::Unknown) {
+                return;
+            }
+            const PropagationEstimate estimate =
+                estimateGroundFromNeighbours(grid, gx, gy, params);
+            if (!estimate.valid) {
+                return;
+            }
+            frontier.push(PropagationCandidate{estimate.confidence, gx, gy});
+        };
+
+        for (int gy = 0; gy < grid.h; ++gy) {
+            for (int gx = 0; gx < grid.w; ++gx) {
+                const auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+                if (cell.state != PropagatedCellState::AnchorGround) {
+                    continue;
+                }
+                for (int dy = -1; dy <= 1; ++dy) {
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        if (dx == 0 && dy == 0) {
+                            continue;
+                        }
+                        enqueueCandidate(gx + dx, gy + dy);
+                    }
+                }
+            }
+        }
+
+        size_t propagated_ground_cells = 0;
+        size_t blocked_unknown_cells = 0;
+        size_t measured_obstacle_cells = 0;
+        size_t traversable_overhang_cells = 0;
+
+        while (!frontier.empty()) {
+            if (abortIfCancelled()) {
+                return res;
+            }
+            const PropagationCandidate candidate = frontier.top();
+            frontier.pop();
+            auto& cell = grid.cells[propagatedGridIndex(grid, candidate.x, candidate.y)];
+            if (cell.state != PropagatedCellState::Unknown) {
+                continue;
+            }
+
+            const PropagationEstimate estimate =
+                estimateGroundFromNeighbours(grid, candidate.x, candidate.y, params);
+            if (!estimate.valid) {
+                continue;
+            }
+            const GridClassification classification = classifyPropagatedGridCell(
+                cell,
+                estimate.predicted_z,
+                estimate.confidence,
+                params);
+            cell.state = classification.state;
+            cell.ground_z = classification.ground_z;
+            cell.confidence = classification.confidence;
+            cell.support_point_count = classification.support_point_count;
+            cell.support_base_z = classification.support_base_z;
+            cell.support_top_z = classification.support_top_z;
+            cell.support_span_z = classification.support_span_z;
+            cell.first_non_ground_z = classification.first_non_ground_z;
+            cell.clearance_above_ground = classification.clearance_above_ground;
+            cell.reason = classification.reason;
+
+            if (classification.state == PropagatedCellState::PropagatedGround) {
+                propagated_ground_cells++;
+                if (classification.traversable_overhang) {
+                    traversable_overhang_cells++;
+                }
+                for (int dy = -1; dy <= 1; ++dy) {
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        if (dx == 0 && dy == 0) {
+                            continue;
+                        }
+                        enqueueCandidate(candidate.x + dx, candidate.y + dy);
+                    }
+                }
+            } else if (classification.state == PropagatedCellState::MeasuredObstacle) {
+                measured_obstacle_cells++;
+            } else if (classification.state == PropagatedCellState::BlockedUnknown) {
+                blocked_unknown_cells++;
+            }
+        }
+
+        size_t sweep_idx = 0;
+        for (int gy = 0; gy < grid.h; ++gy) {
+            for (int gx = 0; gx < grid.w; ++gx) {
+                if ((sweep_idx++ & 0x0FFFu) == 0u && abortIfCancelled()) {
+                    return res;
+                }
+                auto& cell = grid.cells[propagatedGridIndex(grid, gx, gy)];
+                if (!cell.inside_scope || cell.state != PropagatedCellState::Unknown) {
+                    continue;
+                }
+                const Point2D center = propagatedGridCellCenter(grid, gx, gy);
+                const GridClassification classification = classifyPropagatedGridCell(
+                    cell,
+                    planeZAt(plane, center.x, center.y),
+                    /*predicted_confidence=*/0.25,
+                    params);
+                cell.state = classification.state;
+                cell.ground_z = classification.ground_z;
+                cell.confidence = classification.confidence;
+                cell.support_point_count = classification.support_point_count;
+                cell.support_base_z = classification.support_base_z;
+                cell.support_top_z = classification.support_top_z;
+                cell.support_span_z = classification.support_span_z;
+                cell.first_non_ground_z = classification.first_non_ground_z;
+                cell.clearance_above_ground = classification.clearance_above_ground;
+                cell.reason = classification.reason;
+
+                if (classification.state == PropagatedCellState::PropagatedGround) {
+                    propagated_ground_cells++;
+                    if (classification.traversable_overhang) {
+                        traversable_overhang_cells++;
+                    }
+                } else if (classification.state == PropagatedCellState::MeasuredObstacle) {
+                    measured_obstacle_cells++;
+                } else if (classification.state == PropagatedCellState::BlockedUnknown) {
+                    blocked_unknown_cells++;
+                }
+            }
+        }
+
+        size_t ground_points_band = 0;
+        for (const auto& cell : grid.cells) {
+            if (isGroundCellState(cell.state)) {
+                ground_points_band += static_cast<size_t>(std::max(0, cell.point_count));
+            }
+        }
+        res.stats.ground_points_band = ground_points_band;
+        res.stats.propagated_ground_cells = propagated_ground_cells;
+        res.stats.blocked_unknown_cells = blocked_unknown_cells;
+        res.stats.measured_obstacle_cells = measured_obstacle_cells;
+        res.stats.traversable_overhang_cells = traversable_overhang_cells;
+        res.stats.raw_obstacle_candidates = measured_obstacle_cells + blocked_unknown_cells;
+        res.stats.obstacle_points_after_outlier = res.stats.raw_obstacle_candidates;
+
+        int total_holes = 0;
+        res.obstacles = polygonizeBlockedCells(
+            grid,
+            contour_cell_m,
+            inflate_radius_m,
+            smooth_radius_m,
+            geom_smooth_radius_m,
+            params.min_contour_area_m2,
+            preserve_holes,
+            preserve_holes_min_area_m2,
+            &total_holes);
+        res.stats.total_holes = total_holes;
+        res.stats.obstacle_shapes = static_cast<int>(res.obstacles.size());
+        std::cout << "[ObstacleDetect] Grid: anchors=" << anchor_cells
+                  << ", propagated_ground=" << propagated_ground_cells
+                  << ", measured_obstacle=" << measured_obstacle_cells
+                  << ", blocked_unknown=" << blocked_unknown_cells
+                  << ", traversable_overhang=" << traversable_overhang_cells
+                  << ", shapes=" << res.obstacles.size()
+                  << ", holes=" << total_holes << "\n";
+        res.success = true;
+        return res;
+    }
+
     // ------------------------------------------------------------------
     // 4. Obstacle candidate extraction
     // ------------------------------------------------------------------
-    PointCloudPtr obstacle_raw(new PointCloud);
+    obstacle_raw.reset(new PointCloud);
     obstacle_raw->reserve(scoped_cloud->size() / 4);
     size_t ground_band_count = 0;
     size_t candidate_idx = 0;
@@ -2136,6 +4630,7 @@ ObstacleDetectionResult detectObstaclesAuto(
     }
     res.stats.ground_points_band = ground_band_count;
     res.stats.raw_obstacle_candidates = obstacle_raw->size();
+    }
 
     // ------------------------------------------------------------------
     // 5. Statistical outlier removal (PCL SOR)
@@ -2146,6 +4641,35 @@ ObstacleDetectionResult detectObstaclesAuto(
     res.stats.obstacle_points_after_outlier = obstacle_clean ? obstacle_clean->size() : 0;
     if (abortIfCancelled()) {
         return res;
+    }
+    if (params.detection_method == ObstacleDetectionMethod::ClothSimulationFilter) {
+        const size_t denoised_nonground = obstacle_clean ? obstacle_clean->size() : 0;
+        res.csf_sor_nonground_cloud = obstacle_clean;
+        obstacle_clean = filterCsfNonGroundByClearance(
+            obstacle_clean,
+            res.csf_ground_cloud,
+            params,
+            abortIfCancelled);
+        if (abortIfCancelled()) {
+            return res;
+        }
+        size_t trail_removed = 0;
+        obstacle_clean = removeTrailFootprintObstacleCandidates(
+            obstacle_clean,
+            path,
+            params,
+            &trail_removed,
+            abortIfCancelled);
+        if (abortIfCancelled()) {
+            return res;
+        }
+        std::cout << "[ObstacleDetect] CSF: denoised_nonground=" << denoised_nonground
+                  << ", final_obstacle_candidates="
+                  << (obstacle_clean ? obstacle_clean->size() : 0)
+                  << ", trail_removed=" << trail_removed
+                  << ", clearance_min=" << derivedTraversableStepHeight(params)
+                  << ", clearance_max=" << params.csf_max_obstacle_clearance_m
+                  << "\n";
     }
 
     // ------------------------------------------------------------------
@@ -2159,6 +4683,51 @@ ObstacleDetectionResult detectObstaclesAuto(
             return res;
         }
         obs_xy.emplace_back(pt.x, pt.y);
+    }
+    if (params.detection_method == ObstacleDetectionMethod::ClothSimulationFilter) {
+        std::vector<Obstacle2D> clearance_point_cells;
+        clearance_point_cells.reserve(obs_xy.size());
+        const double point_cell_m = std::max(0.02, 0.5 * grid_cell_m);
+        for (const auto& p : obs_xy) {
+            Obstacle2D obs;
+            obs.outer = rectFromBBox(p.x, p.y, p.x, p.y, point_cell_m, 0.0);
+            obs.visual_type = ObstacleVisualType::Unknown;
+            clearance_point_cells.push_back(std::move(obs));
+        }
+
+        std::vector<Obstacle2D> occupancy_obstacles;
+        int total_holes = 0;
+        const double csf_grid_cell_m = std::max(0.02, grid_cell_m);
+        auto shapes = polygonizeClusterGrid(
+            obs_xy,
+            csf_grid_cell_m,
+            /*contour_cell_m=*/csf_grid_cell_m,
+            /*inflate_radius_m=*/0.0,
+            /*smooth_radius_m=*/0.0,
+            params.min_contour_area_m2);
+        occupancy_obstacles.reserve(shapes.size());
+        for (auto& sh : shapes) {
+            Obstacle2D obs;
+            obs.outer = std::move(sh.first);
+            obs.holes = std::move(sh.second);
+            total_holes += static_cast<int>(obs.holes.size());
+            occupancy_obstacles.push_back(std::move(obs));
+        }
+        res.stats.clusters_found = 0;
+        res.stats.groups_merged = static_cast<int>(occupancy_obstacles.size());
+        res.stats.total_holes = total_holes;
+        res.stats.obstacle_shapes = static_cast<int>(occupancy_obstacles.size());
+        res.csf_clearance_point_cells = std::move(clearance_point_cells);
+        res.csf_occupancy_obstacles = occupancy_obstacles;
+        res.obstacles = std::move(occupancy_obstacles);
+        res.success = true;
+        std::cout << "[ObstacleDetect] CSF: occupancy-polygonized "
+                  << obs_xy.size()
+                  << " under-clearance points into "
+                  << res.obstacles.size()
+                  << " obstacle shape(s) (DBSCAN/hulls/smoothing disabled, cell="
+                  << csf_grid_cell_m << ")\n";
+        return res;
     }
     std::vector<int> labels = dbscan2D(obs_xy, params.cluster_eps_m, params.cluster_min_pts);
     if (abortIfCancelled()) {
@@ -2514,6 +5083,18 @@ ObstacleDetectionResult detectObstaclesAuto(
     res.obstacles = std::move(obstacles_out);
     res.success = true;
     return res;
+}
+
+ObstacleDetectionResult detectObstacles(
+    const PointCloudPtr& cloud,
+    const std::vector<PathState>& driven_path,
+    const Polygon2D* roi_or_boundary,
+    const ObstacleDetectionParams& params) {
+    if (params.detection_method == ObstacleDetectionMethod::PatchworkRawBundle) {
+        (void)driven_path;
+        return detectObstaclesPatchworkBundleImpl(cloud, roi_or_boundary, params);
+    }
+    return detectObstaclesAuto(cloud, driven_path, roi_or_boundary, params);
 }
 
 }  // namespace f2c_cpp

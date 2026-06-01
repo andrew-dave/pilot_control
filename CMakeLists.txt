@@ -21,6 +21,7 @@ find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
+find_package(livox_ros_driver2 REQUIRED)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
@@ -141,6 +142,13 @@ target_link_libraries(raw_map_saver ${PCL_LIBRARIES} Eigen3::Eigen)
 add_definitions(${PCL_DEFINITIONS})
 install(TARGETS raw_map_saver DESTINATION lib/${PROJECT_NAME})
 
+# === PATCHWORK MAP SAVER (robot/test-side Patchwork bundle saving) ===
+add_executable(patchwork_map_saver src/patchwork_map_saver.cpp)
+ament_target_dependencies(patchwork_map_saver rclcpp sensor_msgs std_srvs pcl_conversions)
+target_include_directories(patchwork_map_saver PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(patchwork_map_saver ${PCL_LIBRARIES} Eigen3::Eigen)
+install(TARGETS patchwork_map_saver DESTINATION lib/${PROJECT_NAME})
+
 # === LOCAL NAV GRID PUBLISHER (robot-side compact exploration map) ===
 add_executable(local_nav_grid_publisher src/local_nav_grid_publisher.cpp)
 ament_target_dependencies(local_nav_grid_publisher rclcpp nav_msgs sensor_msgs std_msgs)
@@ -160,6 +168,22 @@ ament_target_dependencies(point_cloud_downsampler rclcpp sensor_msgs pcl_convers
 target_include_directories(point_cloud_downsampler PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(point_cloud_downsampler ${PCL_LIBRARIES})
 install(TARGETS point_cloud_downsampler DESTINATION lib/${PROJECT_NAME})
+
+# === LIVOX CUSTOMMSG TO POINTCLOUD2 (standalone Patchwork++ test input) ===
+add_executable(livox_custommsg_to_cloud src/livox_custommsg_to_cloud.cpp)
+target_compile_features(livox_custommsg_to_cloud PUBLIC cxx_std_17)
+ament_target_dependencies(livox_custommsg_to_cloud rclcpp sensor_msgs pcl_conversions livox_ros_driver2)
+target_include_directories(livox_custommsg_to_cloud PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(livox_custommsg_to_cloud ${PCL_LIBRARIES} Eigen3::Eigen)
+install(TARGETS livox_custommsg_to_cloud DESTINATION lib/${PROJECT_NAME})
+
+# === PATCHWORK CLOUD COLORIZER (ground/non-ground combined RViz cloud) ===
+add_executable(patchwork_cloud_colorizer src/patchwork_cloud_colorizer.cpp)
+target_compile_features(patchwork_cloud_colorizer PUBLIC cxx_std_17)
+ament_target_dependencies(patchwork_cloud_colorizer rclcpp sensor_msgs pcl_conversions)
+target_include_directories(patchwork_cloud_colorizer PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(patchwork_cloud_colorizer ${PCL_LIBRARIES})
+install(TARGETS patchwork_cloud_colorizer DESTINATION lib/${PROJECT_NAME})
 
 # === GPR MOTION FOLLOWER (mirrors forward distance to ODrive micro) ===
 add_executable(gpr_motion_follower src/gpr_motion_follower.cpp)

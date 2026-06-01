@@ -53,6 +53,7 @@
 
 // PCL for 3D point cloud preview
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
@@ -353,9 +354,15 @@ namespace {
 constexpr double kWaypointDuplicateEpsilon = 1e-6;
 constexpr double kConnectorObstacleClearanceM = 0.3;
 constexpr const char* kOperationCancelledMessage = "Operation cancelled";
+constexpr const char* kPatchworkObstacleModeKey = "patchwork_raw_bundle";
+constexpr const char* kCsfObstacleModeKey = "cloth_simulation_filter";
 
 QString obstacleDetectorModeKey(GroundModelMode mode) {
     switch (mode) {
+        case GroundModelMode::GroundZGradientGrid:
+            return "ground_z_gradient_grid";
+        case GroundModelMode::PropagatedGrid:
+            return "propagated_grid";
         case GroundModelMode::LocalHeightField:
             return "local_height_field";
         case GroundModelMode::SinglePlane:
@@ -365,10 +372,24 @@ QString obstacleDetectorModeKey(GroundModelMode mode) {
 }
 
 GroundModelMode obstacleDetectorModeFromKey(const QString& key) {
+    if (key == "ground_z_gradient_grid") {
+        return GroundModelMode::GroundZGradientGrid;
+    }
+    if (key == "propagated_grid") {
+        return GroundModelMode::PropagatedGrid;
+    }
     if (key == "local_height_field") {
         return GroundModelMode::LocalHeightField;
     }
     return GroundModelMode::SinglePlane;
+}
+
+bool isPatchworkObstacleModeKey(const QString& key) {
+    return key == QLatin1String(kPatchworkObstacleModeKey);
+}
+
+bool isCsfObstacleModeKey(const QString& key) {
+    return key == QLatin1String(kCsfObstacleModeKey);
 }
 
 PathStateList dedupePathStates(const PathStateList& path) {
@@ -573,6 +594,14 @@ void PlotWidget::setObstacles(const std::vector<Obstacle2D>& obstacles) {
     update();
 }
 
+void PlotWidget::setGridDebugCells(const std::vector<Obstacle2D>& cells) {
+    grid_debug_cells_ = cells;
+    if (selected_debug_cell_idx_ >= static_cast<int>(grid_debug_cells_.size())) {
+        selected_debug_cell_idx_ = -1;
+    }
+    update();
+}
+
 void PlotWidget::setSwaths(const SwathList& swaths) {
     swaths_ = swaths;
     update();
@@ -737,6 +766,7 @@ void PlotWidget::clearAll() {
     polygon_.clear();
     roi_.clear();
     obstacles_.clear();
+    grid_debug_cells_.clear();
     swaths_.clear();
     route_.clear();
     path_.clear();
@@ -760,6 +790,7 @@ void PlotWidget::clearAll() {
     emit measureDistanceUpdated(0.0, false);
     selecting_ = false;
     selected_obstacle_idx_ = -1;
+    selected_debug_cell_idx_ = -1;
     emit obstacleSelectionChanged(-1);
     update();
 }
@@ -769,7 +800,9 @@ void PlotWidget::clearPolygon() { polygon_.clear(); update(); }
 void PlotWidget::clearROI() { roi_.clear(); update(); }
 void PlotWidget::clearObstacles() {
     obstacles_.clear();
+    grid_debug_cells_.clear();
     selected_obstacle_idx_ = -1;
+    selected_debug_cell_idx_ = -1;
     emit obstacleSelectionChanged(-1);
     update();
 }
@@ -878,8 +911,9 @@ Polygon2D PlotWidget::getSelectedPolygon() const {
 }
 
 void PlotWidget::clearObstacleSelection() {
-    if (selected_obstacle_idx_ != -1) {
+    if (selected_obstacle_idx_ != -1 || selected_debug_cell_idx_ != -1) {
         selected_obstacle_idx_ = -1;
+        selected_debug_cell_idx_ = -1;
         emit obstacleSelectionChanged(-1);
         update();
     }
@@ -1026,12 +1060,40 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
         painter.drawPolygon(roi_qp);
     }
     
+    // Draw detector grid debug cells (ground cells are diagnostic only, not planning obstacles).
+    for (size_t gi = 0; gi < grid_debug_cells_.size(); ++gi) {
+        const auto& cell = grid_debug_cells_[gi];
+        const bool selected = (static_cast<int>(gi) == selected_debug_cell_idx_);
+        QColor stroke(34, 139, 34);
+        QColor fill(34, 139, 34, 28);
+        if (cell.visual_type == ObstacleVisualType::Unknown) {
+            stroke = QColor(33, 150, 243);
+            fill = QColor(33, 150, 243, 35);
+        }
+        painter.setPen(QPen(selected ? QColor(255, 193, 7) : stroke, selected ? 3 : 1));
+        painter.setBrush(selected ? QColor(255, 193, 7, 45) : fill);
+        QPolygonF qp;
+        for (const auto& p : cell.outer) {
+            qp << worldToScreen(p);
+        }
+        if (!qp.isEmpty()) {
+            qp << qp.first();
+            painter.drawPolygon(qp);
+        }
+    }
+
     // Draw obstacles
     for (size_t oi = 0; oi < obstacles_.size(); ++oi) {
         const auto& obs = obstacles_[oi];
         const bool selected = (static_cast<int>(oi) == selected_obstacle_idx_);
-        painter.setPen(QPen(selected ? QColor(255, 193, 7) : Qt::red, selected ? 3 : 2));
-        painter.setBrush(selected ? QColor(255, 193, 7, 55) : QColor(255, 0, 0, 50));
+        const bool is_unknown = (obs.visual_type == ObstacleVisualType::Unknown);
+        const bool is_ground = (obs.visual_type == ObstacleVisualType::Ground);
+        const QColor stroke = is_ground ? QColor(34, 139, 34)
+            : (is_unknown ? QColor(33, 150, 243) : QColor(220, 53, 69));
+        const QColor fill = is_ground ? QColor(34, 139, 34, 35)
+            : (is_unknown ? QColor(33, 150, 243, 55) : QColor(220, 53, 69, 50));
+        painter.setPen(QPen(selected ? QColor(255, 193, 7) : stroke, selected ? 3 : 2));
+        painter.setBrush(selected ? QColor(255, 193, 7, 55) : fill);
         QPainterPath path;
         path.setFillRule(Qt::OddEvenFill);
         QPolygonF outer_qp;
@@ -1485,6 +1547,121 @@ static bool pointInPolygonRayCastLocal(const Point2D& p, const Polygon2D& poly) 
     return inside;
 }
 
+static QString obstacleDiagnosticTextLocal(const Obstacle2D& obs) {
+    if (!obs.debug_info.enabled) {
+        return QString();
+    }
+    auto fmtDouble = [](double value) {
+        return QString::number(value, 'f', 3);
+    };
+    auto fmtMaybe = [&fmtDouble](bool valid, double value) {
+        return valid ? fmtDouble(value) : QStringLiteral("n/a");
+    };
+    const QString groundZText = fmtMaybe(obs.debug_info.ground_z_valid, obs.debug_info.z_est);
+    const QString rawZText =
+        (obs.debug_info.point_count > 0)
+            ? QString("%1 / %2 / %3")
+                  .arg(obs.debug_info.low_z, 0, 'f', 3)
+                  .arg(obs.debug_info.median_z, 0, 'f', 3)
+                  .arg(obs.debug_info.high_z, 0, 'f', 3)
+            : QStringLiteral("n/a / n/a / n/a");
+    const QString zSpanText =
+        (obs.debug_info.point_count > 0)
+            ? fmtDouble(obs.debug_info.vertical_span)
+            : QStringLiteral("n/a");
+    const QString gradientEastText =
+        fmtMaybe(obs.debug_info.gradient_east_valid, obs.debug_info.gradient_east);
+    const QString gradientNorthText =
+        fmtMaybe(obs.debug_info.gradient_north_valid, obs.debug_info.gradient_north);
+    const QString gradientMaxText =
+        (obs.debug_info.gradient_east_valid || obs.debug_info.gradient_north_valid)
+            ? fmtDouble(obs.debug_info.gradient_max)
+            : QStringLiteral("n/a");
+    const QString cardinalMaxText =
+        obs.debug_info.gradient_cardinal_max_valid
+            ? fmtDouble(obs.debug_info.gradient_cardinal_max)
+            : QStringLiteral("n/a");
+    const QString incomingGradientText =
+        obs.debug_info.incoming_gradient_valid
+            ? QString("%1 from (%2, %3)")
+                  .arg(obs.debug_info.incoming_gradient, 0, 'f', 3)
+                  .arg(obs.debug_info.incoming_from_cell_x)
+                  .arg(obs.debug_info.incoming_from_cell_y)
+            : QStringLiteral("seed / n/a");
+    const QString kind =
+        (obs.visual_type == ObstacleVisualType::Ground || obs.debug_info.ground_cell)
+            ? QStringLiteral("Ground cell")
+            : (obs.visual_type == ObstacleVisualType::Unknown)
+            ? QStringLiteral("Unknown / blocked")
+            : QStringLiteral("Known obstacle");
+    const QString supportSummary =
+        (obs.debug_info.support_point_count > 0)
+            ? QString("%1 pts, base/top/span: %2 / %3 / %4")
+                  .arg(obs.debug_info.support_point_count)
+                  .arg(obs.debug_info.support_base_z, 0, 'f', 3)
+                  .arg(obs.debug_info.support_top_z, 0, 'f', 3)
+                  .arg(obs.debug_info.support_span_z, 0, 'f', 3)
+            : QStringLiteral("none");
+    const QString firstNonGroundText =
+        (obs.debug_info.first_non_ground_z != 0.0 || obs.debug_info.clearance_above_ground != 0.0)
+            ? QString("%1 / %2")
+                  .arg(obs.debug_info.first_non_ground_z, 0, 'f', 3)
+                  .arg(obs.debug_info.clearance_above_ground, 0, 'f', 3)
+            : QStringLiteral("n/a");
+    return QString(
+        "%1\n"
+        "Cell: (%2, %3)\n"
+        "Center: (%4, %5)\n"
+        "z_est: %6 (%7)\n"
+        "Trail anchor corridor: %8\n"
+        "Gradient reachable: %9\n"
+        "Interpolation contributors: %10\n"
+        "Points: %11\n"
+        "z_low / z_med / z_high: %12\n"
+        "z_span: %13\n"
+        "Gradient E / N / max: %14 / %15 / %16\n"
+        "Cardinal max gradient: %17\n"
+        "Cardinal edges valid/passable/blocked: %18 / %19 / %20\n"
+        "Incoming flood edge: %21\n"
+        "Gradient threshold: %22\n"
+        "High-gradient E / N: %23 / %24\n"
+        "Support cluster: %25\n"
+        "First non-ground / clearance: %26\n"
+        "Reason: %27\n"
+        "Confidence: %28")
+        .arg(kind)
+        .arg(obs.debug_info.cell_x)
+        .arg(obs.debug_info.cell_y)
+        .arg(obs.debug_info.center_x, 0, 'f', 2)
+        .arg(obs.debug_info.center_y, 0, 'f', 2)
+        .arg(groundZText)
+        .arg(obs.debug_info.ground_z_valid ? QStringLiteral("valid") : QStringLiteral("invalid"))
+        .arg(obs.debug_info.trail_covered ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(obs.debug_info.gradient_reachable ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(obs.debug_info.interpolation_contributors)
+        .arg(obs.debug_info.point_count)
+        .arg(rawZText)
+        .arg(zSpanText)
+        .arg(gradientEastText)
+        .arg(gradientNorthText)
+        .arg(gradientMaxText)
+        .arg(cardinalMaxText)
+        .arg(obs.debug_info.valid_cardinal_edges)
+        .arg(obs.debug_info.passable_cardinal_edges)
+        .arg(obs.debug_info.blocked_cardinal_edges)
+        .arg(incomingGradientText)
+        .arg(obs.debug_info.gradient_threshold, 0, 'f', 3)
+        .arg(obs.debug_info.high_gradient_east ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(obs.debug_info.high_gradient_north ? QStringLiteral("yes") : QStringLiteral("no"))
+        .arg(supportSummary)
+        .arg(firstNonGroundText)
+        .arg(
+            obs.debug_info.reason.empty()
+                ? QStringLiteral("n/a")
+                : QString::fromStdString(obs.debug_info.reason))
+        .arg(obs.debug_info.confidence, 0, 'f', 2);
+}
+
 static bool pointInObstacleShapeLocal(const Point2D& p, const Obstacle2D& obs) {
     if (!pointInPolygonRayCastLocal(p, obs.outer)) {
         return false;
@@ -1639,13 +1816,47 @@ void PlotWidget::mousePressEvent(QMouseEvent* event) {
             if (hit_idx != -1) {
                 if (selected_obstacle_idx_ != hit_idx) {
                     selected_obstacle_idx_ = hit_idx;
+                    selected_debug_cell_idx_ = -1;
                     emit obstacleSelectionChanged(selected_obstacle_idx_);
                     update();
                 }
+                const QString diagnostic = obstacleDiagnosticTextLocal(
+                    obstacles_[static_cast<size_t>(hit_idx)]);
+                if (!diagnostic.isEmpty()) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                    QToolTip::showText(event->globalPosition().toPoint(), diagnostic, this);
+#else
+                    QToolTip::showText(event->globalPos(), diagnostic, this);
+#endif
+                }
                 return;
             }
-            if (selected_obstacle_idx_ != -1) {
+            int debug_hit_idx = -1;
+            for (int i = static_cast<int>(grid_debug_cells_.size()) - 1; i >= 0; --i) {
+                if (pointInObstacleShapeLocal(world, grid_debug_cells_[static_cast<size_t>(i)])) {
+                    debug_hit_idx = i;
+                    break;
+                }
+            }
+            if (debug_hit_idx != -1) {
                 selected_obstacle_idx_ = -1;
+                selected_debug_cell_idx_ = debug_hit_idx;
+                emit obstacleSelectionChanged(-1);
+                update();
+                const QString diagnostic = obstacleDiagnosticTextLocal(
+                    grid_debug_cells_[static_cast<size_t>(debug_hit_idx)]);
+                if (!diagnostic.isEmpty()) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                    QToolTip::showText(event->globalPosition().toPoint(), diagnostic, this);
+#else
+                    QToolTip::showText(event->globalPos(), diagnostic, this);
+#endif
+                }
+                return;
+            }
+            if (selected_obstacle_idx_ != -1 || selected_debug_cell_idx_ != -1) {
+                selected_obstacle_idx_ = -1;
+                selected_debug_cell_idx_ = -1;
                 emit obstacleSelectionChanged(-1);
                 update();
             }
@@ -1689,6 +1900,7 @@ void PlotWidget::keyPressEvent(QKeyEvent* event) {
                 selected_obstacle_idx_ < static_cast<int>(obstacles_.size())) {
                 emit obstacleDeleteRequested(selected_obstacle_idx_);
                 selected_obstacle_idx_ = -1;
+                selected_debug_cell_idx_ = -1;
                 emit obstacleSelectionChanged(-1);
                 update();
                 return;
@@ -3503,16 +3715,28 @@ QWidget* CoverageGUI::buildF2CControls() {
     v->addWidget(btn_delete_selected_obstacle_);
 
     QHBoxLayout* obstacle_mode_layout = new QHBoxLayout();
-    obstacle_mode_layout->addWidget(new QLabel("Ground model"));
+    obstacle_mode_layout->addWidget(new QLabel("Obstacle method"));
     combo_obstacle_detector_mode_ = new QComboBox();
     combo_obstacle_detector_mode_->addItem(
         "Single plane", obstacleDetectorModeKey(GroundModelMode::SinglePlane));
     combo_obstacle_detector_mode_->addItem(
         "Local height field", obstacleDetectorModeKey(GroundModelMode::LocalHeightField));
+    combo_obstacle_detector_mode_->addItem(
+        "Propagated grid", obstacleDetectorModeKey(GroundModelMode::PropagatedGrid));
+    combo_obstacle_detector_mode_->addItem(
+        "Ground-Z gradient grid", obstacleDetectorModeKey(GroundModelMode::GroundZGradientGrid));
+    combo_obstacle_detector_mode_->addItem(
+        "Cloth Simulation Filter", QString::fromLatin1(kCsfObstacleModeKey));
+    combo_obstacle_detector_mode_->addItem(
+        "Patchwork raw bundle", QString::fromLatin1(kPatchworkObstacleModeKey));
     combo_obstacle_detector_mode_->setToolTip(
-        "Ground model used by auto obstacle detection.\n"
+        "Obstacle method used by auto obstacle detection.\n"
         "Single plane: best for flat or gently tilted terrain.\n"
-        "Local height field: smooth local terrain estimate from driven footprint samples.");
+        "Local height field: smooth local terrain estimate from driven footprint samples.\n"
+        "Propagated grid: ROI-scoped ground propagation from driven-path anchors for uneven roofs.\n"
+        "Ground-Z gradient grid: low-quantile ground-Z map with path-reachable gradient islands.\n"
+        "Cloth Simulation Filter: segment ground/non-ground first, then DBSCAN obstacle clusters by clearance.\n"
+        "Patchwork raw bundle: use saved corrected Patchwork outputs, project them to 2D, and polygonize grouped obstacles.");
     {
         QSettings settings("PilotControl", "BDRCoveragePlanner");
         const QString saved_mode = settings.value(
@@ -3535,6 +3759,201 @@ QWidget* CoverageGUI::buildF2CControls() {
             });
     obstacle_mode_layout->addWidget(combo_obstacle_detector_mode_, 1);
     v->addLayout(obstacle_mode_layout);
+
+    QGridLayout* csf_layout = new QGridLayout();
+    csf_layout->addWidget(new QLabel("CSF ground tolerance"), 0, 0);
+    slider_csf_rooftop_conservativeness_ = new QSlider(Qt::Horizontal);
+    slider_csf_rooftop_conservativeness_->setRange(1, 12);
+    slider_csf_rooftop_conservativeness_->setSingleStep(1);
+    slider_csf_rooftop_conservativeness_->setPageStep(1);
+    slider_csf_rooftop_conservativeness_->setValue(6);
+    slider_csf_rooftop_conservativeness_->setToolTip(
+        "Distance from the CSF cloth surface for a point to still count as ground. Lower detects smaller protrusions.");
+    csf_layout->addWidget(slider_csf_rooftop_conservativeness_, 0, 1);
+
+    lbl_csf_rooftop_conservativeness_ = new QLabel();
+    lbl_csf_rooftop_conservativeness_->setWordWrap(true);
+    csf_layout->addWidget(lbl_csf_rooftop_conservativeness_, 1, 0, 1, 2);
+
+    csf_layout->addWidget(new QLabel("CSF internal params"), 2, 0);
+    combo_csf_internal_param_mode_ = new QComboBox();
+    combo_csf_internal_param_mode_->addItem("Use rooftop defaults", "auto");
+    combo_csf_internal_param_mode_->addItem("Custom edit", "custom");
+    combo_csf_internal_param_mode_->setCurrentIndex(1);
+    combo_csf_internal_param_mode_->setToolTip(
+        "Defaults use fixed rooftop cloth settings. Custom lets you override resolution and rigidness.");
+    csf_layout->addWidget(combo_csf_internal_param_mode_, 2, 1);
+
+    csf_layout->addWidget(new QLabel("CSF cloth resolution"), 3, 0);
+    spin_csf_cloth_resolution_ = new QDoubleSpinBox();
+    spin_csf_cloth_resolution_->setRange(0.005, 10.0);
+    spin_csf_cloth_resolution_->setSingleStep(0.05);
+    spin_csf_cloth_resolution_->setDecimals(3);
+    spin_csf_cloth_resolution_->setSuffix(" m");
+    spin_csf_cloth_resolution_->setValue(0.35);
+    spin_csf_cloth_resolution_->setToolTip("Raster spacing for the simulated cloth ground surface.");
+    csf_layout->addWidget(spin_csf_cloth_resolution_, 3, 1);
+
+    csf_layout->addWidget(new QLabel("CSF max iterations"), 4, 0);
+    spin_csf_max_iterations_ = new QSpinBox();
+    spin_csf_max_iterations_->setRange(1, 5000);
+    spin_csf_max_iterations_->setSingleStep(10);
+    spin_csf_max_iterations_->setValue(2000);
+    spin_csf_max_iterations_->setToolTip("Number of cloth relaxation passes. Rooftop default: 2000.");
+    csf_layout->addWidget(spin_csf_max_iterations_, 4, 1);
+
+    csf_layout->addWidget(new QLabel("CSF class threshold"), 5, 0);
+    spin_csf_classification_threshold_ = new QDoubleSpinBox();
+    spin_csf_classification_threshold_->setRange(0.005, 0.060);
+    spin_csf_classification_threshold_->setSingleStep(0.005);
+    spin_csf_classification_threshold_->setDecimals(3);
+    spin_csf_classification_threshold_->setSuffix(" m");
+    spin_csf_classification_threshold_->setValue(0.03);
+    spin_csf_classification_threshold_->setToolTip("Roof surface tolerance: max distance from cloth ground to classify a point as ground.");
+    csf_layout->addWidget(spin_csf_classification_threshold_, 5, 1);
+    csf_layout->addWidget(new QLabel("CSF rigidness"), 6, 0);
+    spin_csf_rigidness_ = new QSpinBox();
+    spin_csf_rigidness_->setRange(1, 10);
+    spin_csf_rigidness_->setValue(4);
+    spin_csf_rigidness_->setToolTip("Official CSF cloth rigidness: lower follows steep/detail terrain, higher is stiffer/flatter.");
+    csf_layout->addWidget(spin_csf_rigidness_, 6, 1);
+    chk_csf_slope_processing_ = new QCheckBox("CSF slope processing");
+    chk_csf_slope_processing_->setChecked(false);
+    chk_csf_slope_processing_->setToolTip(
+        "Rooftop default is off; enable to use official CSF slope post-processing (bSloopSmooth).");
+    csf_layout->addWidget(chk_csf_slope_processing_, 7, 0, 1, 2);
+    csf_layout->addWidget(new QLabel("CSF max obstacle clearance"), 8, 0);
+    spin_csf_max_obstacle_clearance_ = new QDoubleSpinBox();
+    spin_csf_max_obstacle_clearance_->setRange(0.01, 5.0);
+    spin_csf_max_obstacle_clearance_->setSingleStep(0.05);
+    spin_csf_max_obstacle_clearance_->setDecimals(3);
+    spin_csf_max_obstacle_clearance_->setSuffix(" m");
+    spin_csf_max_obstacle_clearance_->setValue(0.50);
+    spin_csf_max_obstacle_clearance_->setToolTip("Non-ground points above this clearance are treated as overhead, not blocking obstacles.");
+    csf_layout->addWidget(spin_csf_max_obstacle_clearance_, 8, 1);
+    chk_csf_pre_sor_ = new QCheckBox("Pre-CSF SOR");
+    chk_csf_pre_sor_->setChecked(true);
+    chk_csf_pre_sor_->setToolTip(
+        "Run SOR before CSF to remove isolated cloud noise before cloth rasterization.");
+    csf_layout->addWidget(chk_csf_pre_sor_, 9, 0, 1, 2);
+    csf_layout->addWidget(new QLabel("Pre-CSF SOR k"), 10, 0);
+    spin_csf_pre_sor_k_ = new QSpinBox();
+    spin_csf_pre_sor_k_->setRange(1, 100);
+    spin_csf_pre_sor_k_->setSingleStep(1);
+    spin_csf_pre_sor_k_->setValue(20);
+    spin_csf_pre_sor_k_->setToolTip("Mean-distance SOR neighbor count before CSF rasterization.");
+    csf_layout->addWidget(spin_csf_pre_sor_k_, 10, 1);
+    csf_layout->addWidget(new QLabel("Pre-CSF SOR std"), 11, 0);
+    spin_csf_pre_sor_std_ = new QDoubleSpinBox();
+    spin_csf_pre_sor_std_->setRange(0.1, 10.0);
+    spin_csf_pre_sor_std_->setSingleStep(0.1);
+    spin_csf_pre_sor_std_->setDecimals(2);
+    spin_csf_pre_sor_std_->setValue(1.5);
+    spin_csf_pre_sor_std_->setToolTip("SOR standard-deviation multiplier before CSF. Higher preserves more sparse points.");
+    csf_layout->addWidget(spin_csf_pre_sor_std_, 11, 1);
+    csf_layout->addWidget(new QLabel("Obstacle SOR k"), 12, 0);
+    spin_obstacle_sor_k_ = new QSpinBox();
+    spin_obstacle_sor_k_->setRange(1, 100);
+    spin_obstacle_sor_k_->setSingleStep(1);
+    spin_obstacle_sor_k_->setValue(20);
+    spin_obstacle_sor_k_->setToolTip("Mean-distance SOR neighbor count for CSF/non-ground obstacle cleanup.");
+    csf_layout->addWidget(spin_obstacle_sor_k_, 12, 1);
+    csf_layout->addWidget(new QLabel("Obstacle SOR std"), 13, 0);
+    spin_obstacle_sor_std_ = new QDoubleSpinBox();
+    spin_obstacle_sor_std_->setRange(0.1, 10.0);
+    spin_obstacle_sor_std_->setSingleStep(0.1);
+    spin_obstacle_sor_std_->setDecimals(2);
+    spin_obstacle_sor_std_->setValue(1.5);
+    spin_obstacle_sor_std_->setToolTip("SOR standard-deviation multiplier. Higher preserves more sparse details.");
+    csf_layout->addWidget(spin_obstacle_sor_std_, 13, 1);
+    chk_csf_trail_footprint_cleanup_ = new QCheckBox("Trail footprint cleanup");
+    chk_csf_trail_footprint_cleanup_->setChecked(true);
+    chk_csf_trail_footprint_cleanup_->setToolTip(
+        "Remove CSF obstacle candidates swept by the driven robot footprint before 2D polygonization.");
+    csf_layout->addWidget(chk_csf_trail_footprint_cleanup_, 14, 0, 1, 2);
+    csf_layout->addWidget(new QLabel("Trail cleanup margin"), 15, 0);
+    spin_csf_trail_cleanup_margin_ = new QDoubleSpinBox();
+    spin_csf_trail_cleanup_margin_->setRange(0.0, 1.0);
+    spin_csf_trail_cleanup_margin_->setSingleStep(0.02);
+    spin_csf_trail_cleanup_margin_->setDecimals(3);
+    spin_csf_trail_cleanup_margin_->setSuffix(" m");
+    spin_csf_trail_cleanup_margin_->setValue(0.150);
+    spin_csf_trail_cleanup_margin_->setToolTip("Margin added around robot dimensions for trail footprint cleanup.");
+    csf_layout->addWidget(spin_csf_trail_cleanup_margin_, 15, 1);
+    v->addLayout(csf_layout);
+
+    auto apply_csf_slider = [this]() {
+        if (!slider_csf_rooftop_conservativeness_ ||
+            !spin_csf_classification_threshold_ ||
+            !lbl_csf_rooftop_conservativeness_) {
+            return;
+        }
+        const double threshold =
+            static_cast<double>(slider_csf_rooftop_conservativeness_->value()) * 0.005;
+        const bool custom =
+            combo_csf_internal_param_mode_ &&
+            combo_csf_internal_param_mode_->currentData().toString() == QStringLiteral("custom");
+        spin_csf_classification_threshold_->blockSignals(true);
+        spin_csf_classification_threshold_->setValue(threshold);
+        spin_csf_classification_threshold_->blockSignals(false);
+        if (!custom) {
+            if (spin_csf_cloth_resolution_) spin_csf_cloth_resolution_->setValue(0.35);
+            if (spin_csf_rigidness_) spin_csf_rigidness_->setValue(4);
+        }
+        lbl_csf_rooftop_conservativeness_->setText(
+            QString("Ground tolerance: %1 m. Lower detects smaller protrusions; higher treats more points as ground.")
+                .arg(threshold, 0, 'f', 3));
+        if (spin_csf_cloth_resolution_) spin_csf_cloth_resolution_->setEnabled(custom);
+        if (spin_csf_rigidness_) spin_csf_rigidness_->setEnabled(custom);
+    };
+    connect(slider_csf_rooftop_conservativeness_, &QSlider::valueChanged,
+            this, [apply_csf_slider](int) { apply_csf_slider(); });
+    connect(combo_csf_internal_param_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [apply_csf_slider](int) { apply_csf_slider(); });
+    connect(spin_csf_cloth_resolution_, qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, [apply_csf_slider](double) { apply_csf_slider(); });
+    connect(spin_csf_rigidness_, qOverload<int>(&QSpinBox::valueChanged),
+            this, [apply_csf_slider](int) { apply_csf_slider(); });
+    connect(spin_csf_classification_threshold_, qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this, [this, apply_csf_slider](double value) {
+                if (!slider_csf_rooftop_conservativeness_) {
+                    return;
+                }
+                const int slider_value = std::clamp(
+                    static_cast<int>(std::lround(value / 0.005)),
+                    slider_csf_rooftop_conservativeness_->minimum(),
+                    slider_csf_rooftop_conservativeness_->maximum());
+                slider_csf_rooftop_conservativeness_->blockSignals(true);
+                slider_csf_rooftop_conservativeness_->setValue(slider_value);
+                slider_csf_rooftop_conservativeness_->blockSignals(false);
+                apply_csf_slider();
+            });
+    apply_csf_slider();
+    connect(chk_csf_pre_sor_, &QCheckBox::toggled, this, [this](bool checked) {
+        if (spin_csf_pre_sor_k_) spin_csf_pre_sor_k_->setEnabled(checked);
+        if (spin_csf_pre_sor_std_) spin_csf_pre_sor_std_->setEnabled(checked);
+    });
+
+    QHBoxLayout* obstacle_visualization_layout = new QHBoxLayout();
+    obstacle_visualization_layout->addWidget(new QLabel("2D obstacle view"));
+    combo_obstacle_visualization_ = new QComboBox();
+    combo_obstacle_visualization_->addItem("Planning obstacles", "planning");
+    combo_obstacle_visualization_->addItem("CSF clearance points", "csf_clearance_points");
+    combo_obstacle_visualization_->addItem("CSF occupancy polygons", "csf_occupancy");
+    combo_obstacle_visualization_->setToolTip(
+        "Switch only the displayed obstacle layer. Planning still uses the saved planning obstacles.");
+    connect(combo_obstacle_visualization_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+                if (plot_) {
+                    plot_->clearObstacleSelection();
+                }
+                if (btn_delete_selected_obstacle_) {
+                    btn_delete_selected_obstacle_->setEnabled(false);
+                }
+                refreshPlot();
+            });
+    obstacle_visualization_layout->addWidget(combo_obstacle_visualization_, 1);
+    v->addLayout(obstacle_visualization_layout);
 
     btn_auto_detect_obstacles_ = new QPushButton("Auto-detect Obstacles");
     btn_auto_detect_obstacles_->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
@@ -3739,6 +4158,15 @@ QGroupBox* CoverageGUI::buildExportControls() {
     btn_export_path->setMinimumHeight(30);
     connect(btn_export_path, &QPushButton::clicked, this, &CoverageGUI::exportPathCSV);
     v->addWidget(btn_export_path);
+
+    btn_export_obstacle_colored_cloud_ = new QPushButton(QStringLiteral("Export obstacle-colored cloud"));
+    btn_export_obstacle_colored_cloud_->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
+    btn_export_obstacle_colored_cloud_->setMinimumHeight(30);
+    btn_export_obstacle_colored_cloud_->setToolTip(
+        QStringLiteral("Save the loaded cloud as XYZRGB: points inside obstacle-marked cells are red, all others white."));
+    connect(btn_export_obstacle_colored_cloud_, &QPushButton::clicked,
+            this, &CoverageGUI::exportObstacleColoredPointCloud);
+    v->addWidget(btn_export_obstacle_colored_cloud_);
 
     section(QStringLiteral("Robot"));
     btn_publish_waypoints_ = new QPushButton(QStringLiteral("Publish waypoints"));
@@ -4629,6 +5057,28 @@ CoverageConfig CoverageGUI::currentConfig() const {
     return cfg;
 }
 
+bool CoverageGUI::displayingPlanningObstacles() const {
+    if (!combo_obstacle_visualization_) {
+        return true;
+    }
+    return combo_obstacle_visualization_->currentData().toString() == QStringLiteral("planning");
+}
+
+const std::vector<Obstacle2D>& CoverageGUI::displayedObstacles() const {
+    static const std::vector<Obstacle2D> empty;
+    if (!combo_obstacle_visualization_) {
+        return obstacles_;
+    }
+    const QString key = combo_obstacle_visualization_->currentData().toString();
+    if (key == QStringLiteral("csf_clearance_points")) {
+        return csf_clearance_point_cells_.empty() ? empty : csf_clearance_point_cells_;
+    }
+    if (key == QStringLiteral("csf_occupancy")) {
+        return csf_occupancy_obstacles_.empty() ? empty : csf_occupancy_obstacles_;
+    }
+    return obstacles_;
+}
+
 void CoverageGUI::refreshPlot() {
     // Apply layer visibility settings
     bool show_points = !chk_layer_points_ || chk_layer_points_->isChecked();
@@ -4650,7 +5100,8 @@ void CoverageGUI::refreshPlot() {
     plot_->setPoints(show_points ? xy_2d_ : std::vector<Point2D>());
     plot_->setPolygon(show_polygon ? polygon_ : Polygon2D());
     plot_->setROI(show_roi ? roi_polygon_ : Polygon2D());
-    plot_->setObstacles(show_obstacles ? obstacles_ : std::vector<Obstacle2D>());
+    plot_->setObstacles(show_obstacles ? displayedObstacles() : std::vector<Obstacle2D>());
+    plot_->setGridDebugCells(show_obstacles ? grid_debug_cells_ : std::vector<Obstacle2D>());
     plot_->setSwaths(show_swaths ? swaths_ : SwathList());
     
     // Set route and path
@@ -5422,6 +5873,7 @@ void CoverageGUI::applyAlignmentTransformToLoadedData(const Eigen::Matrix4f& tra
     polygon_.clear();
     roi_polygon_.clear();
     obstacles_.clear();
+    grid_debug_cells_.clear();
     clearCoverage();
     custom_waypoints_.clear();
     custom_waypoints_visited_.clear();
@@ -6232,9 +6684,9 @@ void CoverageGUI::autoDetectObstacles() {
     if (btn_obstacle_) btn_obstacle_->setChecked(false);
     plot_->cancelSelection();
 
-    // Detection should always run on the full point cloud.
-    // If ROI is selected, we post-filter the detected obstacle shapes for display only.
-    const Polygon2D display_roi = roi_polygon_;
+    // Detection always uses the full loaded point cloud, but we now scope
+    // obstacle detection to the selected ROI (with detector-side margin).
+    const Polygon2D detection_roi = roi_polygon_;
 
     std::vector<PathState> path_snapshot;
     {
@@ -6245,7 +6697,6 @@ void CoverageGUI::autoDetectObstacles() {
     const QString detector_mode_key = combo_obstacle_detector_mode_
         ? combo_obstacle_detector_mode_->currentData().toString()
         : obstacleDetectorModeKey(GroundModelMode::SinglePlane);
-    const GroundModelMode detector_mode = obstacleDetectorModeFromKey(detector_mode_key);
     const QString detector_mode_label = combo_obstacle_detector_mode_
         ? combo_obstacle_detector_mode_->currentText()
         : QStringLiteral("Single plane");
@@ -6257,6 +6708,21 @@ void CoverageGUI::autoDetectObstacles() {
     if (combo_obstacle_detector_mode_) {
         combo_obstacle_detector_mode_->setEnabled(false);
     }
+    if (slider_csf_rooftop_conservativeness_) slider_csf_rooftop_conservativeness_->setEnabled(false);
+    if (combo_csf_internal_param_mode_) combo_csf_internal_param_mode_->setEnabled(false);
+    if (spin_csf_cloth_resolution_) spin_csf_cloth_resolution_->setEnabled(false);
+    if (spin_csf_max_iterations_) spin_csf_max_iterations_->setEnabled(false);
+    if (spin_csf_classification_threshold_) spin_csf_classification_threshold_->setEnabled(false);
+    if (spin_csf_rigidness_) spin_csf_rigidness_->setEnabled(false);
+    if (chk_csf_slope_processing_) chk_csf_slope_processing_->setEnabled(false);
+    if (spin_csf_max_obstacle_clearance_) spin_csf_max_obstacle_clearance_->setEnabled(false);
+    if (chk_csf_pre_sor_) chk_csf_pre_sor_->setEnabled(false);
+    if (spin_csf_pre_sor_k_) spin_csf_pre_sor_k_->setEnabled(false);
+    if (spin_csf_pre_sor_std_) spin_csf_pre_sor_std_->setEnabled(false);
+    if (spin_obstacle_sor_k_) spin_obstacle_sor_k_->setEnabled(false);
+    if (spin_obstacle_sor_std_) spin_obstacle_sor_std_->setEnabled(false);
+    if (chk_csf_trail_footprint_cleanup_) chk_csf_trail_footprint_cleanup_->setEnabled(false);
+    if (spin_csf_trail_cleanup_margin_) spin_csf_trail_cleanup_margin_->setEnabled(false);
 
     beginProgressOperation(
         QString("Auto-detecting obstacles (%1)...").arg(detector_mode_label), true, true);
@@ -6264,58 +6730,71 @@ void CoverageGUI::autoDetectObstacles() {
 
     PointCloudPtr cloud = pcd_points_;
     ObstacleDetectionParams params;  // defaults mirror the Python script
-    params.ground_model_mode = detector_mode;
+    params.source_path = loaded_file_.toStdString();
+    if (isPatchworkObstacleModeKey(detector_mode_key)) {
+        params.detection_method = ObstacleDetectionMethod::PatchworkRawBundle;
+    } else if (isCsfObstacleModeKey(detector_mode_key)) {
+        params.detection_method = ObstacleDetectionMethod::ClothSimulationFilter;
+    } else {
+        params.detection_method = ObstacleDetectionMethod::PathGroundAuto;
+        params.ground_model_mode = obstacleDetectorModeFromKey(detector_mode_key);
+    }
+    if (spin_csf_cloth_resolution_) {
+        params.csf_cloth_resolution_m = spin_csf_cloth_resolution_->value();
+    }
+    if (spin_csf_max_iterations_) {
+        params.csf_max_iterations = spin_csf_max_iterations_->value();
+    }
+    if (spin_csf_classification_threshold_) {
+        params.csf_classification_threshold_m = spin_csf_classification_threshold_->value();
+    }
+    if (spin_csf_rigidness_) {
+        params.csf_rigidness = spin_csf_rigidness_->value();
+    }
+    if (chk_csf_slope_processing_) {
+        params.csf_slope_processing = chk_csf_slope_processing_->isChecked();
+    }
+    if (spin_csf_max_obstacle_clearance_) {
+        params.csf_max_obstacle_clearance_m = spin_csf_max_obstacle_clearance_->value();
+    }
+    if (chk_csf_pre_sor_) {
+        params.csf_pre_sor_enabled = chk_csf_pre_sor_->isChecked();
+    }
+    if (spin_csf_pre_sor_k_) {
+        params.csf_pre_sor_k = spin_csf_pre_sor_k_->value();
+    }
+    if (spin_csf_pre_sor_std_) {
+        params.csf_pre_sor_std = spin_csf_pre_sor_std_->value();
+    }
+    if (spin_obstacle_sor_k_) {
+        params.outlier_k = spin_obstacle_sor_k_->value();
+    }
+    if (spin_obstacle_sor_std_) {
+        params.outlier_std = spin_obstacle_sor_std_->value();
+    }
+    if (chk_csf_trail_footprint_cleanup_) {
+        params.csf_trail_footprint_cleanup = chk_csf_trail_footprint_cleanup_->isChecked();
+    }
+    if (spin_csf_trail_cleanup_margin_) {
+        params.csf_trail_cleanup_margin_m = spin_csf_trail_cleanup_margin_->value();
+    }
+    last_obstacle_detection_method_ = params.detection_method;
 
-    auto future = QtConcurrent::run([cloud, path_snapshot, display_roi, params]() mutable {
-        ObstacleDetectionResult result = detectObstaclesAuto(cloud, path_snapshot, nullptr, params);
-        if (!result.success) {
-            return result;
-        }
-        if (display_roi.size() >= 3) {
-            std::vector<Obstacle2D> filtered;
-            filtered.reserve(result.obstacles.size());
-            for (const auto& obs : result.obstacles) {
-                // Keep any obstacle that intersects the ROI (vertex-in-poly or edge intersection).
-                bool keep = false;
-                // Quick accept: any obstacle outer vertex inside ROI.
-                for (const auto& p : obs.outer) {
-                    if (pointInPolygonRayCastLocal(p, display_roi)) {
-                        keep = true;
-                        break;
-                    }
-                }
-                if (!keep) {
-                    // Any ROI vertex inside obstacle shape?
-                    for (const auto& p : display_roi) {
-                        if (pointInObstacleShapeLocal(p, obs)) {
-                            keep = true;
-                            break;
-                        }
-                    }
-                }
-                if (!keep) {
-                    // Any edge intersection between obstacle outer ring and ROI boundary?
-                    keep = polygonEdgesIntersectLocal(obs.outer, display_roi);
-                }
-                if (keep) {
-                    filtered.push_back(obs);
-                }
-            }
-            result.obstacles = std::move(filtered);
-            int holes = 0;
-            for (const auto& o : result.obstacles) {
-                holes += static_cast<int>(o.holes.size());
-            }
-            result.stats.total_holes = holes;
-            result.stats.obstacle_shapes = static_cast<int>(result.obstacles.size());
-        }
-        return result;
+    auto future = QtConcurrent::run([cloud, path_snapshot, detection_roi, params]() mutable {
+        const Polygon2D* roi_ptr = detection_roi.size() >= 3 ? &detection_roi : nullptr;
+        return detectObstacles(cloud, path_snapshot, roi_ptr, params);
     });
     obstacle_detect_watcher_->setFuture(future);
 }
 
 void CoverageGUI::clearObstacles() {
     obstacles_.clear();
+    grid_debug_cells_.clear();
+    csf_clearance_point_cells_.clear();
+    csf_occupancy_obstacles_.clear();
+    last_csf_ground_cloud_.reset();
+    last_csf_nonground_cloud_.reset();
+    last_csf_sor_nonground_cloud_.reset();
     plot_->clearObstacles();
     lbl_obstacles_->setText("Obstacles: 0");
     effective_area_m2_ = 0.0;
@@ -6325,13 +6804,28 @@ void CoverageGUI::clearObstacles() {
 }
 
 void CoverageGUI::onObstacleSelectionChanged(int index) {
+    const auto& display_obstacles = displayedObstacles();
     if (btn_delete_selected_obstacle_) {
-        bool ok = (index >= 0 && index < static_cast<int>(obstacles_.size()));
+        bool ok = displayingPlanningObstacles() &&
+                  index >= 0 &&
+                  index < static_cast<int>(obstacles_.size());
         btn_delete_selected_obstacle_->setEnabled(ok);
+    }
+    if (index >= 0 && index < static_cast<int>(display_obstacles.size())) {
+        const QString diagnostic = obstacleDiagnosticTextLocal(display_obstacles[static_cast<size_t>(index)]);
+        if (!diagnostic.isEmpty()) {
+            QString status = diagnostic;
+            status.replace('\n', " | ");
+            setStatus(status, 10000);
+        }
     }
 }
 
 void CoverageGUI::deleteSelectedObstacle() {
+    if (!displayingPlanningObstacles()) {
+        setStatus("Switch 2D obstacle view to Planning obstacles before deleting obstacles.", 4000);
+        return;
+    }
     const int idx = plot_ ? plot_->selectedObstacleIndex() : -1;
     if (idx < 0) {
         setStatus("No obstacle selected", 3000);
@@ -6344,10 +6838,15 @@ void CoverageGUI::deleteSelectedObstacle() {
 }
 
 void CoverageGUI::onObstacleDeleteRequested(int index) {
+    if (!displayingPlanningObstacles()) {
+        setStatus("Switch 2D obstacle view to Planning obstacles before deleting obstacles.", 4000);
+        return;
+    }
     if (index < 0 || index >= static_cast<int>(obstacles_.size())) {
         return;
     }
     obstacles_.erase(obstacles_.begin() + index);
+    grid_debug_cells_.clear();
     lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
     effective_area_m2_ = 0.0;
     clearCoverage();
@@ -6363,6 +6862,25 @@ void CoverageGUI::onAutoDetectObstaclesFinished() {
     if (combo_obstacle_detector_mode_) {
         combo_obstacle_detector_mode_->setEnabled(true);
     }
+    if (slider_csf_rooftop_conservativeness_) slider_csf_rooftop_conservativeness_->setEnabled(true);
+    if (combo_csf_internal_param_mode_) combo_csf_internal_param_mode_->setEnabled(true);
+    const bool csf_custom =
+        combo_csf_internal_param_mode_ &&
+        combo_csf_internal_param_mode_->currentData().toString() == QStringLiteral("custom");
+    if (spin_csf_cloth_resolution_) spin_csf_cloth_resolution_->setEnabled(csf_custom);
+    if (spin_csf_max_iterations_) spin_csf_max_iterations_->setEnabled(true);
+    if (spin_csf_classification_threshold_) spin_csf_classification_threshold_->setEnabled(true);
+    if (spin_csf_rigidness_) spin_csf_rigidness_->setEnabled(csf_custom);
+    if (chk_csf_slope_processing_) chk_csf_slope_processing_->setEnabled(true);
+    if (spin_csf_max_obstacle_clearance_) spin_csf_max_obstacle_clearance_->setEnabled(true);
+    if (chk_csf_pre_sor_) chk_csf_pre_sor_->setEnabled(true);
+    const bool csf_pre_sor_enabled = chk_csf_pre_sor_ && chk_csf_pre_sor_->isChecked();
+    if (spin_csf_pre_sor_k_) spin_csf_pre_sor_k_->setEnabled(csf_pre_sor_enabled);
+    if (spin_csf_pre_sor_std_) spin_csf_pre_sor_std_->setEnabled(csf_pre_sor_enabled);
+    if (spin_obstacle_sor_k_) spin_obstacle_sor_k_->setEnabled(true);
+    if (spin_obstacle_sor_std_) spin_obstacle_sor_std_->setEnabled(true);
+    if (chk_csf_trail_footprint_cleanup_) chk_csf_trail_footprint_cleanup_->setEnabled(true);
+    if (spin_csf_trail_cleanup_margin_) spin_csf_trail_cleanup_margin_->setEnabled(true);
 
     const bool cancelled = progress_cancel_requested_.load();
     endProgressOperation();
@@ -6381,6 +6899,20 @@ void CoverageGUI::onAutoDetectObstaclesFinished() {
     }
 
     obstacles_ = result.obstacles;  // replace existing obstacles
+    grid_debug_cells_ = result.debug_grid_cells;
+    if (last_obstacle_detection_method_ == ObstacleDetectionMethod::ClothSimulationFilter) {
+        last_csf_ground_cloud_ = result.csf_ground_cloud;
+        last_csf_nonground_cloud_ = result.csf_nonground_cloud;
+        last_csf_sor_nonground_cloud_ = result.csf_sor_nonground_cloud;
+        csf_clearance_point_cells_ = result.csf_clearance_point_cells;
+        csf_occupancy_obstacles_ = result.csf_occupancy_obstacles;
+    } else {
+        last_csf_ground_cloud_.reset();
+        last_csf_nonground_cloud_.reset();
+        last_csf_sor_nonground_cloud_.reset();
+        csf_clearance_point_cells_.clear();
+        csf_occupancy_obstacles_.clear();
+    }
     lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
     if (btn_delete_selected_obstacle_) {
         btn_delete_selected_obstacle_->setEnabled(false);
@@ -6419,6 +6951,7 @@ void CoverageGUI::onROISelected(const Polygon2D& roi) {
 
 void CoverageGUI::onObstacleSelected(const Polygon2D& obstacle) {
     obstacles_.push_back(Obstacle2D{obstacle, {}});
+    grid_debug_cells_.clear();
     btn_obstacle_->setChecked(false);
     lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
     effective_area_m2_ = 0.0;
@@ -7135,6 +7668,169 @@ void CoverageGUI::exportPathCSV() {
         setStatus("Path exported", 4000);
     } else {
         QMessageBox::critical(this, "Error", "Failed to save file");
+    }
+}
+
+void CoverageGUI::exportObstacleColoredPointCloud() {
+    if (!pcd_points_ || pcd_points_->empty()) {
+        QMessageBox::warning(this, "Export Point Cloud", "Load a point cloud first.");
+        return;
+    }
+    if (last_obstacle_detection_method_ == ObstacleDetectionMethod::ClothSimulationFilter) {
+        if (!last_csf_ground_cloud_ || !last_csf_nonground_cloud_ ||
+            !last_csf_sor_nonground_cloud_) {
+            QMessageBox::warning(
+                this,
+                "Export Point Cloud",
+                "Run CSF obstacle detection first to export classified and SOR-filtered clouds.");
+            return;
+        }
+
+        QString default_name = QFileInfo(loaded_file_).completeBaseName();
+        if (default_name.isEmpty()) {
+            default_name = QStringLiteral("csf_classified");
+        } else {
+            default_name += QStringLiteral("_csf_classified");
+        }
+        QString filename = QFileDialog::getSaveFileName(
+            this,
+            "Save CSF Classified Point Clouds",
+            default_name + QStringLiteral(".pcd"),
+            "Point clouds (*.pcd *.ply)");
+        if (filename.isEmpty()) {
+            return;
+        }
+        QString lower = filename.toLower();
+        if (!lower.endsWith(".pcd") && !lower.endsWith(".ply")) {
+            filename += ".pcd";
+            lower = filename.toLower();
+        }
+
+        const QFileInfo info(filename);
+        const QString suffix = info.suffix().isEmpty() ? QStringLiteral("pcd") : info.suffix();
+        const QString base_path = info.dir().filePath(info.completeBaseName());
+        const QString ground_filename = base_path + QStringLiteral("_ground.") + suffix;
+        const QString nonground_filename = base_path + QStringLiteral("_nonground.") + suffix;
+        const QString sor_nonground_filename =
+            base_path + QStringLiteral("_nonground_sor.") + suffix;
+
+        auto save_cloud = [&](const QString& path, const PointCloudPtr& cloud) -> int {
+            if (path.toLower().endsWith(".ply")) {
+                return pcl::io::savePLYFileBinary(path.toStdString(), *cloud);
+            }
+            return pcl::io::savePCDFileBinary(path.toStdString(), *cloud);
+        };
+
+        const int ground_rc = save_cloud(ground_filename, last_csf_ground_cloud_);
+        const int nonground_rc = save_cloud(nonground_filename, last_csf_nonground_cloud_);
+        const int sor_nonground_rc = save_cloud(
+            sor_nonground_filename,
+            last_csf_sor_nonground_cloud_);
+        if (ground_rc == 0 && nonground_rc == 0 && sor_nonground_rc == 0) {
+            QMessageBox::information(
+                this,
+                "Export Point Cloud",
+                QString("Saved CSF clouds:\n%1 ground points -> %2\n%3 non-ground points -> %4\n%5 SOR-filtered non-ground points -> %6")
+                    .arg(last_csf_ground_cloud_->size())
+                    .arg(ground_filename)
+                    .arg(last_csf_nonground_cloud_->size())
+                    .arg(nonground_filename)
+                    .arg(last_csf_sor_nonground_cloud_->size())
+                    .arg(sor_nonground_filename));
+            setStatus(
+                QString("CSF clouds exported: %1 ground / %2 non-ground / %3 SOR")
+                    .arg(last_csf_ground_cloud_->size())
+                    .arg(last_csf_nonground_cloud_->size())
+                    .arg(last_csf_sor_nonground_cloud_->size()),
+                5000);
+        } else {
+            QMessageBox::critical(
+                this,
+                "Export Point Cloud",
+                "Failed to save one or more CSF point clouds.");
+        }
+        return;
+    }
+    if (obstacles_.empty()) {
+        QMessageBox::warning(this, "Export Point Cloud",
+                             "Detect or add obstacles first. No points would be marked red.");
+        return;
+    }
+
+    QString default_name = QFileInfo(loaded_file_).completeBaseName();
+    if (default_name.isEmpty()) {
+        default_name = QStringLiteral("obstacle_colored_cloud");
+    } else {
+        default_name += QStringLiteral("_obstacle_colored");
+    }
+    QString filename = QFileDialog::getSaveFileName(
+        this,
+        "Save Obstacle-Colored Point Cloud",
+        default_name + QStringLiteral(".pcd"),
+        "Point clouds (*.pcd *.ply)");
+    if (filename.isEmpty()) {
+        return;
+    }
+    const QString lower = filename.toLower();
+    if (!lower.endsWith(".pcd") && !lower.endsWith(".ply")) {
+        filename += ".pcd";
+    }
+
+    pcl::PointCloud<pcl::PointXYZRGB> colored;
+    colored.reserve(pcd_points_->size());
+    size_t red_points = 0;
+    for (const auto& pt : pcd_points_->points) {
+        const Point2D xy(static_cast<double>(pt.x), static_cast<double>(pt.y));
+        bool is_obstacle = false;
+        for (const auto& obs : obstacles_) {
+            if (pointInObstacleShapeLocal(xy, obs)) {
+                is_obstacle = true;
+                break;
+            }
+        }
+
+        pcl::PointXYZRGB out;
+        out.x = pt.x;
+        out.y = pt.y;
+        out.z = pt.z;
+        if (is_obstacle) {
+            out.r = 255;
+            out.g = 0;
+            out.b = 0;
+            red_points++;
+        } else {
+            out.r = 255;
+            out.g = 255;
+            out.b = 255;
+        }
+        colored.push_back(out);
+    }
+    colored.width = static_cast<uint32_t>(colored.size());
+    colored.height = 1;
+    colored.is_dense = pcd_points_->is_dense;
+
+    const QString final_lower = filename.toLower();
+    int rc = -1;
+    if (final_lower.endsWith(".ply")) {
+        rc = pcl::io::savePLYFileBinary(filename.toStdString(), colored);
+    } else {
+        rc = pcl::io::savePCDFileBinary(filename.toStdString(), colored);
+    }
+
+    if (rc == 0) {
+        QMessageBox::information(
+            this,
+            "Export Point Cloud",
+            QString("Saved %1 points (%2 red obstacle points, %3 white ground/other points).")
+                .arg(colored.size())
+                .arg(red_points)
+                .arg(colored.size() - red_points));
+        setStatus(QString("Obstacle-colored cloud exported: %1 red / %2 total")
+                      .arg(red_points)
+                      .arg(colored.size()),
+                  5000);
+    } else {
+        QMessageBox::critical(this, "Export Point Cloud", "Failed to save colored point cloud.");
     }
 }
 
@@ -8231,6 +8927,7 @@ void CoverageGUI::onPointCloudLoaded() {
     polygon_.clear();
     roi_polygon_.clear();
     obstacles_.clear();
+    grid_debug_cells_.clear();
     swaths_.clear();
     route_.clear();
     path_.clear();

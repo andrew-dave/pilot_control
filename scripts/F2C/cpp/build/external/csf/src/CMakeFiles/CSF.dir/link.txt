@@ -1,0 +1,2 @@
+/usr/bin/ar qc libCSF.a CMakeFiles/CSF.dir/CSF_autogen/mocs_compilation.cpp.o CMakeFiles/CSF.dir/c2cdist.cpp.o CMakeFiles/CSF.dir/Cloth.cpp.o CMakeFiles/CSF.dir/Constraint.cpp.o CMakeFiles/CSF.dir/CSF.cpp.o CMakeFiles/CSF.dir/Particle.cpp.o CMakeFiles/CSF.dir/point_cloud.cpp.o CMakeFiles/CSF.dir/Rasterization.cpp.o CMakeFiles/CSF.dir/XYZReader.cpp.o
+/usr/bin/ranlib libCSF.a

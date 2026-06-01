@@ -50,11 +50,65 @@ struct Point3D {
 };
 
 using Polygon2D = std::vector<Point2D>;
+enum class ObstacleVisualType {
+    Known,
+    Unknown,
+    Ground,
+};
+
+struct ObstacleDebugInfo {
+    bool enabled = false;
+    bool ground_cell = false;
+    int cell_x = -1;
+    int cell_y = -1;
+    double center_x = 0.0;
+    double center_y = 0.0;
+    bool ground_z_valid = false;
+    double z_est = 0.0;
+    double confidence = 0.0;
+    bool trail_covered = false;
+    bool gradient_reachable = false;
+    int interpolation_contributors = 0;
+    int point_count = 0;
+    double low_z = 0.0;
+    double median_z = 0.0;
+    double high_z = 0.0;
+    double vertical_span = 0.0;
+    double gradient_east = 0.0;
+    double gradient_north = 0.0;
+    double gradient_max = 0.0;
+    double gradient_cardinal_max = 0.0;
+    double gradient_threshold = 0.0;
+    bool gradient_east_valid = false;
+    bool gradient_north_valid = false;
+    bool gradient_cardinal_max_valid = false;
+    bool high_gradient_east = false;
+    bool high_gradient_north = false;
+    int valid_cardinal_edges = 0;
+    int passable_cardinal_edges = 0;
+    int blocked_cardinal_edges = 0;
+    double incoming_gradient = 0.0;
+    bool incoming_gradient_valid = false;
+    int incoming_from_cell_x = -1;
+    int incoming_from_cell_y = -1;
+    int support_point_count = 0;
+    double support_base_z = 0.0;
+    double support_top_z = 0.0;
+    double support_span_z = 0.0;
+    double first_non_ground_z = 0.0;
+    double clearance_above_ground = 0.0;
+    std::string reason;
+};
+
 struct Obstacle2D {
     // Outer ring (boundary of obstacle area)
     Polygon2D outer;
     // Optional holes (free space inside the outer ring)
     std::vector<Polygon2D> holes;
+    // Visualization hint for the GUI; planning treats all obstacles the same.
+    ObstacleVisualType visual_type = ObstacleVisualType::Known;
+    // Optional per-cell debug payload for diagnostics in the GUI.
+    ObstacleDebugInfo debug_info;
 };
 using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
 using PointCloudPtr = pcl::PointCloud<pcl::PointXYZ>::Ptr;

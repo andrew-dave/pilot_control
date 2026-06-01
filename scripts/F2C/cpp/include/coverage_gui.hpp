@@ -19,6 +19,7 @@
 #include <QSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QSlider>
 #include <QRadioButton>
 #include <QProgressBar>
 #include <QStatusBar>
@@ -165,6 +166,7 @@ public:
     void setPolygon(const Polygon2D& poly);
     void setROI(const Polygon2D& roi);
     void setObstacles(const std::vector<Obstacle2D>& obstacles);
+    void setGridDebugCells(const std::vector<Obstacle2D>& cells);
     void setSwaths(const SwathList& swaths);
     void setRoute(const PathStateList& route);
     void setPath(const PathStateList& path);
@@ -252,6 +254,7 @@ private:
     Polygon2D polygon_;
     Polygon2D roi_;
     std::vector<Obstacle2D> obstacles_;
+    std::vector<Obstacle2D> grid_debug_cells_;
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
@@ -301,6 +304,7 @@ private:
 
     // Obstacle selection
     int selected_obstacle_idx_ = -1;  // -1 = none
+    int selected_debug_cell_idx_ = -1;  // -1 = none
     
     // Panning
     bool panning_ = false;
@@ -376,6 +380,7 @@ private slots:
     
     // Export
     void exportPathCSV();
+    void exportObstacleColoredPointCloud();
     void publishWaypoints();
     void startNavigation();
     void planHomePath();
@@ -564,6 +569,8 @@ private:
     
     // Refresh plot
     void refreshPlot();
+    const std::vector<Obstacle2D>& displayedObstacles() const;
+    bool displayingPlanningObstacles() const;
     
     // Apply effective polygon (with ROI/obstacles)
     Polygon2D effectivePolygon() const;
@@ -775,7 +782,25 @@ private:
     // Obstacle controls
     QPushButton* btn_obstacle_;
     QComboBox* combo_obstacle_detector_mode_ = nullptr;
+    QSlider* slider_csf_rooftop_conservativeness_ = nullptr;
+    QLabel* lbl_csf_rooftop_conservativeness_ = nullptr;
+    QComboBox* combo_csf_internal_param_mode_ = nullptr;
+    QDoubleSpinBox* spin_csf_cloth_resolution_ = nullptr;
+    QSpinBox* spin_csf_max_iterations_ = nullptr;
+    QDoubleSpinBox* spin_csf_classification_threshold_ = nullptr;
+    QSpinBox* spin_csf_rigidness_ = nullptr;
+    QCheckBox* chk_csf_slope_processing_ = nullptr;
+    QDoubleSpinBox* spin_csf_max_obstacle_clearance_ = nullptr;
+    QCheckBox* chk_csf_pre_sor_ = nullptr;
+    QSpinBox* spin_csf_pre_sor_k_ = nullptr;
+    QDoubleSpinBox* spin_csf_pre_sor_std_ = nullptr;
+    QSpinBox* spin_obstacle_sor_k_ = nullptr;
+    QDoubleSpinBox* spin_obstacle_sor_std_ = nullptr;
+    QCheckBox* chk_csf_trail_footprint_cleanup_ = nullptr;
+    QDoubleSpinBox* spin_csf_trail_cleanup_margin_ = nullptr;
+    QComboBox* combo_obstacle_visualization_ = nullptr;
     QPushButton* btn_auto_detect_obstacles_ = nullptr;
+    QPushButton* btn_export_obstacle_colored_cloud_ = nullptr;
     QPushButton* btn_delete_selected_obstacle_ = nullptr;
     QPushButton* btn_obstacle_clear_;
     QPushButton* btn_measure_ = nullptr;
@@ -789,6 +814,13 @@ private:
     Polygon2D polygon_;
     Polygon2D roi_polygon_;
     std::vector<Obstacle2D> obstacles_;
+    std::vector<Obstacle2D> grid_debug_cells_;
+    std::vector<Obstacle2D> csf_clearance_point_cells_;
+    std::vector<Obstacle2D> csf_occupancy_obstacles_;
+    PointCloudPtr last_csf_ground_cloud_;
+    PointCloudPtr last_csf_nonground_cloud_;
+    PointCloudPtr last_csf_sor_nonground_cloud_;
+    ObstacleDetectionMethod last_obstacle_detection_method_ = ObstacleDetectionMethod::PathGroundAuto;
     QFutureWatcher<ObstacleDetectionResult>* obstacle_detect_watcher_ = nullptr;
     QFutureWatcher<PathStateList>* transit_plan_watcher_ = nullptr;
     TransitPlanKind transit_plan_kind_ = TransitPlanKind::None;

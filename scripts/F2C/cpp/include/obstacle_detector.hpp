@@ -35,6 +35,19 @@ enum class ObstaclePolygonMode {
 enum class GroundModelMode {
     SinglePlane,
     LocalHeightField,
+    PropagatedGrid,
+    GroundZGradientGrid,
+};
+
+enum class ObstacleDetectionMethod {
+    PathGroundAuto,
+    PatchworkRawBundle,
+    ClothSimulationFilter,
+};
+
+enum class GridEmptyCellPolicy {
+    ConservativeBlocked,
+    PropagateAcrossUnknown,
 };
 
 struct ObstacleDetectionParams {
@@ -44,7 +57,9 @@ struct ObstacleDetectionParams {
     double footprint_margin_m = 0.10;
 
     // Ground detection
+    ObstacleDetectionMethod detection_method = ObstacleDetectionMethod::PathGroundAuto;
     GroundModelMode ground_model_mode = GroundModelMode::SinglePlane;
+    std::string source_path;
     double ground_z_max = 0.0;
     int ransac_iters = 300;
     double ransac_thresh_m = 0.03;
@@ -54,6 +69,30 @@ struct ObstacleDetectionParams {
     int local_ground_knn = 32;
     int local_ground_min_pts = 8;
     double local_ground_slope_reg = 0.05;
+    double scope_margin_m = 0.25;
+    double propagation_max_slope = 0.35;
+    double ground_support_band_down = 0.03;
+    double ground_support_band_up = 0.03;
+    GridEmptyCellPolicy empty_cell_policy = GridEmptyCellPolicy::ConservativeBlocked;
+    int min_support_points = 2;
+    double wheel_radius_m = 0.072;
+    double traversable_step_height_ratio = 0.70;
+    double traversable_step_height_m = -1.0;  // if <= 0, derive from wheel radius * ratio
+    double overhang_clearance_m = 0.18;
+    double raw_cell_low_quantile = 0.05;
+    double raw_cell_high_quantile = 0.95;
+    double support_cluster_top_quantile = 0.90;
+    double csf_cloth_resolution_m = 0.35;
+    int csf_max_iterations = 2000;
+    double csf_classification_threshold_m = 0.03;
+    int csf_rigidness = 4;
+    bool csf_slope_processing = false;
+    double csf_max_obstacle_clearance_m = 0.50;
+    bool csf_trail_footprint_cleanup = true;
+    double csf_trail_cleanup_margin_m = 0.150;
+    bool csf_pre_sor_enabled = true;
+    int csf_pre_sor_k = 20;
+    double csf_pre_sor_std = 1.5;
 
     // Obstacle extraction
     double obstacle_z_max = 0.30;
@@ -103,6 +142,13 @@ struct ObstacleDetectionStats {
     size_t ground_points_band = 0;
     size_t raw_obstacle_candidates = 0;
     size_t obstacle_points_after_outlier = 0;
+    size_t anchor_cells = 0;
+    size_t propagated_ground_cells = 0;
+    size_t blocked_unknown_cells = 0;
+    size_t measured_obstacle_cells = 0;
+    size_t traversable_overhang_cells = 0;
+    size_t filled_empty_cells = 0;
+    size_t high_gradient_edges = 0;
     int clusters_found = 0;
     int groups_merged = 0;
     int obstacle_shapes = 0;
@@ -113,13 +159,20 @@ struct ObstacleDetectionStats {
     double plane_ny = 0.0;
     double plane_nz = 1.0;
     double plane_d = 0.0;
+    double gradient_threshold = 0.0;
 };
 
 struct ObstacleDetectionResult {
     bool success = false;
     std::string error_message;
     std::vector<Obstacle2D> obstacles;
+    std::vector<Obstacle2D> debug_grid_cells;
     ObstacleDetectionStats stats;
+    PointCloudPtr csf_ground_cloud;
+    PointCloudPtr csf_nonground_cloud;
+    PointCloudPtr csf_sor_nonground_cloud;
+    std::vector<Obstacle2D> csf_clearance_point_cells;
+    std::vector<Obstacle2D> csf_occupancy_obstacles;
 };
 
 using ObstacleCancelCallback = std::function<bool()>;
@@ -128,6 +181,19 @@ using ObstacleCancelCallback = std::function<bool()>;
  * @brief Set a cooperative cancellation callback for long obstacle-detection runs.
  */
 void setObstacleCancelCallback(ObstacleCancelCallback callback);
+
+/**
+ * @brief Main obstacle-detection dispatcher.
+ *
+ * The default behavior remains the current path-ground-based auto detector.
+ * Additional non-default methods (such as Patchwork bundle loading) dispatch
+ * here without changing the default pipeline.
+ */
+ObstacleDetectionResult detectObstacles(
+    const PointCloudPtr& cloud,
+    const std::vector<PathState>& driven_path,
+    const Polygon2D* roi_or_boundary,
+    const ObstacleDetectionParams& params = {});
 
 /**
  * @brief Detect obstacles using AUTO mode (hull by default, grid-with-holes when hollow).

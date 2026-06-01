@@ -1248,8 +1248,30 @@ PointCloudPtr loadPointCloudFile(const std::string& path) {
     int result = -1;
     if (ext == "pcd") {
         result = pcl::io::loadPCDFile<pcl::PointXYZ>(path, *cloud);
+        if (result < 0 || cloud->empty()) {
+            pcl::PointCloud<pcl::PointXYZI> cloud_i;
+            result = pcl::io::loadPCDFile<pcl::PointXYZI>(path, cloud_i);
+            if (result >= 0 && !cloud_i.empty()) {
+                cloud->clear();
+                cloud->reserve(cloud_i.size());
+                for (const auto& pt : cloud_i.points) {
+                    cloud->push_back(pcl::PointXYZ(pt.x, pt.y, pt.z));
+                }
+            }
+        }
     } else if (ext == "ply") {
         result = pcl::io::loadPLYFile<pcl::PointXYZ>(path, *cloud);
+        if (result < 0 || cloud->empty()) {
+            pcl::PointCloud<pcl::PointXYZI> cloud_i;
+            result = pcl::io::loadPLYFile<pcl::PointXYZI>(path, cloud_i);
+            if (result >= 0 && !cloud_i.empty()) {
+                cloud->clear();
+                cloud->reserve(cloud_i.size());
+                for (const auto& pt : cloud_i.points) {
+                    cloud->push_back(pcl::PointXYZ(pt.x, pt.y, pt.z));
+                }
+            }
+        }
     } else if (ext == "xyz") {
         // Simple XYZ text format
         std::ifstream file(path);
