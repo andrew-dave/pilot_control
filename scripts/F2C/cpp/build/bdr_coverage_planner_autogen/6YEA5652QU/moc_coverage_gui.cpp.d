@@ -1409,6 +1409,7 @@
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QMutex \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QObject \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QProcess \
+  /usr/include/x86_64-linux-gnu/qt5/QtCore/QRectF \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSet \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSettings \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/QSharedDataPointer \
@@ -1613,6 +1614,7 @@
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qwaitcondition.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qwineventnotifier.h \
   /usr/include/x86_64-linux-gnu/qt5/QtCore/qxmlstream.h \
+  /usr/include/x86_64-linux-gnu/qt5/QtGui/QImage \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QKeyEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QMouseEvent \
   /usr/include/x86_64-linux-gnu/qt5/QtGui/QPainter \

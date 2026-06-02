@@ -34,6 +34,8 @@
 #include <QDate>
 #include <QSettings>
 #include <QPainter>
+#include <QImage>
+#include <QRectF>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QTimer>
@@ -61,6 +63,7 @@
 #include <optional>
 #include <mutex>
 #include <chrono>
+#include <utility>
 #include <Eigen/Core>
 
 // GStreamer for video streaming
@@ -163,6 +166,8 @@ public:
 
     // Data setters
     void setPoints(const std::vector<Point2D>& points);
+    void setPointCloudImage(const QImage& image, const QRectF& world_bounds);
+    void clearPointCloudImage();
     void setPolygon(const Polygon2D& poly);
     void setROI(const Polygon2D& roi);
     void setObstacles(const std::vector<Obstacle2D>& obstacles);
@@ -174,6 +179,7 @@ public:
     void setRobotPose(const std::optional<PathState>& pose);
     void setRobotTrail(const std::vector<Point2D>& trail);
     void setRobotMarkerSize(double size_meters);
+    void setShowOrigin(bool show);
     void setCustomPath(const std::vector<Point2D>& path,
                        const std::vector<bool>& visited);
     void setShowCustomPath(bool show);
@@ -251,6 +257,8 @@ protected:
 private:
     // Data
     std::vector<Point2D> points_;
+    QImage point_cloud_image_;
+    QRectF point_cloud_image_bounds_;
     Polygon2D polygon_;
     Polygon2D roi_;
     std::vector<Obstacle2D> obstacles_;
@@ -262,6 +270,7 @@ private:
     std::optional<PathState> robot_pose_;
     std::vector<Point2D> robot_trail_;
     double robot_marker_size_ = 0.6;
+    bool show_origin_ = true;
     std::vector<Point2D> custom_waypoints_;
     std::vector<bool> custom_waypoint_states_;
     bool show_custom_path_ = false;
@@ -316,6 +325,7 @@ private:
     Point2D screenToWorld(const QPointF& p) const;
     void updateDataBounds();
     void fitToData();
+    double fitScaleForData() const;
     double distanceToLineSegment(const QPointF& mouse, const QPointF& p1, const QPointF& p2) const;
 };
 
@@ -332,7 +342,6 @@ public:
 
     struct HeightCropResult {
         PointCloudPtr filtered_points;
-        std::vector<Point2D> projected_points;
         QString error;
         double z_min = 0.0;
         double z_max = 0.0;
@@ -365,6 +374,8 @@ private slots:
     void toggleROISelection();
     void clearROI();
     void toggleObstacleSelection();
+    void toggleObstacleRegionDelete();
+    void deleteObstaclesInRegion(const Polygon2D& region);
     void autoDetectObstacles();
     void deleteSelectedObstacle();
     void clearObstacles();
@@ -569,6 +580,9 @@ private:
     
     // Refresh plot
     void refreshPlot();
+    void rebuildPointCloudImage(const PointCloudPtr& cloud);
+    void clearPointCloudImage();
+    std::optional<std::pair<double, double>> currentTrailZRangeForDisplay() const;
     const std::vector<Obstacle2D>& displayedObstacles() const;
     bool displayingPlanningObstacles() const;
     
@@ -668,6 +682,7 @@ private:
     
     // File controls
     QLabel* lbl_file_;
+    QCheckBox* chk_display_crop_to_trail_z_ = nullptr;
     QLineEdit* txt_robot_ip_ = nullptr;
     QLabel* lbl_active_robot_ = nullptr;
     QCheckBox* chk_show_robot_;
@@ -802,6 +817,7 @@ private:
     QPushButton* btn_auto_detect_obstacles_ = nullptr;
     QPushButton* btn_export_obstacle_colored_cloud_ = nullptr;
     QPushButton* btn_delete_selected_obstacle_ = nullptr;
+    QPushButton* btn_delete_obstacles_in_region_ = nullptr;
     QPushButton* btn_obstacle_clear_;
     QPushButton* btn_measure_ = nullptr;
     QLabel* lbl_obstacles_;
@@ -811,6 +827,8 @@ private:
     PointCloudPtr pcd_points_;
     PointCloudPtr filtered_points_;
     std::vector<Point2D> xy_2d_;
+    QImage point_cloud_image_;
+    QRectF point_cloud_image_bounds_;
     Polygon2D polygon_;
     Polygon2D roi_polygon_;
     std::vector<Obstacle2D> obstacles_;
@@ -826,6 +844,7 @@ private:
     TransitPlanKind transit_plan_kind_ = TransitPlanKind::None;
     Point2D transit_plan_goal_{0.0, 0.0};
     bool auto_detect_obstacles_running_ = false;
+    bool obstacle_region_delete_mode_ = false;
     SwathList swaths_;
     PathStateList route_;
     PathStateList path_;
@@ -912,6 +931,7 @@ private:
     std::optional<PathState> robot_pose_state_;
     std::vector<Point2D> robot_trail_;
     std::vector<PathState> robot_trail_states_;
+    std::vector<double> robot_trail_z_;
     std::vector<PathState> driven_path_snapshot_;
     Eigen::Matrix4f alignment_transform_total_ = Eigen::Matrix4f::Identity();
     size_t robot_trail_max_points_ = 0;  // 0 = unlimited trail
@@ -927,6 +947,7 @@ private:
     
     // Throttle plot refresh to avoid excessive repaints from high-frequency odom
     std::chrono::steady_clock::time_point last_plot_refresh_;
+    std::chrono::steady_clock::time_point last_display_crop_refresh_;
     static constexpr int kPlotRefreshIntervalMs = 50;  // ~20 Hz max
     static constexpr int kLiveUiIntervalMs = 200;      // 5 Hz UI updates for live stats
     static constexpr double kLiveStartGateM = 0.05;    // Require 5 cm to arm live stats
@@ -1005,6 +1026,7 @@ private:
     QCheckBox* chk_layer_path_ = nullptr;
     QCheckBox* chk_layer_trail_ = nullptr;
     QCheckBox* chk_layer_robot_ = nullptr;
+    QCheckBox* chk_layer_origin_ = nullptr;
     QCheckBox* chk_layer_scan_segments_ = nullptr;
     
     // Quick actions bar

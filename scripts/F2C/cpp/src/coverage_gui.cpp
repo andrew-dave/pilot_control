@@ -50,6 +50,10 @@
 #include <iomanip>
 #include <fstream>
 #include <cstdlib>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/geometries/multi_polygon.hpp>
 
 // PCL for 3D point cloud preview
 #include <pcl/io/pcd_io.h>
@@ -67,6 +71,11 @@
 namespace f2c_cpp {
 
 namespace {
+
+namespace bg = boost::geometry;
+using BoostPoint2D = bg::model::d2::point_xy<double>;
+using BoostPolygon2D = bg::model::polygon<BoostPoint2D>;
+using BoostMultiPolygon2D = bg::model::multi_polygon<BoostPolygon2D>;
 
 constexpr char kMpcSetParametersService[] = "/mpc_accel_autonomous_controller/set_parameters";
 constexpr char kMpcDesiredSpeedParameter[] = "desired_linear_speed";
@@ -356,6 +365,9 @@ constexpr double kConnectorObstacleClearanceM = 0.3;
 constexpr const char* kOperationCancelledMessage = "Operation cancelled";
 constexpr const char* kPatchworkObstacleModeKey = "patchwork_raw_bundle";
 constexpr const char* kCsfObstacleModeKey = "cloth_simulation_filter";
+constexpr int kPointCloudProjectionMaxDim = 4096;
+constexpr int kPointCloudProjectionMinDim = 64;
+constexpr double kTrailDisplayCropToleranceM = 0.4;
 
 QString obstacleDetectorModeKey(GroundModelMode mode) {
     switch (mode) {
@@ -574,6 +586,20 @@ void PlotWidget::setPoints(const std::vector<Point2D>& points) {
     update();
 }
 
+void PlotWidget::setPointCloudImage(const QImage& image, const QRectF& world_bounds) {
+    point_cloud_image_ = image;
+    point_cloud_image_bounds_ = world_bounds;
+    updateDataBounds();
+    update();
+}
+
+void PlotWidget::clearPointCloudImage() {
+    point_cloud_image_ = QImage();
+    point_cloud_image_bounds_ = QRectF();
+    updateDataBounds();
+    update();
+}
+
 void PlotWidget::setPolygon(const Polygon2D& poly) {
     polygon_ = poly;
     updateDataBounds();
@@ -643,6 +669,11 @@ void PlotWidget::setRobotTrail(const std::vector<Point2D>& trail) {
 
 void PlotWidget::setRobotMarkerSize(double size_meters) {
     robot_marker_size_ = std::max(0.05, size_meters);
+    update();
+}
+
+void PlotWidget::setShowOrigin(bool show) {
+    show_origin_ = show;
     update();
 }
 
@@ -763,6 +794,8 @@ double PlotWidget::distanceToLineSegment(const QPointF& mouse, const QPointF& p1
 
 void PlotWidget::clearAll() {
     points_.clear();
+    point_cloud_image_ = QImage();
+    point_cloud_image_bounds_ = QRectF();
     polygon_.clear();
     roi_.clear();
     obstacles_.clear();
@@ -795,7 +828,7 @@ void PlotWidget::clearAll() {
     update();
 }
 
-void PlotWidget::clearPoints() { points_.clear(); update(); }
+void PlotWidget::clearPoints() { points_.clear(); clearPointCloudImage(); }
 void PlotWidget::clearPolygon() { polygon_.clear(); update(); }
 void PlotWidget::clearROI() { roi_.clear(); update(); }
 void PlotWidget::clearObstacles() {
@@ -826,7 +859,14 @@ void PlotWidget::zoomIn() {
 }
 
 void PlotWidget::zoomOut() {
-    scale_ /= 1.2;
+    updateDataBounds();
+    const double fit_scale = fitScaleForData();
+    const double next_scale = scale_ / 1.2;
+    if (next_scale <= fit_scale) {
+        fitToData();
+    } else {
+        scale_ = next_scale;
+    }
     update();
 }
 
@@ -931,6 +971,10 @@ void PlotWidget::updateDataBounds() {
     };
     
     for (const auto& p : points_) updateBounds(p);
+    if (!point_cloud_image_.isNull() && point_cloud_image_bounds_.isValid()) {
+        updateBounds(Point2D(point_cloud_image_bounds_.left(), point_cloud_image_bounds_.top()));
+        updateBounds(Point2D(point_cloud_image_bounds_.right(), point_cloud_image_bounds_.bottom()));
+    }
     for (const auto& p : polygon_) updateBounds(p);
     for (const auto& p : roi_) updateBounds(p);
     for (const auto& obs : obstacles_) {
@@ -974,18 +1018,24 @@ void PlotWidget::updateDataBounds() {
     data_max_y_ += margin_y;
 }
 
-void PlotWidget::fitToData() {
-    updateDataBounds();
-    
+double PlotWidget::fitScaleForData() const {
     double data_w = data_max_x_ - data_min_x_;
     double data_h = data_max_y_ - data_min_y_;
     
     if (data_w < 1e-10) data_w = 1;
     if (data_h < 1e-10) data_h = 1;
     
-    double scale_x = (width() - 40) / data_w;
-    double scale_y = (height() - 40) / data_h;
-    scale_ = std::min(scale_x, scale_y);
+    const double usable_w = std::max(1, width() - 40);
+    const double usable_h = std::max(1, height() - 40);
+    const double scale_x = usable_w / data_w;
+    const double scale_y = usable_h / data_h;
+    return std::min(scale_x, scale_y);
+}
+
+void PlotWidget::fitToData() {
+    updateDataBounds();
+    
+    scale_ = fitScaleForData();
     
     double center_x = (data_min_x_ + data_max_x_) / 2;
     double center_y = (data_min_y_ + data_max_y_) / 2;
@@ -1027,7 +1077,14 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     }
     
     // Draw points
-    if (!points_.empty()) {
+    if (!point_cloud_image_.isNull() && point_cloud_image_bounds_.isValid()) {
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+        const QPointF top_left = worldToScreen(
+            Point2D(point_cloud_image_bounds_.left(), point_cloud_image_bounds_.bottom()));
+        const QPointF bottom_right = worldToScreen(
+            Point2D(point_cloud_image_bounds_.right(), point_cloud_image_bounds_.top()));
+        painter.drawImage(QRectF(top_left, bottom_right).normalized(), point_cloud_image_);
+    } else if (!points_.empty()) {
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(100, 100, 100, 150));
         for (const auto& p : points_) {
@@ -1295,7 +1352,7 @@ void PlotWidget::paintEvent(QPaintEvent* event) {
     }
     
     // Draw origin marker (robot position at 0,0)
-    {
+    if (show_origin_) {
         QPointF origin = worldToScreen(Point2D(0.0, 0.0));
         
         // Check if origin is within view bounds (with some margin)
@@ -1733,6 +1790,123 @@ static bool polygonEdgesIntersectLocal(const Polygon2D& a, const Polygon2D& b) {
     return false;
 }
 
+static bool polygonIntersectsRegionLocal(const Polygon2D& polygon, const Polygon2D& region) {
+    if (polygon.size() < 3 || region.size() < 3) return false;
+    for (const auto& p : polygon) {
+        if (pointInPolygonRayCastLocal(p, region)) {
+            return true;
+        }
+    }
+    for (const auto& p : region) {
+        if (pointInPolygonRayCastLocal(p, polygon)) {
+            return true;
+        }
+    }
+    return polygonEdgesIntersectLocal(polygon, region);
+}
+
+static bool obstacleIntersectsRegionLocal(const Obstacle2D& obstacle, const Polygon2D& region) {
+    if (polygonIntersectsRegionLocal(obstacle.outer, region)) {
+        return true;
+    }
+    for (const auto& hole : obstacle.holes) {
+        if (polygonIntersectsRegionLocal(hole, region)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void assignRingToBoost(const Polygon2D& ring, BoostPolygon2D::ring_type* out) {
+    if (!out) return;
+    out->clear();
+    out->reserve(ring.size() + 1);
+    for (const auto& p : ring) {
+        out->push_back(BoostPoint2D(p.x, p.y));
+    }
+    if (!ring.empty()) {
+        out->push_back(BoostPoint2D(ring.front().x, ring.front().y));
+    }
+}
+
+static BoostPolygon2D obstacleToBoostPolygonLocal(const Obstacle2D& obstacle) {
+    BoostPolygon2D poly;
+    assignRingToBoost(obstacle.outer, &poly.outer());
+    poly.inners().resize(obstacle.holes.size());
+    for (size_t i = 0; i < obstacle.holes.size(); ++i) {
+        assignRingToBoost(obstacle.holes[i], &poly.inners()[i]);
+    }
+    bg::correct(poly);
+    return poly;
+}
+
+static BoostPolygon2D regionToBoostPolygonLocal(const Polygon2D& region) {
+    BoostPolygon2D poly;
+    assignRingToBoost(region, &poly.outer());
+    bg::correct(poly);
+    return poly;
+}
+
+static Polygon2D boostRingToPolygonLocal(const BoostPolygon2D::ring_type& ring) {
+    Polygon2D out;
+    out.reserve(ring.size());
+    for (const auto& p : ring) {
+        out.emplace_back(bg::get<0>(p), bg::get<1>(p));
+    }
+    if (out.size() > 1 &&
+        std::abs(out.front().x - out.back().x) < 1e-12 &&
+        std::abs(out.front().y - out.back().y) < 1e-12) {
+        out.pop_back();
+    }
+    return out;
+}
+
+static Obstacle2D boostPolygonToObstacleLocal(const BoostPolygon2D& poly) {
+    Obstacle2D out;
+    out.outer = boostRingToPolygonLocal(poly.outer());
+    out.holes.reserve(poly.inners().size());
+    for (const auto& hole : poly.inners()) {
+        Polygon2D converted = boostRingToPolygonLocal(hole);
+        if (converted.size() >= 3) {
+            out.holes.push_back(std::move(converted));
+        }
+    }
+    return out;
+}
+
+static std::vector<Obstacle2D> cutObstacleByRegionLocal(
+    const Obstacle2D& obstacle,
+    const Polygon2D& region) {
+    std::vector<Obstacle2D> out;
+    if (obstacle.outer.size() < 3 || region.size() < 3) {
+        return out;
+    }
+    try {
+        BoostPolygon2D obstacle_poly = obstacleToBoostPolygonLocal(obstacle);
+        BoostPolygon2D cut_poly = regionToBoostPolygonLocal(region);
+        BoostMultiPolygon2D difference;
+        bg::difference(obstacle_poly, cut_poly, difference);
+        out.reserve(difference.size());
+        for (const auto& piece : difference) {
+            const double area = std::abs(bg::area(piece));
+            if (area < 1e-6) {
+                continue;
+            }
+            Obstacle2D converted = boostPolygonToObstacleLocal(piece);
+            if (converted.outer.size() < 3) {
+                continue;
+            }
+            converted.visual_type = obstacle.visual_type;
+            out.push_back(std::move(converted));
+        }
+    } catch (const std::exception&) {
+        if (!obstacleIntersectsRegionLocal(obstacle, region)) {
+            out.push_back(obstacle);
+        }
+    }
+    return out;
+}
+
 void PlotWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         if (measure_mode_) {
@@ -2056,7 +2230,16 @@ void PlotWidget::wheelEvent(QWheelEvent* event) {
 #endif
     Point2D world_before = screenToWorld(cursor);
     
-    scale_ *= factor;
+    updateDataBounds();
+    const double fit_scale = fitScaleForData();
+    const double next_scale = scale_ * factor;
+    if (factor < 1.0 && next_scale <= fit_scale) {
+        fitToData();
+        update();
+        return;
+    }
+
+    scale_ = next_scale;
     
     // Adjust offset to keep cursor position fixed
     offset_x_ = cursor.x() - world_before.x * scale_;
@@ -3128,10 +3311,23 @@ QGroupBox* CoverageGUI::buildFileControls() {
     }
     
     // Load from local file
+    QHBoxLayout* load_layout = new QHBoxLayout();
     QPushButton* btn_load = new QPushButton("Load PCD / PLY / XYZ");
     btn_load->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
     connect(btn_load, &QPushButton::clicked, this, &CoverageGUI::loadPointCloud);
-    v->addWidget(btn_load);
+    load_layout->addWidget(btn_load, 1);
+
+    chk_display_crop_to_trail_z_ = new QCheckBox("Trail-height display");
+    chk_display_crop_to_trail_z_->setToolTip(
+        "For display only, crop the point-cloud image to the trail Z range ±0.4 m.\n"
+        "If no trail Z samples are available, the full cloud is displayed.");
+    connect(chk_display_crop_to_trail_z_, &QCheckBox::toggled, this, [this]() {
+        rebuildPointCloudImage(filtered_points_ ? filtered_points_ : pcd_points_);
+        scheduleFitToView();
+        refreshPlot();
+    });
+    load_layout->addWidget(chk_display_crop_to_trail_z_);
+    v->addLayout(load_layout);
     
     // Fetch from robot via SSH
     QPushButton* btn_fetch = new QPushButton("📡 Fetch Latest from Robot");
@@ -3706,6 +3902,15 @@ QWidget* CoverageGUI::buildF2CControls() {
     connect(btn_obstacle_clear_, &QPushButton::clicked, this, &CoverageGUI::clearObstacles);
     obstacle_box->addWidget(btn_obstacle_clear_);
     v->addLayout(obstacle_box);
+
+    btn_delete_obstacles_in_region_ = new QPushButton("Cut Obstacles by Region");
+    btn_delete_obstacles_in_region_->setCheckable(true);
+    btn_delete_obstacles_in_region_->setIcon(style()->standardIcon(QStyle::SP_DialogDiscardButton));
+    btn_delete_obstacles_in_region_->setToolTip(
+        "Draw a polygon region to subtract from planning obstacles, preserving remaining pieces.");
+    connect(btn_delete_obstacles_in_region_, &QPushButton::clicked,
+            this, &CoverageGUI::toggleObstacleRegionDelete);
+    v->addWidget(btn_delete_obstacles_in_region_);
 
     btn_delete_selected_obstacle_ = new QPushButton("Delete Selected Obstacle");
     btn_delete_selected_obstacle_->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
@@ -4534,8 +4739,9 @@ QWidget* CoverageGUI::buildLayerPanel() {
     addLayerCheckbox(3, 0, "⚠️ Obstacles", chk_layer_obstacles_, true);
     addLayerCheckbox(3, 1, "🛰 Segments", chk_layer_scan_segments_, true);
     
-    // Row 4 - Swaths spans or single
+    // Row 4
     addLayerCheckbox(4, 0, "═ Swaths", chk_layer_swaths_, true);
+    addLayerCheckbox(4, 1, "⊕ Origin", chk_layer_origin_, true);
     
     mainLayout->addLayout(grid);
     
@@ -4558,6 +4764,7 @@ QWidget* CoverageGUI::buildLayerPanel() {
         chk_layer_path_->setChecked(true);
         chk_layer_trail_->setChecked(true);
         chk_layer_robot_->setChecked(true);
+        chk_layer_origin_->setChecked(true);
         chk_layer_scan_segments_->setChecked(true);
     });
     
@@ -4570,6 +4777,7 @@ QWidget* CoverageGUI::buildLayerPanel() {
         chk_layer_path_->setChecked(false);
         chk_layer_trail_->setChecked(false);
         chk_layer_robot_->setChecked(false);
+        chk_layer_origin_->setChecked(false);
         chk_layer_scan_segments_->setChecked(false);
     });
     
@@ -5079,6 +5287,172 @@ const std::vector<Obstacle2D>& CoverageGUI::displayedObstacles() const {
     return obstacles_;
 }
 
+void CoverageGUI::clearPointCloudImage() {
+    point_cloud_image_ = QImage();
+    point_cloud_image_bounds_ = QRectF();
+}
+
+std::optional<std::pair<double, double>> CoverageGUI::currentTrailZRangeForDisplay() const {
+    if (!chk_display_crop_to_trail_z_ || !chk_display_crop_to_trail_z_->isChecked()) {
+        return std::nullopt;
+    }
+
+    std::lock_guard<std::mutex> lock(robot_pose_mutex_);
+    double min_z = std::numeric_limits<double>::max();
+    double max_z = std::numeric_limits<double>::lowest();
+    for (double z : robot_trail_z_) {
+        if (!std::isfinite(z)) {
+            continue;
+        }
+        min_z = std::min(min_z, z);
+        max_z = std::max(max_z, z);
+    }
+
+    if (min_z > max_z) {
+        return std::nullopt;
+    }
+    return std::make_pair(min_z - kTrailDisplayCropToleranceM,
+                          max_z + kTrailDisplayCropToleranceM);
+}
+
+void CoverageGUI::rebuildPointCloudImage(const PointCloudPtr& cloud) {
+    clearPointCloudImage();
+    if (!cloud || cloud->empty()) {
+        return;
+    }
+
+    const auto trail_z_range = currentTrailZRangeForDisplay();
+
+    double min_x = std::numeric_limits<double>::max();
+    double min_y = std::numeric_limits<double>::max();
+    double max_x = std::numeric_limits<double>::lowest();
+    double max_y = std::numeric_limits<double>::lowest();
+
+    for (const auto& pt : cloud->points) {
+        if (!std::isfinite(pt.x) || !std::isfinite(pt.y)) {
+            continue;
+        }
+        min_x = std::min(min_x, static_cast<double>(pt.x));
+        max_x = std::max(max_x, static_cast<double>(pt.x));
+        min_y = std::min(min_y, static_cast<double>(pt.y));
+        max_y = std::max(max_y, static_cast<double>(pt.y));
+    }
+
+    if (min_x > max_x || min_y > max_y) {
+        return;
+    }
+
+    if (std::abs(max_x - min_x) < 1e-6) {
+        min_x -= 0.5;
+        max_x += 0.5;
+    }
+    if (std::abs(max_y - min_y) < 1e-6) {
+        min_y -= 0.5;
+        max_y += 0.5;
+    }
+
+    const double range_x = max_x - min_x;
+    const double range_y = max_y - min_y;
+    const double max_range = std::max(range_x, range_y);
+    const int width = std::clamp(
+        static_cast<int>(std::ceil((range_x / max_range) * kPointCloudProjectionMaxDim)),
+        kPointCloudProjectionMinDim,
+        kPointCloudProjectionMaxDim);
+    const int height = std::clamp(
+        static_cast<int>(std::ceil((range_y / max_range) * kPointCloudProjectionMaxDim)),
+        kPointCloudProjectionMinDim,
+        kPointCloudProjectionMaxDim);
+
+    QImage image(width, height, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+
+    std::vector<unsigned int> pixel_counts(static_cast<size_t>(width) * static_cast<size_t>(height), 0u);
+    unsigned int max_count = 0u;
+
+    for (const auto& pt : cloud->points) {
+        if (!std::isfinite(pt.x) || !std::isfinite(pt.y)) {
+            continue;
+        }
+        if (trail_z_range.has_value() &&
+            (pt.z < trail_z_range->first || pt.z > trail_z_range->second)) {
+            continue;
+        }
+
+        const int u = std::clamp(
+            static_cast<int>(std::llround(((static_cast<double>(pt.x) - min_x) / range_x) * (width - 1))),
+            0,
+            width - 1);
+        const int v = std::clamp(
+            static_cast<int>(std::llround(((max_y - static_cast<double>(pt.y)) / range_y) * (height - 1))),
+            0,
+            height - 1);
+
+        const size_t idx = static_cast<size_t>(v) * static_cast<size_t>(width) + static_cast<size_t>(u);
+        const unsigned int count = ++pixel_counts[idx];
+        max_count = std::max(max_count, count);
+    }
+
+    if (max_count == 0u) {
+        return;
+    }
+
+    std::vector<unsigned int> occupied_counts;
+    occupied_counts.reserve(static_cast<size_t>(width) * static_cast<size_t>(height) / 8);
+    for (unsigned int count : pixel_counts) {
+        if (count > 0u) {
+            occupied_counts.push_back(count);
+        }
+    }
+
+    auto percentileCount = [&occupied_counts](double percentile) -> unsigned int {
+        if (occupied_counts.empty()) {
+            return 1u;
+        }
+        const size_t percentile_idx = std::min(
+            occupied_counts.size() - 1,
+            static_cast<size_t>(std::floor(percentile * static_cast<double>(occupied_counts.size() - 1))));
+        std::nth_element(
+            occupied_counts.begin(),
+            occupied_counts.begin() + static_cast<std::ptrdiff_t>(percentile_idx),
+            occupied_counts.end());
+        return std::max(1u, occupied_counts[percentile_idx]);
+    };
+
+    const unsigned int low_count = percentileCount(0.02);
+    const unsigned int high_count = std::max(low_count, percentileCount(0.98));
+    const double log_low = std::log1p(static_cast<double>(low_count - 1u));
+    const double log_high = std::log1p(static_cast<double>(high_count - 1u));
+    const double log_range = std::max(1e-6, log_high - log_low);
+    const bool has_count_contrast = high_count > low_count;
+    constexpr int kSingleHitAlpha = 120;
+    constexpr int kFlatAlpha = 170;
+    constexpr int kMaxHitAlpha = 235;
+    const int point_gray = dark_mode_ ? 210 : 45;
+    for (int v = 0; v < height; ++v) {
+        QRgb* row = reinterpret_cast<QRgb*>(image.scanLine(v));
+        for (int u = 0; u < width; ++u) {
+            const unsigned int count =
+                pixel_counts[static_cast<size_t>(v) * static_cast<size_t>(width) + static_cast<size_t>(u)];
+            if (count == 0u) {
+                continue;
+            }
+
+            int alpha = kFlatAlpha;
+            if (has_count_contrast) {
+                const double log_count = std::log1p(static_cast<double>(count - 1u));
+                const double t = std::clamp((log_count - log_low) / log_range, 0.0, 1.0);
+                alpha = kSingleHitAlpha +
+                        static_cast<int>(std::round(t * static_cast<double>(kMaxHitAlpha - kSingleHitAlpha)));
+            }
+            row[u] = qRgba(point_gray, point_gray, point_gray,
+                           std::clamp(alpha, kSingleHitAlpha, kMaxHitAlpha));
+        }
+    }
+
+    point_cloud_image_ = std::move(image);
+    point_cloud_image_bounds_ = QRectF(QPointF(min_x, min_y), QPointF(max_x, max_y)).normalized();
+}
+
 void CoverageGUI::refreshPlot() {
     // Apply layer visibility settings
     bool show_points = !chk_layer_points_ || chk_layer_points_->isChecked();
@@ -5089,6 +5463,7 @@ void CoverageGUI::refreshPlot() {
     bool show_path = !chk_layer_path_ || chk_layer_path_->isChecked();
     bool show_trail = !chk_layer_trail_ || chk_layer_trail_->isChecked();
     bool show_robot = !chk_layer_robot_ || chk_layer_robot_->isChecked();
+    bool show_origin = !chk_layer_origin_ || chk_layer_origin_->isChecked();
     
     // Also check the robot tracking checkbox
     if (chk_show_robot_ && !chk_show_robot_->isChecked()) {
@@ -5096,8 +5471,14 @@ void CoverageGUI::refreshPlot() {
         show_trail = false;
     }
     
-    // Set data based on visibility
-    plot_->setPoints(show_points ? xy_2d_ : std::vector<Point2D>());
+    // Set data based on visibility. Prefer the rasterized cloud for responsive rendering.
+    if (show_points && !point_cloud_image_.isNull()) {
+        plot_->setPointCloudImage(point_cloud_image_, point_cloud_image_bounds_);
+        plot_->setPoints(std::vector<Point2D>());
+    } else {
+        plot_->clearPointCloudImage();
+        plot_->setPoints(show_points ? xy_2d_ : std::vector<Point2D>());
+    }
     plot_->setPolygon(show_polygon ? polygon_ : Polygon2D());
     plot_->setROI(show_roi ? roi_polygon_ : Polygon2D());
     plot_->setObstacles(show_obstacles ? displayedObstacles() : std::vector<Obstacle2D>());
@@ -5108,6 +5489,7 @@ void CoverageGUI::refreshPlot() {
     plot_->setRoute(show_path ? route_ : PathStateList());
     plot_->setPath(show_path ? path_ : PathStateList());
     plot_->setPathConnectorPrefixCount(show_path ? path_connector_prefix_count_ : 0);
+    plot_->setShowOrigin(show_origin);
     plot_->setCustomPath(custom_waypoints_, custom_waypoints_visited_);
     plot_->setShowCustomPath(isCustomModeActive() && !custom_waypoints_.empty() && show_path);
 
@@ -5195,8 +5577,11 @@ void CoverageGUI::clearRobotTrail() {
         std::lock_guard<std::mutex> lock(robot_pose_mutex_);
         robot_trail_.clear();
         robot_trail_states_.clear();
+        robot_trail_z_.clear();
         driven_path_snapshot_.clear();
     }
+    rebuildPointCloudImage(filtered_points_ ? filtered_points_ : pcd_points_);
+    scheduleFitToView();
     refreshPlot();
 }
 
@@ -5375,11 +5760,12 @@ while reader.has_next():
     msg = deserialize_message(data, msg_type)
     x = float(msg.pose.pose.position.x)
     y = float(msg.pose.pose.position.y)
+    z = float(msg.pose.pose.position.z)
     q = msg.pose.pose.orientation
     siny = 2.0 * (q.w * q.z + q.x * q.y)
     cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     yaw = math.atan2(siny, cosy)
-    rows.append((x, y, yaw, int(stamp)))
+    rows.append((x, y, z, yaw, int(stamp)))
 
 if not rows:
     eprint(f"No messages found on topic: {topic}")
@@ -5387,7 +5773,7 @@ if not rows:
 
 with open(out_csv, "w", newline="") as f:
     w = csv.writer(f)
-    w.writerow(["x", "y", "yaw", "stamp"])
+    w.writerow(["x", "y", "z", "yaw", "stamp"])
     w.writerows(rows)
 
 if tmp_cleanup:
@@ -5434,7 +5820,9 @@ if tmp_cleanup:
     std::string line;
     std::getline(in, line);  // header
     std::vector<PathState> imported_states;
+    std::vector<double> imported_z;
     imported_states.reserve(5000);
+    imported_z.reserve(5000);
     const qint64 csv_size = QFileInfo(temp_csv).size();
 
     while (std::getline(in, line)) {
@@ -5459,17 +5847,19 @@ if tmp_cleanup:
             continue;
         }
         std::stringstream ss(line);
-        std::string sx, sy, syaw, sstamp;
+        std::string sx, sy, sz, syaw, sstamp;
         if (!std::getline(ss, sx, ',')) continue;
         if (!std::getline(ss, sy, ',')) continue;
+        if (!std::getline(ss, sz, ',')) continue;
         if (!std::getline(ss, syaw, ',')) continue;
         std::getline(ss, sstamp, ',');
         try {
             double x = std::stod(sx);
             double y = std::stod(sy);
+            double z = std::stod(sz);
             double yaw = std::stod(syaw);
 
-            Eigen::Vector4f p(static_cast<float>(x), static_cast<float>(y), 0.0f, 1.0f);
+            Eigen::Vector4f p(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), 1.0f);
             Eigen::Vector4f pt = alignment_transform_total_ * p;
             const double rot_yaw = std::atan2(
                 static_cast<double>(alignment_transform_total_(1, 0)),
@@ -5482,6 +5872,7 @@ if tmp_cleanup:
             st.vx = std::cos(yaw_t);
             st.vy = std::sin(yaw_t);
             imported_states.push_back(st);
+            imported_z.push_back(static_cast<double>(pt.z()));
         } catch (...) {
             continue;
         }
@@ -5496,6 +5887,7 @@ if tmp_cleanup:
     {
         std::lock_guard<std::mutex> lock(robot_pose_mutex_);
         robot_trail_states_ = imported_states;
+        robot_trail_z_ = imported_z;
         robot_trail_.clear();
         robot_trail_.reserve(imported_states.size());
         for (const auto& st : imported_states) {
@@ -5506,6 +5898,8 @@ if tmp_cleanup:
 
     updateProgress(100, "Trail import complete");
     endProgressOperation();
+    rebuildPointCloudImage(filtered_points_ ? filtered_points_ : pcd_points_);
+    scheduleFitToView();
     refreshPlot();
     setStatus(QString("Loaded %1 trail points from rosbag (%2)")
                   .arg(imported_states.size())
@@ -5892,12 +6286,7 @@ void CoverageGUI::applyAlignmentTransformToLoadedData(const Eigen::Matrix4f& tra
     }
 
     xy_2d_.clear();
-    xy_2d_.reserve(filtered_points_ ? filtered_points_->size() : 0);
-    if (filtered_points_) {
-        for (const auto& pt : filtered_points_->points) {
-            xy_2d_.emplace_back(pt.x, pt.y);
-        }
-    }
+    rebuildPointCloudImage(filtered_points_);
 
     alignment_transform_total_ = transform * alignment_transform_total_;
 
@@ -6127,16 +6516,6 @@ void CoverageGUI::applyHeightCrop() {
 
         try {
             result.filtered_points = filterByZRange(source_cloud, z_min, z_max);
-            result.projected_points.clear();
-            result.projected_points.reserve(result.filtered_points ? result.filtered_points->size() : 0);
-            size_t i = 0;
-            for (const auto& pt : result.filtered_points->points) {
-                if ((i++ & 0x7FFFu) == 0u && isProgressCancelRequested()) {
-                    result.cancelled = true;
-                    return result;
-                }
-                result.projected_points.emplace_back(pt.x, pt.y);
-            }
         } catch (const std::exception& e) {
             const QString err = QString::fromUtf8(e.what());
             if (isOperationCancelledMessage(err)) {
@@ -6175,7 +6554,8 @@ void CoverageGUI::onHeightCropFinished() {
     }
 
     filtered_points_ = result.filtered_points;
-    xy_2d_ = result.projected_points;
+    xy_2d_.clear();
+    rebuildPointCloudImage(filtered_points_);
 
     // Clear previous polygon/coverage data
     polygon_.clear();
@@ -6479,6 +6859,8 @@ void CoverageGUI::applyDownsample() {
         if (isProgressCancelRequested()) {
             throw std::runtime_error(kOperationCancelledMessage);
         }
+        xy_2d_.clear();
+        rebuildPointCloudImage(filtered_points_);
         endProgressOperation();
         setStatus(QString("Downsampled to %1 points").arg(filtered_points_->size()), 4000);
     } catch (const std::exception& e) {
@@ -6584,6 +6966,10 @@ void CoverageGUI::toggleROISelection() {
         if (lbl_measure_) {
             lbl_measure_->setText("Distance: -");
         }
+        obstacle_region_delete_mode_ = false;
+        if (btn_delete_obstacles_in_region_) {
+            btn_delete_obstacles_in_region_->setChecked(false);
+        }
         btn_obstacle_->setChecked(false);
         plot_->startROISelection();
         lbl_roi_->setText("ROI: selecting points...");
@@ -6609,6 +6995,10 @@ void CoverageGUI::toggleObstacleSelection() {
             btn_obstacle_->setChecked(false);
             return;
         }
+        obstacle_region_delete_mode_ = false;
+        if (btn_delete_obstacles_in_region_) {
+            btn_delete_obstacles_in_region_->setChecked(false);
+        }
         if (btn_measure_ && btn_measure_->isChecked()) {
             btn_measure_->setChecked(false);
         }
@@ -6626,6 +7016,44 @@ void CoverageGUI::toggleObstacleSelection() {
     }
 }
 
+void CoverageGUI::toggleObstacleRegionDelete() {
+    if (!btn_delete_obstacles_in_region_) return;
+    if (btn_delete_obstacles_in_region_->isChecked()) {
+        if (!displayingPlanningObstacles()) {
+            QMessageBox::warning(
+                this,
+                "Delete obstacles in region",
+                "Switch 2D obstacle view to Planning obstacles before deleting obstacles.");
+            btn_delete_obstacles_in_region_->setChecked(false);
+            return;
+        }
+        if (obstacles_.empty()) {
+            setStatus("No planning obstacles to delete", 3000);
+            btn_delete_obstacles_in_region_->setChecked(false);
+            return;
+        }
+        if (btn_measure_ && btn_measure_->isChecked()) {
+            btn_measure_->setChecked(false);
+        }
+        if (plot_) {
+            plot_->setMeasureMode(false);
+        }
+        if (lbl_measure_) {
+            lbl_measure_->setText("Distance: -");
+        }
+        if (btn_roi_) btn_roi_->setChecked(false);
+        if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        obstacle_region_delete_mode_ = true;
+        plot_->startObstacleSelection();
+        setStatus("Draw cut region across obstacles, then press Finish or Enter.", 6000);
+    } else {
+        obstacle_region_delete_mode_ = false;
+        if (plot_ && plot_->isSelecting()) {
+            plot_->cancelSelection();
+        }
+    }
+}
+
 void CoverageGUI::toggleMeasureMode() {
     if (!plot_ || !btn_measure_) return;
     const bool enabled = btn_measure_->isChecked();
@@ -6633,6 +7061,8 @@ void CoverageGUI::toggleMeasureMode() {
         // Disable conflicting selection modes.
         if (btn_roi_) btn_roi_->setChecked(false);
         if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        if (btn_delete_obstacles_in_region_) btn_delete_obstacles_in_region_->setChecked(false);
+        obstacle_region_delete_mode_ = false;
         if (btn_rectangle_ && btn_rectangle_->isChecked()) {
             btn_rectangle_->setChecked(false);
             plot_->cancelRectangleMode();
@@ -6682,6 +7112,8 @@ void CoverageGUI::autoDetectObstacles() {
     // Cancel any in-progress selection modes
     if (btn_roi_) btn_roi_->setChecked(false);
     if (btn_obstacle_) btn_obstacle_->setChecked(false);
+    if (btn_delete_obstacles_in_region_) btn_delete_obstacles_in_region_->setChecked(false);
+    obstacle_region_delete_mode_ = false;
     plot_->cancelSelection();
 
     // Detection always uses the full loaded point cloud, but we now scope
@@ -6801,6 +7233,56 @@ void CoverageGUI::clearObstacles() {
     clearCoverage();
     setStatus("Obstacles cleared", 4000);
     refreshPlot();
+}
+
+void CoverageGUI::deleteObstaclesInRegion(const Polygon2D& region) {
+    if (region.size() < 3) {
+        setStatus("Delete region needs at least 3 points", 3000);
+        return;
+    }
+    if (!displayingPlanningObstacles()) {
+        setStatus("Switch 2D obstacle view to Planning obstacles before deleting obstacles.", 4000);
+        return;
+    }
+    const size_t before = obstacles_.size();
+    size_t cut_count = 0;
+    std::vector<Obstacle2D> updated;
+    updated.reserve(obstacles_.size());
+    for (const auto& obs : obstacles_) {
+        if (!obstacleIntersectsRegionLocal(obs, region)) {
+            updated.push_back(obs);
+            continue;
+        }
+        cut_count++;
+        std::vector<Obstacle2D> pieces = cutObstacleByRegionLocal(obs, region);
+        updated.insert(
+            updated.end(),
+            std::make_move_iterator(pieces.begin()),
+            std::make_move_iterator(pieces.end()));
+    }
+    if (cut_count == 0) {
+        setStatus("No obstacles intersect the selected cut region", 4000);
+        refreshPlot();
+        return;
+    }
+    obstacles_ = std::move(updated);
+    grid_debug_cells_.clear();
+    if (plot_) {
+        plot_->clearObstacleSelection();
+    }
+    if (btn_delete_selected_obstacle_) {
+        btn_delete_selected_obstacle_->setEnabled(false);
+    }
+    lbl_obstacles_->setText(QString("Obstacles: %1").arg(obstacles_.size()));
+    effective_area_m2_ = 0.0;
+    clearCoverage();
+    refreshPlot();
+    setStatus(
+        QString("Cut %1 obstacle(s) with region (%2 -> %3 obstacle pieces)")
+            .arg(cut_count)
+            .arg(before)
+            .arg(obstacles_.size()),
+        5000);
 }
 
 void CoverageGUI::onObstacleSelectionChanged(int index) {
@@ -6950,6 +7432,17 @@ void CoverageGUI::onROISelected(const Polygon2D& roi) {
 }
 
 void CoverageGUI::onObstacleSelected(const Polygon2D& obstacle) {
+    if (obstacle_region_delete_mode_) {
+        obstacle_region_delete_mode_ = false;
+        if (btn_delete_obstacles_in_region_) {
+            btn_delete_obstacles_in_region_->setChecked(false);
+        }
+        if (btn_obstacle_) {
+            btn_obstacle_->setChecked(false);
+        }
+        deleteObstaclesInRegion(obstacle);
+        return;
+    }
     obstacles_.push_back(Obstacle2D{obstacle, {}});
     grid_debug_cells_.clear();
     btn_obstacle_->setChecked(false);
@@ -6963,6 +7456,10 @@ void CoverageGUI::onObstacleSelected(const Polygon2D& obstacle) {
 void CoverageGUI::onSelectionCancelled() {
     btn_roi_->setChecked(false);
     btn_obstacle_->setChecked(false);
+    if (btn_delete_obstacles_in_region_) {
+        btn_delete_obstacles_in_region_->setChecked(false);
+    }
+    obstacle_region_delete_mode_ = false;
     if (roi_polygon_.empty()) {
         lbl_roi_->setText("ROI: none");
     }
@@ -8078,6 +8575,7 @@ void CoverageGUI::setupRobotTrackingSubscription() {
             state.heading = yaw;
             state.vx = std::cos(yaw);
             state.vy = std::sin(yaw);
+            const double state_z = msg->pose.pose.position.z;
             
             {
                 std::lock_guard<std::mutex> lock(robot_pose_mutex_);
@@ -8088,6 +8586,7 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                                robot_trail_.back().y - state.point.y) > 0.03) {
                     robot_trail_.push_back(state.point);
                     robot_trail_states_.push_back(state);
+                    robot_trail_z_.push_back(state_z);
                     if (robot_trail_max_points_ > 0 &&
                         robot_trail_.size() > robot_trail_max_points_) {
                         const size_t remove_n = robot_trail_.size() - robot_trail_max_points_;
@@ -8097,6 +8596,12 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                                                       robot_trail_states_.begin() + remove_n);
                         } else {
                             robot_trail_states_.clear();
+                        }
+                        if (robot_trail_z_.size() >= remove_n) {
+                            robot_trail_z_.erase(robot_trail_z_.begin(),
+                                                 robot_trail_z_.begin() + remove_n);
+                        } else {
+                            robot_trail_z_.clear();
                         }
                     }
                 }
@@ -8120,6 +8625,15 @@ void CoverageGUI::setupRobotTrackingSubscription() {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     stamp - last_plot_refresh_).count();
                 if (elapsed >= kPlotRefreshIntervalMs) {
+                    const auto crop_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        stamp - last_display_crop_refresh_).count();
+                    if (chk_display_crop_to_trail_z_ &&
+                        chk_display_crop_to_trail_z_->isChecked() &&
+                        (pcd_points_ || filtered_points_) &&
+                        crop_elapsed >= 1000) {
+                        last_display_crop_refresh_ = stamp;
+                        rebuildPointCloudImage(filtered_points_ ? filtered_points_ : pcd_points_);
+                    }
                     last_plot_refresh_ = stamp;
                     refreshPlot();
                 }
@@ -8948,12 +9462,9 @@ void CoverageGUI::onPointCloudLoaded() {
     
     plot_->clearAll();
     
-    // Project points to 2D immediately for visualization
+    // Rasterize points once for responsive 2D visualization.
     xy_2d_.clear();
-    xy_2d_.reserve(pcd_points_->size());
-    for (const auto& pt : pcd_points_->points) {
-        xy_2d_.emplace_back(pt.x, pt.y);
-    }
+    rebuildPointCloudImage(pcd_points_);
     
     scheduleFitToView();
     refreshPlot();
@@ -9138,6 +9649,10 @@ void CoverageGUI::applyTheme() {
     // Update plot widget
     if (plot_) {
         plot_->setDarkMode(dark_mode_);
+    }
+    if (pcd_points_ || filtered_points_) {
+        rebuildPointCloudImage(filtered_points_ ? filtered_points_ : pcd_points_);
+        refreshPlot();
     }
 }
 
@@ -9669,6 +10184,8 @@ void CoverageGUI::toggleRectangleMode() {
         // Cancel any other selection modes
         if (btn_roi_) btn_roi_->setChecked(false);
         if (btn_obstacle_) btn_obstacle_->setChecked(false);
+        if (btn_delete_obstacles_in_region_) btn_delete_obstacles_in_region_->setChecked(false);
+        obstacle_region_delete_mode_ = false;
         if (btn_measure_ && btn_measure_->isChecked()) {
             btn_measure_->setChecked(false);
             plot_->setMeasureMode(false);
