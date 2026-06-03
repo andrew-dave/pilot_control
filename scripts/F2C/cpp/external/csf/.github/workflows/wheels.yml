@@ -1,0 +1,62 @@
+name: build wheels
+
+#trigger on PR and only if something is tagged on branches
+on:
+  push:
+    tags: ["*"]
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v5
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.16.5
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os}}
+          path: wheelhouse
+
+  publish:
+    name: Publish to PyPI
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    #Only publish to PyPI when a commit is tagged
+    if: startsWith(github.ref, 'refs/tags')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+         # name: wheels
+          path: wheelhouse
+          pattern: wheels-*
+          merge-multiple: true
+          overwrite: true
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        # construct the source package and upload src and wheels to PiPy
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine build
+          python -m pip install -U packaging
+          python -m build --sdist
+          twine upload dist/*
+          twine upload wheelhouse/*.whl
