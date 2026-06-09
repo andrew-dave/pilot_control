@@ -21,7 +21,6 @@ find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
-find_package(livox_ros_driver2 REQUIRED)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
@@ -168,14 +167,6 @@ ament_target_dependencies(point_cloud_downsampler rclcpp sensor_msgs pcl_convers
 target_include_directories(point_cloud_downsampler PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(point_cloud_downsampler ${PCL_LIBRARIES})
 install(TARGETS point_cloud_downsampler DESTINATION lib/${PROJECT_NAME})
-
-# === LIVOX CUSTOMMSG TO POINTCLOUD2 (standalone Patchwork++ test input) ===
-add_executable(livox_custommsg_to_cloud src/livox_custommsg_to_cloud.cpp)
-target_compile_features(livox_custommsg_to_cloud PUBLIC cxx_std_17)
-ament_target_dependencies(livox_custommsg_to_cloud rclcpp sensor_msgs pcl_conversions livox_ros_driver2)
-target_include_directories(livox_custommsg_to_cloud PUBLIC ${PCL_INCLUDE_DIRS})
-target_link_libraries(livox_custommsg_to_cloud ${PCL_LIBRARIES} Eigen3::Eigen)
-install(TARGETS livox_custommsg_to_cloud DESTINATION lib/${PROJECT_NAME})
 
 # === PATCHWORK CLOUD COLORIZER (ground/non-ground combined RViz cloud) ===
 add_executable(patchwork_cloud_colorizer src/patchwork_cloud_colorizer.cpp)
