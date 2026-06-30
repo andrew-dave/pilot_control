@@ -22,11 +22,13 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <tf2_ros/static_transform_broadcaster.h>
 
 #include <Eigen/Dense>
 
@@ -66,6 +68,38 @@ Eigen::Matrix3d quaternionToMatrix(double x, double y, double z, double w) {
 
 double extractYawFromMatrix(const Eigen::Matrix3d& rotation) {
     return std::atan2(rotation(1, 0), rotation(0, 0));
+}
+
+// Convert a rotation matrix to a (x, y, z, w) quaternion (Shepperd's method),
+// used to publish the static camera_init -> robot_init TF.
+void matrixToQuaternion(const Eigen::Matrix3d& r, double& qx, double& qy, double& qz,
+                        double& qw) {
+    const double trace = r(0, 0) + r(1, 1) + r(2, 2);
+    if (trace > 0.0) {
+        double s = std::sqrt(trace + 1.0) * 2.0;
+        qw = 0.25 * s;
+        qx = (r(2, 1) - r(1, 2)) / s;
+        qy = (r(0, 2) - r(2, 0)) / s;
+        qz = (r(1, 0) - r(0, 1)) / s;
+    } else if (r(0, 0) > r(1, 1) && r(0, 0) > r(2, 2)) {
+        double s = std::sqrt(1.0 + r(0, 0) - r(1, 1) - r(2, 2)) * 2.0;
+        qw = (r(2, 1) - r(1, 2)) / s;
+        qx = 0.25 * s;
+        qy = (r(0, 1) + r(1, 0)) / s;
+        qz = (r(0, 2) + r(2, 0)) / s;
+    } else if (r(1, 1) > r(2, 2)) {
+        double s = std::sqrt(1.0 + r(1, 1) - r(0, 0) - r(2, 2)) * 2.0;
+        qw = (r(0, 2) - r(2, 0)) / s;
+        qx = (r(0, 1) + r(1, 0)) / s;
+        qy = 0.25 * s;
+        qz = (r(1, 2) + r(2, 1)) / s;
+    } else {
+        double s = std::sqrt(1.0 + r(2, 2) - r(0, 0) - r(1, 1)) * 2.0;
+        qw = (r(1, 0) - r(0, 1)) / s;
+        qx = (r(0, 2) + r(2, 0)) / s;
+        qy = (r(1, 2) + r(2, 1)) / s;
+        qz = 0.25 * s;
+    }
 }
 
 std::string shellEscapeSingleQuoted(const std::string& text) {
@@ -141,10 +175,12 @@ struct RawOdomSample {
 // (full footprint vs wheel-track) for the empirical traversability prior.
 class PersistentHeightMap {
 public:
-    PersistentHeightMap(double resolution, double grow_pad_m, long long max_cells)
+    PersistentHeightMap(double resolution, double grow_pad_m, long long max_cells,
+                        double overhead_margin_m)
         : res_(resolution),
           grow_pad_cells_(std::max(1, static_cast<int>(std::ceil(grow_pad_m / resolution)))),
-          max_cells_(max_cells) {}
+          max_cells_(max_cells),
+          overhead_margin_(overhead_margin_m) {}
 
     double resolution() const { return res_; }
     int width() const { return w_; }
@@ -208,7 +244,7 @@ public:
         const int off_x = static_cast<int>(std::llround((origin_x_ - new_origin_x) / res_));
         const int off_y = static_cast<int>(std::llround((origin_y_ - new_origin_y) / res_));
 
-        PersistentHeightMap grown(res_, 0.0, max_cells_);
+        PersistentHeightMap grown(res_, 0.0, max_cells_, overhead_margin_);
         grown.grow_pad_cells_ = grow_pad_cells_;
         grown.origin_x_ = new_origin_x;
         grown.origin_y_ = new_origin_y;
@@ -246,6 +282,18 @@ public:
             m2_[i] = 0.0f;
             zmin_[i] = static_cast<float>(z);
             zmax_[i] = static_cast<float>(z);
+            return;
+        }
+        // Terrain-relative overhead reject: drop returns more than
+        // overhead_margin_ above the column's established ground (its running
+        // min). On curved/sloped roofs the reference rides with the local
+        // surface, so soffits / pipes / ceilings above the robot never register
+        // as obstacles, while a real obstacle's lower band (floor → margin) is
+        // still integrated and trips the LETHAL test. Excluding overhead points
+        // also keeps their high z out of the mean/variance, so floor cells under
+        // an overhang stay ground-confident → FREE (drive-under).
+        if (overhead_margin_ > 0.0 &&
+            (z - static_cast<double>(zmin_[i])) > overhead_margin_) {
             return;
         }
         n_[i] += 1;
@@ -304,6 +352,7 @@ private:
     double res_ = 0.05;
     int grow_pad_cells_ = 100;
     long long max_cells_ = 6'000'000;
+    double overhead_margin_ = 0.40;
     double origin_x_ = 0.0;
     double origin_y_ = 0.0;
     int w_ = 0;
@@ -331,13 +380,27 @@ public:
         heightmap_topic_ = declareString("heightmap_topic", "/roof_edge/heightmap");
         path_topic_ = declareString("path_topic", "/roof_edge/planned_path");
         calibration_file_ = declareString("calibration_file", "");
+        lidar_world_frame_ = declareString("lidar_world_frame", "camera_init");
 
         cell_size_m_ = declareDouble("cell_size_m", 0.05);
         step_up_m_ = declareDouble("step_up_m", 0.02);
         step_down_m_ = declareDouble("step_down_m", 0.04);
         driven_override_max_step_m_ = declareDouble("driven_override_max_step_m", 0.04);
-        min_obs_count_ = static_cast<int>(declareInt("min_obs_count", 8));
-        max_stderr_m_ = declareDouble("max_stderr_m", 0.01);
+        min_obs_count_ = static_cast<int>(declareInt("min_obs_count", 5));
+        max_stderr_m_ = declareDouble("max_stderr_m", 0.02);
+
+        // Eager (variance-independent) obstacle/drop evidence. Tall structures
+        // (lockers, walls) create high within-cell z-variance and would never
+        // pass the low-variance ground gate, so they are detected directly from
+        // the z extremes (zmax/zmin) relative to the surrounding floor, gated by
+        // a point-count so single flyers can't trip them.
+        obstacle_min_points_ = static_cast<int>(declareInt("obstacle_min_points", 4));
+        obstacle_height_m_ = declareDouble("obstacle_height_m", 0.04);
+        obstacle_corroborate_rise_m_ = declareDouble("obstacle_corroborate_rise_m", 0.02);
+        big_drop_m_ = declareDouble("big_drop_m", 0.20);
+        drop_corroborate_m_ = declareDouble("drop_corroborate_m", 0.05);
+        local_floor_radius_cells_ =
+            std::max(1, static_cast<int>(declareInt("local_floor_radius_cells", 6)));
 
         robot_length_m_ = declareDouble("robot_length_m", 0.48);
         robot_width_m_ = declareDouble("robot_width_m", 0.45);
@@ -351,13 +414,18 @@ public:
         max_range_m_ = declareDouble("max_range_m", 30.0);
         z_min_clip_m_ = declareDouble("z_min_clip_m", -15.0);
         z_max_clip_m_ = declareDouble("z_max_clip_m", 2.0);
+        // Terrain-relative overhead reject (per-column, see addPoint). The loose
+        // absolute z_max_clip above only trims wild flyers; this is the precise
+        // "ignore structure above the robot" gate, measured against local ground
+        // so it works on curved/peaked roofs.
+        overhead_margin_m_ = declareDouble("overhead_margin_m", 0.40);
 
         publish_rate_hz_ = declareDouble("publish_rate_hz", 2.0);
         heightmap_rate_hz_ = declareDouble("heightmap_rate_hz", 1.0);
         heightmap_decimate_ = std::max(1, static_cast<int>(declareInt("heightmap_decimate", 2)));
         cloud_decimate_ = std::max(1, static_cast<int>(declareInt("cloud_decimate", 1)));
         publish_heightmap_ = declareBool("publish_heightmap", true);
-        plan_through_unknown_ = declareBool("plan_through_unknown", true);
+        plan_through_unknown_ = declareBool("plan_through_unknown", false);
         grow_pad_m_ = declareDouble("grow_pad_m", 5.0);
         max_map_cells_ = static_cast<long long>(declareInt("max_map_cells", 6'000'000));
         driven_stamp_min_move_m_ = declareDouble("driven_stamp_min_move_m", 0.03);
@@ -374,7 +442,10 @@ public:
                          calibration_file_.c_str());
         }
 
-        map_ = std::make_unique<PersistentHeightMap>(cell_size_m_, grow_pad_m_, max_map_cells_);
+        map_ = std::make_unique<PersistentHeightMap>(cell_size_m_, grow_pad_m_, max_map_cells_,
+                                                     overhead_margin_m_);
+        tf_static_broadcaster_ =
+            std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
 
         rclcpp::QoS cloud_qos(rclcpp::KeepLast(10));
         cloud_qos.reliable();
@@ -416,6 +487,9 @@ public:
         RCLCPP_INFO(this->get_logger(),
                     "  cell=%.3fm step_up=%.3fm step_down=%.3fm inflation=%.3fm",
                     cell_size_m_, step_up_m_, step_down_m_, inflation_radius_m_);
+        RCLCPP_INFO(this->get_logger(),
+                    "  obstacle_height=%.3fm overhead_margin=%.3fm (terrain-relative)",
+                    obstacle_height_m_, overhead_margin_m_);
     }
 
 private:
@@ -496,6 +570,36 @@ private:
         RCLCPP_INFO(this->get_logger(),
                     "Levelling transform initialised (frame=%s, yaw=%.2f deg)",
                     corrected_frame_id_.c_str(), extractYawFromMatrix(r_init_) * 180.0 / kPi);
+        broadcastLevelledFrameTf();
+    }
+
+    // Publish the static lidar_world_frame (camera_init) -> robot_init transform
+    // so the raw /cloud_registered (camera_init) and the levelled costmap /
+    // height-map (robot_init) co-register in RViz without an external identity
+    // static_transform_publisher hack. A point maps as
+    //   p_robot = r_init_ * (p_cam - p0_lidar_),
+    // so the pose of robot_init expressed in camera_init (what tf wants for
+    // parent=camera_init, child=robot_init) is rotation r_init_^T, translation
+    // p0_lidar_.
+    void broadcastLevelledFrameTf() {
+        if (!tf_static_broadcaster_) return;
+        const Eigen::Matrix3d r_cam_robot = r_init_.transpose();
+        double qx, qy, qz, qw;
+        matrixToQuaternion(r_cam_robot, qx, qy, qz, qw);
+        geometry_msgs::msg::TransformStamped tf;
+        tf.header.stamp = this->now();
+        tf.header.frame_id = lidar_world_frame_;
+        tf.child_frame_id = frameId();
+        tf.transform.translation.x = p0_lidar_.x();
+        tf.transform.translation.y = p0_lidar_.y();
+        tf.transform.translation.z = p0_lidar_.z();
+        tf.transform.rotation.x = qx;
+        tf.transform.rotation.y = qy;
+        tf.transform.rotation.z = qz;
+        tf.transform.rotation.w = qw;
+        tf_static_broadcaster_->sendTransform(tf);
+        RCLCPP_INFO(this->get_logger(), "Broadcast static TF %s -> %s",
+                    lidar_world_frame_.c_str(), frameId().c_str());
     }
 
     bool transformPoint(double rx, double ry, double rz, double& cx, double& cy,
@@ -643,9 +747,17 @@ private:
         if (rw < 2 || rh < 2) return;
 
         const size_t rn = static_cast<size_t>(rw) * rh;
-        std::vector<float> h(rn, 0.0f);
+        // Per-cell gather. Two independent gates: (1) ground-confidence
+        // (low-variance + enough obs) yields a trustworthy FLOOR height used as
+        // the local reference and to fill FREE cells densely; (2) obstacle-
+        // evidence (point-count + z extremes) flags LETHAL cells regardless of
+        // variance, so tall structures (lockers/walls) that never pass the
+        // ground gate are still detected.
+        std::vector<float> mean(rn, 0.0f);
         std::vector<float> zmin(rn, 0.0f);
-        std::vector<uint8_t> conf(rn, 0);
+        std::vector<float> zmax(rn, 0.0f);
+        std::vector<uint32_t> ncount(rn, 0);
+        std::vector<uint8_t> gconf(rn, 0);  // ground (floor) confidence
         std::vector<uint8_t> drvF(rn, 0);
         std::vector<uint8_t> drvW(rn, 0);
 
@@ -656,58 +768,128 @@ private:
                 const uint32_t n = map_->count(gi);
                 drvF[li] = map_->drivenFootprint(gi) ? 1 : 0;
                 drvW[li] = map_->drivenWheel(gi) ? 1 : 0;
-                if (n < static_cast<uint32_t>(min_obs_count_)) continue;
-                const double stderr_mean = std::sqrt(std::max(0.0f, map_->m2(gi))) / n;
-                if (stderr_mean > max_stderr_m_) continue;
-                conf[li] = 1;
-                h[li] = map_->mean(gi);
+                if (n == 0) continue;
+                ncount[li] = n;
+                mean[li] = map_->mean(gi);
                 zmin[li] = map_->zMin(gi);
+                zmax[li] = map_->zMax(gi);
+                if (n >= static_cast<uint32_t>(min_obs_count_)) {
+                    const double stderr_mean = std::sqrt(std::max(0.0f, map_->m2(gi))) / n;
+                    if (stderr_mean <= max_stderr_m_) gconf[li] = 1;
+                }
             }
         }
 
-        // Costmap (3-value) + planner occupancy in one pass.
-        std::vector<int8_t> costmap(rn, -1);          // FREE 0 / LETHAL 100 / UNKNOWN -1
-        std::vector<uint8_t> occupied(rn, 0);          // planner: 1 = hard obstacle
+        // Local floor reference: lowest ground-confident mean in a small window.
+        // Robust to obstacle cells (which are not ground-confident) and gives the
+        // surrounding walkable height to measure rises/drops against.
+        const float kNoFloor = std::numeric_limits<float>::max();
+        std::vector<float> local_floor(rn, kNoFloor);
+        const int R = local_floor_radius_cells_;
         for (int ly = 0; ly < rh; ++ly) {
             for (int lx = 0; lx < rw; ++lx) {
                 const int li = ly * rw + lx;
-                if (!conf[li]) {
-                    costmap[li] = -1;
-                    occupied[li] = plan_through_unknown_ ? 0 : 1;
-                    continue;
-                }
-                double max_rise = 0.0, max_drop = 0.0;
-                bool has_neighbor = false;
-                for (int dy = -1; dy <= 1; ++dy) {
-                    for (int dx = -1; dx <= 1; ++dx) {
-                        if (dx == 0 && dy == 0) continue;
-                        const int nx = lx + dx, ny = ly + dy;
-                        if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+                float lf = kNoFloor;
+                const int y0 = std::max(0, ly - R), y1 = std::min(rh - 1, ly + R);
+                const int x0 = std::max(0, lx - R), x1 = std::min(rw - 1, lx + R);
+                for (int ny = y0; ny <= y1; ++ny) {
+                    for (int nx = x0; nx <= x1; ++nx) {
                         const int ni = ny * rw + nx;
-                        if (!conf[ni]) continue;
-                        has_neighbor = true;
-                        const double diff = h[li] - h[ni];
-                        max_rise = std::max(max_rise, diff);   // cell above neighbour
-                        max_drop = std::max(max_drop, -diff);  // cell below neighbour
+                        if (gconf[ni] && mean[ni] < lf) lf = mean[ni];
+                    }
+                }
+                local_floor[li] = lf;
+            }
+        }
+
+        // Costmap (3-value) + planner occupancy + heightmap display in one pass.
+        std::vector<int8_t> costmap(rn, -1);   // FREE 0 / LETHAL 100 / UNKNOWN -1
+        std::vector<uint8_t> occupied(rn, 0);  // planner: 1 = hard obstacle
+        std::vector<float> disp_h(rn, 0.0f);   // height-map display value
+        std::vector<uint8_t> disp_show(rn, 0);
+        const uint32_t obs_min = static_cast<uint32_t>(obstacle_min_points_);
+        for (int ly = 0; ly < rh; ++ly) {
+            for (int lx = 0; lx < rw; ++lx) {
+                const int li = ly * rw + lx;
+                const float lf = local_floor[li];
+                const bool has_floor = (lf != kNoFloor);
+
+                // --- Eager, variance-independent evidence (tall obstacle / deep
+                // drop), gated by point-count + corroborated by the cell mean so a
+                // single flyer can't trip it. These are NOT driven-clearable: a
+                // >8 cm wall or >20 cm hole was never driven over. ---
+                bool positive = false, negative = false;
+                if (has_floor && ncount[li] >= obs_min) {
+                    // Base check: a real obstacle is rooted at the floor, so its
+                    // lowest return sits within the overhead band. Floating /
+                    // overhead returns in columns whose own floor was never
+                    // observed (occluded beside the structure, or out of FOV)
+                    // have a high zmin and are rejected here instead of being
+                    // marked as tall obstacles.
+                    if ((zmax[li] - lf) > obstacle_height_m_ &&
+                        (mean[li] - lf) > obstacle_corroborate_rise_m_ &&
+                        (zmin[li] - lf) <= overhead_margin_m_) {
+                        positive = true;
+                    }
+                    if ((lf - zmin[li]) > big_drop_m_ &&
+                        (lf - mean[li]) > drop_corroborate_m_) {
+                        negative = true;
                     }
                 }
 
-                bool positive = has_neighbor && (max_rise > step_up_m_);
-                bool negative = has_neighbor && (max_drop > step_down_m_);
-
-                // Driven-traversability prior (asymmetric, with escape hatch for
-                // steps too large to have actually been driven over).
-                if (positive && (drvF[li] || drvW[li]) &&
-                    max_rise <= driven_override_max_step_m_) {
-                    positive = false;
-                }
-                if (negative && drvW[li] && max_drop <= driven_override_max_step_m_) {
-                    negative = false;
+                // --- Subtle steps from ground-confident neighbours (curbs, drains,
+                // shallow depressions). Driven-clearable up to the cap. ---
+                if (gconf[li] && !positive && !negative) {
+                    double max_rise = 0.0, max_drop = 0.0;
+                    bool has_neighbor = false;
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            if (dx == 0 && dy == 0) continue;
+                            const int nx = lx + dx, ny = ly + dy;
+                            if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+                            const int ni = ny * rw + nx;
+                            if (!gconf[ni]) continue;
+                            has_neighbor = true;
+                            const double diff = mean[li] - mean[ni];
+                            max_rise = std::max(max_rise, diff);
+                            max_drop = std::max(max_drop, -diff);
+                        }
+                    }
+                    bool pstep = has_neighbor && (max_rise > step_up_m_);
+                    bool nstep = has_neighbor && (max_drop > step_down_m_);
+                    if (pstep && (drvF[li] || drvW[li]) &&
+                        max_rise <= driven_override_max_step_m_) {
+                        pstep = false;
+                    }
+                    if (nstep && drvW[li] && max_drop <= driven_override_max_step_m_) {
+                        nstep = false;
+                    }
+                    positive = positive || pstep;
+                    negative = negative || nstep;
                 }
 
                 const bool lethal = positive || negative;
-                costmap[li] = lethal ? 100 : 0;
-                occupied[li] = lethal ? 1 : 0;
+                if (lethal) {
+                    costmap[li] = 100;
+                    occupied[li] = 1;
+                    disp_h[li] = negative ? zmin[li] : zmax[li];
+                    disp_show[li] = 1;
+                } else if (gconf[li]) {
+                    costmap[li] = 0;  // FREE: trustworthy floor
+                    occupied[li] = 0;
+                    disp_h[li] = mean[li];
+                    disp_show[li] = 1;
+                } else if (drvF[li]) {
+                    costmap[li] = 0;  // driven footprint => known-traversable
+                    occupied[li] = 0;
+                    if (ncount[li] > 0) {
+                        disp_h[li] = mean[li];
+                        disp_show[li] = 1;
+                    }
+                } else {
+                    costmap[li] = -1;  // UNKNOWN
+                    occupied[li] = plan_through_unknown_ ? 0 : 1;
+                }
             }
         }
 
@@ -720,7 +902,7 @@ private:
         }
 
         if (publish_heightmap_ && heightmap_pub_ && heightmapDue()) {
-            publishHeightmap(h, conf, rw, rh, cgx0, cgy0);
+            publishHeightmap(disp_h, disp_show, rw, rh, cgx0, cgy0);
         }
     }
 
@@ -832,8 +1014,12 @@ private:
     // Parameters.
     std::string cloud_topic_, raw_odometry_topic_, corrected_odometry_topic_, goal_topic_;
     std::string costmap_topic_, heightmap_topic_, path_topic_, calibration_file_;
+    std::string lidar_world_frame_;
     double cell_size_m_, step_up_m_, step_down_m_, driven_override_max_step_m_, max_stderr_m_;
     int min_obs_count_;
+    int obstacle_min_points_, local_floor_radius_cells_;
+    double obstacle_height_m_, obstacle_corroborate_rise_m_, big_drop_m_, drop_corroborate_m_;
+    double overhead_margin_m_;
     double robot_length_m_, robot_width_m_, track_width_m_, wheel_width_m_, inflation_radius_m_;
     double window_radius_m_, max_plan_radius_m_, region_pad_m_, max_range_m_;
     double z_min_clip_m_, z_max_clip_m_;
@@ -878,6 +1064,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr heightmap_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
+    std::unique_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_;
 };
 
 int main(int argc, char** argv) {

@@ -162,7 +162,7 @@ target_include_directories(roof_edge_costmap PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(roof_edge_costmap PUBLIC cxx_std_17)
-ament_target_dependencies(roof_edge_costmap rclcpp nav_msgs sensor_msgs geometry_msgs std_msgs)
+ament_target_dependencies(roof_edge_costmap rclcpp nav_msgs sensor_msgs geometry_msgs std_msgs tf2 tf2_ros)
 target_link_libraries(roof_edge_costmap Eigen3::Eigen)
 install(TARGETS roof_edge_costmap DESTINATION lib/${PROJECT_NAME})
 

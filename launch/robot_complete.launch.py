@@ -507,12 +507,27 @@ def generate_launch_description():
             'heightmap_topic': '/roof_edge/heightmap',
             'path_topic': '/roof_edge/planned_path',
             'calibration_file': tilt_calibration_file,
+            'lidar_world_frame': 'camera_init',
             'cell_size_m': 0.05,
             'step_up_m': 0.02,
             'step_down_m': 0.04,
             'driven_override_max_step_m': 0.04,
-            'min_obs_count': 8,
-            'max_stderr_m': 0.01,
+            # Ground-confidence gate (FREE/floor): relaxed to fill densely.
+            'min_obs_count': 5,
+            'max_stderr_m': 0.02,
+            # Eager obstacle/drop evidence (variance-independent; LETHAL).
+            'obstacle_min_points': 4,
+            'obstacle_height_m': 0.04,
+            'obstacle_corroborate_rise_m': 0.02,
+            'big_drop_m': 0.20,
+            'drop_corroborate_m': 0.05,
+            'local_floor_radius_cells': 6,
+            'z_max_clip_m': 2.0,
+            # Terrain-relative overhead reject (per-column, vs local ground):
+            # ignore structure >40 cm above the surface so soffits/pipes/ceilings
+            # above the robot aren't obstacles, on flat AND curved/peaked roofs.
+            'overhead_margin_m': 0.40,
+            'plan_through_unknown': False,
             'robot_length_m': 0.48,
             'robot_width_m': 0.45,
             'track_width_m': 0.38,

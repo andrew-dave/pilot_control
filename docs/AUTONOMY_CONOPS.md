@@ -325,39 +325,88 @@ phases.
    grows as the robot explores (reallocate-with-copy, capped at
    `max_map_cells`). Per cell: Welford running mean/variance of point height
    (representative ground + confidence) + observed z extremes + two driven
-   masks (full-footprint, wheel-track).
-3. **Confidence gate.** A cell is classified only once
-   `count ≥ min_obs_count` (8) **and** `stderr(mean) ≤ max_stderr_m` (1 cm);
-   otherwise it stays **UNKNOWN**. (At the ~27 mm LiDAR noise floor, n≈8 is
-   what drops the mean's stderr below the 2 cm `step_up`.)
-4. **Local-step classification** (8-neighbour, confident neighbours only):
-   - **POSITIVE** (lethal) if the cell rises above a neighbour by
-     `> step_up_m` (2 cm).
-   - **NEGATIVE / drop / cliff** (lethal) if the cell sits below a neighbour
-     by `> step_down_m` (4 cm). A roof edge shows up because cells beyond it
-     contain the visible far-below ground (street) → strongly negative.
-   - No explicit slope term: cell size (5 cm) + `step_up` already implies a
-     max drivable grade (~22°), so gentle ramps pass and vertical curbs trip.
-5. **Driven-traversability prior (asymmetric, with escape hatch).** If the
-   robot actually drove a cell: full **footprint** clears small **positive**
-   steps; only the **wheel-track** clears small **negative** steps (a
-   bridged hole under the belly stays lethal). Override only applies up to
-   `driven_override_max_step_m` (4 cm) — a real wall or a 25 cm drop can't
-   have been driven, so it's never cleared.
-6. **Outputs** (all in the corrected-odom frame):
+   masks (full-footprint, wheel-track). **Terrain-relative overhead reject at
+   integration:** a return more than `overhead_margin_m` (40 cm) above the
+   column's established ground (its running min) is dropped before it touches
+   any stat. The reference is per-column, so it rides curved / hammock /
+   peaked roofs (unlike a fixed plane or a robot-z offset, which would clip
+   legitimate up-slope ground ahead). This mirrors the old CSF path's
+   `[min, max]` clearance band against the draped cloth, made incremental:
+   soffits / pipes / ceilings above the robot never become obstacles, the
+   floor *under* an overhang stays ground-confident (drive-under), and a real
+   obstacle's lower band (floor → 40 cm) is still integrated. The loose
+   absolute `z_max_clip_m` only trims wild flyers.
+3. **Split confidence (two independent gates).** Variance gating is right for
+   *floor* but wrong for *obstacles* (a tall locker/wall face has huge
+   within-cell z-variance and would never pass it — that's the original
+   "locker invisible" bug). So:
+   - **Ground/FREE gate:** a cell is trustworthy **FLOOR** only once
+     `count ≥ min_obs_count` (5) **and** `stderr(mean) ≤ max_stderr_m`
+     (2 cm). Its Welford mean is the representative ground height and the
+     `local_floor` reference. Relaxed from the original 8 / 1 cm so flat
+     ground fills densely.
+   - **Obstacle/LETHAL gate:** point-count + z-extreme evidence, *independent*
+     of variance (below).
+4. **Local floor reference.** Per cell, `local_floor` = the lowest
+   ground-confident mean within `local_floor_radius_cells` (6 → 0.30 m). All
+   rises/drops are measured against this, so an obstacle is judged against the
+   surrounding walkable height, not against itself.
+5. **Eager obstacle/drop detection (variance-independent, lethal).** For any
+   cell with `count ≥ obstacle_min_points` (4) that has a `local_floor`:
+   - **POSITIVE** if `zmax − local_floor > obstacle_height_m` (4 cm) **and**
+     `mean − local_floor > obstacle_corroborate_rise_m` (2 cm) **and**
+     `zmin − local_floor ≤ overhead_margin_m` (40 cm, **base check**). The mean
+     corroboration rejects a single high flyer (one stray point can't lift the
+     mean) — important at 4 cm, near the ~2.7 cm LiDAR noise floor. This is
+     what now catches the locker/wall regardless of its z-variance. The
+     `obstacle_height_m` floor pairs with the 40 cm overhead reject above to
+     form the obstacle band (4 cm → 40 cm clearance over local ground).
+     The **base check** (`zmin`) makes the per-column overhead reject robust
+     to *occluded-floor* columns: the integration-time reject is relative to a
+     column's own ground, so floating / overhead returns in columns whose
+     floor was never observed (occluded beside the structure, or out of the
+     15°-down FOV) survive with a high `zmin`. Requiring the obstacle's base
+     to sit within 40 cm of the *neighbourhood* floor drops them — a
+     ground-rooted wall has `zmin ≈ local_floor` and is unaffected.
+   - **NEGATIVE / cliff** if `local_floor − zmin > big_drop_m` (20 cm) **and**
+     `local_floor − mean > drop_corroborate_m` (5 cm). A roof edge reads as the
+     visible far-below ground (street) beyond it → strongly negative.
+   These eager flags are **never** driven-cleared (a >8 cm wall / >20 cm drop
+   was never driven over).
+6. **Subtle-step classification + driven prior (8-neighbour, ground-confident
+   neighbours only).** For ground-confident cells not already flagged eager:
+   - **POSITIVE** if it rises above a neighbour by `> step_up_m` (2 cm);
+     **NEGATIVE** if it sits below by `> step_down_m` (4 cm). Catches curbs,
+     drains, shallow depressions.
+   - **Driven-traversability prior (asymmetric, escape hatch).** If the robot
+     actually drove the cell: full **footprint** clears small **positive**
+     steps; only the **wheel-track** clears small **negative** steps (a
+     bridged hole under the belly stays lethal). Override only up to
+     `driven_override_max_step_m` (4 cm).
+7. **Cell resolution order:** lethal (eager ∪ subtle) → **LETHAL**; else
+   ground-confident → **FREE**; else driven-footprint → **FREE**
+   (known-traversable, fills the path corridor); else **UNKNOWN**.
+8. **Outputs** (all in the corrected-odom frame):
    - `/roof_edge/costmap` — `nav_msgs/OccupancyGrid`, 3-value
      (FREE 0 / LETHAL 100 / UNKNOWN −1), robot/goal-windowed.
-   - `/roof_edge/heightmap` — `sensor_msgs/PointCloud2` (x,y,z=ground,
-     intensity=ground), confident cells, decimated + rate-limited.
+   - `/roof_edge/heightmap` — `sensor_msgs/PointCloud2` (x,y,z,intensity),
+     decimated + rate-limited. Now shows structure too: floor cells render at
+     `mean`, positive cells at `zmax`, drops at `zmin`.
    - `/roof_edge/planned_path` — `nav_msgs/Path`.
-7. **JPS replan.** The OCU-side `GridPlanner` JPS core is ported verbatim to
+   - **Static TF** `lidar_world_frame` (`camera_init`) → corrected frame
+     (`robot_init`), broadcast once levelling initialises (rotation
+     `r_init_ᵀ`, translation `p0_lidar_`). Co-registers the raw
+     `/cloud_registered` with the levelled costmap in RViz — **replaces the
+     external identity `static_transform_publisher` hack** (don't run both).
+9. **JPS replan.** The OCU-side `GridPlanner` JPS core is ported verbatim to
    `pilot_control::RoofEdgeGridPlanner`
    (`include/roof_edge_grid_planner.hpp` + `src/roof_edge_grid_planner.cpp`),
    polygon ingest dropped, `buildFromGrid()` added (direct occupancy →
    EDT-inflate → JPS → any-angle smooth). Every publish tick (`publish_rate_hz`,
    2 Hz) it builds from the live costmap window and replans robot →
-   `/goal_pose`. `plan_through_unknown` (default true) lets coverage route
-   into UNKNOWN; lethal cells are inflated by `inflation_radius_m` (0.35 m).
+   `/goal_pose`. `plan_through_unknown` (default **false**) treats UNKNOWN as
+   hard obstacle (peek-before-commit); lethal cells are inflated by
+   `inflation_radius_m` (0.35 m).
 
 ### Wiring
 
@@ -374,17 +423,27 @@ phases.
 
 1. Launch the robot tree (calibration must be present, else the node
    disarms — check the log).
-2. On the laptop, RViz with **Fixed Frame = the corrected-odom frame**
-   (`camera_init` unless changed); add the `OccupancyGrid`, `PointCloud2`,
-   and `Path` displays; drop a goal with the **2D Goal Pose** tool
-   (publishes `/goal_pose`). Teleop and watch the costmap + replanned path.
+2. On the laptop, RViz with **Fixed Frame = `camera_init`** (or `robot_init`).
+   The node now broadcasts `camera_init → robot_init`, so the raw
+   `/cloud_registered`, the costmap, and the height-map all co-register —
+   **do not** also run an external `camera_init → robot_init`
+   `static_transform_publisher` (two publishers for one edge fight). Add the
+   `OccupancyGrid`, `PointCloud2`, and `Path` displays; drop a goal with the
+   **2D Goal Pose** tool (publishes `/goal_pose`). Teleop and watch the
+   costmap + replanned path.
 
 ### Key tuning knobs (ROS params)
 
-`step_up_m`, `step_down_m`, `driven_override_max_step_m`, `min_obs_count`,
-`max_stderr_m`, `inflation_radius_m`, `window_radius_m`, `max_plan_radius_m`,
+Ground/FREE: `min_obs_count` (5), `max_stderr_m` (2 cm). Eager
+obstacle/drop: `obstacle_min_points` (4), `obstacle_height_m` (4 cm),
+`obstacle_corroborate_rise_m` (2 cm), `big_drop_m` (20 cm),
+`drop_corroborate_m` (5 cm), `local_floor_radius_cells` (6),
+`overhead_margin_m` (40 cm, terrain-relative overhead reject). Subtle steps:
+`step_up_m`, `step_down_m`, `driven_override_max_step_m`. Planner/IO:
+`inflation_radius_m`, `window_radius_m`, `max_plan_radius_m`,
 `publish_rate_hz`, `heightmap_rate_hz`/`heightmap_decimate`,
-`plan_through_unknown`, `max_range_m`, `z_min_clip_m`/`z_max_clip_m`,
+`plan_through_unknown` (false), `max_range_m`,
+`z_min_clip_m`/`z_max_clip_m` (2 m), `lidar_world_frame` (`camera_init`),
 `track_width_m`/`wheel_width_m` (verify `track_width_m` against the physical
 robot — defaulted to 0.38 m).
 
@@ -392,6 +451,17 @@ robot — defaulted to 0.38 m).
 
 - **Keep the strict calibration gate.** Re-introducing a fixed-pitch
   fallback regresses to a guessed level plane and silently wrong cliffs.
+- **Keep the split confidence model.** Do not gate obstacle detection on
+  low variance — that re-hides tall structures (the locker bug). FREE uses
+  the variance gate; LETHAL uses point-count + z-extremes vs `local_floor`.
+- **Keep the eager flags non-driven-clearable.** Only the small
+  neighbour-step classifications are cleared by the driven prior.
+- **Keep the overhead reject terrain-relative** (per-column ground in
+  `addPoint`), not a fixed plane or robot-z offset — the latter clips real
+  up-slope ground on curved/peaked roofs. It must run at integration so
+  overhead points never pollute the per-cell mean/variance.
+- **Keep the `camera_init → robot_init` TF broadcast here** and don't also
+  publish that edge externally — co-registration relies on a single owner.
 - **Keep `step`/`drop`/`margin` shared with the offline path** (CONOPS hard
   rule) — don't fork the thresholds.
 - **F1 is passive.** Do not wire its path/costmap into `/cmd_vel` or the MPC
