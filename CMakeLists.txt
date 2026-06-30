@@ -154,6 +154,18 @@ ament_target_dependencies(local_nav_grid_publisher rclcpp nav_msgs sensor_msgs s
 target_link_libraries(local_nav_grid_publisher Eigen3::Eigen)
 install(TARGETS local_nav_grid_publisher DESTINATION lib/${PROJECT_NAME})
 
+# === ROOF EDGE COSTMAP (F1: persistent height map + cliff/obstacle costmap + JPS) ===
+add_executable(roof_edge_costmap
+  src/roof_edge_costmap_node.cpp
+  src/roof_edge_grid_planner.cpp)
+target_include_directories(roof_edge_costmap PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(roof_edge_costmap PUBLIC cxx_std_17)
+ament_target_dependencies(roof_edge_costmap rclcpp nav_msgs sensor_msgs geometry_msgs std_msgs)
+target_link_libraries(roof_edge_costmap Eigen3::Eigen)
+install(TARGETS roof_edge_costmap DESTINATION lib/${PROJECT_NAME})
+
 # === LASER MAP ROTATOR ===
 add_executable(laser_map_rotator src/laser_map_rotator.cpp)
 ament_target_dependencies(laser_map_rotator rclcpp sensor_msgs pcl_conversions tf2 tf2_geometry_msgs tf2_sensor_msgs)

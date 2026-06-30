@@ -37,6 +37,9 @@
           "^/thermal/summary$",
           "^/thermal/thumb$",
           "^/local_nav_grid$",
+          "^/roof_edge/costmap$",
+          "^/roof_edge/heightmap$",
+          "^/roof_edge/planned_path$",
           "^/Odometry$",
           "^/Odometry_tilt_corrected_diff$",
           "^/left/controller_status$",
@@ -64,7 +67,8 @@
           "^/f2c_waypoints$",
           "^/start_waypoint_navigation$",
           "^/set_target_pose$",
-          "^/mpc_auto_dc_enable$"
+          "^/mpc_auto_dc_enable$",
+          "^/goal_pose$"
         ],
 
         // Laptop service clients -> Robot service servers

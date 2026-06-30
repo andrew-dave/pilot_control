@@ -490,6 +490,42 @@ def generate_launch_description():
         }]
     )
 
+    # Roof-edge costmap (F1): persistent levelled height map -> 3-value cliff/
+    # obstacle costmap + continuously replanned JPS path. Passive (no MPC
+    # authority); STRICT tilt-calibration arming gate (no fixed-pitch fallback).
+    roof_edge_costmap = Node(
+        package='pilot_control',
+        executable='roof_edge_costmap',
+        name='roof_edge_costmap',
+        output='screen',
+        parameters=[{
+            'cloud_topic': '/cloud_registered',
+            'raw_odometry_topic': '/Odometry',
+            'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
+            'goal_topic': '/goal_pose',
+            'costmap_topic': '/roof_edge/costmap',
+            'heightmap_topic': '/roof_edge/heightmap',
+            'path_topic': '/roof_edge/planned_path',
+            'calibration_file': tilt_calibration_file,
+            'cell_size_m': 0.05,
+            'step_up_m': 0.02,
+            'step_down_m': 0.04,
+            'driven_override_max_step_m': 0.04,
+            'min_obs_count': 8,
+            'max_stderr_m': 0.01,
+            'robot_length_m': 0.48,
+            'robot_width_m': 0.45,
+            'track_width_m': 0.38,
+            'wheel_width_m': 0.07,
+            'inflation_radius_m': 0.35,
+            'window_radius_m': 8.0,
+            'max_plan_radius_m': 25.0,
+            'publish_rate_hz': 2.0,
+            'heightmap_rate_hz': 1.0,
+            'heightmap_decimate': 2,
+        }]
+    )
+
     # PCD Processor - REMOVED (not needed - using raw maps only)
 
     # Shutdown Service Node (for remote shutdown)
@@ -766,6 +802,7 @@ def generate_launch_description():
                 odom_tilt_corrector_node,
                 raw_map_saver,  # Enabled - saves final accumulated map (press M)
                 local_nav_grid_publisher,
+                roof_edge_costmap,  # F1: cliff/obstacle costmap + JPS replan (passive)
                 # pcd_processor_node - REMOVED (not needed - using raw maps only)
                 # octomap_server_node,  # Enabled - generates 2D projected map
                 shutdown_service_node,
