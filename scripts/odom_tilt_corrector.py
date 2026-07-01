@@ -384,14 +384,17 @@ class OdomTiltCorrector(Node):
             self._latch_fallback()
             return
         a_body = a_body / norm
-        # Full pitch+roll levelling: measured "up" -> +Z, then fixed coordinate flip.
-        R_align = self._align_vectors(a_body, np.array([0.0, 0.0, 1.0]))
+        # Full pitch+roll levelling. Match tilt_calibration.py's convention:
+        # R_align sends measured "up" to -Z, then R_flip (diag(-1,1,-1)) flips it
+        # so the net R_lidar_to_robot maps gravity-up to +Z (z-up robot_init).
+        # Aligning to -Z here (not +Z) avoids a double Z-flip through R_flip.
+        R_align = self._align_vectors(a_body, np.array([0.0, 0.0, -1.0]))
         self.R_lidar_to_robot = self.R_flip @ R_align
 
-        # Field diagnostic: stored R_map should also send gravity to [0,0,-1];
-        # the leftover angle is the residual tilt the stored calibration bakes in.
+        # Field diagnostic: stored R_map sends gravity-up to +Z; the leftover
+        # angle is the residual tilt the stored (pitch-only) calibration bakes in.
         if self.R_file is not None:
-            resid = self._tilt_between(self.R_file @ a_body, np.array([0.0, 0.0, -1.0]))
+            resid = self._tilt_between(self.R_file @ a_body, np.array([0.0, 0.0, 1.0]))
             if resid > self.grav_disagree_warn_deg:
                 self.get_logger().warn(
                     f'Gravity vs stored R_map disagree by {resid:.2f} deg '
