@@ -238,9 +238,21 @@ def generate_launch_description():
         parameters=[{
             'odometry_topic': '/Odometry',
             'corrected_odometry_topic': '/Odometry_tilt_corrected_diff',
-            'calibration_file': tilt_calibration_file,  # Load from config folder
-            'lidar_pitch_deg': 15.0,  # Fallback if calibration file not found
-            'save_directory': TILT_CALIBRATION_DIR  # Save transformation alongside calibration files
+            'calibration_file': tilt_calibration_file,  # Fallback (stored, pitch-only)
+            'lidar_pitch_deg': 15.0,  # Last-resort fixed pitch if no calibration file
+            'save_directory': TILT_CALIBRATION_DIR,  # Save transformation alongside calibration files
+            # Gravity-based live leveling (primary; full pitch+roll from IMU).
+            # Publishes latched /leveling_ready once latched; the drive
+            # controllers gate ODrive arming on it.
+            'use_gravity_init': True,
+            'imu_topic': '/livox/imu',
+            'grav_window_sec': 2.0,
+            'grav_timeout_sec': 8.0,
+            'grav_max_gyro': 0.05,
+            'grav_max_accel_dev': 0.05,
+            'grav_max_accel_std': 0.03,
+            'grav_min_samples': 100,
+            'grav_disagree_warn_deg': 2.0,
         }]
     )
     
@@ -372,7 +384,11 @@ def generate_launch_description():
             'velocity_multiplier': LaunchConfiguration('velocity_multiplier'),
             'turn_speed_multiplier': LaunchConfiguration('turn_speed_multiplier'),
             # Avoid publishing on the same corrected topic as the Python tilt corrector
-            'corrected_odom_topic': '/Odometry_tilt_corrected_diff_cpp'
+            'corrected_odom_topic': '/Odometry_tilt_corrected_diff_cpp',
+            # Gate ODrive arming on /leveling_ready (from odom_tilt_corrector) so
+            # motors stay idle while the gravity leveling window is captured.
+            'arm_wait_for_leveling': True,
+            'arm_leveling_timeout_ms': 10000,
             # GPR CONTROL DISABLED - controlled by gpr_scan_controller instead
             # 'invert_third': True  # COMMENTED OUT - no GPR control from diff_drive_controller
         }]
@@ -673,6 +689,10 @@ def generate_launch_description():
             'gear_ratio': 1.0,
             'invert_left': False,
             'invert_right': True,
+
+            # Gate ODrive arming on /leveling_ready (from odom_tilt_corrector).
+            'arm_wait_for_leveling': True,
+            'arm_leveling_timeout_sec': 10.0,
 
             # Control parameters
             'control_frequency': 10.0,          # Hz

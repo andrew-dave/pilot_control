@@ -18,8 +18,16 @@ Output frame properties:
 """
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    qos_profile_sensor_data,
+    QoSProfile,
+    DurabilityPolicy,
+    ReliabilityPolicy,
+    HistoryPolicy,
+)
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu
+from std_msgs.msg import Bool
 import numpy as np
 import math
 import os
@@ -39,7 +47,21 @@ class OdomTiltCorrector(Node):
         self.declare_parameter('corrected_odometry_topic', '/Odometry_tilt_corrected_diff')
         self.declare_parameter('save_directory', '')  # Session folder path for saving transformation
         self.declare_parameter('calibration_file', '')  # Path to tilt_correction_matrices.npz
-        self.declare_parameter('lidar_pitch_deg', LIDAR_PITCH_DEG)  # Fallback tilt angle (degrees)
+        self.declare_parameter('lidar_pitch_deg', LIDAR_PITCH_DEG)  # Last-resort tilt angle (degrees)
+
+        # Gravity-based live leveling parameters. The IMU accelerometer measures
+        # true "up" while the robot is stationary; averaging it over a quiet
+        # window yields a full pitch+roll levelling rotation, independent of the
+        # (pitch-only) stored calibration and of the start-surface slope.
+        self.declare_parameter('imu_topic', '/livox/imu')
+        self.declare_parameter('use_gravity_init', True)
+        self.declare_parameter('grav_window_sec', 2.0)       # contiguous stationary window
+        self.declare_parameter('grav_max_gyro', 0.05)        # rad/s; above -> disturbance
+        self.declare_parameter('grav_max_accel_dev', 0.05)   # |a| deviation from running mean (IMU accel units)
+        self.declare_parameter('grav_max_accel_std', 0.03)   # per-axis std over window (IMU accel units)
+        self.declare_parameter('grav_min_samples', 100)
+        self.declare_parameter('grav_timeout_sec', 8.0)      # fall back to stored calibration after this
+        self.declare_parameter('grav_disagree_warn_deg', 2.0)
 
         self.odom_topic = str(self.get_parameter('odometry_topic').value)
         self.output_topic = str(self.get_parameter('corrected_odometry_topic').value)
@@ -48,79 +70,112 @@ class OdomTiltCorrector(Node):
         self.lidar_pitch_deg = float(self.get_parameter('lidar_pitch_deg').value)
         self.lidar_pitch_rad = math.radians(self.lidar_pitch_deg)
 
+        self.imu_topic = str(self.get_parameter('imu_topic').value)
+        self.use_gravity_init = bool(self.get_parameter('use_gravity_init').value)
+        self.grav_window_sec = float(self.get_parameter('grav_window_sec').value)
+        self.grav_max_gyro = float(self.get_parameter('grav_max_gyro').value)
+        self.grav_max_accel_dev = float(self.get_parameter('grav_max_accel_dev').value)
+        self.grav_max_accel_std = float(self.get_parameter('grav_max_accel_std').value)
+        self.grav_min_samples = int(self.get_parameter('grav_min_samples').value)
+        self.grav_timeout_sec = float(self.get_parameter('grav_timeout_sec').value)
+        self.grav_disagree_warn_deg = float(self.get_parameter('grav_disagree_warn_deg').value)
+
+        # Fixed coordinate flip; MUST match tilt_calibration.py's R_flip so the
+        # live gravity path and the stored fallback share one frame convention.
+        self.R_flip = np.array([[-1.0, 0.0, 0.0],
+                                [0.0, 1.0, 0.0],
+                                [0.0, 0.0, -1.0]], dtype=float)
+
         # State
         self.pose_initialized = False
         self.origin_set = False
         self.using_calibration = False
-        
-        # Try to load calibration file, fall back to fixed pitch
-        self.R_lidar_to_robot = self._load_or_compute_tilt_correction()
-        
+        self.leveling_latched = False
+        self.leveling_source = 'none'
+
+        # Stored calibration matrix used as the fallback (None if unavailable).
+        self.R_file = self._load_file_r_map()
+
+        # Live tilt correction (LiDAR body -> levelled robot). Set on latch.
+        self.R_lidar_to_robot = np.eye(3, dtype=float)
+
         # Full transformation from LiDAR world frame to robot's initial frame
-        # Combines: pitch correction + initial yaw removal
+        # Combines: pitch/roll levelling + initial yaw removal
         self.R_init = np.eye(3, dtype=float)
-        
+
         # Origin in LiDAR world frame (first odometry position)
         self.p0_lidar = np.zeros(3, dtype=float)
-        
+
         # Initial LiDAR orientation (to remove initial yaw)
         self.R0_lidar = np.eye(3, dtype=float)
 
-        # Subscription
+        # Gravity accumulation state (running sums -> O(1) per-sample update)
+        self._grav_sum = np.zeros(3, dtype=float)
+        self._grav_sumsq = np.zeros(3, dtype=float)
+        self._grav_sum_mag = 0.0
+        self._grav_count = 0
+        self._grav_win_start = None
+        self._grav_reset_logged = False
+        self._start_sec = self._now_sec()
+
+        # Publisher for corrected odometry
+        self.odom_pub = self.create_publisher(Odometry, self.output_topic, 10)
+
+        # Latched leveling-ready signal. The drive controllers gate ODrive
+        # arming on this so motors only arm once levelling is fixed.
+        latched_qos = QoSProfile(
+            depth=1,
+            history=HistoryPolicy.KEEP_LAST,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.leveling_ready_pub = self.create_publisher(Bool, '/leveling_ready', latched_qos)
+
+        # Odometry subscription
         self.odom_sub = self.create_subscription(
             Odometry, self.odom_topic, self.odom_callback, qos_profile_sensor_data
         )
 
-        # Publisher
-        self.odom_pub = self.create_publisher(Odometry, self.output_topic, 10)
+        self.get_logger().info('Odom tilt corrector (LiDAR->Robot frame) started')
+        self.get_logger().info(f'  Input: "{self.odom_topic}" -> Output: "{self.output_topic}"')
 
-        self.get_logger().info(
-            f'Odom tilt corrector (LiDAR→Robot frame) started')
-        self.get_logger().info(
-            f'  Input: "{self.odom_topic}" → Output: "{self.output_topic}"')
-        if self.using_calibration:
+        if self.use_gravity_init:
+            self.imu_sub = self.create_subscription(
+                Imu, self.imu_topic, self.imu_callback, qos_profile_sensor_data
+            )
+            self._grav_timeout_timer = self.create_timer(0.5, self._check_grav_timeout)
             self.get_logger().info(
-                f'  Using calibration file: {self.calibration_file}')
+                f'  Gravity-init leveling ENABLED (imu="{self.imu_topic}", '
+                f'window={self.grav_window_sec:.1f}s, timeout={self.grav_timeout_sec:.1f}s)')
         else:
-            self.get_logger().info(
-                f'  Using fixed pitch correction: {self.lidar_pitch_deg:.1f}°')
+            self.get_logger().info('  Gravity-init leveling DISABLED; using stored calibration')
+            self._latch_fallback()
 
-    def _load_or_compute_tilt_correction(self):
+    def _load_file_r_map(self):
         """
-        Load tilt correction from calibration file or compute from fixed pitch.
-        
+        Load the stored tilt correction (R_map) used as the gravity fallback.
+
         Returns:
-            R_lidar_to_robot: 3x3 rotation matrix for tilt correction
+            3x3 rotation matrix, or None if no usable calibration file.
         """
-        # Try to load calibration file
         if self.calibration_file and os.path.exists(self.calibration_file):
             try:
                 data = np.load(self.calibration_file)
                 if 'R_map' in data:
-                    R_map = data['R_map']
                     self.using_calibration = True
-                    
-                    # Log calibration info if available
                     if 'pitch_deg' in data:
                         pitch = float(data['pitch_deg'])
                         roll = float(data.get('roll_deg', 0.0))
                         self.get_logger().info(
-                            f'Loaded calibration: pitch={pitch:.2f}°, roll={roll:.2f}°')
-                    
-                    return R_map
-                else:
-                    self.get_logger().warn(
-                        f'Calibration file missing R_map key: {self.calibration_file}')
-            except Exception as e:
+                            f'Loaded calibration: pitch={pitch:.2f} deg, roll={roll:.2f} deg')
+                    return np.array(data['R_map'], dtype=float)
                 self.get_logger().warn(
-                    f'Failed to load calibration file: {e}')
+                    f'Calibration file missing R_map key: {self.calibration_file}')
+            except Exception as e:
+                self.get_logger().warn(f'Failed to load calibration file: {e}')
         elif self.calibration_file:
-            self.get_logger().warn(
-                f'Calibration file not found: {self.calibration_file}')
-        
-        # Fall back to fixed pitch rotation
-        self.using_calibration = False
-        return self._build_pitch_rotation(-self.lidar_pitch_rad)
+            self.get_logger().warn(f'Calibration file not found: {self.calibration_file}')
+        return None
 
     # ---------------- Math utilities ----------------
     @staticmethod
@@ -216,6 +271,159 @@ class OdomTiltCorrector(Node):
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return roll, pitch, yaw
 
+    # ---------------- Gravity-based leveling ----------------
+    def _now_sec(self):
+        return self.get_clock().now().nanoseconds * 1e-9
+
+    @staticmethod
+    def _align_vectors(u, target):
+        """Minimal rotation matrix mapping unit vector u onto unit vector target (Rodrigues)."""
+        u = np.asarray(u, dtype=float)
+        u = u / (np.linalg.norm(u) + 1e-12)
+        t = np.asarray(target, dtype=float)
+        t = t / (np.linalg.norm(t) + 1e-12)
+        v = np.cross(u, t)
+        s = float(np.linalg.norm(v))
+        c = float(np.dot(u, t))
+        if s < 1e-9:
+            if c > 0.0:
+                return np.eye(3, dtype=float)
+            # Antiparallel: 180 deg about any axis perpendicular to u
+            axis = np.cross(u, np.array([1.0, 0.0, 0.0]))
+            if np.linalg.norm(axis) < 1e-6:
+                axis = np.cross(u, np.array([0.0, 1.0, 0.0]))
+            axis = axis / (np.linalg.norm(axis) + 1e-12)
+            vx = np.array([[0.0, -axis[2], axis[1]],
+                           [axis[2], 0.0, -axis[0]],
+                           [-axis[1], axis[0], 0.0]], dtype=float)
+            return np.eye(3, dtype=float) + 2.0 * (vx @ vx)
+        vx = np.array([[0.0, -v[2], v[1]],
+                       [v[2], 0.0, -v[0]],
+                       [-v[1], v[0], 0.0]], dtype=float)
+        return np.eye(3, dtype=float) + vx + vx @ vx * ((1.0 - c) / (s * s))
+
+    @staticmethod
+    def _tilt_between(v, ref):
+        """Angle (deg) between two vectors."""
+        v = np.asarray(v, dtype=float)
+        v = v / (np.linalg.norm(v) + 1e-12)
+        ref = np.asarray(ref, dtype=float)
+        ref = ref / (np.linalg.norm(ref) + 1e-12)
+        return math.degrees(math.acos(max(-1.0, min(1.0, float(np.dot(v, ref))))))
+
+    def _reset_grav_window(self):
+        self._grav_sum[:] = 0.0
+        self._grav_sumsq[:] = 0.0
+        self._grav_sum_mag = 0.0
+        self._grav_count = 0
+        self._grav_win_start = None
+
+    def imu_callback(self, msg: Imu):
+        if self.leveling_latched:
+            return
+        a = np.array([msg.linear_acceleration.x,
+                      msg.linear_acceleration.y,
+                      msg.linear_acceleration.z], dtype=float)
+        w = np.array([msg.angular_velocity.x,
+                      msg.angular_velocity.y,
+                      msg.angular_velocity.z], dtype=float)
+        amag = float(np.linalg.norm(a))
+        gyro_norm = float(np.linalg.norm(w))
+
+        # Per-sample stationary gate. Any trip resets the contiguous window so
+        # only an uninterrupted quiet stretch is averaged.
+        disturbed = gyro_norm > self.grav_max_gyro
+        if not disturbed and self._grav_count > 0:
+            mean_mag = self._grav_sum_mag / self._grav_count
+            if abs(amag - mean_mag) > self.grav_max_accel_dev:
+                disturbed = True
+        if disturbed:
+            if self._grav_count > 0 and not self._grav_reset_logged:
+                self.get_logger().warn(
+                    'Motion detected during leveling window; restarting stationary capture.')
+                self._grav_reset_logged = True
+            self._reset_grav_window()
+            return
+
+        # Accept sample
+        if self._grav_count == 0:
+            self._grav_win_start = self._now_sec()
+        self._grav_sum += a
+        self._grav_sumsq += a * a
+        self._grav_sum_mag += amag
+        self._grav_count += 1
+
+        # Latch once we have a long-enough, quiet-enough contiguous window.
+        if (self._grav_win_start is not None
+                and (self._now_sec() - self._grav_win_start) >= self.grav_window_sec
+                and self._grav_count >= self.grav_min_samples):
+            n = self._grav_count
+            mean = self._grav_sum / n
+            var = np.maximum(self._grav_sumsq / n - mean * mean, 0.0)
+            std = np.sqrt(var)
+            if float(np.max(std)) <= self.grav_max_accel_std:
+                self._latch_gravity(mean)
+            # else: aggregate too noisy; keep collecting until quiet or timeout
+
+    def _check_grav_timeout(self):
+        if self.leveling_latched:
+            self._grav_timeout_timer.cancel()
+            return
+        if (self._now_sec() - self._start_sec) >= self.grav_timeout_sec:
+            self.get_logger().warn(
+                f'Gravity leveling did not settle within {self.grav_timeout_sec:.1f}s; '
+                f'falling back to stored calibration.')
+            self._latch_fallback()
+            self._grav_timeout_timer.cancel()
+
+    def _latch_gravity(self, a_avg):
+        a_body = np.asarray(a_avg, dtype=float)
+        norm = float(np.linalg.norm(a_body))
+        if norm < 1e-6:
+            self.get_logger().warn('Degenerate gravity sample; falling back to stored calibration.')
+            self._latch_fallback()
+            return
+        a_body = a_body / norm
+        # Full pitch+roll levelling: measured "up" -> +Z, then fixed coordinate flip.
+        R_align = self._align_vectors(a_body, np.array([0.0, 0.0, 1.0]))
+        self.R_lidar_to_robot = self.R_flip @ R_align
+
+        # Field diagnostic: stored R_map should also send gravity to [0,0,-1];
+        # the leftover angle is the residual tilt the stored calibration bakes in.
+        if self.R_file is not None:
+            resid = self._tilt_between(self.R_file @ a_body, np.array([0.0, 0.0, -1.0]))
+            if resid > self.grav_disagree_warn_deg:
+                self.get_logger().warn(
+                    f'Gravity vs stored R_map disagree by {resid:.2f} deg '
+                    f'(stored calibration would leave this residual tilt).')
+
+        tilt = self._tilt_between(a_body, np.array([0.0, 0.0, 1.0]))
+        pitch = math.degrees(math.atan2(a_body[0], a_body[2]))
+        roll = math.degrees(math.atan2(a_body[1], a_body[2]))
+        self.get_logger().info(
+            f'Gravity leveling latched (n={self._grav_count}): corrected mount tilt='
+            f'{tilt:.2f} deg (pitch={pitch:.2f}, roll={roll:.2f})')
+        self._finish_latch('gravity')
+
+    def _latch_fallback(self):
+        if self.R_file is not None:
+            self.R_lidar_to_robot = self.R_file
+            src = 'file_R_map'
+        else:
+            self.R_lidar_to_robot = self._build_pitch_rotation(-self.lidar_pitch_rad)
+            src = f'fixed_pitch_{self.lidar_pitch_deg:.1f}deg'
+        self._finish_latch(src)
+
+    def _finish_latch(self, source):
+        if self.leveling_latched:
+            return
+        self.leveling_latched = True
+        self.leveling_source = source
+        msg = Bool()
+        msg.data = True
+        self.leveling_ready_pub.publish(msg)
+        self.get_logger().info(f'Leveling ready (source={source}); motor arming unblocked.')
+
     # ---------------- Odom processing ----------------
     def odom_callback(self, msg: Odometry):
         """
@@ -231,6 +439,10 @@ class OdomTiltCorrector(Node):
         - X axis = robot's initial forward direction
         - Z axis = up (perpendicular to ground)
         """
+        # Hold off until the levelling rotation is latched (gravity or fallback).
+        if not self.leveling_latched:
+            return
+
         # Extract raw pose from Fast-LIO2 (in LiDAR world frame)
         raw_pos = np.array([
             float(msg.pose.pose.position.x),
@@ -269,7 +481,7 @@ class OdomTiltCorrector(Node):
             self.get_logger().info(
                 f'✓ Transformation initialized:')
             self.get_logger().info(
-                f'  Fixed pitch correction: {self.lidar_pitch_deg:.1f}°')
+                f'  Leveling source: {self.leveling_source}')
             self.get_logger().info(
                 f'  Origin (LiDAR frame): [{self.p0_lidar[0]:.3f}, {self.p0_lidar[1]:.3f}, {self.p0_lidar[2]:.3f}]')
             self.get_logger().info(

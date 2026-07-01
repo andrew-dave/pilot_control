@@ -87,6 +87,13 @@ public:
         this->declare_parameter<int>("accel_samples", 10);
         this->declare_parameter<std::string>("corrected_odom_topic", "/Odometry_tilt_corrected_diff_cpp");
 
+        // Leveling-gated arming: wait for odom_tilt_corrector to latch a levelling
+        // rotation (/leveling_ready) before requesting CLOSED_LOOP, so motors stay
+        // idle (robot stationary) while the gravity window is captured. Falls back
+        // to arming anyway after the timeout so a bad IMU can never brick arming.
+        this->declare_parameter<bool>("arm_wait_for_leveling", true);
+        this->declare_parameter<int>("arm_leveling_timeout_ms", 10000);
+
         // Read params
         wheel_radius_          = this->get_parameter("wheel_radius").as_double();
         wheel_base_            = this->get_parameter("wheel_base").as_double();
@@ -120,6 +127,9 @@ public:
         accel_topic_           = this->get_parameter("accel_topic").as_string();
         accel_samples_target_  = this->get_parameter("accel_samples").as_int();
         corrected_odom_topic_  = this->get_parameter("corrected_odom_topic").as_string();
+
+        arm_wait_for_leveling_   = this->get_parameter("arm_wait_for_leveling").as_bool();
+        arm_leveling_timeout_ms_ = this->get_parameter("arm_leveling_timeout_ms").as_int();
 
         RCLCPP_INFO(get_logger(),
             "Drive: r=%.3f m, base=%.3f m, gear=%.2f | invert L/R=%d/%d",
@@ -159,6 +169,20 @@ public:
         mpc_autonomy_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/mpc_autonomy_enable", 10, std::bind(&DiffDriveController::mpc_autonomy_callback, this, std::placeholders::_1));
         RCLCPP_INFO(this->get_logger(), "Subscribed to /mpc_autonomy_enable for MPC handoff");
+
+        // Leveling-ready gate (latched by odom_tilt_corrector). TRANSIENT_LOCAL so
+        // we still catch it if it was published before this subscription came up.
+        {
+            auto leveling_qos = rclcpp::QoS(1).transient_local().reliable();
+            leveling_ready_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+                "/leveling_ready", leveling_qos,
+                [this](const std_msgs::msg::Bool::SharedPtr msg) {
+                    if (msg->data && !leveling_ready_) {
+                        leveling_ready_ = true;
+                        RCLCPP_INFO(this->get_logger(), "Leveling ready received; motor arming unblocked.");
+                    }
+                });
+        }
         
         // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
         // third_status_sub_ = this->create_subscription<odrive_can::msg::ControllerStatus>(
@@ -182,10 +206,29 @@ public:
         // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
         // gpr_timer_  = this->create_wall_timer(50ms,  std::bind(&DiffDriveController::update_gpr_motor, this)); // 20 Hz
 
-        // Arm motors a moment after start
+        // Arm motors once leveling is ready (or after a safety timeout). Polls at
+        // 200 ms; only requests CLOSED_LOOP after the gate clears so the robot is
+        // guaranteed stationary while odom_tilt_corrector captures gravity.
+        arm_wait_start_ = this->get_clock()->now();
         arm_timer_  = this->create_wall_timer(200ms, [this]() {
-            this->arm_motors();
-            this->arm_timer_->cancel();
+            if (arm_dispatched_) { return; }
+            if (!arm_wait_for_leveling_ || leveling_ready_) {
+                this->arm_motors();
+                arm_dispatched_ = true;
+                this->arm_timer_->cancel();
+                return;
+            }
+            const double waited_ms =
+                (this->get_clock()->now() - arm_wait_start_).seconds() * 1000.0;
+            if (waited_ms >= static_cast<double>(arm_leveling_timeout_ms_)) {
+                RCLCPP_WARN(this->get_logger(),
+                    "Leveling-ready not received after %d ms; arming anyway "
+                    "(fallback tilt calibration in effect).",
+                    arm_leveling_timeout_ms_);
+                this->arm_motors();
+                arm_dispatched_ = true;
+                this->arm_timer_->cancel();
+            }
         });
 
         last_cmd_time_ = this->get_clock()->now();
@@ -816,6 +859,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr left_status_sub_, right_status_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr mpc_autonomy_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr leveling_ready_sub_;
     
     // GPR CONTROL DISABLED - Moved to gpr_scan_controller.py
     // rclcpp::Subscription<odrive_can::msg::ControllerStatus>::SharedPtr third_status_sub_;
@@ -856,6 +900,13 @@ private:
     int    accel_samples_target_{10};
     bool   accel_initialized_{false};
     bool   odom_initialized_{false};
+
+    // Leveling-gated arming state
+    bool        arm_wait_for_leveling_{true};
+    int         arm_leveling_timeout_ms_{10000};
+    bool        leveling_ready_{false};
+    bool        arm_dispatched_{false};
+    rclcpp::Time arm_wait_start_;
     std::vector<double> accel_samples_;
     std::array<double, 3> accel_avg_{0.0, 0.0, 0.0};
     std::array<double, 4> align_quat_{0.0, 0.0, 0.0, 1.0};

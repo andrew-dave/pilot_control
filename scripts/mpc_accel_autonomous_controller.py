@@ -34,7 +34,13 @@ This script is intentionally simpler than the slip-aware MPC controller:
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    qos_profile_sensor_data,
+    QoSProfile,
+    DurabilityPolicy,
+    ReliabilityPolicy,
+    HistoryPolicy,
+)
 from rcl_interfaces.msg import SetParametersResult
 
 from nav_msgs.msg import Odometry
@@ -1357,6 +1363,27 @@ class MPCAccelController(Node):
             "/dc/state_reset",
             self._on_dc_state_reset,
             10,
+        )
+
+        # Leveling-gated arming: wait for odom_tilt_corrector to latch a levelling
+        # rotation (/leveling_ready) before requesting CLOSED_LOOP. Falls back to
+        # arming anyway after the timeout so a bad IMU can never brick arming.
+        self.declare_parameter("arm_wait_for_leveling", True)
+        self.declare_parameter("arm_leveling_timeout_sec", 10.0)
+        self._arm_wait_for_leveling = bool(self.get_parameter("arm_wait_for_leveling").value)
+        self._arm_leveling_timeout_sec = float(self.get_parameter("arm_leveling_timeout_sec").value)
+        self._leveling_ready = False
+        self._arm_wait_start = self.get_clock().now()
+        self._arm_leveling_warned = False
+
+        leveling_qos = QoSProfile(
+            depth=1,
+            history=HistoryPolicy.KEEP_LAST,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.leveling_ready_sub = self.create_subscription(
+            Bool, "/leveling_ready", self._on_leveling_ready, leveling_qos
         )
 
         # Motor arming state
@@ -2924,11 +2951,30 @@ class MPCAccelController(Node):
                 f"Error calling external shutdown service (accel controller): {e}"
             )
 
+    def _on_leveling_ready(self, msg: Bool) -> None:
+        if msg.data and not self._leveling_ready:
+            self._leveling_ready = True
+            self.get_logger().info("Leveling ready received; motor arming unblocked.")
+
     def _attempt_arm_motors(self) -> None:
         """
         Attempt to arm ODrive motors by requesting CLOSED_LOOP_CONTROL state.
-        Retries up to _arm_max_attempts times.
+        Gated on /leveling_ready (with a safety timeout); retries up to
+        _arm_max_attempts times once the gate clears.
         """
+        # Leveling gate: hold off arming until levelling is latched, or until the
+        # safety timeout elapses. Do not consume an arm attempt while waiting.
+        if self._arm_wait_for_leveling and not self._leveling_ready:
+            waited = (self.get_clock().now() - self._arm_wait_start).nanoseconds * 1e-9
+            if waited < self._arm_leveling_timeout_sec:
+                return
+            if not self._arm_leveling_warned:
+                self.get_logger().warn(
+                    f"Leveling-ready not received after {self._arm_leveling_timeout_sec:.1f}s; "
+                    f"arming anyway (fallback tilt calibration in effect)."
+                )
+                self._arm_leveling_warned = True
+
         if self._arm_attempts >= self._arm_max_attempts:
             self._arm_timer.cancel()
             return
