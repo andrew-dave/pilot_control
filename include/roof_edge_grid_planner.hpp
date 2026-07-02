@@ -25,13 +25,21 @@ struct Point2D {
 // matches the cell-classification output 1:1.
 class RoofEdgeGridPlanner {
 public:
-    // Build the planner from an occupancy grid. `occupied[idx(x,y)] != 0` marks
-    // a hard obstacle cell. A Euclidean distance transform inflates obstacles by
-    // `inflation_radius` metres; any cell closer than that becomes lethal.
+    // Build the planner from a tiered occupancy grid (all vectors indexed
+    // idx(x,y), size width*height):
+    //   lethal_lo — obstacle cells inflated by `inflation_lo` metres.
+    //   lethal_hi — obstacle cells inflated by `inflation_hi` metres (confirmed
+    //               prominent clusters + cliffs); typically a subset of lethal_lo.
+    //   blocked   — cells that are non-traversable but never inflate (UNKNOWN
+    //               and de-noised speckle). A blocked cell blocks only itself.
+    // A cell becomes lethal when it lies within `inflation_lo` of any lethal_lo
+    // seed, OR within `inflation_hi` of any lethal_hi seed, OR is blocked.
     // Returns false on degenerate geometry.
-    bool buildFromGrid(const std::vector<uint8_t>& occupied, int width, int height,
+    bool buildFromGrid(const std::vector<uint8_t>& lethal_lo,
+                       const std::vector<uint8_t>& lethal_hi,
+                       const std::vector<uint8_t>& blocked, int width, int height,
                        double origin_x, double origin_y, double resolution,
-                       double inflation_radius);
+                       double inflation_lo, double inflation_hi);
 
     // Plan from `from` to `to` in world (grid) coordinates. Returns a polyline
     // including endpoints, or empty if no path exists. Endpoints are snapped to
@@ -60,7 +68,7 @@ private:
     float clearanceAt(int cx, int cy) const;
     bool snapToFree(int& cx, int& cy, double radius_m) const;
 
-    void computeEdt(const std::vector<uint8_t>& occupied);
+    void computeEdt(const std::vector<uint8_t>& occupied, std::vector<float>& clearance) const;
 
     bool losCells(int x0, int y0, int x1, int y1) const;
     int jump(int x, int y, int dx, int dy, int gx, int gy) const;

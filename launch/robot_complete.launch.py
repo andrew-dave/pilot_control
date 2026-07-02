@@ -548,7 +548,38 @@ def generate_launch_description():
             'robot_width_m': 0.45,
             'track_width_m': 0.38,
             'wheel_width_m': 0.07,
-            'inflation_radius_m': 0.35,
+            # Cluster-aware inflation: narrow radius for small/curb-height and
+            # unconfirmed obstacles; the wide inflation_radius_m only applies to
+            # cliffs and large, prominent, persisted positive clusters. Prevents
+            # noise/thin objects from sealing narrow free corridors.
+            'inflation_radius_m': 0.35,   # wide tier (r_hi)
+            'inflation_min_m': 0.12,      # narrow tier (r_lo)
+            'cluster_noise_cells': 2,     # clusters this small => blocked, no inflation
+            'cluster_big_cells': 12,      # min cells to qualify for the wide tier
+            'cluster_prominence_m': 0.10, # min (zmax - local floor) for the wide tier
+            'persist_ticks': 3,           # ticks a cluster must persist for the wide tier
+            'persist_cap': 20,            # persistence counter saturation
+            # Observation-recency forgetting: a cell whose obstacle top is not
+            # re-seen within evidence_decay_sec resets to UNKNOWN, so dynamic
+            # obstacles (a person walking by) clear in ~2-3 s and stale out-of-FOV
+            # cells can be rescanned. Driven cells are immune.
+            'evidence_decay_sec': 2.5,
+            'top_refresh_margin_m': 0.15,
+            # Robust cliffs: a big-drop must be corroborated by neighbours and
+            # survive neg_confirm_ticks before it becomes a sticky cliff; confirmed
+            # cliffs decay after neg_decay_sec but leave a latent prior so a
+            # re-approach re-confirms instantly (reflective false-negative defence).
+            'drop_min_points': 6,
+            'neg_support_min': 1,
+            'neg_confirm_ticks': 3,
+            'neg_persist_cap': 20,
+            'neg_decay_sec': 300.0,
+            # Reflectivity gate OFF by default (the upstream Livox tag filter is
+            # the primary specular defence; enable + tune once field reflectivity
+            # distributions are known).
+            'enable_reflectivity_gate': False,
+            'reflectivity_min': 3.0,
+            'reflectivity_max': 250.0,
             'window_radius_m': 8.0,
             'max_plan_radius_m': 25.0,
             'publish_rate_hz': 2.0,

@@ -43,31 +43,49 @@ void dt1d(const std::vector<float>& f, std::vector<float>& d, int n) {
 }
 }  // namespace
 
-bool RoofEdgeGridPlanner::buildFromGrid(const std::vector<uint8_t>& occupied, int width,
+bool RoofEdgeGridPlanner::buildFromGrid(const std::vector<uint8_t>& lethal_lo,
+                                        const std::vector<uint8_t>& lethal_hi,
+                                        const std::vector<uint8_t>& blocked, int width,
                                         int height, double origin_x, double origin_y,
-                                        double resolution, double inflation_radius) {
+                                        double resolution, double inflation_lo,
+                                        double inflation_hi) {
     lethal_.clear();
     clearance_.clear();
     if (width < 2 || height < 2 || resolution <= 0.0) return false;
     if (static_cast<long long>(width) * height > kMaxCells) return false;
-    if (occupied.size() != static_cast<size_t>(width) * height) return false;
+    const size_t n = static_cast<size_t>(width) * height;
+    if (lethal_lo.size() != n || lethal_hi.size() != n || blocked.size() != n) return false;
 
     w_ = width;
     h_ = height;
     res_ = resolution;
     ox_ = origin_x;
     oy_ = origin_y;
-    inflation_ = inflation_radius;
+    inflation_ = std::max(inflation_lo, inflation_hi);
 
-    computeEdt(occupied);
-    lethal_.assign(static_cast<size_t>(w_) * h_, 0);
-    for (size_t i = 0; i < lethal_.size(); ++i) {
-        if (clearance_[i] < inflation_) lethal_[i] = 1;
+    // Low-radius clearance seeds every real obstacle; high-radius only the
+    // confirmed-prominent subset. Skip the second (costly) EDT when nothing
+    // qualifies for the wide berth.
+    std::vector<float> clr_lo, clr_hi;
+    computeEdt(lethal_lo, clr_lo);
+    const bool has_hi =
+        std::any_of(lethal_hi.begin(), lethal_hi.end(), [](uint8_t v) { return v != 0; });
+    if (has_hi) computeEdt(lethal_hi, clr_hi);
+
+    lethal_.assign(n, 0);
+    for (size_t i = 0; i < n; ++i) {
+        bool inf = clr_lo[i] < inflation_lo;
+        if (!inf && has_hi) inf = clr_hi[i] < inflation_hi;
+        if (inf || blocked[i] != 0) lethal_[i] = 1;
     }
+    // clearance_ (distance to nearest low-radius obstacle) drives smoothing bias
+    // and clearanceAtWorld(); UNKNOWN/blocked cells intentionally do not shrink it.
+    clearance_ = std::move(clr_lo);
     return true;
 }
 
-void RoofEdgeGridPlanner::computeEdt(const std::vector<uint8_t>& occupied) {
+void RoofEdgeGridPlanner::computeEdt(const std::vector<uint8_t>& occupied,
+                                     std::vector<float>& clearance) const {
     const int n = w_ * h_;
     std::vector<float> g(n);
     for (int i = 0; i < n; ++i) g[i] = occupied[i] ? 0.0f : kInfDt;
@@ -80,12 +98,12 @@ void RoofEdgeGridPlanner::computeEdt(const std::vector<uint8_t>& occupied) {
         for (int y = 0; y < h_; ++y) g[idx(x, y)] = dcol[y];
     }
     std::vector<float> row(w_), drow(w_);
-    clearance_.assign(n, 0.0f);
+    clearance.assign(n, 0.0f);
     for (int y = 0; y < h_; ++y) {
         for (int x = 0; x < w_; ++x) row[x] = g[idx(x, y)];
         dt1d(row, drow, w_);
         for (int x = 0; x < w_; ++x)
-            clearance_[idx(x, y)] = std::sqrt(drow[x]) * static_cast<float>(res_);
+            clearance[idx(x, y)] = std::sqrt(drow[x]) * static_cast<float>(res_);
     }
 }
 

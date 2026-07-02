@@ -41,6 +41,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -252,12 +253,24 @@ public:
         grown.h_ = new_h;
         grown.allocate(new_w, new_h);
 
+        // Copy the clearing/decay config onto the grown map (constructor only
+        // carried resolution/pad/overhead) so it survives the move-assign below.
+        grown.top_refresh_margin_ = top_refresh_margin_;
+        grown.refl_gate_ = refl_gate_;
+        grown.refl_min_ = refl_min_;
+        grown.refl_max_ = refl_max_;
+        grown.stamp_ms_ = stamp_ms_;
+
         for (int y = 0; y < h_; ++y) {
             const int dst_row = (y + off_y) * new_w + off_x;
             const int src_row = y * w_;
             for (int x = 0; x < w_; ++x) {
                 const int s = src_row + x;
-                if (n_[s] == 0 && drvF_[s] == 0 && drvW_[s] == 0) continue;
+                // Keep any cell with observations, a driven prior, OR a latent
+                // cliff prior (a confirmed-then-demoted cliff has n_==0 but must
+                // survive so re-approach still expects the edge).
+                if (n_[s] == 0 && drvF_[s] == 0 && drvW_[s] == 0 && cliff_prior_[s] == 0)
+                    continue;
                 const int d = dst_row + x;
                 grown.n_[d] = n_[s];
                 grown.mu_[d] = mu_[s];
@@ -266,22 +279,41 @@ public:
                 grown.zmax_[d] = zmax_[s];
                 grown.drvF_[d] = drvF_[s];
                 grown.drvW_[d] = drvW_[s];
+                grown.persist_[d] = persist_[s];
+                grown.top_ms_[d] = top_ms_[s];
+                grown.neg_persist_[d] = neg_persist_[s];
+                grown.neg_ms_[d] = neg_ms_[s];
+                grown.cliff_prior_[d] = cliff_prior_[s];
             }
         }
         *this = std::move(grown);
         return true;
     }
 
-    void addPoint(double x, double y, double z) {
+    // Wall-clock (or node-relative) millisecond stamp applied to every point
+    // integrated until the next call. Set once per scan before addPoint().
+    void setStamp(uint32_t ms) { stamp_ms_ = ms; }
+    void setClearConfig(float top_refresh_margin, bool refl_gate, float refl_min,
+                        float refl_max) {
+        top_refresh_margin_ = top_refresh_margin;
+        refl_gate_ = refl_gate;
+        refl_min_ = refl_min;
+        refl_max_ = refl_max;
+    }
+
+    void addPoint(double x, double y, double z,
+                  float intensity = std::numeric_limits<float>::quiet_NaN()) {
         int gx, gy;
         if (!worldToCell(x, y, gx, gy)) return;
         const int i = gy * w_ + gx;
+        const float zf = static_cast<float>(z);
         if (n_[i] == 0) {
             n_[i] = 1;
-            mu_[i] = static_cast<float>(z);
+            mu_[i] = zf;
             m2_[i] = 0.0f;
-            zmin_[i] = static_cast<float>(z);
-            zmax_[i] = static_cast<float>(z);
+            zmin_[i] = zf;
+            zmax_[i] = zf;
+            top_ms_[i] = stamp_ms_;
             return;
         }
         // Terrain-relative overhead reject: drop returns more than
@@ -300,8 +332,20 @@ public:
         const double delta = z - mu_[i];
         mu_[i] += static_cast<float>(delta / n_[i]);
         m2_[i] += static_cast<float>(delta * (z - mu_[i]));
-        zmin_[i] = std::min(zmin_[i], static_cast<float>(z));
-        zmax_[i] = std::max(zmax_[i], static_cast<float>(z));
+        // Reflectivity gate (off by default): a specular / multipath return
+        // (reflectivity outside the trusted band) must not be allowed to lower
+        // zmin, since that is exactly how a metal/glass surface fabricates a
+        // phantom deep "drop". It still contributes to mean/zmax.
+        const bool trusted = !refl_gate_ || std::isnan(intensity) ||
+                             (intensity >= refl_min_ && intensity <= refl_max_);
+        if (trusted) zmin_[i] = std::min(zmin_[i], zf);
+        zmax_[i] = std::max(zmax_[i], zf);
+        // Obstacle-top recency: any return within top_refresh_margin_ of the
+        // current top re-affirms that the tall structure is still there. When a
+        // dynamic obstacle leaves, only low (floor) returns remain, the top goes
+        // stale, and forgetStale() resets the cell. This is what makes obstacles
+        // forgettable without per-ray casting.
+        if (zf >= zmax_[i] - top_refresh_margin_) top_ms_[i] = stamp_ms_;
     }
 
     // Stamp a rotated rectangle (robot footprint or a wheel strip) into the
@@ -337,7 +381,58 @@ public:
     bool drivenWheel(int i) const { return drvW_[i] != 0; }
     int index(int gx, int gy) const { return gy * w_ + gx; }
 
+    // Per-cell obstacle-persistence counter (consecutive-ish ticks a cell has
+    // classified as a positive obstacle). Gates the wide inflation tier so a
+    // transient/noisy blob can't claim a robot-wide berth on first sight.
+    uint16_t persist(int i) const { return persist_[i]; }
+    void bumpPersist(int i, uint16_t cap) {
+        if (persist_[i] < cap) ++persist_[i];
+    }
+    void resetPersist(int i) { persist_[i] = 0; }
+
+    // Negative (cliff) confirmation + latent prior. A drop must be re-observed
+    // for neg_confirm ticks (or already carry a prior) before it becomes a
+    // sticky cliff; the prior then persists so a re-approach re-confirms it
+    // instantly even after the active mark has decayed.
+    uint16_t negPersist(int i) const { return neg_persist_[i]; }
+    void bumpNegPersist(int i, uint16_t cap) {
+        if (neg_persist_[i] < cap) ++neg_persist_[i];
+    }
+    void resetNegPersist(int i) { neg_persist_[i] = 0; }
+    void stampNeg(int i, uint32_t ms) { neg_ms_[i] = ms; }
+    bool cliffPrior(int i) const { return cliff_prior_[i] != 0; }
+    void setCliffPrior(int i) { cliff_prior_[i] = 1; }
+
+    // Observation-recency forgetting (replaces per-ray clearing). Called on the
+    // window each publish tick. Driven cells are immune (traversable prior).
+    // Confirmed cliffs are sticky for neg_decay_ms, then their active stats are
+    // dropped but the latent prior is kept. Everything else is reset once its
+    // obstacle top has not been re-seen for decay_ms (dynamic obstacle gone, or
+    // cell out of FOV) so it falls back to UNKNOWN and can be rescanned.
+    void forgetStale(int i, uint32_t now_ms, uint32_t decay_ms, uint32_t neg_decay_ms) {
+        if (drvF_[i] != 0 || drvW_[i] != 0) return;
+        if (cliff_prior_[i] != 0) {
+            if (n_[i] != 0 && (now_ms - neg_ms_[i]) > neg_decay_ms) clearStats(i);
+            return;
+        }
+        if (n_[i] == 0) return;
+        if ((now_ms - top_ms_[i]) > decay_ms) clearStats(i);
+    }
+
 private:
+    // Wipe live observations so the cell re-learns from scratch (→ UNKNOWN until
+    // re-observed). Keeps driven masks and the latent cliff prior.
+    void clearStats(int i) {
+        n_[i] = 0;
+        mu_[i] = 0.0f;
+        m2_[i] = 0.0f;
+        zmin_[i] = 0.0f;
+        zmax_[i] = 0.0f;
+        persist_[i] = 0;
+        neg_persist_[i] = 0;
+        top_ms_[i] = 0;
+    }
+
     void allocate(int w, int h) {
         const size_t n = static_cast<size_t>(w) * h;
         n_.assign(n, 0);
@@ -347,6 +442,11 @@ private:
         zmax_.assign(n, 0.0f);
         drvF_.assign(n, 0);
         drvW_.assign(n, 0);
+        persist_.assign(n, 0);
+        top_ms_.assign(n, 0);
+        neg_persist_.assign(n, 0);
+        neg_ms_.assign(n, 0);
+        cliff_prior_.assign(n, 0);
     }
 
     double res_ = 0.05;
@@ -364,6 +464,26 @@ private:
     std::vector<float> zmax_;
     std::vector<uint8_t> drvF_;
     std::vector<uint8_t> drvW_;
+    std::vector<uint16_t> persist_;
+    std::vector<uint32_t> top_ms_;       // last obstacle-top refresh (ms)
+    std::vector<uint16_t> neg_persist_;  // cliff confirmation counter
+    std::vector<uint32_t> neg_ms_;       // last drop-candidate stamp (ms)
+    std::vector<uint8_t> cliff_prior_;   // latent "expect a cliff here" flag
+
+    uint32_t stamp_ms_ = 0;
+    float top_refresh_margin_ = 0.15f;
+    bool refl_gate_ = false;
+    float refl_min_ = 0.0f;
+    float refl_max_ = 255.0f;
+};
+
+// Per-cell classification produced by the costmap pass and consumed by the
+// cluster-aware inflation stage.
+enum CellClass : uint8_t {
+    kClsUnknown = 0,
+    kClsFree = 1,
+    kClsPositive = 2,
+    kClsNegative = 3,
 };
 
 }  // namespace
@@ -371,6 +491,7 @@ private:
 class RoofEdgeCostmapNode : public rclcpp::Node {
 public:
     RoofEdgeCostmapNode() : Node("roof_edge_costmap") {
+        node_start_ns_ = this->now().nanoseconds();
         cloud_topic_ = declareString("cloud_topic", "/cloud_registered");
         raw_odometry_topic_ = declareString("raw_odometry_topic", "/Odometry");
         corrected_odometry_topic_ =
@@ -407,6 +528,38 @@ public:
         track_width_m_ = declareDouble("track_width_m", 0.38);
         wheel_width_m_ = declareDouble("wheel_width_m", 0.07);
         inflation_radius_m_ = declareDouble("inflation_radius_m", 0.35);
+        // Cluster-aware inflation: small clusters / short curbs get the narrow
+        // radius so they never seal corridors; only large, prominent, persisted
+        // positive clusters (and all cliffs) earn the wide inflation_radius_m_.
+        inflation_min_m_ = declareDouble("inflation_min_m", 0.12);
+        cluster_noise_cells_ = static_cast<int>(declareInt("cluster_noise_cells", 2));
+        cluster_big_cells_ = static_cast<int>(declareInt("cluster_big_cells", 12));
+        cluster_prominence_m_ = declareDouble("cluster_prominence_m", 0.10);
+        persist_ticks_ = static_cast<int>(declareInt("persist_ticks", 3));
+        persist_cap_ = static_cast<int>(declareInt("persist_cap", 20));
+
+        // Observation-recency forgetting (dynamic obstacles + windowed decay).
+        // A cell whose obstacle top is not re-seen within evidence_decay_sec is
+        // reset to UNKNOWN so a departed obstacle clears (~2-3 s) and stale
+        // out-of-FOV cells can be rescanned. top_refresh_margin_m = how close to
+        // the current top a return must be to re-affirm it.
+        evidence_decay_sec_ = declareDouble("evidence_decay_sec", 2.5);
+        top_refresh_margin_m_ = declareDouble("top_refresh_margin_m", 0.15);
+        // Robust negatives: a big-drop must be corroborated by neighbours and
+        // survive neg_confirm_ticks before it becomes a sticky cliff; a confirmed
+        // cliff decays after neg_decay_sec but leaves a latent prior so a
+        // re-approach re-confirms instantly.
+        drop_min_points_ = static_cast<int>(declareInt("drop_min_points", 6));
+        neg_support_min_ = static_cast<int>(declareInt("neg_support_min", 1));
+        neg_confirm_ticks_ = static_cast<int>(declareInt("neg_confirm_ticks", 3));
+        neg_persist_cap_ = static_cast<int>(declareInt("neg_persist_cap", 20));
+        neg_decay_sec_ = declareDouble("neg_decay_sec", 300.0);
+        // Reflectivity gate (off by default; the upstream Livox tag filter is the
+        // primary specular defence). When on, returns outside the trusted band
+        // cannot lower a cell's zmin, so metal/glass can't fabricate phantom drops.
+        enable_reflectivity_gate_ = declareBool("enable_reflectivity_gate", false);
+        reflectivity_min_ = declareDouble("reflectivity_min", 3.0);
+        reflectivity_max_ = declareDouble("reflectivity_max", 250.0);
 
         window_radius_m_ = declareDouble("window_radius_m", 8.0);
         max_plan_radius_m_ = declareDouble("max_plan_radius_m", 25.0);
@@ -444,6 +597,10 @@ public:
 
         map_ = std::make_unique<PersistentHeightMap>(cell_size_m_, grow_pad_m_, max_map_cells_,
                                                      overhead_margin_m_);
+        map_->setClearConfig(static_cast<float>(top_refresh_margin_m_),
+                             enable_reflectivity_gate_,
+                             static_cast<float>(reflectivity_min_),
+                             static_cast<float>(reflectivity_max_));
         tf_static_broadcaster_ =
             std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
 
@@ -485,11 +642,23 @@ public:
         RCLCPP_INFO(this->get_logger(), "  path:      %s", path_topic_.c_str());
         RCLCPP_INFO(this->get_logger(), "  goal in:   %s", goal_topic_.c_str());
         RCLCPP_INFO(this->get_logger(),
-                    "  cell=%.3fm step_up=%.3fm step_down=%.3fm inflation=%.3fm",
-                    cell_size_m_, step_up_m_, step_down_m_, inflation_radius_m_);
+                    "  cell=%.3fm step_up=%.3fm step_down=%.3fm inflation=%.3f/%.3fm (lo/hi)",
+                    cell_size_m_, step_up_m_, step_down_m_, inflation_min_m_,
+                    inflation_radius_m_);
+        RCLCPP_INFO(this->get_logger(),
+                    "  cluster: noise<=%d big>=%d prom>=%.3fm persist>=%d (cap %d)",
+                    cluster_noise_cells_, cluster_big_cells_, cluster_prominence_m_,
+                    persist_ticks_, persist_cap_);
         RCLCPP_INFO(this->get_logger(),
                     "  obstacle_height=%.3fm overhead_margin=%.3fm (terrain-relative)",
                     obstacle_height_m_, overhead_margin_m_);
+        RCLCPP_INFO(this->get_logger(),
+                    "  decay: evidence=%.1fs top_margin=%.3fm | cliff: confirm=%d "
+                    "drop_pts>=%d support>=%d decay=%.0fs | refl_gate=%s [%.0f,%.0f]",
+                    evidence_decay_sec_, top_refresh_margin_m_, neg_confirm_ticks_,
+                    drop_min_points_, neg_support_min_, neg_decay_sec_,
+                    enable_reflectivity_gate_ ? "on" : "off", reflectivity_min_,
+                    reflectivity_max_);
     }
 
 private:
@@ -631,9 +800,16 @@ private:
         const double ry = latest_robot_position_.y();
         const double max_range_sq = max_range_m_ * max_range_m_;
 
+        // Reflectivity/intensity is optional: present it to addPoint only if the
+        // cloud actually carries the field, else the gate degrades to a no-op.
+        const bool has_intensity =
+            std::any_of(msg->fields.begin(), msg->fields.end(),
+                        [](const sensor_msgs::msg::PointField& f) { return f.name == "intensity"; });
+
         // Levelled points for this scan + their XY bbox, so the persistent grid
         // is expanded once before integrating (no per-point reallocation).
-        std::vector<Eigen::Vector3f> pts;
+        // w=intensity (NaN when the field is absent).
+        std::vector<Eigen::Vector4f> pts;
         pts.reserve(msg->data.size() / msg->point_step);
         double minx = std::numeric_limits<double>::max();
         double miny = std::numeric_limits<double>::max();
@@ -644,8 +820,15 @@ private:
             sensor_msgs::PointCloud2ConstIterator<float> ix(*msg, "x");
             sensor_msgs::PointCloud2ConstIterator<float> iy(*msg, "y");
             sensor_msgs::PointCloud2ConstIterator<float> iz(*msg, "z");
+            const float kNoI = std::numeric_limits<float>::quiet_NaN();
+            std::unique_ptr<sensor_msgs::PointCloud2ConstIterator<float>> ii;
+            if (has_intensity)
+                ii = std::make_unique<sensor_msgs::PointCloud2ConstIterator<float>>(*msg,
+                                                                                    "intensity");
             int stride = 0;
             for (; ix != ix.end(); ++ix, ++iy, ++iz, ++stride) {
+                const float inten = (ii ? **ii : kNoI);
+                if (ii) ++(*ii);
                 if (cloud_decimate_ > 1 && (stride % cloud_decimate_) != 0) continue;
                 const double rxp = *ix, ryp = *iy, rzp = *iz;
                 if (!std::isfinite(rxp) || !std::isfinite(ryp) || !std::isfinite(rzp)) continue;
@@ -655,7 +838,7 @@ private:
                 const double ddx = cx - rx, ddy = cy - ry;
                 if (ddx * ddx + ddy * ddy > max_range_sq) continue;
                 pts.emplace_back(static_cast<float>(cx), static_cast<float>(cy),
-                                 static_cast<float>(cz));
+                                 static_cast<float>(cz), inten);
                 minx = std::min(minx, cx);
                 miny = std::min(miny, cy);
                 maxx = std::max(maxx, cx);
@@ -673,7 +856,13 @@ private:
                                  "Height map at cell budget; dropping scan integration");
             return;
         }
-        for (const auto& p : pts) map_->addPoint(p.x(), p.y(), p.z());
+        map_->setStamp(nowMs());
+        for (const auto& p : pts) map_->addPoint(p.x(), p.y(), p.z(), p.w());
+    }
+
+    // Monotonic node-relative millisecond clock for observation-recency stamps.
+    uint32_t nowMs() const {
+        return static_cast<uint32_t>((this->now().nanoseconds() - node_start_ns_) / 1000000LL);
     }
 
     void stampDrivenFootprint() {
@@ -746,6 +935,21 @@ private:
         const int rh = cgy1 - cgy0 + 1;
         if (rw < 2 || rh < 2) return;
 
+        // Windowed observation-recency decay (Phase C+E). Reset cells whose
+        // obstacle top has gone stale (dynamic obstacle left, or cell out of FOV)
+        // so they fall back to UNKNOWN and can be rescanned; driven cells are
+        // immune, confirmed cliffs are sticky for neg_decay_sec (then demote to a
+        // latent prior). Runs before the gather so this tick sees fresh state.
+        const uint32_t now_ms = nowMs();
+        const uint32_t decay_ms = static_cast<uint32_t>(evidence_decay_sec_ * 1000.0);
+        const uint32_t neg_decay_ms = static_cast<uint32_t>(neg_decay_sec_ * 1000.0);
+        for (int ly = 0; ly < rh; ++ly) {
+            for (int lx = 0; lx < rw; ++lx) {
+                map_->forgetStale(map_->index(cgx0 + lx, cgy0 + ly), now_ms, decay_ms,
+                                  neg_decay_ms);
+            }
+        }
+
         const size_t rn = static_cast<size_t>(rw) * rh;
         // Per-cell gather. Two independent gates: (1) ground-confidence
         // (low-variance + enough obs) yields a trustworthy FLOOR height used as
@@ -802,9 +1006,29 @@ private:
             }
         }
 
-        // Costmap (3-value) + planner occupancy + heightmap display in one pass.
+        // Eager big-drop candidates (per cell, before neighbour support). Uses
+        // drop_min_points (stricter than the positive obs gate) so a sparse
+        // specular / multipath cluster can't seed a cliff on its own.
+        const uint32_t drop_min = static_cast<uint32_t>(drop_min_points_);
+        std::vector<uint8_t> neg_cand(rn, 0);
+        for (int ly = 0; ly < rh; ++ly) {
+            for (int lx = 0; lx < rw; ++lx) {
+                const int li = ly * rw + lx;
+                const float lf = local_floor[li];
+                if (lf == kNoFloor || ncount[li] < drop_min) continue;
+                if ((lf - zmin[li]) > big_drop_m_ && (lf - mean[li]) > drop_corroborate_m_)
+                    neg_cand[li] = 1;
+            }
+        }
+
+        // Costmap (3-value) + per-cell class + heightmap display in one pass.
+        // Class feeds the cluster-aware inflation stage below: POSITIVE cells are
+        // clustered (size / prominence / persistence) to choose an inflation
+        // tier, NEGATIVE (cliff) always inflates wide, UNKNOWN blocks routing but
+        // never inflates.
         std::vector<int8_t> costmap(rn, -1);   // FREE 0 / LETHAL 100 / UNKNOWN -1
-        std::vector<uint8_t> occupied(rn, 0);  // planner: 1 = hard obstacle
+        std::vector<uint8_t> cls(rn, kClsUnknown);
+        std::vector<float> prom(rn, 0.0f);     // (zmax - local_floor) for positives
         std::vector<float> disp_h(rn, 0.0f);   // height-map display value
         std::vector<uint8_t> disp_show(rn, 0);
         const uint32_t obs_min = static_cast<uint32_t>(obstacle_min_points_);
@@ -818,7 +1042,7 @@ private:
                 // drop), gated by point-count + corroborated by the cell mean so a
                 // single flyer can't trip it. These are NOT driven-clearable: a
                 // >8 cm wall or >20 cm hole was never driven over. ---
-                bool positive = false, negative = false;
+                bool positive = false;
                 if (has_floor && ncount[li] >= obs_min) {
                     // Base check: a real obstacle is rooted at the floor, so its
                     // lowest return sits within the overhead band. Floating /
@@ -831,15 +1055,14 @@ private:
                         (zmin[li] - lf) <= overhead_margin_m_) {
                         positive = true;
                     }
-                    if ((lf - zmin[li]) > big_drop_m_ &&
-                        (lf - mean[li]) > drop_corroborate_m_) {
-                        negative = true;
-                    }
                 }
 
                 // --- Subtle steps from ground-confident neighbours (curbs, drains,
-                // shallow depressions). Driven-clearable up to the cap. ---
-                if (gconf[li] && !positive && !negative) {
+                // shallow depressions). Driven-clearable up to the cap. The
+                // negative here is already robust (needs ground confidence on both
+                // sides) so it bypasses the eager cliff confirmation below. ---
+                bool neg_subtle = false;
+                if (gconf[li] && !positive && !neg_cand[li]) {
                     double max_rise = 0.0, max_drop = 0.0;
                     bool has_neighbor = false;
                     for (int dy = -1; dy <= 1; ++dy) {
@@ -865,30 +1088,145 @@ private:
                         nstep = false;
                     }
                     positive = positive || pstep;
-                    negative = negative || nstep;
+                    neg_subtle = nstep;
                 }
 
-                const bool lethal = positive || negative;
-                if (lethal) {
+                const int gi = map_->index(cgx0 + lx, cgy0 + ly);
+
+                // Eager cliff confirmation + two-layer memory. A big-drop candidate
+                // with neighbour support must survive neg_confirm_ticks (or already
+                // carry a latent prior) to become a sticky cliff; otherwise it is
+                // held as UNKNOWN (blocks routing, no permanent mark) so a flicker
+                // from a reflective surface can't fabricate a persistent hole.
+                bool neg_lethal = neg_subtle;
+                bool neg_pending = false;
+                if (neg_cand[li]) {
+                    int sup = 0;
+                    for (int dy = -1; dy <= 1 && sup < neg_support_min_; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            if (dx == 0 && dy == 0) continue;
+                            const int nx = lx + dx, ny = ly + dy;
+                            if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+                            if (neg_cand[ny * rw + nx] && ++sup >= neg_support_min_) break;
+                        }
+                    }
+                    if (sup >= neg_support_min_) {
+                        map_->bumpNegPersist(gi, static_cast<uint16_t>(neg_persist_cap_));
+                        map_->stampNeg(gi, now_ms);
+                        if (static_cast<int>(map_->negPersist(gi)) >= neg_confirm_ticks_ ||
+                            map_->cliffPrior(gi)) {
+                            neg_lethal = true;
+                            map_->setCliffPrior(gi);
+                        } else {
+                            neg_pending = true;
+                        }
+                    } else {
+                        map_->resetNegPersist(gi);
+                    }
+                } else {
+                    map_->resetNegPersist(gi);
+                }
+
+                if (positive || neg_lethal) {
                     costmap[li] = 100;
-                    occupied[li] = 1;
-                    disp_h[li] = negative ? zmin[li] : zmax[li];
+                    cls[li] = positive ? kClsPositive : kClsNegative;
+                    disp_h[li] = positive ? zmax[li] : zmin[li];
                     disp_show[li] = 1;
+                    // Persistence tracks only positive obstacles (the wide-tier
+                    // gate); cliffs always inflate wide, so they need no counter.
+                    if (positive) {
+                        prom[li] = zmax[li] - lf;
+                        map_->bumpPersist(gi, static_cast<uint16_t>(persist_cap_));
+                    }
+                } else if (neg_pending) {
+                    costmap[li] = -1;  // unconfirmed drop: block, don't mark
+                    cls[li] = kClsUnknown;
+                    map_->resetPersist(gi);
                 } else if (gconf[li]) {
                     costmap[li] = 0;  // FREE: trustworthy floor
-                    occupied[li] = 0;
+                    cls[li] = kClsFree;
                     disp_h[li] = mean[li];
                     disp_show[li] = 1;
+                    map_->resetPersist(gi);
                 } else if (drvF[li]) {
                     costmap[li] = 0;  // driven footprint => known-traversable
-                    occupied[li] = 0;
+                    cls[li] = kClsFree;
                     if (ncount[li] > 0) {
                         disp_h[li] = mean[li];
                         disp_show[li] = 1;
                     }
+                    map_->resetPersist(gi);
                 } else {
                     costmap[li] = -1;  // UNKNOWN
-                    occupied[li] = plan_through_unknown_ ? 0 : 1;
+                    cls[li] = plan_through_unknown_ ? kClsFree : kClsUnknown;
+                }
+            }
+        }
+
+        // --- Cluster-aware inflation seeds --------------------------------
+        // seed_lo inflates every real obstacle by the small radius; seed_hi adds
+        // the wide radius only for cliffs and confirmed-prominent positive
+        // clusters; blocked marks non-traversable-but-non-inflating cells
+        // (UNKNOWN + de-noised speckle). A positive cluster earns seed_hi only
+        // when it is large, prominent, AND has persisted for >= persist_ticks_.
+        // Tiny clusters (<= cluster_noise_cells_) are treated as noise: blocked
+        // (their own cell only), never inflated.
+        std::vector<uint8_t> seed_lo(rn, 0), seed_hi(rn, 0), blocked(rn, 0);
+        for (size_t i = 0; i < rn; ++i) {
+            if (cls[i] == kClsNegative) {
+                seed_lo[i] = 1;
+                seed_hi[i] = 1;
+            } else if (cls[i] == kClsUnknown) {
+                blocked[i] = 1;
+            }
+        }
+
+        // Connected-component labelling of POSITIVE cells (iterative flood fill,
+        // 8-connectivity). O(rn); no recursion.
+        static constexpr int kNb8[8][2] = {{1, 0},  {-1, 0}, {0, 1},  {0, -1},
+                                           {1, 1},  {1, -1}, {-1, 1}, {-1, -1}};
+        std::vector<uint8_t> visited(rn, 0);
+        std::vector<int> stack, members;
+        for (int sy = 0; sy < rh; ++sy) {
+            for (int sx = 0; sx < rw; ++sx) {
+                const int s = sy * rw + sx;
+                if (cls[s] != kClsPositive || visited[s]) continue;
+                stack.clear();
+                members.clear();
+                stack.push_back(s);
+                visited[s] = 1;
+                float max_prom = 0.0f;
+                uint16_t max_persist = 0;
+                while (!stack.empty()) {
+                    const int c = stack.back();
+                    stack.pop_back();
+                    members.push_back(c);
+                    max_prom = std::max(max_prom, prom[c]);
+                    const int cx = c % rw, cy = c / rw;
+                    max_persist =
+                        std::max(max_persist, map_->persist(map_->index(cgx0 + cx, cgy0 + cy)));
+                    for (const auto& d : kNb8) {
+                        const int nx = cx + d[0], ny = cy + d[1];
+                        if (nx < 0 || ny < 0 || nx >= rw || ny >= rh) continue;
+                        const int ni = ny * rw + nx;
+                        if (cls[ni] == kClsPositive && !visited[ni]) {
+                            visited[ni] = 1;
+                            stack.push_back(ni);
+                        }
+                    }
+                }
+                const int size = static_cast<int>(members.size());
+                const bool is_noise = size <= cluster_noise_cells_;
+                const bool is_wide = size >= cluster_big_cells_ &&
+                                     max_prom >= static_cast<float>(cluster_prominence_m_) &&
+                                     max_persist >= static_cast<uint16_t>(persist_ticks_);
+                for (const int m : members) {
+                    if (is_noise) {
+                        blocked[m] = 1;
+                    } else {
+                        seed_lo[m] = 1;
+                        if (is_wide) seed_hi[m] = 1;
+                    }
                 }
             }
         }
@@ -898,7 +1236,8 @@ private:
         publishCostmap(costmap, rw, rh, origin_x, origin_y);
 
         if (plan_now) {
-            planAndPublish(occupied, rw, rh, origin_x, origin_y, rx, ry, egx, egy);
+            planAndPublish(seed_lo, seed_hi, blocked, rw, rh, origin_x, origin_y, rx, ry, egx,
+                           egy);
         }
 
         if (publish_heightmap_ && heightmap_pub_ && heightmapDue()) {
@@ -922,11 +1261,13 @@ private:
         costmap_pub_->publish(grid);
     }
 
-    void planAndPublish(const std::vector<uint8_t>& occupied, int w, int h, double ox,
+    void planAndPublish(const std::vector<uint8_t>& seed_lo,
+                        const std::vector<uint8_t>& seed_hi,
+                        const std::vector<uint8_t>& blocked, int w, int h, double ox,
                         double oy, double rx, double ry, double gx, double gy) {
         pilot_control::RoofEdgeGridPlanner planner;
-        if (!planner.buildFromGrid(occupied, w, h, ox, oy, cell_size_m_,
-                                   inflation_radius_m_)) {
+        if (!planner.buildFromGrid(seed_lo, seed_hi, blocked, w, h, ox, oy, cell_size_m_,
+                                   inflation_min_m_, inflation_radius_m_)) {
             return;
         }
         const std::vector<pilot_control::Point2D> path =
@@ -1021,6 +1362,13 @@ private:
     double obstacle_height_m_, obstacle_corroborate_rise_m_, big_drop_m_, drop_corroborate_m_;
     double overhead_margin_m_;
     double robot_length_m_, robot_width_m_, track_width_m_, wheel_width_m_, inflation_radius_m_;
+    double inflation_min_m_, cluster_prominence_m_;
+    int cluster_noise_cells_, cluster_big_cells_, persist_ticks_, persist_cap_;
+    double evidence_decay_sec_, top_refresh_margin_m_, neg_decay_sec_;
+    double reflectivity_min_, reflectivity_max_;
+    int drop_min_points_, neg_support_min_, neg_confirm_ticks_, neg_persist_cap_;
+    bool enable_reflectivity_gate_;
+    int64_t node_start_ns_ = 0;
     double window_radius_m_, max_plan_radius_m_, region_pad_m_, max_range_m_;
     double z_min_clip_m_, z_max_clip_m_;
     double publish_rate_hz_, heightmap_rate_hz_, grow_pad_m_, driven_stamp_min_move_m_;
