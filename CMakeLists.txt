@@ -21,6 +21,7 @@ find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
+find_package(livox_ros_driver2 REQUIRED)
 
 # GStreamer for video_streamer
 find_package(PkgConfig QUIET)
@@ -187,6 +188,15 @@ ament_target_dependencies(patchwork_cloud_colorizer rclcpp sensor_msgs pcl_conve
 target_include_directories(patchwork_cloud_colorizer PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(patchwork_cloud_colorizer ${PCL_LIBRARIES})
 install(TARGETS patchwork_cloud_colorizer DESTINATION lib/${PROJECT_NAME})
+
+# === LIVOX CUSTOMMSG -> POINTCLOUD2 (gravity-leveled Patchwork++ input) ===
+add_executable(livox_custommsg_to_cloud src/livox_custommsg_to_cloud.cpp)
+target_compile_features(livox_custommsg_to_cloud PUBLIC cxx_std_17)
+ament_target_dependencies(livox_custommsg_to_cloud
+  rclcpp sensor_msgs geometry_msgs pcl_conversions livox_ros_driver2)
+target_include_directories(livox_custommsg_to_cloud PUBLIC ${PCL_INCLUDE_DIRS})
+target_link_libraries(livox_custommsg_to_cloud ${PCL_LIBRARIES} Eigen3::Eigen)
+install(TARGETS livox_custommsg_to_cloud DESTINATION lib/${PROJECT_NAME})
 
 # === GPR MOTION FOLLOWER (mirrors forward distance to ODrive micro) ===
 add_executable(gpr_motion_follower src/gpr_motion_follower.cpp)

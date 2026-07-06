@@ -28,6 +28,7 @@ from rclpy.qos import (
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
+from geometry_msgs.msg import QuaternionStamped
 import numpy as np
 import math
 import os
@@ -130,6 +131,15 @@ class OdomTiltCorrector(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
         self.leveling_ready_pub = self.create_publisher(Bool, '/leveling_ready', latched_qos)
+
+        # Latched gravity-levelling rotation (LiDAR/sensor frame -> levelled robot
+        # frame, z-up). Published once on latch so downstream point-cloud nodes
+        # (e.g. livox_custommsg_to_cloud feeding Patchwork++) level their clouds
+        # off the exact same IMU-derived rotation as the odometry + arming gate,
+        # instead of a fixed mount-pitch guess. TRANSIENT_LOCAL so late
+        # subscribers still receive it.
+        self.leveling_rot_pub = self.create_publisher(
+            QuaternionStamped, '/lidar_leveling_rotation', latched_qos)
 
         # Odometry subscription
         self.odom_sub = self.create_subscription(
@@ -425,6 +435,20 @@ class OdomTiltCorrector(Node):
         msg = Bool()
         msg.data = True
         self.leveling_ready_pub.publish(msg)
+
+        # Expose the levelling rotation (R_lidar_to_robot) for point-cloud
+        # consumers. Applying this to a LiDAR-frame point yields the gravity-
+        # levelled (z-up), sensor-centred coordinate Patchwork++ expects.
+        qx, qy, qz, qw = self.matrix_to_quat(self.R_lidar_to_robot)
+        rot = QuaternionStamped()
+        rot.header.stamp = self.get_clock().now().to_msg()
+        rot.header.frame_id = 'livox_frame'
+        rot.quaternion.x = float(qx)
+        rot.quaternion.y = float(qy)
+        rot.quaternion.z = float(qz)
+        rot.quaternion.w = float(qw)
+        self.leveling_rot_pub.publish(rot)
+
         self.get_logger().info(f'Leveling ready (source={source}); motor arming unblocked.')
 
     # ---------------- Odom processing ----------------
