@@ -90,6 +90,13 @@ struct Config {
   std::string log_directory   = std::string(getenv("HOME")?getenv("HOME"):".") + "/unified_scans";
   bool use_seekvision_mode    = true;   // SeekVision pipeline for colorized image frames
   bool save_color_png         = true;   // write *_color.png alongside float32 bin
+  // BDR_REWIRE: temporary hardware-removal bypasses. Both default true so the
+  // source keeps full thermal + dual-camera behavior; robot_complete.launch.py
+  // sets them false while the thermal + right RGB cameras are physically off
+  // Roofus. Revert = flip these back to true in the launch file (or drop the
+  // two params). See docs/DEV_BYPASSES.md.
+  bool enable_thermal         = true;   // false: skip Seek init + wedge watchdogs
+  bool enable_right_camera    = true;   // false: left-only capture/stream pipeline
   int  csv_flush_every_rows   = 50;     // batch CSV flush, no per-row flush
   size_t frame_ring_size      = 24;     // ~2–3 s @ 9 Hz camera
   double log_frequency_hz     = 5.0;    // logging frequency in Hz
@@ -409,7 +416,11 @@ private:
                              << "_left" << job.left_ns << "_right" << job.right_ns;
       const std::string stem = s.str();
 
-      const std::string thermo_bin = save_float32_bin(job.thermal_frame, job.out_dir, stem);
+      // BDR_REWIRE: an empty thermal frame (thermal disabled) writes no bin/png
+      // and leaves the CSV fields empty, rather than emitting a stub file.
+      const std::string thermo_bin = job.thermal_frame.thermo.empty()
+          ? std::string()
+          : save_float32_bin(job.thermal_frame, job.out_dir, stem);
       std::string thermal_color_png;
       if (!job.thermal_frame.color_bgr.empty()) thermal_color_png = save_color_png(job.thermal_frame, job.out_dir, stem);
       
@@ -537,7 +548,18 @@ public:
 
     // Initialize components
     initGStreamer();
-    createCameraManager();
+    // BDR_REWIRE: with the thermal camera physically removed, skip Seek SDK
+    // init entirely. Mark connect "seen" so publishHealth() reports
+    // STOPPED/RECORDING (not a permanent STARTING/ERROR_THERMAL_WEDGED) and the
+    // OCU Start-Scan gate can still arm. Revert by re-enabling enable_thermal.
+    if (cfg_.enable_thermal) {
+      createCameraManager();
+    } else {
+      thermal_connect_seen_.store(true);
+      RCLCPP_WARN(this->get_logger(),
+          "[Thermal] DISABLED via enable_thermal=false (BDR_REWIRE): skipping "
+          "Seek SDK init and wedge watchdogs. Thermal CSV fields will be empty.");
+    }
     writer_.start();
 
     // Seek thermal CONNECT watchdog: if the SDK doesn't deliver
@@ -549,6 +571,8 @@ public:
     // only the header. Surface this loudly so the operator knows to
     // replug the Seek USB cable. Watchdog auto-disarms once CONNECT
     // is seen (or after the first fire) — we don't bombard the log.
+    // BDR_REWIRE: watchdog only armed when the thermal camera is present.
+    if (cfg_.enable_thermal)
     thermal_connect_watchdog_ = this->create_wall_timer(
         std::chrono::seconds(5),
         [this]() {
@@ -596,6 +620,8 @@ public:
     // 2 stuck windows = ~10 s of wall time before the supervisor
     // intervenes; the operator sees the REC pill flip to STALE
     // briefly, then UDC re-spawns clean and the scan continues.
+    // BDR_REWIRE: watchdog only armed when the thermal camera is present.
+    if (cfg_.enable_thermal)
     runtime_wedge_watchdog_ = this->create_wall_timer(
         std::chrono::seconds(5),
         [this]() {
@@ -755,6 +781,9 @@ private:
     this->declare_parameter<std::string>("visual_data_directory", "");  // Session-specific Visual_data folder
     this->declare_parameter<bool>("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->declare_parameter<bool>("save_color_png", cfg_.save_color_png);
+    // BDR_REWIRE: temporary thermal / right-camera removal bypasses.
+    this->declare_parameter<bool>("enable_thermal", cfg_.enable_thermal);
+    this->declare_parameter<bool>("enable_right_camera", cfg_.enable_right_camera);
     this->declare_parameter<int>("csv_flush_every_rows", cfg_.csv_flush_every_rows);
     this->declare_parameter<double>("log_frequency_hz", cfg_.log_frequency_hz);
     
@@ -795,6 +824,9 @@ private:
     
     this->get_parameter("use_seekvision_mode", cfg_.use_seekvision_mode);
     this->get_parameter("save_color_png", cfg_.save_color_png);
+    // BDR_REWIRE: temporary thermal / right-camera removal bypasses.
+    this->get_parameter("enable_thermal", cfg_.enable_thermal);
+    this->get_parameter("enable_right_camera", cfg_.enable_right_camera);
     this->get_parameter("csv_flush_every_rows", cfg_.csv_flush_every_rows);
     this->get_parameter("log_frequency_hz", cfg_.log_frequency_hz);
     
@@ -970,7 +1002,10 @@ private:
             thermal_connect_seen_.load() ? 1 : 0);
       }
     };
-    if (!ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) {
+    // BDR_REWIRE: when thermal is disabled the ring never receives thermal
+    // frames, so skip its presence gate and leave thermal_f empty (the writer
+    // then emits empty thermal CSV fields). Same for the right camera.
+    if (cfg_.enable_thermal && !ring_.nearest_thermal(odom_ns, thermal_f, dt_thermal)) {
       ++skip_thermal_empty_;
       ++dropped_thermal_empty_total_;
       report_skips_if_due();
@@ -982,7 +1017,7 @@ private:
       report_skips_if_due();
       return;
     }
-    if (!ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) {
+    if (cfg_.enable_right_camera && !ring_.nearest_camera(odom_ns, "right", right_f, dt_right)) {
       ++skip_right_empty_;
       ++dropped_right_empty_total_;
       report_skips_if_due();
@@ -1067,6 +1102,13 @@ private:
     int want_mode = 0;  // left
     if (camera == "right" || camera == "r") {
       want_mode = 1;
+      // BDR_REWIRE: right camera removed — refuse the switch and stay on left.
+      if (!cfg_.enable_right_camera) {
+        RCLCPP_WARN(this->get_logger(),
+            "RIGHT camera stream requested but enable_right_camera=false "
+            "(BDR_REWIRE). Staying on LEFT.");
+        want_mode = 0;
+      }
     } else if (camera == "panorama" || camera == "pano" || camera == "p") {
       RCLCPP_WARN(this->get_logger(),
                   "Panorama stream request received, but panorama mode is disabled. Falling back to LEFT.");
@@ -1667,6 +1709,11 @@ private:
         << "! videoconvert ! video/x-raw,format=BGR "
         << "! appsink name=left_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
 
+    // BDR_REWIRE: only build the RIGHT camera branches when it's present.
+    // With the right RGB removed this yields a left-only pipeline that still
+    // reaches PLAYING (a missing v4l2src device would otherwise fail the whole
+    // pipeline and force the supervisor into a respawn loop).
+    if (cfg_.enable_right_camera) {
     // RIGHT camera
     if (cfg_.use_mjpeg_pipeline) {
       oss << "\n"
@@ -1707,6 +1754,7 @@ private:
     oss << " T_right. ! queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 "
         << "! videoconvert ! video/x-raw,format=BGR "
         << "! appsink name=right_appsink emit-signals=true sync=false max-buffers=1 drop=true ";
+    }  // BDR_REWIRE: end if (cfg_.enable_right_camera)
 
     pipeline_str_ = oss.str();
     RCLCPP_INFO(this->get_logger(), "GStreamer streaming config: host=%s port=%d bitrate=%dkbps mtu=%d",
@@ -1729,15 +1777,20 @@ private:
 
     // Setup appsinks
     left_appsink_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "left_appsink"));
-    right_appsink_ = GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "right_appsink"));
-    
-    if (!left_appsink_ || !right_appsink_) {
+    // BDR_REWIRE: right appsink only exists when the right camera is enabled.
+    right_appsink_ = cfg_.enable_right_camera
+        ? GST_ELEMENT(gst_bin_get_by_name(GST_BIN(pipeline_.get()), "right_appsink"))
+        : nullptr;
+
+    if (!left_appsink_ || (cfg_.enable_right_camera && !right_appsink_)) {
       RCLCPP_FATAL(this->get_logger(), "Failed to retrieve appsinks");
       throw std::runtime_error("Missing appsinks");
     }
 
     g_signal_connect(left_appsink_, "new-sample", G_CALLBACK(onNewLeftFrame), this);
-    g_signal_connect(right_appsink_, "new-sample", G_CALLBACK(onNewRightFrame), this);
+    if (right_appsink_) {
+      g_signal_connect(right_appsink_, "new-sample", G_CALLBACK(onNewRightFrame), this);
+    }
   }
 
   void startStreamingLoop() {

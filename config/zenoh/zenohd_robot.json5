@@ -40,6 +40,10 @@
           "^/roof_edge/costmap$",
           "^/roof_edge/heightmap$",
           "^/roof_edge/planned_path$",
+          // Patchwork++ ground-seg CHECK viz only. Full point cloud (~1-2 MB/s)
+          // -> heavy for Microhard; keep for bench/close-range testing, drop
+          // (or decimate via livox point_stride) before production field use.
+          "^/patchworkpp/colored$",
           "^/Odometry$",
           "^/Odometry_tilt_corrected_diff$",
           "^/left/controller_status$",

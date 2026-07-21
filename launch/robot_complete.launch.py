@@ -301,6 +301,22 @@ def generate_launch_description():
             'save_color_png': True,
             'csv_flush_every_rows': 50,
             'log_frequency_hz': 10.0,
+
+            # BDR_REWIRE: TEMPORARY hardware-removal bypasses. The thermal
+            # camera and the RIGHT RGB camera have been physically removed
+            # from Roofus. These flags keep the UDC (and thus the FPV stream +
+            # OCU arming gate) running on the LEFT camera alone:
+            #   * enable_thermal=False   -> skip Seek SDK init + both thermal
+            #     wedge watchdogs, so the launch never hits
+            #     DEAD_USB_RESET_FAILED for an absent Seek device.
+            #   * enable_right_camera=False -> build a left-only GStreamer
+            #     pipeline so a missing right v4l2 device can't fail the whole
+            #     pipeline. Streaming is left-only regardless.
+            # Thermal + right CSV columns stay in the schema but are written
+            # empty. Revert by setting both back to True (or deleting these two
+            # lines) once the cameras are reinstalled. See docs/DEV_BYPASSES.md.
+            'enable_thermal': False,
+            'enable_right_camera': False,
             
             # Camera device paths (See3CAM)
             'left_device': LaunchConfiguration('left_camera_device'),

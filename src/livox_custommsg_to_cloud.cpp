@@ -30,6 +30,17 @@ public:
         // Patchwork++ sees a gravity-aligned (z-up), sensor-centred cloud.
         this->declare_parameter<bool>("use_gravity_leveling", false);
         this->declare_parameter<std::string>("leveling_topic", "/lidar_leveling_rotation");
+        // Forward-relative box ROI, applied AFTER levelling so it is expressed
+        // in the sensor-centred, gravity-leveled frame (x forward, y left, z up)
+        // and therefore tracks the robot as it turns. Used to restrict
+        // Patchwork++ to a small region in front of the robot.
+        this->declare_parameter<bool>("roi_enable", false);
+        this->declare_parameter<double>("roi_x_min", 0.0);
+        this->declare_parameter<double>("roi_x_max", 2.5);
+        this->declare_parameter<double>("roi_y_min", -1.0);
+        this->declare_parameter<double>("roi_y_max", 1.0);
+        this->declare_parameter<double>("roi_z_min", -3.0);
+        this->declare_parameter<double>("roi_z_max", 3.0);
 
         input_topic_ = this->get_parameter("input_topic").as_string();
         output_topic_ = this->get_parameter("output_topic").as_string();
@@ -42,6 +53,13 @@ public:
         use_tag_filter_ = this->get_parameter("use_tag_filter").as_bool();
         use_gravity_leveling_ = this->get_parameter("use_gravity_leveling").as_bool();
         leveling_topic_ = this->get_parameter("leveling_topic").as_string();
+        roi_enable_ = this->get_parameter("roi_enable").as_bool();
+        roi_x_min_ = this->get_parameter("roi_x_min").as_double();
+        roi_x_max_ = this->get_parameter("roi_x_max").as_double();
+        roi_y_min_ = this->get_parameter("roi_y_min").as_double();
+        roi_y_max_ = this->get_parameter("roi_y_max").as_double();
+        roi_z_min_ = this->get_parameter("roi_z_min").as_double();
+        roi_z_max_ = this->get_parameter("roi_z_max").as_double();
 
         updatePitchCorrection();
 
@@ -78,6 +96,13 @@ public:
         }
         RCLCPP_INFO(this->get_logger(), "Minimum range: %.2f m | stride: %d | tag filter: %s",
                     min_range_m_, point_stride_, use_tag_filter_ ? "enabled" : "disabled");
+        if (roi_enable_) {
+            RCLCPP_INFO(this->get_logger(),
+                        "Forward ROI: x[%.2f, %.2f] y[%.2f, %.2f] z[%.2f, %.2f] (leveled sensor frame)",
+                        roi_x_min_, roi_x_max_, roi_y_min_, roi_y_max_, roi_z_min_, roi_z_max_);
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Forward ROI: disabled (full cloud)");
+        }
     }
 
 private:
@@ -168,6 +193,15 @@ private:
                 corrected = rot * corrected;
             }
 
+            // Forward-relative box ROI in the leveled sensor frame (x forward).
+            if (roi_enable_) {
+                if (corrected.x() < roi_x_min_ || corrected.x() > roi_x_max_ ||
+                    corrected.y() < roi_y_min_ || corrected.y() > roi_y_max_ ||
+                    corrected.z() < roi_z_min_ || corrected.z() > roi_z_max_) {
+                    continue;
+                }
+            }
+
             pcl::PointXYZI out_pt;
             out_pt.x = static_cast<float>(corrected.x());
             out_pt.y = static_cast<float>(corrected.y());
@@ -206,6 +240,13 @@ private:
     bool use_tag_filter_ = true;
     bool use_gravity_leveling_ = false;
     std::string leveling_topic_;
+    bool roi_enable_ = false;
+    double roi_x_min_ = 0.0;
+    double roi_x_max_ = 2.5;
+    double roi_y_min_ = -1.0;
+    double roi_y_max_ = 1.0;
+    double roi_z_min_ = -3.0;
+    double roi_z_max_ = 3.0;
     Eigen::Matrix3d pitch_correction_ = Eigen::Matrix3d::Identity();
     Eigen::Matrix3d leveling_rotation_ = Eigen::Matrix3d::Identity();
     bool leveling_received_ = false;

@@ -90,7 +90,7 @@ private:
         maybePublishColoredCloud();
     }
 
-    static void appendColoredPoints(const pcl::PointCloud<pcl::PointXYZI>& input,
+    static void appendColoredPoints(const pcl::PointCloud<pcl::PointXYZ>& input,
                                     const RgbColor& color,
                                     pcl::PointCloud<pcl::PointXYZRGB>* output) {
         if (!output) {
@@ -148,8 +148,11 @@ private:
                 latest_nonground_->header.frame_id.c_str());
         }
 
-        pcl::PointCloud<pcl::PointXYZI> ground_cloud;
-        pcl::PointCloud<pcl::PointXYZI> nonground_cloud;
+        // Patchwork++ publishes ground/non-ground as XYZ (no intensity field);
+        // load as PointXYZ so PCL doesn't spam "Failed to find match for field
+        // 'intensity'". Only x/y/z are used for colorizing anyway.
+        pcl::PointCloud<pcl::PointXYZ> ground_cloud;
+        pcl::PointCloud<pcl::PointXYZ> nonground_cloud;
         pcl::fromROSMsg(*latest_ground_, ground_cloud);
         pcl::fromROSMsg(*latest_nonground_, nonground_cloud);
 
